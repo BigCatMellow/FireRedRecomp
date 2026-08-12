@@ -33,6 +33,11 @@ RomAddresses["41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc"] = { -- FireRed (US) v1.
   -- gTrainers: struct Trainer[], pokefirered src/data/trainers.h
   -- Verified against real TRAINER_YOUNGSTER_BEN (index 89) data.
   gTrainers = 0x0823eac8 - 0x08000000,
+  -- gMapGroups: array of pointers to per-group MapHeader-pointer tables,
+  -- pokefirered src/overworld.c / include/global.fieldmap.h
+  -- Verified against real MAP_PALLET_TOWN (group 3, num 0): resolves to a
+  -- header with mapLayoutId=78, exactly LAYOUT_PALLET_TOWN.
+  gMapGroups = 0x083526a8 - 0x08000000,
 }
 
 return RomAddresses

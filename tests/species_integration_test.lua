@@ -23,6 +23,7 @@ local AbilityNames = require("import.AbilityNames")
 local Charmap = require("import.Charmap")
 local Trainer = require("import.Trainer")
 local TrainerParty = require("import.TrainerParty")
+local MapHeader = require("import.MapHeader")
 
 local passed, failed = 0, 0
 local function check(name, cond, detail)
@@ -115,6 +116,12 @@ check("Koichi's Hitmonlee has held item Black Belt", koichiParty[0].species == 1
 local liam = Trainer.parseTable(data, addrs.gTrainers, 143)[142]
 local liamParty = TrainerParty.resolve(liam, data)
 check("Liam's Geodude has Tackle/Defense Curl", liamParty[0].species == 74 and liamParty[0].lvl == 10 and liamParty[0].moves[0] == 33 and liamParty[0].moves[1] == 111)
+
+-- MAP_PALLET_TOWN = group 3, num 0
+local MAP_PALLET_TOWN = 3 * 256 + 0
+local palletTown = MapHeader.resolve(data, addrs.gMapGroups, MAP_PALLET_TOWN)
+check("Pallet Town's mapLayoutId is LAYOUT_PALLET_TOWN (78)", palletTown.mapLayoutId == 78, palletTown.mapLayoutId)
+check("Pallet Town's regionMapSectionId is 88", palletTown.regionMapSectionId == 88, palletTown.regionMapSectionId)
 
 print(("%d passed, %d failed"):format(passed, failed))
 os.exit(failed == 0 and 0 or 1)
