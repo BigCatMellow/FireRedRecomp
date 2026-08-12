@@ -109,6 +109,12 @@ RomAddresses["41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc"] = { -- FireRed (US) v1.
   -- this address is whichever this build's config.mk selected (FireRed).
   sBorderBgTiles = 0x083bf58c - 0x08000000,
   sBorderBgMap = 0x083bf5a8 - 0x08000000,
+  -- Player overworld sprite (Red, standing/facing-down), pokefirered
+  -- src/data/object_events/*. Uncompressed raw 4bpp (no .lz -- confirmed
+  -- from source, not assumed), standard 1D OBJ tile mapping. Verified by
+  -- eye: frame 0 is unmistakably the real player character sprite.
+  gObjectEventPic_RedNormal = 0x0835bb68 - 0x08000000,
+  gObjectEventPal_Player = 0x0835b968 - 0x08000000,
 }
 
 -- Total record counts, confirmed via `arm-none-eabi-nm -S` on the real

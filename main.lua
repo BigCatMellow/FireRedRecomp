@@ -1,14 +1,15 @@
--- Phase 1 shell: boots a window, verifies a ROM if POKEPORT_ROM points at
--- one, composites a real map (block grid + metatiles + tile graphics +
--- palettes, straight out of that ROM) into an image and draws it, and --
--- the Phase 1 exit criterion -- offers a read-only data viewer (press V)
--- to browse every species/move/trainer/map record. Defaults to Pallet
--- Town; POKEPORT_MAP=group,num renders any other map (see
--- MapCompositor.lua's doc comment on the metatile layer-type attribute
--- this doesn't read yet -- it affects sprite z-order, not the static
--- background, so it's not needed for what's drawn today). No gameplay, no
--- camera, no player/object sprites: this is "can we turn ROM bytes into a
--- recognizable map and browse its data," not a game yet. See
+-- Phase 1+2 shell: boots a window, verifies a ROM if POKEPORT_ROM points at
+-- one, composites a real map into an image and draws it (defaults to
+-- Pallet Town; POKEPORT_MAP=group,num for any other), and offers three
+-- more views: V for the Phase 1 read-only data viewer (species/moves/
+-- trainers/maps), T for the composited title screen (logo + box art +
+-- copyright/press-start + border backdrop -- see TitleScreen.lua for what
+-- isn't done yet, mainly the animated flame sprites), P for the player's
+-- overworld sprite (the first actual OBJ/sprite graphic decoded, as
+-- opposed to a background tilemap -- see ObjectSprite.lua). Rendering is
+-- integer-scaled and letterboxed to fit the window (ViewportScale.lua).
+-- No gameplay, no camera, no moving/animated anything yet: this is "can we
+-- turn ROM bytes into recognizable pictures," not a game. See
 -- ../firered-recomp-roadmap.md Phase 2 for the real renderer.
 
 local Version = require("src.core.Version")
@@ -22,6 +23,7 @@ local MapCompositor = require("import.MapCompositor")
 local DataViewer = require("src.core.DataViewer")
 local TitleScreen = require("import.TitleScreen")
 local ViewportScale = require("src.core.ViewportScale")
+local ObjectSprite = require("import.ObjectSprite")
 
 local BORDER_MARGIN_METATILES = 2
 
@@ -43,6 +45,8 @@ local statusLines = {}
 local mapImage
 local titleImage
 local titleActive = false
+local spriteImage
+local spriteActive = false
 
 -- Set once the ROM verifies, so the data viewer (toggled at any time with
 -- V) can browse records without re-reading the file.
@@ -58,13 +62,16 @@ local function addLine(text)
   table.insert(statusLines, text)
 end
 
--- Builds a love.graphics.Image from a MapCompositor.composite() result.
+-- Builds a love.graphics.Image from a MapCompositor/TitleScreen/
+-- ObjectSprite composite result. Respects per-pixel alpha if the source
+-- provides it (ObjectSprite does, for transparent sprite backgrounds);
+-- defaults to fully opaque otherwise (maps/title screens never have holes).
 local function buildImage(compositedMap)
   local imageData = love.image.newImageData(compositedMap.width, compositedMap.height)
   for y = 0, compositedMap.height - 1 do
     for x = 0, compositedMap.width - 1 do
       local color = compositedMap.getPixel(x, y)
-      imageData:setPixel(x, y, color.r / 255, color.g / 255, color.b / 255, 1)
+      imageData:setPixel(x, y, color.r / 255, color.g / 255, color.b / 255, color.a or 1)
     end
   end
   return love.graphics.newImage(imageData)
@@ -121,7 +128,7 @@ local function loadMapFromRom(romPath)
   mapImage:setFilter("nearest", "nearest")
   dbg("filter set")
 
-  addLine("Press V for the data viewer, T for the title screen logo.")
+  addLine("Press V for the data viewer, T for the title screen, P for a sprite.")
 
   local titleOk, titleComposited = pcall(TitleScreen.compositeFull, data, addrs)
   if titleOk then
@@ -130,6 +137,15 @@ local function loadMapFromRom(romPath)
     dbg("title logo built")
   else
     dbg("title logo failed: " .. tostring(titleComposited))
+  end
+
+  local spriteOk, spriteComposited = pcall(ObjectSprite.decodeFrame, data, addrs.gObjectEventPic_RedNormal, addrs.gObjectEventPal_Player, 2, 4, 0)
+  if spriteOk then
+    spriteImage = buildImage(spriteComposited)
+    spriteImage:setFilter("nearest", "nearest")
+    dbg("player sprite built")
+  else
+    dbg("player sprite failed: " .. tostring(spriteComposited))
   end
 end
 
@@ -213,10 +229,15 @@ function love.load()
     titleActive = true
   end
 
+  -- POKEPORT_SPRITE=1 boots straight into the player-sprite view.
+  if os.getenv("POKEPORT_SPRITE") == "1" then
+    spriteActive = true
+  end
+
   -- love.filesystem is sandboxed to the save directory (see conf.lua's
   -- identity="firered-recomp"), so this always writes there under a fixed
   -- name rather than to an arbitrary POKEPORT_SCREENSHOT path.
-  if os.getenv("POKEPORT_SCREENSHOT") == "1" and (mapImage or viewerActive or titleActive) then
+  if os.getenv("POKEPORT_SCREENSHOT") == "1" and (mapImage or viewerActive or titleActive or spriteActive) then
     love.graphics.captureScreenshot(function(imageData)
       imageData:encode("png", "screenshot.png")
       love.event.quit()
@@ -225,7 +246,11 @@ function love.load()
 end
 
 function love.draw()
-  love.graphics.clear(0.08, 0.08, 0.1)
+  if spriteActive then
+    love.graphics.clear(0.4, 0.7, 0.3) -- solid backdrop so sprite transparency is visible
+  else
+    love.graphics.clear(0.08, 0.08, 0.1)
+  end
   local y = 20
   for _, line in ipairs(statusLines) do
     love.graphics.print(line, 20, y)
@@ -238,6 +263,10 @@ function love.draw()
       love.graphics.print(line, 20, y)
       y = y + 20
     end
+  elseif spriteActive and spriteImage then
+    local windowWidth, windowHeight = love.graphics.getDimensions()
+    local viewport = ViewportScale.fit(spriteImage:getWidth(), spriteImage:getHeight(), windowWidth - 40, windowHeight - (y + 10))
+    love.graphics.draw(spriteImage, 20 + viewport.x, y + 10 + viewport.y, 0, viewport.scale, viewport.scale)
   elseif titleActive and titleImage then
     local windowWidth, windowHeight = love.graphics.getDimensions()
     local viewport = ViewportScale.fit(titleImage:getWidth(), titleImage:getHeight(), windowWidth - 40, windowHeight - (y + 10))
@@ -255,9 +284,15 @@ function love.keypressed(key)
   elseif key == "v" then
     viewerActive = not viewerActive
     titleActive = false
+    spriteActive = false
   elseif key == "t" then
     titleActive = not titleActive
     viewerActive = false
+    spriteActive = false
+  elseif key == "p" then
+    spriteActive = not spriteActive
+    viewerActive = false
+    titleActive = false
   elseif viewerActive then
     if key == "tab" then
       viewerCategoryIndex = (viewerCategoryIndex % #DataViewer.CATEGORIES) + 1
