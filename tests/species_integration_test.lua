@@ -21,6 +21,7 @@ local TypeChart = require("import.TypeChart")
 local Item = require("import.Item")
 local AbilityNames = require("import.AbilityNames")
 local Charmap = require("import.Charmap")
+local Trainer = require("import.Trainer")
 
 local passed, failed = 0, 0
 local function check(name, cond, detail)
@@ -85,6 +86,13 @@ check("ABILITY_STENCH decodes via Charmap too", Charmap.decode(abilityNames[1]) 
 check("decodes BULBASAUR", Charmap.decodeAt(data, addrs.gSpeciesNames, 11, 1) == "BULBASAUR", Charmap.decodeAt(data, addrs.gSpeciesNames, 11, 1))
 check("decodes CHARMANDER", Charmap.decodeAt(data, addrs.gSpeciesNames, 11, 4) == "CHARMANDER", Charmap.decodeAt(data, addrs.gSpeciesNames, 11, 4))
 check("decodes MASTER BALL item name", Charmap.decode(items[1].rawName) == "MASTER BALL", Charmap.decode(items[1].rawName))
+
+-- TRAINER_YOUNGSTER_BEN = 89
+local trainers = Trainer.parseTable(data, addrs.gTrainers, 90)
+local ben = trainers[89]
+check("decodes trainer name BEN", Charmap.decode(ben.rawName) == "BEN", Charmap.decode(ben.rawName))
+check("Ben's party size is 2", ben.partySize == 2, ben.partySize)
+check("Ben's aiFlags is 0x1", ben.aiFlags == 1, ben.aiFlags)
 
 print(("%d passed, %d failed"):format(passed, failed))
 os.exit(failed == 0 and 0 or 1)

@@ -30,6 +30,9 @@ RomAddresses["41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc"] = { -- FireRed (US) v1.
   -- string table, pokefirered src/data/text/species_names.h
   -- Verified against real BULBASAUR/IVYSAUR/VENUSAUR/CHARMANDER data.
   gSpeciesNames = 0x08245ee0 - 0x08000000,
+  -- gTrainers: struct Trainer[], pokefirered src/data/trainers.h
+  -- Verified against real TRAINER_YOUNGSTER_BEN (index 89) data.
+  gTrainers = 0x0823eac8 - 0x08000000,
 }
 
 return RomAddresses
