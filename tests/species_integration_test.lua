@@ -24,6 +24,8 @@ local Charmap = require("import.Charmap")
 local Trainer = require("import.Trainer")
 local TrainerParty = require("import.TrainerParty")
 local MapHeader = require("import.MapHeader")
+local MapLayout = require("import.MapLayout")
+local MapEvents = require("import.MapEvents")
 
 local passed, failed = 0, 0
 local function check(name, cond, detail)
@@ -122,6 +124,20 @@ local MAP_PALLET_TOWN = 3 * 256 + 0
 local palletTown = MapHeader.resolve(data, addrs.gMapGroups, MAP_PALLET_TOWN)
 check("Pallet Town's mapLayoutId is LAYOUT_PALLET_TOWN (78)", palletTown.mapLayoutId == 78, palletTown.mapLayoutId)
 check("Pallet Town's regionMapSectionId is 88", palletTown.regionMapSectionId == 88, palletTown.regionMapSectionId)
+
+local palletLayout = MapLayout.resolve(data, palletTown.mapLayoutPtr)
+check("Pallet Town layout is 24x20", palletLayout.width == 24 and palletLayout.height == 20)
+check("Pallet Town border is 2x2", palletLayout.borderWidth == 2 and palletLayout.borderHeight == 2)
+
+local palletEvents = MapEvents.resolve(data, palletTown.eventsPtr)
+check("Pallet Town has 3 object events, 3 warps, 3 coord events, 5 bg events",
+  palletEvents.objectEvents[2] ~= nil and palletEvents.objectEvents[3] == nil
+  and palletEvents.warps[2] ~= nil and palletEvents.warps[3] == nil
+  and palletEvents.coordEvents[2] ~= nil and palletEvents.coordEvents[3] == nil
+  and palletEvents.bgEvents[4] ~= nil and palletEvents.bgEvents[5] == nil)
+check("Pallet Town's Sign Lady object event", palletEvents.objectEvents[0].x == 3 and palletEvents.objectEvents[0].y == 10 and palletEvents.objectEvents[0].movementRangeY == 4)
+check("Pallet Town's warp 0 leads to the player's house (group 4)", palletEvents.warps[0].mapGroup == 4 and palletEvents.warps[0].mapNum == 0 and palletEvents.warps[0].warpId == 1)
+check("Pallet Town's Oak trigger coord event", palletEvents.coordEvents[0].trigger == 0x4050)
 
 print(("%d passed, %d failed"):format(passed, failed))
 os.exit(failed == 0 and 0 or 1)
