@@ -124,7 +124,7 @@ local function loadMapFromRom(romPath)
 
   addLine("Press V for the data viewer, T for the title screen logo.")
 
-  local titleOk, titleComposited = pcall(TitleScreen.compositeLogo, data, addrs.gGraphics_TitleScreen_GameTitleLogoTiles, addrs.gGraphics_TitleScreen_GameTitleLogoMap, addrs.gGraphics_TitleScreen_GameTitleLogoPals)
+  local titleOk, titleComposited = pcall(TitleScreen.compositeFull, data, addrs)
   if titleOk then
     titleImage = buildImage(titleComposited)
     titleImage:setFilter("nearest", "nearest")

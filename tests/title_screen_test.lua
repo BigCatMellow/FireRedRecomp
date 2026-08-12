@@ -48,5 +48,26 @@ check("logo has the correct yellow lettering color", yellow.r == 255 and yellow.
 local blue = img.getPixel(30, 15)
 check("logo has a blue outline pixel", blue.r < 50 and blue.b > 200, blue.r .. "," .. blue.g .. "," .. blue.b)
 
+local boxArt = TitleScreen.compositeLayer4bpp(data, addrs.gGraphics_TitleScreen_BoxArtMonTiles, addrs.gGraphics_TitleScreen_BoxArtMonMap, addrs.gGraphics_TitleScreen_BoxArtMonPals)
+check("box art image is 256x160", boxArt.width == 256 and boxArt.height == 160)
+local charizardOrange = boxArt.getPixel(160, 80)
+check("box art has Charizard's orange body color", charizardOrange.r > 80 and charizardOrange.g > 10 and charizardOrange.b < 20, charizardOrange.r .. "," .. charizardOrange.g .. "," .. charizardOrange.b)
+
+local copyright = TitleScreen.compositeLayer4bpp(data, addrs.gGraphics_TitleScreen_CopyrightPressStartTiles, addrs.gGraphics_TitleScreen_CopyrightPressStartMap, addrs.gGraphics_TitleScreen_BackgroundPals)
+check("copyright/press-start image is 256x160", copyright.width == 256 and copyright.height == 160)
+local copyrightBar = copyright.getPixel(100, 150)
+check("copyright layer has the red bottom bar color", copyrightBar.r > 100 and copyrightBar.g < 20 and copyrightBar.b < 20, copyrightBar.r .. "," .. copyrightBar.g .. "," .. copyrightBar.b)
+
+local full = TitleScreen.compositeFull(data, addrs)
+check("compositeFull is 256x160", full.width == 256 and full.height == 160)
+check("compositeFull shows the logo on top (yellow at the same spot as the standalone logo)", (function()
+  local p = full.getPixel(20, 20)
+  return p.r == 255 and p.g == 247 and p.b == 41
+end)())
+check("compositeFull shows the copyright bar behind the logo/box art", (function()
+  local p = full.getPixel(100, 150)
+  return p.r > 100 and p.g < 20 and p.b < 20
+end)())
+
 print(("%d passed, %d failed"):format(passed, failed))
 os.exit(failed == 0 and 0 or 1)

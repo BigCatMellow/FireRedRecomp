@@ -88,6 +88,18 @@ RomAddresses["41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc"] = { -- FireRed (US) v1.
   gGraphics_TitleScreen_GameTitleLogoTiles = 0x08eab8c4 - 0x08000000,
   gGraphics_TitleScreen_GameTitleLogoMap = 0x08ead390 - 0x08000000,
   gGraphics_TitleScreen_GameTitleLogoPals = 0x08eab6c4 - 0x08000000,
+  -- Box art Pokémon (Charizard) layer -- verified by eye (breathing fire,
+  -- correct pose/colors matching the real title screen).
+  gGraphics_TitleScreen_BoxArtMonTiles = 0x08ead608 - 0x08000000,
+  gGraphics_TitleScreen_BoxArtMonMap = 0x08eadee4 - 0x08000000,
+  gGraphics_TitleScreen_BoxArtMonPals = 0x08ead5e8 - 0x08000000,
+  -- Copyright notice + "PRESS START" layer -- verified by eye (both
+  -- legible, "©2004 GAME FREAK inc." and "PRESS START" correctly rendered).
+  -- gGraphics_TitleScreen_BackgroundPals is shared with the (not yet
+  -- implemented) border layer, loaded into a different VRAM bank there.
+  gGraphics_TitleScreen_CopyrightPressStartTiles = 0x08eae0b4 - 0x08000000,
+  gGraphics_TitleScreen_CopyrightPressStartMap = 0x08eae374 - 0x08000000,
+  gGraphics_TitleScreen_BackgroundPals = 0x08eae094 - 0x08000000,
 }
 
 -- Total record counts, confirmed via `arm-none-eabi-nm -S` on the real
