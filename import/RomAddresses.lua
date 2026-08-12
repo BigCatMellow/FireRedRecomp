@@ -77,6 +77,9 @@ RomAddresses["41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc"] = { -- FireRed (US) v1.
   -- gMoveNames: fixed-stride (MOVE_NAME_LENGTH+1 = 13 bytes) charmap string
   -- table, pokefirered include/data.h. Verified against real POUND/KARATE CHOP.
   gMoveNames = 0x08247094 - 0x08000000,
+  -- gTypeNames: fixed-stride (TYPE_NAME_LENGTH+1 = 7 bytes) charmap string
+  -- table, pokefirered src/battle_main.c. Verified against real NORMAL(0)/GRASS(12).
+  gTypeNames = 0x0824f1a0 - 0x08000000,
 }
 
 -- Total record counts, confirmed via `arm-none-eabi-nm -S` on the real
