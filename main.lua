@@ -36,6 +36,8 @@ local Lz77 = require("import.Lz77")
 local SpriteAnim = require("import.SpriteAnim")
 local SpriteAnimator = require("src.core.SpriteAnimator")
 local TitleScreenFlameSpawner = require("src.core.TitleScreenFlameSpawner")
+local PaletteFade = require("src.core.PaletteFade")
+local PaletteBlend = require("src.core.PaletteBlend")
 
 local BORDER_MARGIN_METATILES = 2
 
@@ -56,6 +58,9 @@ end
 local statusLines = {}
 local mapImage
 local titleImage
+local titleComposited -- raw { width, height, getPixel } composite, kept around so the fade can re-blend it each step
+local titleFade -- PaletteFade.lua: real fade-in-from-white on title screen boot
+local titleFadeBuiltY = -1 -- forces a rebuild the first time titleImage is needed
 local titleActive = false
 local spriteImage
 local spriteActive = false
@@ -111,6 +116,10 @@ end
 
 local function flameSpawnerTask(taskId)
   flameSpawner:tick()
+end
+
+local function titleFadeTask(taskId)
+  titleFade:tick()
 end
 
 -- Set once the ROM verifies, so the data viewer (toggled at any time with
@@ -212,13 +221,24 @@ local function loadMapFromRom(romPath)
 
   addLine("Press V for the data viewer, T for the title screen, P for a sprite, F for font rendering, A for the animated flame.")
 
-  local titleOk, titleComposited = pcall(TitleScreen.compositeFull, data, addrs)
+  local titleOk, titleCompositedResult = pcall(TitleScreen.compositeFull, data, addrs)
   if titleOk then
+    titleComposited = titleCompositedResult
     titleImage = buildImage(titleComposited)
     titleImage:setFilter("nearest", "nearest")
     dbg("title logo built")
+
+    -- Real BeginNormalPaletteFade(palettes, 1, 16, 0, RGB(30,30,31)) --
+    -- fades in from a near-white color (5-bit (30,30,31), converted the
+    -- same way GbaGraphics.decodeColor converts any GBA color: to8(30)=
+    -- 247, to8(31)=255) down to the normal palette. delay=1 means one
+    -- tick of waiting between each step (see PaletteFade.lua).
+    titleFade = PaletteFade.new(16, 0, 1, { r = 247, g = 247, b = 255 })
+    titleFadeBuiltY = -1
+    scheduler:createTask(titleFadeTask, 0)
+    dbg("title fade-in task created")
   else
-    dbg("title logo failed: " .. tostring(titleComposited))
+    dbg("title logo failed: " .. tostring(titleCompositedResult))
   end
 
   local spriteOk, spriteComposited = pcall(ObjectSprite.decodeFrame, data, addrs.gObjectEventPic_RedNormal, addrs.gObjectEventPal_Player, 2, 4, 0)
@@ -333,6 +353,17 @@ local function flameFrameImage(imageValue)
   return img
 end
 
+-- Rebuilds titleImage (re-blended toward the fade's target color) only
+-- when the fade's coefficient has actually changed since the last draw.
+local function ensureTitleImageCurrent()
+  if not titleComposited or not titleFade then return end
+  if titleFade.y == titleFadeBuiltY then return end
+  local blended = titleFade.y == 0 and titleComposited or PaletteBlend.blendImage(titleComposited, titleFade.blendColor, titleFade.y)
+  titleImage = buildImage(blended)
+  titleImage:setFilter("nearest", "nearest")
+  titleFadeBuiltY = titleFade.y
+end
+
 -- ---------------------------------------------------------------- viewer
 
 local function viewerCategory()
@@ -409,14 +440,15 @@ function love.load()
   end
 
   -- POKEPORT_TITLE=1 boots straight into the title screen logo view.
-  -- POKEPORT_TITLE_FLAME_TICKS=N ticks the flame particle spawner
-  -- forward N times first (same rationale as POKEPORT_FLAME_TICKS below
-  -- -- automated screenshots can't wait on real elapsed time).
+  -- POKEPORT_TITLE_FLAME_TICKS=N ticks the flame particle spawner AND the
+  -- fade-in forward N times first (same rationale as POKEPORT_FLAME_TICKS
+  -- below -- automated screenshots can't wait on real elapsed time).
   if os.getenv("POKEPORT_TITLE") == "1" then
     titleActive = true
     local ticks = tonumber(os.getenv("POKEPORT_TITLE_FLAME_TICKS") or "0")
-    if flameSpawner then
-      for i = 1, ticks do flameSpawner:tick() end
+    for i = 1, ticks do
+      if flameSpawner then flameSpawner:tick() end
+      if titleFade then titleFade:tick() end
     end
   end
 
@@ -486,6 +518,7 @@ end
 function love.draw()
   if fontActive then ensureFontImageCurrent() end
   if flameActive then ensureFlameImageCurrent() end
+  if titleActive then ensureTitleImageCurrent() end
   if spriteActive then
     love.graphics.clear(0.4, 0.7, 0.3) -- solid backdrop so sprite transparency is visible
   else
