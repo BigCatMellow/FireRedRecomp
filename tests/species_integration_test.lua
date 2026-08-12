@@ -29,6 +29,7 @@ local MapEvents = require("import.MapEvents")
 local MapConnections = require("import.MapConnections")
 local MapBorder = require("import.MapBorder")
 local WildEncounters = require("import.WildEncounters")
+local Nature = require("import.Nature")
 local Tileset = require("import.Tileset")
 local Lz77 = require("import.Lz77")
 local GbaGraphics = require("import.GbaGraphics")
@@ -187,6 +188,10 @@ check("Route 1's wild mons are Pidgey/Rattata at the right levels", (function()
   end
   return true
 end)())
+
+local natures = Nature.parseTable(data, addrs.sNatureStatTable)
+check("MODEST nature is -atk +spAtk", natures[15].attack == -1 and natures[15].spAttack == 1)
+check("QUIRKY nature (last, index 24) is neutral", natures[24].attack == 0 and natures[24].defense == 0 and natures[24].speed == 0 and natures[24].spAttack == 0 and natures[24].spDefense == 0)
 
 print(("%d passed, %d failed"):format(passed, failed))
 os.exit(failed == 0 and 0 or 1)

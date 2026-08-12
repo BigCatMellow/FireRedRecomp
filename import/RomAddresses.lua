@@ -43,6 +43,10 @@ RomAddresses["41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc"] = { -- FireRed (US) v1.
   -- Verified against real MAP_ROUTE1 (found at scan index 87): encounterRate=21,
   -- land mons exactly PIDGEY/RATTATA at the levels in wild_encounters.json.
   gWildMonHeaders = 0x083c9cb8 - 0x08000000,
+  -- sNatureStatTable: static (no linker-map symbol; found via
+  -- `arm-none-eabi-nm pokefirered.elf`), pokefirered src/pokemon.c
+  -- Verified against real HARDY/LONELY/BRAVE/ADAMANT/MODEST/QUIRKY rows.
+  sNatureStatTable = 0x08252b48 - 0x08000000,
 }
 
 return RomAddresses
