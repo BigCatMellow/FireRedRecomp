@@ -25,6 +25,7 @@ local TitleScreen = require("import.TitleScreen")
 local ViewportScale = require("src.core.ViewportScale")
 local ObjectSprite = require("import.ObjectSprite")
 local Font = require("import.Font")
+local TaskScheduler = require("src.core.TaskScheduler")
 
 local BORDER_MARGIN_METATILES = 2
 
@@ -50,6 +51,37 @@ local spriteImage
 local spriteActive = false
 local fontImage
 local fontActive = false
+local fontFgColor = { r = 255, g = 255, b = 255 }
+local fontShadowColor = { r = 80, g = 80, b = 80 }
+local fontData, fontAddrs
+local fontGlyphIds
+local fontRevealedCount = 0
+local fontBuiltRevealedCount = -1 -- forces a rebuild the first time fontImage is needed
+
+-- Real task scheduler (src/core/TaskScheduler.lua), ticked at a fixed 1/60s
+-- step in love.update -- matches the real game's VBlank-synced RunTasks().
+-- Drives per-character text reveal on the font sample view (the "text
+-- speed" checklist item); title-screen flame animation frame stepping will
+-- reuse the same scheduler once that's built.
+local scheduler = TaskScheduler.new()
+
+-- CHARS_PER_TICK: reveals 1 character every N scheduler ticks (60 ticks =
+-- 1 real second), i.e. a fixed text speed. The real game has 3 selectable
+-- text speeds (SLOW/MID/FAST, options_menu.c) driving the same kind of
+-- per-character delay; this project doesn't have a settings UI yet
+-- (checklist: "display settings" still open), so FAST's rough feel (a
+-- handful of characters per second) is hardcoded here.
+local FONT_REVEAL_TICKS_PER_CHAR = 4
+local function fontRevealTask(taskId)
+  local data = scheduler:data(taskId)
+  data.tickCount = (data.tickCount or 0) + 1
+  if data.tickCount >= FONT_REVEAL_TICKS_PER_CHAR then
+    data.tickCount = 0
+    if fontGlyphIds and fontRevealedCount < #fontGlyphIds then
+      fontRevealedCount = fontRevealedCount + 1
+    end
+  end
+end
 
 -- Set once the ROM verifies, so the data viewer (toggled at any time with
 -- V) can browse records without re-reading the file.
@@ -168,14 +200,31 @@ local function loadMapFromRom(romPath)
     dbg("player sprite failed: " .. tostring(spriteComposited))
   end
 
-  local fontOk, fontComposited = pcall(Font.renderString, data, addrs.sFontHalfRowOffsets, addrs.sFontNormalLatinGlyphs, addrs.sFontNormalLatinGlyphWidths, glyphIdsForUppercaseAndSpaces("POKEMON FIRERED"), { r = 255, g = 255, b = 255 }, { r = 80, g = 80, b = 80 })
-  if fontOk then
-    fontImage = buildImage(fontComposited)
-    fontImage:setFilter("nearest", "nearest")
-    dbg("font sample built")
+  fontData, fontAddrs = data, addrs
+  fontGlyphIds = glyphIdsForUppercaseAndSpaces("POKEMON FIRERED")
+  fontRevealedCount = 0
+  fontBuiltRevealedCount = -1
+  scheduler:createTask(fontRevealTask, 0)
+  dbg("font reveal task created")
+end
+
+-- Rebuilds fontImage only when the revealed character count has actually
+-- changed since the last draw (rebuilding a love.Image every frame for a
+-- static count would be wasted work).
+local function ensureFontImageCurrent()
+  if not fontData or fontRevealedCount == fontBuiltRevealedCount then return end
+  local revealedIds = {}
+  for i = 1, fontRevealedCount do revealedIds[i] = fontGlyphIds[i] end
+  if #revealedIds == 0 then
+    fontImage = nil
   else
-    dbg("font sample failed: " .. tostring(fontComposited))
+    local ok, composited = pcall(Font.renderString, fontData, fontAddrs.sFontHalfRowOffsets, fontAddrs.sFontNormalLatinGlyphs, fontAddrs.sFontNormalLatinGlyphWidths, revealedIds, fontFgColor, fontShadowColor)
+    if ok then
+      fontImage = buildImage(composited)
+      fontImage:setFilter("nearest", "nearest")
+    end
   end
+  fontBuiltRevealedCount = fontRevealedCount
 end
 
 -- ---------------------------------------------------------------- viewer
@@ -272,6 +321,11 @@ function love.load()
   -- identity="firered-recomp"), so this always writes there under a fixed
   -- name rather than to an arbitrary POKEPORT_SCREENSHOT path.
   if os.getenv("POKEPORT_SCREENSHOT") == "1" and (mapImage or viewerActive or titleActive or spriteActive or fontActive) then
+    -- The font sample normally reveals one character at a time (real text
+    -- speed, driven by TaskScheduler in love.update); automated screenshots
+    -- want the deterministic finished state instead of whatever partial
+    -- reveal happened to be on-screen at capture time.
+    if fontGlyphIds then fontRevealedCount = #fontGlyphIds end
     love.graphics.captureScreenshot(function(imageData)
       imageData:encode("png", "screenshot.png")
       love.event.quit()
@@ -279,7 +333,22 @@ function love.load()
   end
 end
 
+-- Ticks the real task scheduler at a fixed 1/60s step regardless of the
+-- actual frame rate (matches the real hardware's fixed-59.7Hz VBlank tick
+-- driving RunTasks() -- see TaskScheduler.lua), so text reveal speed
+-- doesn't depend on how fast this machine renders frames.
+local FIXED_TICK = 1 / 60
+local tickAccumulator = 0
+function love.update(dt)
+  tickAccumulator = tickAccumulator + dt
+  while tickAccumulator >= FIXED_TICK do
+    tickAccumulator = tickAccumulator - FIXED_TICK
+    scheduler:runTasks()
+  end
+end
+
 function love.draw()
+  if fontActive then ensureFontImageCurrent() end
   if spriteActive then
     love.graphics.clear(0.4, 0.7, 0.3) -- solid backdrop so sprite transparency is visible
   else
