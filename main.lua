@@ -42,6 +42,8 @@ local MenuCursor = require("src.core.MenuCursor")
 local OamShapeSize = require("import.OamShapeSize")
 local SlashSprite = require("src.core.SlashSprite")
 local SlashMask = require("import.SlashMask")
+local AffineAnim = require("import.AffineAnim")
+local AffineAnimator = require("src.core.AffineAnimator")
 
 local BORDER_MARGIN_METATILES = 2
 
@@ -81,6 +83,12 @@ local spriteImage
 local spriteActive = false
 local itemBallImage
 local itemBallActive = false
+-- Real Pokéball wobble affine animation (AffineAnim.lua/AffineAnimator.lua),
+-- applied to the item ball sprite to demonstrate real sprite rotation/
+-- scaling data driving actual rendering (love.graphics.draw's native
+-- rotate/scale, not a GBA-hardware-accurate affine matrix -- see
+-- AffineAnimator.lua's header comment for why that's a fine substitution).
+local itemBallAffineAnimator
 local fontImage
 local fontActive = false
 local fontData, fontAddrs, fontPalette
@@ -150,6 +158,10 @@ end
 
 local function titleSlashTask(taskId)
   titleSlashSprite:tick()
+end
+
+local function itemBallAffineTask(taskId)
+  itemBallAffineAnimator:tick()
 end
 
 -- Set once the ROM verifies, so the data viewer (toggled at any time with
@@ -271,6 +283,21 @@ local function loadSpriteAssets(data, addrs, dbg)
     dbg("item ball sprite built")
   else
     dbg("item ball sprite failed: " .. tostring(itemBallComposited))
+  end
+
+  -- Real Pokéball wobble affine animation (src/pokeball.c), applied to
+  -- the item ball sprite as a live demonstration of real sprite
+  -- rotation/scaling data -- see AffineAnimator.lua for the documented
+  -- simplified value semantics.
+  local affineOk, affineErr = pcall(function()
+    local cmds = AffineAnim.decodeCmds(data, addrs.sAffineAnim_BallRotate_Right)
+    itemBallAffineAnimator = AffineAnimator.new(cmds)
+  end)
+  if affineOk then
+    scheduler:createTask(itemBallAffineTask, 0)
+    dbg("item ball affine animation decoded and task created")
+  else
+    dbg("item ball affine animation failed: " .. tostring(affineErr))
   end
 end
 
@@ -637,8 +664,15 @@ function love.load()
   end
 
   -- POKEPORT_ITEMBALL=1 boots straight into the item ball sprite view.
+  -- POKEPORT_ITEMBALL_AFFINE_TICKS=N ticks the wobble animation forward
+  -- N times first (deterministic screenshots, same rationale as the
+  -- other *_TICKS env vars).
   if os.getenv("POKEPORT_ITEMBALL") == "1" then
     itemBallActive = true
+    local affineTicks = tonumber(os.getenv("POKEPORT_ITEMBALL_AFFINE_TICKS") or "0")
+    for i = 1, affineTicks do
+      if itemBallAffineAnimator then itemBallAffineAnimator:tick() end
+    end
   end
 
   -- POKEPORT_FONT=1 boots straight into the font-rendering sample view.
@@ -743,7 +777,18 @@ function love.draw()
   elseif itemBallActive and itemBallImage then
     local windowWidth, windowHeight = love.graphics.getDimensions()
     local viewport = ViewportScale.fit(itemBallImage:getWidth(), itemBallImage:getHeight(), math.min(windowWidth - 40, 320), math.min(windowHeight - (y + 10), 320))
-    love.graphics.draw(itemBallImage, 20 + viewport.x, y + 10 + viewport.y, 0, viewport.scale, viewport.scale)
+    local ballW, ballH = itemBallImage:getWidth(), itemBallImage:getHeight()
+    local rotation, animSX, animSY = 0, 1, 1
+    if itemBallAffineAnimator then
+      rotation = itemBallAffineAnimator:rotationRadians()
+      animSX, animSY = itemBallAffineAnimator.xScale, itemBallAffineAnimator.yScale
+    end
+    -- Rotating/scaling about the sprite's own center (real affine sprites
+    -- pivot around their center, not a corner), so the draw origin is the
+    -- image's center and the screen position is shifted to match.
+    local centerX = 20 + viewport.x + (ballW / 2) * viewport.scale
+    local centerY = y + 10 + viewport.y + (ballH / 2) * viewport.scale
+    love.graphics.draw(itemBallImage, centerX, centerY, rotation, viewport.scale * animSX, viewport.scale * animSY, ballW / 2, ballH / 2)
   elseif fontActive and fontWindowImage then
     local windowWidth, windowHeight = love.graphics.getDimensions()
     local viewport = ViewportScale.fit(fontWindowImage:getWidth(), fontWindowImage:getHeight(), windowWidth - 40, windowHeight - (y + 10))

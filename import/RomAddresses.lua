@@ -155,6 +155,15 @@ RomAddresses["41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc"] = { -- FireRed (US) v1.
   -- sprite -- see SlashMask.lua/SlashSprite.lua). LZ77-compressed.
   -- Verified: decodes to an unmistakable diagonal slash/streak shape.
   sSlash_Gfx = 0x083bf64c - 0x08000000,
+  -- Real sprite affine (rotation/scaling) animation data (pokefirered
+  -- src/pokeball.c) -- the Pokéball wobble animation. Static/local
+  -- symbols found via nm. Verified byte-for-byte against the real 8-byte
+  -- (agbcc-padded) AffineAnimCmd entries -- see AffineAnim.lua's header
+  -- comment.
+  sAffineAnim_BallRotate_0 = 0x08260690 - 0x08000000,
+  sAffineAnim_BallRotate_Right = 0x082606a0 - 0x08000000,
+  sAffineAnim_BallRotate_Left = 0x082606b0 - 0x08000000,
+  sAffineAnim_BallRotate_3 = 0x082606c0 - 0x08000000,
 }
 
 -- Total record counts, confirmed via `arm-none-eabi-nm -S` on the real
