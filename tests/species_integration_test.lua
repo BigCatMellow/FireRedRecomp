@@ -28,6 +28,7 @@ local MapLayout = require("import.MapLayout")
 local MapEvents = require("import.MapEvents")
 local MapConnections = require("import.MapConnections")
 local MapBorder = require("import.MapBorder")
+local WildEncounters = require("import.WildEncounters")
 local Tileset = require("import.Tileset")
 local Lz77 = require("import.Lz77")
 local GbaGraphics = require("import.GbaGraphics")
@@ -168,6 +169,24 @@ end)())
 
 local palletBorder = MapBorder.resolve(data, palletLayout.borderPtr, palletLayout.borderWidth, palletLayout.borderHeight)
 check("Pallet Town border is {28,29,20,21}", palletBorder[0] == 28 and palletBorder[1] == 29 and palletBorder[2] == 20 and palletBorder[3] == 21)
+
+-- MAP_ROUTE1 = group 3, num 19
+local route1Header = WildEncounters.findHeader(data, addrs.gWildMonHeaders, 3, 19)
+check("finds Route 1's wild encounter header", route1Header ~= nil)
+local route1Land = WildEncounters.resolveInfo(data, route1Header.landMonsInfoPtr, 12)
+check("Route 1 encounter rate is 21", route1Land.encounterRate == 21, route1Land.encounterRate)
+check("Route 1's wild mons are Pidgey/Rattata at the right levels", (function()
+  local expected = {
+    {3,3,16}, {3,3,19}, {3,3,16}, {3,3,19}, {2,2,16}, {2,2,19},
+    {3,3,16}, {3,3,19}, {4,4,16}, {4,4,19}, {5,5,16}, {4,4,19},
+  }
+  for i = 0, 11 do
+    local e = expected[i + 1]
+    local m = route1Land.mons[i]
+    if m.minLevel ~= e[1] or m.maxLevel ~= e[2] or m.species ~= e[3] then return false end
+  end
+  return true
+end)())
 
 print(("%d passed, %d failed"):format(passed, failed))
 os.exit(failed == 0 and 0 or 1)

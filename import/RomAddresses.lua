@@ -38,6 +38,11 @@ RomAddresses["41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc"] = { -- FireRed (US) v1.
   -- Verified against real MAP_PALLET_TOWN (group 3, num 0): resolves to a
   -- header with mapLayoutId=78, exactly LAYOUT_PALLET_TOWN.
   gMapGroups = 0x083526a8 - 0x08000000,
+  -- gWildMonHeaders: flat array (linear-scanned by mapGroup/mapNum,
+  -- terminated by mapGroup=0xFF), pokefirered src/data/wild_encounters.h
+  -- Verified against real MAP_ROUTE1 (found at scan index 87): encounterRate=21,
+  -- land mons exactly PIDGEY/RATTATA at the levels in wild_encounters.json.
+  gWildMonHeaders = 0x083c9cb8 - 0x08000000,
 }
 
 return RomAddresses
