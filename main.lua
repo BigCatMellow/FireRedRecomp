@@ -40,6 +40,8 @@ local PaletteFade = require("src.core.PaletteFade")
 local PaletteBlend = require("src.core.PaletteBlend")
 local MenuCursor = require("src.core.MenuCursor")
 local OamShapeSize = require("import.OamShapeSize")
+local SlashSprite = require("src.core.SlashSprite")
+local SlashMask = require("import.SlashMask")
 
 local BORDER_MARGIN_METATILES = 2
 
@@ -59,16 +61,21 @@ end
 
 local statusLines = {}
 local mapImage
--- Title screen is drawn as two separate images (border, then the flame
--- particles, then everything above the border) rather than one flat
--- composite, so the flame OBJ sprites (priority 3, same as the border)
--- can be interleaved at the real draw position between the border and
--- the higher-priority copyright/boxart/logo layers (LayerCompositor.lua)
--- instead of always ending up on top of the whole title screen.
-local titleBorderImage, titleAboveImage
-local titleBorderComposited, titleAboveComposited -- raw { width, height, getPixel } composites, kept around so the fade can re-blend them each step
+-- Title screen is drawn as several separate images (border, then the
+-- flame particles, then copyright/box art, then the logo) rather than
+-- one flat composite, so the flame OBJ sprites (priority 3, same as the
+-- border) can be interleaved at the real draw position between the
+-- border and the higher-priority layers (LayerCompositor.lua) instead
+-- of always ending up on top of the whole title screen, and so the
+-- slash-in effect (which only ever targets the logo -- real
+-- BLDCNT_TGT1_BG0) can be composited into just the logo layer.
+local titleBorderImage, titleCopyrightBoxArtImage, titleLogoImage
+local titleBorderComposited, titleCopyrightBoxArtComposited, titleLogoComposited -- raw { width, height, getPixel } composites, kept around so the fade/slash can re-blend them each step
 local titleFade -- PaletteFade.lua: real fade-in-from-white on title screen boot
 local titleFadeBuiltY = -1 -- forces a rebuild the first time the title images are needed
+local titleSlashSprite -- SlashSprite.lua: real slash-in movement/visibility timing
+local titleSlashMask -- SlashMask.lua: isOpaque(x, y) over the slash's real silhouette
+local titleLogoBuiltKey -- (fadeY, slashX, slashY, slashInvisible) tuple string, forces a logo rebuild when any of them change
 local titleActive = false
 local spriteImage
 local spriteActive = false
@@ -141,6 +148,10 @@ local function titleFadeTask(taskId)
   titleFade:tick()
 end
 
+local function titleSlashTask(taskId)
+  titleSlashSprite:tick()
+end
+
 -- Set once the ROM verifies, so the data viewer (toggled at any time with
 -- V) can browse records without re-reading the file.
 local romData, romAddrs
@@ -199,13 +210,14 @@ end
 local function loadTitleScreenAssets(data, addrs, dbg)
   local titleOk, titleErr = pcall(function()
     titleBorderComposited = TitleScreen.compositeBorder(data, addrs)
-    titleAboveComposited = TitleScreen.compositeAboveBorder(data, addrs)
+    titleCopyrightBoxArtComposited = TitleScreen.compositeCopyrightAndBoxArt(data, addrs)
+    titleLogoComposited = TitleScreen.compositeLogo(data, addrs.gGraphics_TitleScreen_GameTitleLogoTiles, addrs.gGraphics_TitleScreen_GameTitleLogoMap, addrs.gGraphics_TitleScreen_GameTitleLogoPals)
   end)
   if titleOk then
     titleBorderImage = buildImage(titleBorderComposited)
     titleBorderImage:setFilter("nearest", "nearest")
-    titleAboveImage = buildImage(titleAboveComposited)
-    titleAboveImage:setFilter("nearest", "nearest")
+    titleCopyrightBoxArtImage = buildImage(titleCopyrightBoxArtComposited)
+    titleCopyrightBoxArtImage:setFilter("nearest", "nearest")
     dbg("title logo built")
 
     -- Real BeginNormalPaletteFade(palettes, 1, 16, 0, RGB(30,30,31)) --
@@ -219,6 +231,18 @@ local function loadTitleScreenAssets(data, addrs, dbg)
     dbg("title fade-in task created")
   else
     dbg("title logo failed: " .. tostring(titleErr))
+  end
+
+  local slashOk, slashErr = pcall(function()
+    titleSlashMask = SlashMask.decode(data, addrs.sSlash_Gfx)
+  end)
+  if slashOk then
+    titleSlashSprite = SlashSprite.new()
+    titleLogoBuiltKey = nil
+    scheduler:createTask(titleSlashTask, 0)
+    dbg("slash-in effect decoded and task created")
+  else
+    dbg("slash-in effect failed: " .. tostring(slashErr))
   end
 end
 
@@ -449,22 +473,67 @@ local function flameFrameImage(imageValue)
   return img
 end
 
--- Rebuilds titleBorderImage/titleAboveImage (re-blended toward the fade's
--- target color) only when the fade's coefficient has actually changed
+-- Rebuilds titleBorderImage/titleCopyrightBoxArtImage (re-blended toward
+-- the fade's target color) and titleLogoImage (fade + slash-in lighten)
+-- only when the relevant state has actually changed
 -- since the last draw.
+-- Real BLDCNT_EFFECT_LIGHTEN target color (RGB_WHITE) and blend
+-- coefficient (SetGpuRegsForTitleScreenRun's BLDY=13) for the slash-in
+-- effect -- see SlashSprite.lua's header comment for the full real
+-- register setup this approximates.
+local SLASH_LIGHTEN_COLOR = { r = 255, g = 255, b = 255 }
+local SLASH_LIGHTEN_COEFF = 13
+
 local function ensureTitleImageCurrent()
-  if not titleBorderComposited or not titleAboveComposited or not titleFade then return end
-  if titleFade.y == titleFadeBuiltY then return end
-  if titleFade.y == 0 then
-    titleBorderImage = buildImage(titleBorderComposited)
-    titleAboveImage = buildImage(titleAboveComposited)
-  else
-    titleBorderImage = buildImage(PaletteBlend.blendImage(titleBorderComposited, titleFade.blendColor, titleFade.y))
-    titleAboveImage = buildImage(PaletteBlend.blendImage(titleAboveComposited, titleFade.blendColor, titleFade.y))
+  if not titleBorderComposited or not titleCopyrightBoxArtComposited or not titleFade then return end
+  if titleFade.y ~= titleFadeBuiltY then
+    if titleFade.y == 0 then
+      titleBorderImage = buildImage(titleBorderComposited)
+      titleCopyrightBoxArtImage = buildImage(titleCopyrightBoxArtComposited)
+    else
+      titleBorderImage = buildImage(PaletteBlend.blendImage(titleBorderComposited, titleFade.blendColor, titleFade.y))
+      titleCopyrightBoxArtImage = buildImage(PaletteBlend.blendImage(titleCopyrightBoxArtComposited, titleFade.blendColor, titleFade.y))
+    end
+    titleBorderImage:setFilter("nearest", "nearest")
+    titleCopyrightBoxArtImage:setFilter("nearest", "nearest")
+    titleFadeBuiltY = titleFade.y
   end
-  titleBorderImage:setFilter("nearest", "nearest")
-  titleAboveImage:setFilter("nearest", "nearest")
-  titleFadeBuiltY = titleFade.y
+
+  if not titleLogoComposited then return end
+  local slashX, slashY, slashInvisible = 0, 0, true
+  if titleSlashSprite then
+    slashX, slashY, slashInvisible = titleSlashSprite.x, titleSlashSprite.y, titleSlashSprite.invisible
+  end
+  local key = table.concat({ titleFade.y, slashX, slashY, tostring(slashInvisible) }, ",")
+  if key == titleLogoBuiltKey then return end
+
+  local composited = titleLogoComposited
+  if titleFade.y ~= 0 then
+    composited = PaletteBlend.blendImage(composited, titleFade.blendColor, titleFade.y)
+  end
+  if titleSlashMask and not slashInvisible then
+    -- Real slash-in effect: wherever the slash sprite's silhouette
+    -- overlaps the logo, lighten that pixel toward white (see
+    -- SLASH_LIGHTEN_COEFF above) -- otherwise pass the (already
+    -- fade-blended) pixel through unchanged.
+    local base = composited
+    composited = {
+      width = base.width,
+      height = base.height,
+      getPixel = function(x, y)
+        local p = base.getPixel(x, y)
+        if p.a == 0 then return p end
+        if titleSlashMask(x - slashX, y - slashY) then
+          local lit = PaletteBlend.blendColor(p, SLASH_LIGHTEN_COLOR, SLASH_LIGHTEN_COEFF)
+          return { r = lit.r, g = lit.g, b = lit.b, a = p.a }
+        end
+        return p
+      end,
+    }
+  end
+  titleLogoImage = buildImage(composited)
+  titleLogoImage:setFilter("nearest", "nearest")
+  titleLogoBuiltKey = key
 end
 
 -- ---------------------------------------------------------------- viewer
@@ -546,12 +615,19 @@ function love.load()
   -- POKEPORT_TITLE_FLAME_TICKS=N ticks the flame particle spawner AND the
   -- fade-in forward N times first (same rationale as POKEPORT_FLAME_TICKS
   -- below -- automated screenshots can't wait on real elapsed time).
+  -- POKEPORT_TITLE_SLASH_TICKS=N separately ticks the slash-in effect
+  -- (it waits a real 540 ticks before its first sweep, far more than a
+  -- reasonable POKEPORT_TITLE_FLAME_TICKS value, so it gets its own knob).
   if os.getenv("POKEPORT_TITLE") == "1" then
     titleActive = true
     local ticks = tonumber(os.getenv("POKEPORT_TITLE_FLAME_TICKS") or "0")
     for i = 1, ticks do
       if flameSpawner then flameSpawner:tick() end
       if titleFade then titleFade:tick() end
+    end
+    local slashTicks = tonumber(os.getenv("POKEPORT_TITLE_SLASH_TICKS") or "0")
+    for i = 1, slashTicks do
+      if titleSlashSprite then titleSlashSprite:tick() end
     end
   end
 
@@ -719,8 +795,14 @@ function love.draw()
         love.graphics.draw(img, baseX + particle.x * viewport.scale, baseY + particle.y * viewport.scale, 0, viewport.scale, viewport.scale)
       end
     end
-    if titleAboveImage then
-      love.graphics.draw(titleAboveImage, baseX, baseY, 0, viewport.scale, viewport.scale)
+    if titleCopyrightBoxArtImage then
+      love.graphics.draw(titleCopyrightBoxArtImage, baseX, baseY, 0, viewport.scale, viewport.scale)
+    end
+    if titleLogoImage then
+      -- The logo (bg0, priority 0, frontmost) already has the slash-in
+      -- lighten effect baked in by ensureTitleImageCurrent, since the
+      -- real effect only ever targets this layer.
+      love.graphics.draw(titleLogoImage, baseX, baseY, 0, viewport.scale, viewport.scale)
     end
   elseif mapImage then
     local windowWidth, windowHeight = love.graphics.getDimensions()

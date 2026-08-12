@@ -128,7 +128,7 @@ function TitleScreen.compositeLogo(data, tilesOffset, mapOffset, palOffset)
 
   local pixels = {}
   drawLayer(pixels, tiles, mapRaw, palette)
-  return pixelsToImage(pixels)
+  return pixelsToImage(pixels, true)
 end
 
 -- Generic 4bpp title-screen layer (box art Pokémon, copyright/press-start).
@@ -164,13 +164,14 @@ function TitleScreen.compositeBorder(data, addrs)
   return pixelsToImage(pixels)
 end
 
--- Copyright/press-start (bg2, priority 2), box art (bg1, priority 1), and
--- the logo (bg0, priority 0) composited together, back-to-front -- the
--- three layers with a lower priority number than the border/flames, so
--- they always draw in front of both. Unlike compositeBorder, pixels no
--- layer touches render fully transparent (transparentBase=true) so this
--- can be drawn *over* the border+flames without blotting them out.
-function TitleScreen.compositeAboveBorder(data, addrs)
+-- Copyright/press-start (bg2, priority 2) and box art (bg1, priority 1)
+-- composited together, back-to-front -- exposed separately from the logo
+-- (bg0) because the real title screen's slash-in effect only ever
+-- targets bg0 (SetGpuRegsForTitleScreenRun's real
+-- `BLDCNT_TGT1_BG0 | BLDCNT_EFFECT_LIGHTEN`), so a caller applying that
+-- effect needs the logo isolated rather than baked into one flat image
+-- with layers the effect shouldn't touch.
+function TitleScreen.compositeCopyrightAndBoxArt(data, addrs)
   local pixels = {}
 
   local copyrightTilesRaw = Lz77.decompress(data, addrs.gGraphics_TitleScreen_CopyrightPressStartTiles + 1)
@@ -185,12 +186,26 @@ function TitleScreen.compositeAboveBorder(data, addrs)
   local boxArtPalette = GbaGraphics.decodePalette(data, addrs.gGraphics_TitleScreen_BoxArtMonPals)
   drawLayer(pixels, boxArtTiles, boxArtMapRaw, boxArtPalette)
 
-  local logoTilesRaw = Lz77.decompress(data, addrs.gGraphics_TitleScreen_GameTitleLogoTiles + 1)
-  local logoTiles = GbaGraphics.decodeTiles8bpp(logoTilesRaw, 0, math.floor(#logoTilesRaw / 64))
-  local logoMapRaw = Lz77.decompress(data, addrs.gGraphics_TitleScreen_GameTitleLogoMap + 1)
-  local logoPalette = GbaGraphics.decodeFlatPalette(data, addrs.gGraphics_TitleScreen_GameTitleLogoPals, TitleScreen.LOGO_PALETTE_COLORS)
-  drawLayer(pixels, logoTiles, logoMapRaw, logoPalette)
+  return pixelsToImage(pixels, true)
+end
 
+-- Copyright/press-start, box art, and the logo composited together,
+-- back-to-front -- the three layers with a lower priority number than
+-- the border/flames, so they always draw in front of both. Unlike
+-- compositeBorder, pixels no layer touches render fully transparent
+-- (transparentBase=true) so this can be drawn *over* the border+flames
+-- without blotting them out.
+function TitleScreen.compositeAboveBorder(data, addrs)
+  local below = TitleScreen.compositeCopyrightAndBoxArt(data, addrs)
+  local logo = TitleScreen.compositeLogo(data, addrs.gGraphics_TitleScreen_GameTitleLogoTiles, addrs.gGraphics_TitleScreen_GameTitleLogoMap, addrs.gGraphics_TitleScreen_GameTitleLogoPals)
+  local pixels = {}
+  for y = 0, below.height - 1 do
+    pixels[y] = {}
+    for x = 0, below.width - 1 do
+      local topPixel = logo.getPixel(x, y)
+      pixels[y][x] = topPixel.a ~= 0 and topPixel or below.getPixel(x, y)
+    end
+  end
   return pixelsToImage(pixels, true)
 end
 

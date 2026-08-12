@@ -151,6 +151,10 @@ RomAddresses["41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc"] = { -- FireRed (US) v1.
   sFlames_Gfx = 0x083bf79c - 0x08000000,
   sFlames_Pal = 0x083bf77c - 0x08000000,
   sSpriteAnim_Flame = 0x083bfabc - 0x08000000,
+  -- Title screen slash-in effect sprite (OBJ window mask, not a visible
+  -- sprite -- see SlashMask.lua/SlashSprite.lua). LZ77-compressed.
+  -- Verified: decodes to an unmistakable diagonal slash/streak shape.
+  sSlash_Gfx = 0x083bf64c - 0x08000000,
 }
 
 -- Total record counts, confirmed via `arm-none-eabi-nm -S` on the real
