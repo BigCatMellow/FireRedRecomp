@@ -17,14 +17,25 @@ Source crosswalk: [`../firered-recomp-reference/source-inventory.md`](../firered
 
 ## Status
 
-**Phase 0 — charter and repo scaffold.** No gameplay exists yet. What's here:
+**Phase 0 done. Phase 1 (importer/data model) started.** No gameplay exists
+yet. What's here:
 
 - Directory layout matching the roadmap's target tree.
 - `import/RomImporter.lua` — ROM identity verification (SHA-1) against the
-  supported FireRed US release, with no decode logic yet.
+  supported FireRed US release.
+- `import/Lz77.lua` — GBA BIOS-compatible LZ77 decompressor (graphics,
+  tilemaps, and some data tables in the ROM are LZ77-compressed). Verified
+  against hand-built compressed fixtures, not yet against real ROM data.
+- `import/SpeciesInfo.lua` — parses the 28-byte `struct SpeciesInfo` record
+  (pokefirered `include/pokemon.h`) out of raw bytes. Offset-checked against
+  the struct field-by-field and unit tested. **Does not yet know the ROM
+  address of the species table** — that requires either building
+  `pokefirered-master` and reading its `.map`, or a verified symbol list for
+  the retail ROM; wiring that up is the next concrete step.
 - `conf.lua` / `main.lua` — boots a LÖVE2D window and reports ROM
   verification status. No rendering, no gameplay.
-- `tests/` — smoke test for the importer's hash-checking logic.
+- `tests/` — passing unit tests for all three import modules above
+  (`lua5.1 tests/*.lua`).
 
 ## Supported ROM
 
