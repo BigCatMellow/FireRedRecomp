@@ -1,0 +1,7 @@
+*.gba
+*.gbc
+*.gb
+*.sav
+*.bin
+data/generated/
+.DS_Store
