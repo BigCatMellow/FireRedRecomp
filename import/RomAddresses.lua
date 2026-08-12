@@ -26,6 +26,10 @@ RomAddresses["41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc"] = { -- FireRed (US) v1.
   -- gAbilityNames: fixed-stride charmap string table, pokefirered src/data/text/abilities.h
   -- Verified against real ABILITY_NONE (index 0) / ABILITY_STENCH (index 1) data.
   gAbilityNames = 0x0824fc40 - 0x08000000,
+  -- gSpeciesNames: fixed-stride (POKEMON_NAME_LENGTH+1 = 11 bytes) charmap
+  -- string table, pokefirered src/data/text/species_names.h
+  -- Verified against real BULBASAUR/IVYSAUR/VENUSAUR/CHARMANDER data.
+  gSpeciesNames = 0x08245ee0 - 0x08000000,
 }
 
 return RomAddresses
