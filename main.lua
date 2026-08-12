@@ -25,6 +25,7 @@ local TitleScreen = require("import.TitleScreen")
 local ViewportScale = require("src.core.ViewportScale")
 local ObjectSprite = require("import.ObjectSprite")
 local Font = require("import.Font")
+local TextWindow = require("import.TextWindow")
 local TaskScheduler = require("src.core.TaskScheduler")
 
 local BORDER_MARGIN_METATILES = 2
@@ -57,6 +58,7 @@ local fontData, fontAddrs
 local fontGlyphIds
 local fontRevealedCount = 0
 local fontBuiltRevealedCount = -1 -- forces a rebuild the first time fontImage is needed
+local fontWindowImage -- the static border frame (TextWindow.lua), built once
 
 -- Real task scheduler (src/core/TaskScheduler.lua), ticked at a fixed 1/60s
 -- step in love.update -- matches the real game's VBlank-synced RunTasks().
@@ -206,6 +208,19 @@ local function loadMapFromRom(romPath)
   fontBuiltRevealedCount = -1
   scheduler:createTask(fontRevealTask, 0)
   dbg("font reveal task created")
+
+  local windowOk, windowComposited = pcall(function()
+    local tiles = TextWindow.decodeFrameTiles(data, addrs.gStdTextWindow_Gfx)
+    local palette = TextWindow.decodePalette(data, addrs.gTextWindowPalettes, TextWindow.STD_PALETTE_INDEX)
+    return TextWindow.compositeFrame(tiles, palette, 14, 2) -- 14x2 tiles fits "POKEMON FIRERED" (~13 tiles wide, 2 tall)
+  end)
+  if windowOk then
+    fontWindowImage = buildImage(windowComposited)
+    fontWindowImage:setFilter("nearest", "nearest")
+    dbg("text window frame built")
+  else
+    dbg("text window frame failed: " .. tostring(windowComposited))
+  end
 end
 
 -- Rebuilds fontImage only when the revealed character count has actually
@@ -370,10 +385,15 @@ function love.draw()
     local windowWidth, windowHeight = love.graphics.getDimensions()
     local viewport = ViewportScale.fit(spriteImage:getWidth(), spriteImage:getHeight(), windowWidth - 40, windowHeight - (y + 10))
     love.graphics.draw(spriteImage, 20 + viewport.x, y + 10 + viewport.y, 0, viewport.scale, viewport.scale)
-  elseif fontActive and fontImage then
+  elseif fontActive and fontWindowImage then
     local windowWidth, windowHeight = love.graphics.getDimensions()
-    local viewport = ViewportScale.fit(fontImage:getWidth(), fontImage:getHeight(), windowWidth - 40, windowHeight - (y + 10))
-    love.graphics.draw(fontImage, 20 + viewport.x, y + 10 + viewport.y, 0, viewport.scale, viewport.scale)
+    local viewport = ViewportScale.fit(fontWindowImage:getWidth(), fontWindowImage:getHeight(), windowWidth - 40, windowHeight - (y + 10))
+    love.graphics.draw(fontWindowImage, 20 + viewport.x, y + 10 + viewport.y, 0, viewport.scale, viewport.scale)
+    if fontImage then
+      -- TextWindow.TILE_SIZE (8px) inset places the text inside the
+      -- frame's transparent interior, one border tile in from the top-left.
+      love.graphics.draw(fontImage, 20 + viewport.x + TextWindow.TILE_SIZE * viewport.scale, y + 10 + viewport.y + TextWindow.TILE_SIZE * viewport.scale, 0, viewport.scale, viewport.scale)
+    end
   elseif titleActive and titleImage then
     local windowWidth, windowHeight = love.graphics.getDimensions()
     local viewport = ViewportScale.fit(titleImage:getWidth(), titleImage:getHeight(), windowWidth - 40, windowHeight - (y + 10))

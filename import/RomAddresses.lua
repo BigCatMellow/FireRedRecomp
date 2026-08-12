@@ -121,6 +121,12 @@ RomAddresses["41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc"] = { -- FireRed (US) v1.
   sFontHalfRowOffsets = 0x081ea044 - 0x08000000,
   sFontNormalLatinGlyphs = 0x081ff300 - 0x08000000,
   sFontNormalLatinGlyphWidths = 0x08207300 - 0x08000000,
+  -- Standard window/dialogue border frame graphic + palette table
+  -- (pokefirered src/text_window_graphics.c). Real (non-static) symbols,
+  -- present in the linker .map. Verified by eye: composites to a clean
+  -- 3x3 corner/edge border with no visual noise.
+  gStdTextWindow_Gfx = 0x08471a4c - 0x08000000,
+  gTextWindowPalettes = 0x08471dec - 0x08000000,
 }
 
 -- Total record counts, confirmed via `arm-none-eabi-nm -S` on the real
