@@ -23,6 +23,9 @@ RomAddresses["41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc"] = { -- FireRed (US) v1.
   -- gItems: struct Item[], pokefirered src/data/items.h
   -- Verified against real Master Ball (index 1) / Ultra Ball (index 2) data.
   gItems = 0x083db028 - 0x08000000,
+  -- gAbilityNames: fixed-stride charmap string table, pokefirered src/data/text/abilities.h
+  -- Verified against real ABILITY_NONE (index 0) / ABILITY_STENCH (index 1) data.
+  gAbilityNames = 0x0824fc40 - 0x08000000,
 }
 
 return RomAddresses

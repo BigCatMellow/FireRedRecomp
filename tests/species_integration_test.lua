@@ -19,6 +19,7 @@ local SpeciesInfo = require("import.SpeciesInfo")
 local BattleMove = require("import.BattleMove")
 local TypeChart = require("import.TypeChart")
 local Item = require("import.Item")
+local AbilityNames = require("import.AbilityNames")
 
 local passed, failed = 0, 0
 local function check(name, cond, detail)
@@ -72,6 +73,11 @@ check("first type chart row is Normal/Rock not-very-effective", typeChart[0].mul
 local items = Item.parseTable(data, addrs.gItems, 3)
 check("Master Ball itemId/price/pocket", items[1].itemId == 1 and items[1].price == 0 and items[1].pocket == 3)
 check("Ultra Ball price", items[2].price == 1200, items[2].price)
+
+-- ABILITY_NONE=0, ABILITY_STENCH=1
+local abilityNames = AbilityNames.parseTable(data, addrs.gAbilityNames, 2)
+check("ABILITY_NONE is the 7-byte dash placeholder", #abilityNames[0] == 7, #abilityNames[0])
+check("ABILITY_STENCH is 6 bytes (right length for STENCH)", #abilityNames[1] == 6, #abilityNames[1])
 
 print(("%d passed, %d failed"):format(passed, failed))
 os.exit(failed == 0 and 0 or 1)
