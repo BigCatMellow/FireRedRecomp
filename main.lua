@@ -30,6 +30,7 @@ local TaskScheduler = require("src.core.TaskScheduler")
 local Charmap = require("import.Charmap")
 local TextRenderer = require("import.TextRenderer")
 local GbaGraphics = require("import.GbaGraphics")
+local InputState = require("src.core.InputState")
 
 local BORDER_MARGIN_METATILES = 2
 
@@ -68,6 +69,13 @@ local fontWindowImage -- the static border frame (TextWindow.lua), built once
 -- speed" checklist item); title-screen flame animation frame stepping will
 -- reuse the same scheduler once that's built.
 local scheduler = TaskScheduler.new()
+
+-- Real input-repeat state (src/core/InputState.lua, ported from
+-- pokefirered's ReadKeys). Drives the data viewer's Up/Down navigation:
+-- holding the key repeats it after the real 40-tick delay, then every 5
+-- ticks, instead of only stepping once per physical keypress -- the
+-- Phase 2 "input repeat" checklist item.
+local inputState = InputState.new()
 
 -- CHARS_PER_TICK: reveals 1 character every N scheduler ticks (60 ticks =
 -- 1 real second), i.e. a fixed text speed. The real game has 3 selectable
@@ -388,6 +396,15 @@ function love.update(dt)
   while tickAccumulator >= FIXED_TICK do
     tickAccumulator = tickAccumulator - FIXED_TICK
     scheduler:runTasks()
+
+    inputState:update(InputState.buildMask({
+      DPAD_UP = love.keyboard.isDown("up"),
+      DPAD_DOWN = love.keyboard.isDown("down"),
+    }))
+    if viewerActive then
+      if inputState:isPressedOrRepeated(InputState.DPAD_DOWN) then viewerStep(1) end
+      if inputState:isPressedOrRepeated(InputState.DPAD_UP) then viewerStep(-1) end
+    end
   end
 end
 
@@ -458,12 +475,11 @@ function love.keypressed(key)
     titleActive = false
     spriteActive = false
   elseif viewerActive then
+    -- Up/Down are handled in love.update via InputState (real input-repeat
+    -- timing), not here -- a plain keypressed step-once would double-step
+    -- alongside the repeat-driven update.
     if key == "tab" then
       viewerCategoryIndex = (viewerCategoryIndex % #DataViewer.CATEGORIES) + 1
-    elseif key == "down" then
-      viewerStep(1)
-    elseif key == "up" then
-      viewerStep(-1)
     elseif key == "pagedown" then
       viewerStep(10)
     elseif key == "pageup" then
