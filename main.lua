@@ -59,10 +59,16 @@ end
 
 local statusLines = {}
 local mapImage
-local titleImage
-local titleComposited -- raw { width, height, getPixel } composite, kept around so the fade can re-blend it each step
+-- Title screen is drawn as two separate images (border, then the flame
+-- particles, then everything above the border) rather than one flat
+-- composite, so the flame OBJ sprites (priority 3, same as the border)
+-- can be interleaved at the real draw position between the border and
+-- the higher-priority copyright/boxart/logo layers (LayerCompositor.lua)
+-- instead of always ending up on top of the whole title screen.
+local titleBorderImage, titleAboveImage
+local titleBorderComposited, titleAboveComposited -- raw { width, height, getPixel } composites, kept around so the fade can re-blend them each step
 local titleFade -- PaletteFade.lua: real fade-in-from-white on title screen boot
-local titleFadeBuiltY = -1 -- forces a rebuild the first time titleImage is needed
+local titleFadeBuiltY = -1 -- forces a rebuild the first time the title images are needed
 local titleActive = false
 local spriteImage
 local spriteActive = false
@@ -181,6 +187,157 @@ local function buildImage(compositedMap)
   return love.graphics.newImage(imageData)
 end
 
+-- The view-setup blocks below are split into their own top-level
+-- functions (rather than being inlined in loadMapFromRom) because Lua
+-- caps a single function at 60 upvalues -- loadMapFromRom used to set up
+-- every view (map, title, sprites, font, Yes/No menu, flames) in one
+-- function body, and by this point in the project touches enough
+-- module-level state variables across all of them combined to exceed
+-- that limit. Splitting by view keeps each function's upvalue set small
+-- and is also just more readable than one 180-line function.
+
+local function loadTitleScreenAssets(data, addrs, dbg)
+  local titleOk, titleErr = pcall(function()
+    titleBorderComposited = TitleScreen.compositeBorder(data, addrs)
+    titleAboveComposited = TitleScreen.compositeAboveBorder(data, addrs)
+  end)
+  if titleOk then
+    titleBorderImage = buildImage(titleBorderComposited)
+    titleBorderImage:setFilter("nearest", "nearest")
+    titleAboveImage = buildImage(titleAboveComposited)
+    titleAboveImage:setFilter("nearest", "nearest")
+    dbg("title logo built")
+
+    -- Real BeginNormalPaletteFade(palettes, 1, 16, 0, RGB(30,30,31)) --
+    -- fades in from a near-white color (5-bit (30,30,31), converted the
+    -- same way GbaGraphics.decodeColor converts any GBA color: to8(30)=
+    -- 247, to8(31)=255) down to the normal palette. delay=1 means one
+    -- tick of waiting between each step (see PaletteFade.lua).
+    titleFade = PaletteFade.new(16, 0, 1, { r = 247, g = 247, b = 255 })
+    titleFadeBuiltY = -1
+    scheduler:createTask(titleFadeTask, 0)
+    dbg("title fade-in task created")
+  else
+    dbg("title logo failed: " .. tostring(titleErr))
+  end
+end
+
+local function loadSpriteAssets(data, addrs, dbg)
+  -- Tile dimensions now come from the real OAM shape/size (OamShapeSize.lua)
+  -- instead of a hand-fed 2,4 -- proves ObjectSprite.lua isn't
+  -- special-cased to this one sprite.
+  local redOam = OamShapeSize.decodeOamData(data, addrs.gObjectEventBaseOam_16x32)
+  local spriteOk, spriteComposited = pcall(ObjectSprite.decodeFrame, data, addrs.gObjectEventPic_RedNormal, addrs.gObjectEventPal_Player, redOam.widthTiles, redOam.heightTiles, 0)
+  if spriteOk then
+    spriteImage = buildImage(spriteComposited)
+    spriteImage:setFilter("nearest", "nearest")
+    dbg("player sprite built")
+  else
+    dbg("player sprite failed: " .. tostring(spriteComposited))
+  end
+
+  -- A second, genuinely different real object sprite (the ground Item
+  -- Ball) -- different OAM shape (SQUARE vs V_RECTANGLE) and a different
+  -- palette, decoded through the exact same general pipeline.
+  local itemBallOam = OamShapeSize.decodeOamData(data, addrs.gObjectEventBaseOam_16x16)
+  local itemBallOk, itemBallComposited = pcall(ObjectSprite.decodeFrame, data, addrs.gObjectEventPic_ItemBall, addrs.gObjectEventPal_NpcWhite, itemBallOam.widthTiles, itemBallOam.heightTiles, 0)
+  if itemBallOk then
+    itemBallImage = buildImage(itemBallComposited)
+    itemBallImage:setFilter("nearest", "nearest")
+    dbg("item ball sprite built")
+  else
+    dbg("item ball sprite failed: " .. tostring(itemBallComposited))
+  end
+end
+
+local function loadFontAssets(data, addrs, dbg)
+  fontData, fontAddrs = data, addrs
+  -- "POKEMON " in the default color, then a real EXT_CTRL_CODE_COLOR
+  -- switch (FC 01 04, TEXT_COLOR_RED) for "FIRERED", then a real
+  -- EXT_CTRL_CODE_PAUSE (FC 08 <30 ticks>) before switching back to white
+  -- (FC 01 01) for " VERSION" -- demonstrates TextRenderer/TextPrinterState
+  -- actually acting on control codes rather than just displaying them as
+  -- bracketed text (Charmap.decode's job).
+  local message = charmapBytesForUppercaseAndSpaces("POKEMON ")
+    .. string.char(0xFC, 0x01, 0x04) .. charmapBytesForUppercaseAndSpaces("FIRERED")
+    .. string.char(0xFC, 0x08, 30) .. string.char(0xFC, 0x01, 0x01) .. charmapBytesForUppercaseAndSpaces(" VERSION")
+    .. string.char(Charmap.TERMINATOR)
+  local tokens = Charmap.tokenize(message)
+  fontPrinterState = TextPrinterState.new(tokens, FONT_REVEAL_TICKS_PER_CHAR)
+  fontPalette = GbaGraphics.decodePalette(data, addrs.gTextWindowPalettes) -- gTextWindowPalettes[0], the overworld dialogue box's bank
+  fontBuiltRevealTokenIndex = -1
+  scheduler:createTask(fontRevealTask, 0)
+  dbg("font reveal task created")
+
+  local windowOk, windowComposited = pcall(function()
+    local tiles = TextWindow.decodeFrameTiles(data, addrs.gStdTextWindow_Gfx)
+    local palette = TextWindow.decodePalette(data, addrs.gTextWindowPalettes, TextWindow.STD_PALETTE_INDEX)
+    return TextWindow.compositeFrame(tiles, palette, 24, 2) -- 24x2 tiles fits "POKEMON FIRERED VERSION" (~22 tiles wide, 2 tall)
+  end)
+  if windowOk then
+    fontWindowImage = buildImage(windowComposited)
+    fontWindowImage:setFilter("nearest", "nearest")
+    dbg("text window frame built")
+  else
+    dbg("text window frame failed: " .. tostring(windowComposited))
+  end
+end
+
+local function loadYesNoAssets(data, addrs, dbg)
+  local yesNoOk, yesNoErr = pcall(function()
+    local tiles = TextWindow.decodeFrameTiles(data, addrs.gStdTextWindow_Gfx)
+    local palette = TextWindow.decodePalette(data, addrs.gTextWindowPalettes, TextWindow.STD_PALETTE_INDEX)
+    -- 6x4 content tiles: "YES"/"NO" plus the selector arrow's column,
+    -- two 16px-tall rows (real CreateYesNoMenu's per-row height is
+    -- FONT_NORMAL's maxLetterHeight + lineSpacing, which is 16px here).
+    yesNoWindowImage = buildImage(TextWindow.compositeFrame(tiles, palette, 6, 4))
+    yesNoWindowImage:setFilter("nearest", "nearest")
+
+    -- Real gText_YesNo is "YES\nNO" (src/strings.c) -- 0xFA is one of the
+    -- real linebreak bytes Charmap.lua already recognizes.
+    local yesNoBytes = charmapBytesForUppercaseAndSpaces("YES") .. string.char(0xFA) .. charmapBytesForUppercaseAndSpaces("NO") .. string.char(Charmap.TERMINATOR)
+    local yesNoTokens = Charmap.tokenize(yesNoBytes)
+    yesNoTextImage = buildImage(TextRenderer.renderTokens(data, addrs, yesNoTokens, fontPalette))
+    yesNoTextImage:setFilter("nearest", "nearest")
+
+    -- The real selector arrow glyph, gText_SelectorArrow2 = "▶" = 0xEF
+    -- (charmap.txt), drawn to the left of whichever row is selected.
+    local arrowPixelTypes = Font.decodeGlyphPixelTypes(data, addrs.sFontHalfRowOffsets, addrs.sFontNormalLatinGlyphs, 0xEF)
+    local arrowWidth = string.byte(data, addrs.sFontNormalLatinGlyphWidths + 0xEF + 1)
+    yesNoArrowImage = buildImage(Font.buildGlyphImage(arrowPixelTypes, arrowWidth, fontPalette[1], fontPalette[3]))
+    yesNoArrowImage:setFilter("nearest", "nearest")
+  end)
+  if yesNoOk then
+    yesNoCursor = MenuCursor.new(2, 0)
+    yesNoResult = nil
+    dbg("Yes/No menu built")
+  else
+    dbg("Yes/No menu failed: " .. tostring(yesNoErr))
+  end
+end
+
+local function loadFlameAssets(data, addrs, dbg)
+  local flameCmds
+  local flameOk, flameErr = pcall(function()
+    flameTiles = Lz77.decompress(data, addrs.sFlames_Gfx + 1)
+    flamePalette = GbaGraphics.decodePalette(data, addrs.sFlames_Pal)
+    flameCmds = SpriteAnim.decodeCmds(data, addrs.sSpriteAnim_Flame)
+    flameAnimator = SpriteAnimator.new(flameCmds)
+  end)
+  if flameOk then
+    flameBuiltFrameIndex = -1
+    scheduler:createTask(flameAnimTask, 0)
+    dbg("flame animation decoded and task created")
+
+    flameSpawner = TitleScreenFlameSpawner.new(flameCmds)
+    flameFrameImageCache = {}
+    scheduler:createTask(flameSpawnerTask, 0)
+    dbg("flame particle spawner task created")
+  else
+    dbg("flame animation failed: " .. tostring(flameErr))
+  end
+end
+
 local function loadMapFromRom(romPath)
   local ok, info = RomImporter.verify(romPath)
   if not ok then
@@ -234,133 +391,11 @@ local function loadMapFromRom(romPath)
 
   addLine("Press V for the data viewer, T for the title screen, P for a sprite, I for an item ball, F for font rendering, A for the animated flame, Y for a Yes/No menu.")
 
-  local titleOk, titleCompositedResult = pcall(TitleScreen.compositeFull, data, addrs)
-  if titleOk then
-    titleComposited = titleCompositedResult
-    titleImage = buildImage(titleComposited)
-    titleImage:setFilter("nearest", "nearest")
-    dbg("title logo built")
-
-    -- Real BeginNormalPaletteFade(palettes, 1, 16, 0, RGB(30,30,31)) --
-    -- fades in from a near-white color (5-bit (30,30,31), converted the
-    -- same way GbaGraphics.decodeColor converts any GBA color: to8(30)=
-    -- 247, to8(31)=255) down to the normal palette. delay=1 means one
-    -- tick of waiting between each step (see PaletteFade.lua).
-    titleFade = PaletteFade.new(16, 0, 1, { r = 247, g = 247, b = 255 })
-    titleFadeBuiltY = -1
-    scheduler:createTask(titleFadeTask, 0)
-    dbg("title fade-in task created")
-  else
-    dbg("title logo failed: " .. tostring(titleCompositedResult))
-  end
-
-  -- Tile dimensions now come from the real OAM shape/size (OamShapeSize.lua)
-  -- instead of a hand-fed 2,4 -- proves ObjectSprite.lua isn't
-  -- special-cased to this one sprite.
-  local redOam = OamShapeSize.decodeOamData(data, addrs.gObjectEventBaseOam_16x32)
-  local spriteOk, spriteComposited = pcall(ObjectSprite.decodeFrame, data, addrs.gObjectEventPic_RedNormal, addrs.gObjectEventPal_Player, redOam.widthTiles, redOam.heightTiles, 0)
-  if spriteOk then
-    spriteImage = buildImage(spriteComposited)
-    spriteImage:setFilter("nearest", "nearest")
-    dbg("player sprite built")
-  else
-    dbg("player sprite failed: " .. tostring(spriteComposited))
-  end
-
-  -- A second, genuinely different real object sprite (the ground Item
-  -- Ball) -- different OAM shape (SQUARE vs V_RECTANGLE) and a different
-  -- palette, decoded through the exact same general pipeline.
-  local itemBallOam = OamShapeSize.decodeOamData(data, addrs.gObjectEventBaseOam_16x16)
-  local itemBallOk, itemBallComposited = pcall(ObjectSprite.decodeFrame, data, addrs.gObjectEventPic_ItemBall, addrs.gObjectEventPal_NpcWhite, itemBallOam.widthTiles, itemBallOam.heightTiles, 0)
-  if itemBallOk then
-    itemBallImage = buildImage(itemBallComposited)
-    itemBallImage:setFilter("nearest", "nearest")
-    dbg("item ball sprite built")
-  else
-    dbg("item ball sprite failed: " .. tostring(itemBallComposited))
-  end
-
-  fontData, fontAddrs = data, addrs
-  -- "POKEMON " in the default color, then a real EXT_CTRL_CODE_COLOR
-  -- switch (FC 01 04, TEXT_COLOR_RED) for "FIRERED", then a real
-  -- EXT_CTRL_CODE_PAUSE (FC 08 <30 ticks>) before switching back to white
-  -- (FC 01 01) for " VERSION" -- demonstrates TextRenderer/TextPrinterState
-  -- actually acting on control codes rather than just displaying them as
-  -- bracketed text (Charmap.decode's job).
-  local message = charmapBytesForUppercaseAndSpaces("POKEMON ")
-    .. string.char(0xFC, 0x01, 0x04) .. charmapBytesForUppercaseAndSpaces("FIRERED")
-    .. string.char(0xFC, 0x08, 30) .. string.char(0xFC, 0x01, 0x01) .. charmapBytesForUppercaseAndSpaces(" VERSION")
-    .. string.char(Charmap.TERMINATOR)
-  local tokens = Charmap.tokenize(message)
-  fontPrinterState = TextPrinterState.new(tokens, FONT_REVEAL_TICKS_PER_CHAR)
-  fontPalette = GbaGraphics.decodePalette(data, addrs.gTextWindowPalettes) -- gTextWindowPalettes[0], the overworld dialogue box's bank
-  fontBuiltRevealTokenIndex = -1
-  scheduler:createTask(fontRevealTask, 0)
-  dbg("font reveal task created")
-
-  local windowOk, windowComposited = pcall(function()
-    local tiles = TextWindow.decodeFrameTiles(data, addrs.gStdTextWindow_Gfx)
-    local palette = TextWindow.decodePalette(data, addrs.gTextWindowPalettes, TextWindow.STD_PALETTE_INDEX)
-    return TextWindow.compositeFrame(tiles, palette, 24, 2) -- 24x2 tiles fits "POKEMON FIRERED VERSION" (~22 tiles wide, 2 tall)
-  end)
-  if windowOk then
-    fontWindowImage = buildImage(windowComposited)
-    fontWindowImage:setFilter("nearest", "nearest")
-    dbg("text window frame built")
-  else
-    dbg("text window frame failed: " .. tostring(windowComposited))
-  end
-
-  local yesNoOk, yesNoErr = pcall(function()
-    local tiles = TextWindow.decodeFrameTiles(data, addrs.gStdTextWindow_Gfx)
-    local palette = TextWindow.decodePalette(data, addrs.gTextWindowPalettes, TextWindow.STD_PALETTE_INDEX)
-    -- 6x4 content tiles: "YES"/"NO" plus the selector arrow's column,
-    -- two 16px-tall rows (real CreateYesNoMenu's per-row height is
-    -- FONT_NORMAL's maxLetterHeight + lineSpacing, which is 16px here).
-    yesNoWindowImage = buildImage(TextWindow.compositeFrame(tiles, palette, 6, 4))
-    yesNoWindowImage:setFilter("nearest", "nearest")
-
-    -- Real gText_YesNo is "YES\nNO" (src/strings.c) -- 0xFA is one of the
-    -- real linebreak bytes Charmap.lua already recognizes.
-    local yesNoBytes = charmapBytesForUppercaseAndSpaces("YES") .. string.char(0xFA) .. charmapBytesForUppercaseAndSpaces("NO") .. string.char(Charmap.TERMINATOR)
-    local yesNoTokens = Charmap.tokenize(yesNoBytes)
-    yesNoTextImage = buildImage(TextRenderer.renderTokens(data, addrs, yesNoTokens, fontPalette))
-    yesNoTextImage:setFilter("nearest", "nearest")
-
-    -- The real selector arrow glyph, gText_SelectorArrow2 = "▶" = 0xEF
-    -- (charmap.txt), drawn to the left of whichever row is selected.
-    local arrowPixelTypes = Font.decodeGlyphPixelTypes(data, addrs.sFontHalfRowOffsets, addrs.sFontNormalLatinGlyphs, 0xEF)
-    local arrowWidth = string.byte(data, addrs.sFontNormalLatinGlyphWidths + 0xEF + 1)
-    yesNoArrowImage = buildImage(Font.buildGlyphImage(arrowPixelTypes, arrowWidth, fontPalette[1], fontPalette[3]))
-    yesNoArrowImage:setFilter("nearest", "nearest")
-  end)
-  if yesNoOk then
-    yesNoCursor = MenuCursor.new(2, 0)
-    yesNoResult = nil
-    dbg("Yes/No menu built")
-  else
-    dbg("Yes/No menu failed: " .. tostring(yesNoErr))
-  end
-
-  local flameCmds
-  local flameOk, flameErr = pcall(function()
-    flameTiles = Lz77.decompress(data, addrs.sFlames_Gfx + 1)
-    flamePalette = GbaGraphics.decodePalette(data, addrs.sFlames_Pal)
-    flameCmds = SpriteAnim.decodeCmds(data, addrs.sSpriteAnim_Flame)
-    flameAnimator = SpriteAnimator.new(flameCmds)
-  end)
-  if flameOk then
-    flameBuiltFrameIndex = -1
-    scheduler:createTask(flameAnimTask, 0)
-    dbg("flame animation decoded and task created")
-
-    flameSpawner = TitleScreenFlameSpawner.new(flameCmds)
-    flameFrameImageCache = {}
-    scheduler:createTask(flameSpawnerTask, 0)
-    dbg("flame particle spawner task created")
-  else
-    dbg("flame animation failed: " .. tostring(flameErr))
-  end
+  loadTitleScreenAssets(data, addrs, dbg)
+  loadSpriteAssets(data, addrs, dbg)
+  loadFontAssets(data, addrs, dbg)
+  loadYesNoAssets(data, addrs, dbg)
+  loadFlameAssets(data, addrs, dbg)
 end
 
 -- Rebuilds fontImage only when the revealed character count has actually
@@ -414,14 +449,21 @@ local function flameFrameImage(imageValue)
   return img
 end
 
--- Rebuilds titleImage (re-blended toward the fade's target color) only
--- when the fade's coefficient has actually changed since the last draw.
+-- Rebuilds titleBorderImage/titleAboveImage (re-blended toward the fade's
+-- target color) only when the fade's coefficient has actually changed
+-- since the last draw.
 local function ensureTitleImageCurrent()
-  if not titleComposited or not titleFade then return end
+  if not titleBorderComposited or not titleAboveComposited or not titleFade then return end
   if titleFade.y == titleFadeBuiltY then return end
-  local blended = titleFade.y == 0 and titleComposited or PaletteBlend.blendImage(titleComposited, titleFade.blendColor, titleFade.y)
-  titleImage = buildImage(blended)
-  titleImage:setFilter("nearest", "nearest")
+  if titleFade.y == 0 then
+    titleBorderImage = buildImage(titleBorderComposited)
+    titleAboveImage = buildImage(titleAboveComposited)
+  else
+    titleBorderImage = buildImage(PaletteBlend.blendImage(titleBorderComposited, titleFade.blendColor, titleFade.y))
+    titleAboveImage = buildImage(PaletteBlend.blendImage(titleAboveComposited, titleFade.blendColor, titleFade.y))
+  end
+  titleBorderImage:setFilter("nearest", "nearest")
+  titleAboveImage:setFilter("nearest", "nearest")
   titleFadeBuiltY = titleFade.y
 end
 
@@ -660,19 +702,25 @@ function love.draw()
     -- shape is actually visible rather than a few pixels in a corner.
     local viewport = ViewportScale.fit(flameImage:getWidth(), flameImage:getHeight(), math.min(windowWidth - 40, 320), math.min(windowHeight - (y + 10), 320))
     love.graphics.draw(flameImage, 20 + viewport.x, y + 10 + viewport.y, 0, viewport.scale, viewport.scale)
-  elseif titleActive and titleImage then
+  elseif titleActive and titleBorderImage then
     local windowWidth, windowHeight = love.graphics.getDimensions()
-    local viewport = ViewportScale.fit(titleImage:getWidth(), titleImage:getHeight(), windowWidth - 40, windowHeight - (y + 10))
+    local viewport = ViewportScale.fit(titleBorderImage:getWidth(), titleBorderImage:getHeight(), windowWidth - 40, windowHeight - (y + 10))
     local baseX, baseY = 20 + viewport.x, y + 10 + viewport.y
-    love.graphics.draw(titleImage, baseX, baseY, 0, viewport.scale, viewport.scale)
+    -- Real GBA draw order (LayerCompositor.lua): the border (bg3,
+    -- priority 3) draws first, then the flame OBJ sprites (also priority
+    -- 3, so they sit on top of the border specifically), then everything
+    -- with a lower priority number (copyright/boxart/logo) draws over
+    -- both -- so a flame drifting up behind the "PRESS START" text is
+    -- correctly hidden by it, instead of always being drawn on top.
+    love.graphics.draw(titleBorderImage, baseX, baseY, 0, viewport.scale, viewport.scale)
     if flameSpawner then
-      -- Real title screen flame particle burst (TitleScreenFlameSpawner.lua),
-      -- overlaid on the static title composite -- particle x/y are already
-      -- in the same 240x160 real-screen pixel space titleImage uses.
       for _, particle in ipairs(flameSpawner.particles) do
         local img = flameFrameImage(particle.animator:currentFrame().imageValue)
         love.graphics.draw(img, baseX + particle.x * viewport.scale, baseY + particle.y * viewport.scale, 0, viewport.scale, viewport.scale)
       end
+    end
+    if titleAboveImage then
+      love.graphics.draw(titleAboveImage, baseX, baseY, 0, viewport.scale, viewport.scale)
     end
   elseif mapImage then
     local windowWidth, windowHeight = love.graphics.getDimensions()

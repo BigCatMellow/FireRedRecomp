@@ -83,8 +83,9 @@ local function drawLayer(pixels, tiles, mapRaw, palette)
             local colorIndex = tile[sy * 8 + sx]
             if colorIndex ~= 0 then
               local y = ty * 8 + py
+              local c = palette[colorIndex]
               pixels[y] = pixels[y] or {}
-              pixels[y][tx * 8 + px] = palette[colorIndex]
+              pixels[y][tx * 8 + px] = { r = c.r, g = c.g, b = c.b, a = 1 }
             end
           end
         end
@@ -93,14 +94,21 @@ local function drawLayer(pixels, tiles, mapRaw, palette)
   end
 end
 
-local function pixelsToImage(pixels)
+-- transparentBase: whether pixels no layer touched should render fully
+-- transparent (for a partial composite meant to be drawn *over* another
+-- layer, e.g. TitleScreen.compositeAboveBorder) rather than opaque black
+-- (the default -- correct for a composite that's meant to stand alone,
+-- like compositeFull's final result, where every pixel is always
+-- covered by at least the border layer).
+local function pixelsToImage(pixels, transparentBase)
   local pixelWidth, pixelHeight = TitleScreen.WIDTH_TILES * 8, TitleScreen.HEIGHT_TILES * 8
+  local emptyPixel = { r = 0, g = 0, b = 0, a = transparentBase and 0 or 1 }
   return {
     width = pixelWidth,
     height = pixelHeight,
     getPixel = function(x, y)
       local row = pixels[y]
-      return (row and row[x]) or { r = 0, g = 0, b = 0 }
+      return (row and row[x]) or emptyPixel
     end,
   }
 end
@@ -140,21 +148,30 @@ function TitleScreen.compositeLayer4bpp(data, tilesOffset, mapOffset, palOffset)
   return pixelsToImage(pixels)
 end
 
--- Composites the border backdrop, then copyright/press-start, then the box
--- art Pokémon, then the logo on top -- back-to-front, matching bg3..bg0
--- priority order (lower priority number draws on top). addrs: the
--- RomAddresses[sha1] table. The animated flame/slash OBJ sprites that
--- normally render over the border backdrop aren't implemented -- those are
--- sprites, not a background layer, and need actual sprite/OAM composition
--- (a separate, not-yet-built Phase 2 piece) plus animation frame stepping.
-function TitleScreen.compositeFull(data, addrs)
+-- The border backdrop alone (bg3, priority 3, back-most) -- fills the
+-- whole canvas, so it's always opaque. This is the layer the flame OBJ
+-- sprites (also priority 3) render over but still tuck behind bg2/1/0
+-- (see LayerCompositor.lua) -- exposed separately from compositeFull so
+-- a caller can interleave the flame sprites at the correct point in the
+-- real draw order instead of drawing them after everything.
+function TitleScreen.compositeBorder(data, addrs)
   local pixels = {}
-
   local borderTilesRaw = Lz77.decompress(data, addrs.sBorderBgTiles + 1)
   local borderTiles = GbaGraphics.decodeTiles(borderTilesRaw, 0, math.floor(#borderTilesRaw / 32))
   local borderMapRaw = Lz77.decompress(data, addrs.sBorderBgMap + 1)
   local borderPalette = GbaGraphics.decodePalette(data, addrs.gGraphics_TitleScreen_BackgroundPals)
   drawLayer(pixels, borderTiles, borderMapRaw, borderPalette)
+  return pixelsToImage(pixels)
+end
+
+-- Copyright/press-start (bg2, priority 2), box art (bg1, priority 1), and
+-- the logo (bg0, priority 0) composited together, back-to-front -- the
+-- three layers with a lower priority number than the border/flames, so
+-- they always draw in front of both. Unlike compositeBorder, pixels no
+-- layer touches render fully transparent (transparentBase=true) so this
+-- can be drawn *over* the border+flames without blotting them out.
+function TitleScreen.compositeAboveBorder(data, addrs)
+  local pixels = {}
 
   local copyrightTilesRaw = Lz77.decompress(data, addrs.gGraphics_TitleScreen_CopyrightPressStartTiles + 1)
   local copyrightTiles = GbaGraphics.decodeTiles(copyrightTilesRaw, 0, math.floor(#copyrightTilesRaw / 32))
@@ -174,6 +191,27 @@ function TitleScreen.compositeFull(data, addrs)
   local logoPalette = GbaGraphics.decodeFlatPalette(data, addrs.gGraphics_TitleScreen_GameTitleLogoPals, TitleScreen.LOGO_PALETTE_COLORS)
   drawLayer(pixels, logoTiles, logoMapRaw, logoPalette)
 
+  return pixelsToImage(pixels, true)
+end
+
+-- Composites the border backdrop, then copyright/press-start, then the box
+-- art Pokémon, then the logo on top -- back-to-front, matching bg3..bg0
+-- priority order (lower priority number draws on top). addrs: the
+-- RomAddresses[sha1] table. This is compositeBorder + compositeAboveBorder
+-- flattened into one opaque image; a caller that needs to interleave the
+-- flame OBJ sprites at the correct real draw order (see LayerCompositor.lua)
+-- should call those two separately instead and draw the flames between them.
+function TitleScreen.compositeFull(data, addrs)
+  local border = TitleScreen.compositeBorder(data, addrs)
+  local above = TitleScreen.compositeAboveBorder(data, addrs)
+  local pixels = {}
+  for y = 0, border.height - 1 do
+    pixels[y] = {}
+    for x = 0, border.width - 1 do
+      local topPixel = above.getPixel(x, y)
+      pixels[y][x] = topPixel.a ~= 0 and topPixel or border.getPixel(x, y)
+    end
+  end
   return pixelsToImage(pixels)
 end
 
