@@ -27,6 +27,9 @@ local MapHeader = require("import.MapHeader")
 local MapLayout = require("import.MapLayout")
 local MapEvents = require("import.MapEvents")
 local MapConnections = require("import.MapConnections")
+local Tileset = require("import.Tileset")
+local Lz77 = require("import.Lz77")
+local GbaGraphics = require("import.GbaGraphics")
 
 local passed, failed = 0, 0
 local function check(name, cond, detail)
@@ -144,6 +147,23 @@ local palletConns = MapConnections.resolve(data, palletTown.connectionsPtr)
 check("Pallet Town has 2 connections", palletConns[0] ~= nil and palletConns[1] ~= nil and palletConns[2] == nil)
 check("north connection leads to Route 1 (group 3 num 19)", palletConns[0].direction == MapConnections.CONNECTION_NORTH and palletConns[0].mapGroup == 3 and palletConns[0].mapNum == 19)
 check("south connection leads to Route 21 North (group 3 num 39)", palletConns[1].direction == MapConnections.CONNECTION_SOUTH and palletConns[1].mapGroup == 3 and palletConns[1].mapNum == 39)
+
+local primaryTileset = Tileset.resolve(data, palletLayout.primaryTilesetPtr)
+check("primary tileset is compressed", primaryTileset.isCompressed == true)
+local tileBytesOffset = primaryTileset.tilesPtr - 0x08000000
+local decompressedTiles, lzErr = Lz77.decompress(data, tileBytesOffset + 1)
+check("primary tileset decompresses", decompressedTiles ~= nil, lzErr)
+check("decompresses to a whole number of 32-byte tiles (640)", #decompressedTiles % 32 == 0 and #decompressedTiles / 32 == 640, decompressedTiles and #decompressedTiles / 32)
+local palette0 = GbaGraphics.decodePalette(data, primaryTileset.palettesPtr - 0x08000000)
+check("palette 0 has 16 colors, not all identical (real image data)", (function()
+  local firstColor = palette0[0]
+  for i = 1, 15 do
+    if palette0[i].r ~= firstColor.r or palette0[i].g ~= firstColor.g or palette0[i].b ~= firstColor.b then
+      return true
+    end
+  end
+  return false
+end)())
 
 print(("%d passed, %d failed"):format(passed, failed))
 os.exit(failed == 0 and 0 or 1)
