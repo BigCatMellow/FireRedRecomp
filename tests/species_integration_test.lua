@@ -255,5 +255,7 @@ check("gSongTable mus_dummy/se_use_item/se_pc_login match real ms/me values", (f
   return s0.ms == 0 and s0.me == 0 and s1.ms == 1 and s1.me == 1 and s2.ms == 1 and s2.me == 1
 end)())
 
+check("gMoveNames decodes POUND and KARATE CHOP", Charmap.decodeAt(data, addrs.gMoveNames, 13, 1) == "POUND" and Charmap.decodeAt(data, addrs.gMoveNames, 13, 2) == "KARATE CHOP")
+
 print(("%d passed, %d failed"):format(passed, failed))
 os.exit(failed == 0 and 0 or 1)

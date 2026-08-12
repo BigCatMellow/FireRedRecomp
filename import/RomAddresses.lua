@@ -74,6 +74,21 @@ RomAddresses["41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc"] = { -- FireRed (US) v1.
   -- gSongTable: struct Song[], pokefirered include/gba/m4a_internal.h
   -- Verified against real mus_dummy/se_use_item/se_pc_login entries.
   gSongTable = 0x084a32cc - 0x08000000,
+  -- gMoveNames: fixed-stride (MOVE_NAME_LENGTH+1 = 13 bytes) charmap string
+  -- table, pokefirered include/data.h. Verified against real POUND/KARATE CHOP.
+  gMoveNames = 0x08247094 - 0x08000000,
+}
+
+-- Total record counts, confirmed via `arm-none-eabi-nm -S` on the real
+-- linked ELF (array byte size / record size), used by the data viewer and
+-- any other code that needs to know how far a table goes. Static/local
+-- ROM layout facts, not per-ROM addresses, so kept separate from the table
+-- above.
+RomAddresses.COUNTS = {
+  NUM_SPECIES = 412,      -- SPECIES_EGG, include/constants/species.h
+  MOVES_COUNT = 355,      -- include/constants/moves.h
+  NUM_TRAINERS = 743,     -- gTrainers is 0x7418 bytes / 40-byte record
+  NUM_NATURES = 25,
 }
 
 return RomAddresses
