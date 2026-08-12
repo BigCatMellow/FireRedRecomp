@@ -164,6 +164,39 @@ RomAddresses["41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc"] = { -- FireRed (US) v1.
   sAffineAnim_BallRotate_Right = 0x082606a0 - 0x08000000,
   sAffineAnim_BallRotate_Left = 0x082606b0 - 0x08000000,
   sAffineAnim_BallRotate_3 = 0x082606c0 - 0x08000000,
+  -- Oak intro: the real opening narration text (pokefirered
+  -- data/text/new_game_intro.inc, gOakSpeech_Text_WelcomeToTheWorld,
+  -- referenced from src/oak_speech.c's Task_OakSpeech_WelcomeToTheWorld/
+  -- _ThisWorld message chain). A real (non-static) global symbol.
+  -- Verified: decodes via Charmap.decode to exactly the real source's
+  -- literal text, "Hello, there!\nGlad to meet you!\pWelcome to the
+  -- world of POKéMON!\pMy name is OAK.\pPeople affectionately refer to
+  -- me\nas the POKéMON PROFESSOR.\p$", byte-for-byte including the
+  -- accented é.
+  gOakSpeech_Text_WelcomeToTheWorld = 0x081c5c78 - 0x08000000,
+  -- SS Anne overworld object (Phase 2 "any sprite, any size/shape" --
+  -- multi-OAM-entry subsprite compositing, SubspriteTable.lua/
+  -- ObjectSprite.compositeSubsprites). pokefirered
+  -- src/data/object_events/object_event_graphics.h. Real
+  -- gObjectEventGraphicsInfo_SSAnne is 128x64px, exceeding the 64x64px
+  -- single-OAM-entry cap -- its real subspriteTables
+  -- (gObjectEventSpriteOamTables_128x64) composite it from 4 real 64x32
+  -- quadrants. Static/local symbols, found via nm.
+  gObjectEventPic_SSAnne = 0x08395b08 - 0x08000000,
+  gObjectEventPal_SSAnne = 0x08395ae8 - 0x08000000,
+  gObjectEventSpriteOamTable_128x64_0 = 0x083a3a20 - 0x08000000,
+  -- The player's own real 16x32 object DOES fit one OAM entry but still
+  -- has a real subspriteTables (gObjectEventSpriteOamTables_16x32) --
+  -- reading the real table (src/data/object_events/
+  -- object_event_subsprites.h) shows this is for real runtime
+  -- OAM-priority layering (splitting one OAM into differently-prioritized
+  -- pieces), NOT sprite-size compositing: table index 0 is a real
+  -- {0, NULL} passthrough entry (render the single OAM as-is), which is
+  -- the default. Kept here as a second, structurally different real
+  -- SubspriteTable to decode against (single real entry, not a 4-way
+  -- grid). Static/local symbols, found via nm.
+  gObjectEventSpriteOamTables_16x16 = 0x083a3748 - 0x08000000,
+  gObjectEventSpriteOamTable_16x16_0 = 0x083a3728 - 0x08000000,
 }
 
 -- Total record counts, confirmed via `arm-none-eabi-nm -S` on the real

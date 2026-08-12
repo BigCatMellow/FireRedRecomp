@@ -96,6 +96,12 @@ local fontPrinterState -- TextPrinterState.lua: tracks per-character reveal, pau
 local fontBuiltRevealTokenIndex = -1 -- forces a rebuild the first time fontImage is needed
 local fontWindowImage -- the static border frame (TextWindow.lua), built once
 
+local oakSpeechActive = false
+local oakSpeechImage
+local oakSpeechWindowImage
+local oakSpeechPrinterState
+local oakSpeechBuiltRevealTokenIndex = -1
+
 local flameActive = false
 local flameImage
 local flameTiles, flamePalette -- decompressed flame sheet + decoded palette, decoded once
@@ -142,6 +148,10 @@ local inputState = InputState.new()
 local FONT_REVEAL_TICKS_PER_CHAR = 4
 local function fontRevealTask(taskId)
   fontPrinterState:tick(inputState:isNewlyPressed(InputState.A_BUTTON))
+end
+
+local function oakSpeechRevealTask(taskId)
+  oakSpeechPrinterState:tick(inputState:isNewlyPressed(InputState.A_BUTTON))
 end
 
 local function flameAnimTask(taskId)
@@ -334,6 +344,35 @@ local function loadFontAssets(data, addrs, dbg)
   end
 end
 
+-- Oak intro (partial): the real opening narration text
+-- (gOakSpeech_Text_WelcomeToTheWorld, src/oak_speech.c's
+-- Task_OakSpeech_WelcomeToTheWorld/_ThisWorld message chain), rendered
+-- through the same real font/window/text-printer pipeline as the F view.
+-- Deliberately NOT the full scene: no Oak sprite, no Nidoran, no real
+-- background layer, no gender/naming flow -- those need asset pipelines
+-- (trainer pic decode, a dedicated background layer) and scene-stack
+-- machinery this project doesn't have yet. This is the real dialogue
+-- text specifically, verified against real ROM bytes end to end.
+local function loadOakSpeechAssets(data, addrs, dbg)
+  local ok, err = pcall(function()
+    local raw = data:sub(addrs.gOakSpeech_Text_WelcomeToTheWorld + 1, addrs.gOakSpeech_Text_WelcomeToTheWorld + 300)
+    local tokens = Charmap.tokenize(raw)
+    oakSpeechPrinterState = TextPrinterState.new(tokens, FONT_REVEAL_TICKS_PER_CHAR)
+
+    local tiles = TextWindow.decodeFrameTiles(data, addrs.gStdTextWindow_Gfx)
+    local palette = TextWindow.decodePalette(data, addrs.gTextWindowPalettes, TextWindow.STD_PALETTE_INDEX)
+    oakSpeechWindowImage = buildImage(TextWindow.compositeFrame(tiles, palette, 28, 12)) -- 28x12 tiles fits all 6 real lines stacked
+    oakSpeechWindowImage:setFilter("nearest", "nearest")
+  end)
+  if ok then
+    oakSpeechBuiltRevealTokenIndex = -1
+    scheduler:createTask(oakSpeechRevealTask, 0)
+    dbg("Oak speech text decoded and task created")
+  else
+    dbg("Oak speech text failed: " .. tostring(err))
+  end
+end
+
 local function loadYesNoAssets(data, addrs, dbg)
   local yesNoOk, yesNoErr = pcall(function()
     local tiles = TextWindow.decodeFrameTiles(data, addrs.gStdTextWindow_Gfx)
@@ -440,11 +479,12 @@ local function loadMapFromRom(romPath)
   mapImage:setFilter("nearest", "nearest")
   dbg("filter set")
 
-  addLine("Press V for the data viewer, T for the title screen, P for a sprite, I for an item ball, F for font rendering, A for the animated flame, Y for a Yes/No menu.")
+  addLine("Press V for the data viewer, T for the title screen, P for a sprite, I for an item ball, F for font rendering, O for the Oak intro text, A for the animated flame, Y for a Yes/No menu.")
 
   loadTitleScreenAssets(data, addrs, dbg)
   loadSpriteAssets(data, addrs, dbg)
   loadFontAssets(data, addrs, dbg)
+  loadOakSpeechAssets(data, addrs, dbg)
   loadYesNoAssets(data, addrs, dbg)
   loadFlameAssets(data, addrs, dbg)
 end
@@ -465,6 +505,21 @@ local function ensureFontImageCurrent()
     end
   end
   fontBuiltRevealTokenIndex = fontPrinterState.tokenIndex
+end
+
+local function ensureOakSpeechImageCurrent()
+  if not fontData or not oakSpeechPrinterState or oakSpeechPrinterState.tokenIndex == oakSpeechBuiltRevealTokenIndex then return end
+  if oakSpeechPrinterState.tokenIndex == 0 then
+    oakSpeechImage = nil
+  else
+    local sliced = oakSpeechPrinterState:revealedTokens()
+    local ok, composited = pcall(TextRenderer.renderTokens, fontData, fontAddrs, sliced, fontPalette)
+    if ok then
+      oakSpeechImage = buildImage(composited)
+      oakSpeechImage:setFilter("nearest", "nearest")
+    end
+  end
+  oakSpeechBuiltRevealTokenIndex = oakSpeechPrinterState.tokenIndex
 end
 
 local FLAME_TILE_WIDTH, FLAME_TILE_HEIGHT = 2, 2 -- ST_OAM_SIZE_1 SQUARE = 16x16px = 2x2 tiles
@@ -680,6 +735,16 @@ function love.load()
     fontActive = true
   end
 
+  -- POKEPORT_OAKSPEECH=1 boots straight into the Oak intro text view.
+  -- POKEPORT_OAKSPEECH_REVEAL=1 forces the full text revealed
+  -- immediately (same rationale as fontPrinterState:revealAll() below).
+  if os.getenv("POKEPORT_OAKSPEECH") == "1" then
+    oakSpeechActive = true
+    if os.getenv("POKEPORT_OAKSPEECH_REVEAL") == "1" and oakSpeechPrinterState then
+      oakSpeechPrinterState:revealAll()
+    end
+  end
+
   -- POKEPORT_FLAME=1 boots straight into the animated flame sprite view.
   -- POKEPORT_FLAME_TICKS=N ticks the animator forward N times before the
   -- screenshot is taken -- used to capture two different animation frames
@@ -706,7 +771,7 @@ function love.load()
   -- love.filesystem is sandboxed to the save directory (see conf.lua's
   -- identity="firered-recomp"), so this always writes there under a fixed
   -- name rather than to an arbitrary POKEPORT_SCREENSHOT path.
-  if os.getenv("POKEPORT_SCREENSHOT") == "1" and (mapImage or viewerActive or titleActive or spriteActive or itemBallActive or fontActive or flameActive or yesNoActive) then
+  if os.getenv("POKEPORT_SCREENSHOT") == "1" and (mapImage or viewerActive or titleActive or spriteActive or itemBallActive or fontActive or oakSpeechActive or flameActive or yesNoActive) then
     -- The font sample normally reveals one character at a time (real text
     -- speed, driven by TaskScheduler in love.update) and can pause or wait
     -- on a keypress mid-message; automated screenshots want the
@@ -751,6 +816,7 @@ end
 
 function love.draw()
   if fontActive then ensureFontImageCurrent() end
+  if oakSpeechActive then ensureOakSpeechImageCurrent() end
   if flameActive then ensureFlameImageCurrent() end
   if titleActive then ensureTitleImageCurrent() end
   if spriteActive or itemBallActive then
@@ -797,6 +863,13 @@ function love.draw()
       -- TextWindow.TILE_SIZE (8px) inset places the text inside the
       -- frame's transparent interior, one border tile in from the top-left.
       love.graphics.draw(fontImage, 20 + viewport.x + TextWindow.TILE_SIZE * viewport.scale, y + 10 + viewport.y + TextWindow.TILE_SIZE * viewport.scale, 0, viewport.scale, viewport.scale)
+    end
+  elseif oakSpeechActive and oakSpeechWindowImage then
+    local windowWidth, windowHeight = love.graphics.getDimensions()
+    local viewport = ViewportScale.fit(oakSpeechWindowImage:getWidth(), oakSpeechWindowImage:getHeight(), windowWidth - 40, windowHeight - (y + 10))
+    love.graphics.draw(oakSpeechWindowImage, 20 + viewport.x, y + 10 + viewport.y, 0, viewport.scale, viewport.scale)
+    if oakSpeechImage then
+      love.graphics.draw(oakSpeechImage, 20 + viewport.x + TextWindow.TILE_SIZE * viewport.scale, y + 10 + viewport.y + TextWindow.TILE_SIZE * viewport.scale, 0, viewport.scale, viewport.scale)
     end
   elseif yesNoActive and yesNoWindowImage then
     local windowWidth, windowHeight = love.graphics.getDimensions()
@@ -867,6 +940,7 @@ function love.keypressed(key)
     flameActive = false
     yesNoActive = false
     itemBallActive = false
+    oakSpeechActive = false
   elseif key == "t" then
     titleActive = not titleActive
     viewerActive = false
@@ -875,6 +949,7 @@ function love.keypressed(key)
     flameActive = false
     yesNoActive = false
     itemBallActive = false
+    oakSpeechActive = false
   elseif key == "p" then
     spriteActive = not spriteActive
     viewerActive = false
@@ -883,6 +958,7 @@ function love.keypressed(key)
     flameActive = false
     yesNoActive = false
     itemBallActive = false
+    oakSpeechActive = false
   elseif key == "i" then
     itemBallActive = not itemBallActive
     viewerActive = false
@@ -891,11 +967,22 @@ function love.keypressed(key)
     fontActive = false
     flameActive = false
     yesNoActive = false
+    oakSpeechActive = false
   elseif key == "f" then
     fontActive = not fontActive
     viewerActive = false
     titleActive = false
     spriteActive = false
+    flameActive = false
+    yesNoActive = false
+    itemBallActive = false
+    oakSpeechActive = false
+  elseif key == "o" then
+    oakSpeechActive = not oakSpeechActive
+    viewerActive = false
+    titleActive = false
+    spriteActive = false
+    fontActive = false
     flameActive = false
     yesNoActive = false
     itemBallActive = false
@@ -907,6 +994,7 @@ function love.keypressed(key)
     fontActive = false
     yesNoActive = false
     itemBallActive = false
+    oakSpeechActive = false
   elseif key == "y" then
     yesNoActive = not yesNoActive
     itemBallActive = false
@@ -919,6 +1007,7 @@ function love.keypressed(key)
     spriteActive = false
     fontActive = false
     flameActive = false
+    oakSpeechActive = false
   elseif viewerActive then
     -- Up/Down are handled in love.update via InputState (real input-repeat
     -- timing), not here -- a plain keypressed step-once would double-step
