@@ -17,45 +17,47 @@ Source crosswalk: [`../firered-recomp-reference/source-inventory.md`](../firered
 
 ## Status
 
-**Phase 0 done. Phase 1 (importer/data model) underway — first real,
-ROM-verified extraction works end-to-end.** No gameplay exists yet. What's
-here:
+**Phase 0 done. Phase 1 (importer/data model) well underway — real,
+ROM-verified extraction works end-to-end for several core tables.** No
+gameplay exists yet. Working checklist (kept up to date as work lands):
+[`../FireRed/firered-recomp-checklist.md`](../FireRed/firered-recomp-checklist.md).
 
-- Directory layout matching the roadmap's target tree.
-- `import/RomImporter.lua` — ROM identity verification (SHA-1) against the
-  supported FireRed US release.
-- `import/Lz77.lua` — GBA BIOS-compatible LZ77 decompressor (graphics,
-  tilemaps, and some data tables in the ROM are LZ77-compressed). Verified
-  against hand-built compressed fixtures, not yet against real ROM data.
-- `import/SpeciesInfo.lua` — parses the 28-byte `struct SpeciesInfo` record
-  (pokefirered `include/pokemon.h`) out of raw bytes.
+- `import/RomImporter.lua` — ROM identity verification (SHA-1).
 - `import/RomAddresses.lua` — real ROM table addresses, keyed by SHA-1.
-  `gSpeciesInfo`'s address was obtained by building `pokefirered-master`
-  from source with an unprivileged local toolchain (ARM GNU toolchain +
-  `agbcc`, no sudo/apt) and reading the resulting linker `.map`. **The build
-  output is byte-identical to retail** (`sha1sum` matches the known
-  `41cb23d8...` FireRed(US) v1.0 hash this project already treats as
-  supported), so it's a legitimate stand-in for a player-supplied ROM during
-  development.
-- `tests/species_integration_test.lua` — parses Bulbasaur/Ivysaur/Venusaur/
-  Charmander's real base stats out of that built ROM and checks them
-  against known values. Passes. Opt-in via `POKEPORT_ROM=...`; skips
-  cleanly with no ROM present (a fresh checkout has none).
-- `conf.lua` / `main.lua` — boots a LÖVE2D window and reports ROM
-  verification status. No rendering, no gameplay.
-- `tests/` — all unit tests pass (`lua5.1 tests/*.lua`).
+  Obtained by building `pokefirered-master` from source with an
+  unprivileged local toolchain (ARM GNU toolchain + `agbcc`, no sudo/apt)
+  and reading the resulting linker `.map`. **The build output is
+  byte-identical to retail** (sha1 `41cb23d8...`, the exact hash this
+  project already treats as supported), so it's a legitimate stand-in for a
+  player-supplied ROM during development.
+- `import/Lz77.lua` — GBA BIOS-compatible LZ77 decompressor. Verified
+  against hand-built fixtures, not yet against real ROM data.
+- `import/SpeciesInfo.lua` — species base stats (28-byte struct).
+- `import/BattleMove.lua` — moves. **Real record size is 12 bytes, not the
+  struct's 9** (agbcc pads byte-only structs to a 4-byte multiple in
+  arrays) — caught by checking real Pound/Karate Chop data, not by trusting
+  the header.
+- `import/TypeChart.lua` — the type effectiveness chart.
+- `import/Item.lua` — items (44-byte struct, has raw pointer fields).
+- `import/AbilityNames.lua` — ability name strings (raw charmap bytes).
+- `import/Charmap.lua` — FireRed's custom text encoding, generated from
+  pokefirered's own `charmap.txt`. Decodes real names correctly
+  end-to-end ("BULBASAUR", "MASTER BALL", "STENCH", ...).
+- `import/Trainer.lua` — trainers (40-byte struct).
+- `import/TrainerParty.lua` — resolves a trainer's party pointer into real
+  Pokémon data. **All 4 party-record layouts** (no-item/held-item ×
+  default/custom-moves) **are individually verified against real trainers**
+  (Youngster Ben, Camper Liam, Black Belt Koichi, Elite Four Lorelei).
 
-- `import/BattleMove.lua` — parses `struct BattleMove`. **Real record size
-  is 12 bytes, not the struct's 9** (agbcc pads byte-only structs to a
-  4-byte multiple in arrays) — caught by checking real Pound/Karate Chop
-  data, not by trusting the header.
-- `import/TypeChart.lua` — parses `gTypeEffectiveness` (flat attack/defend/
-  multiplier triples, ENDTABLE-terminated).
+Every module above was checked against bytes from a real, verified ROM, not
+just against the struct definitions in the header — several surprises
+(padded record sizes, byte-offset quirks) only showed up that way. See
+`tests/species_integration_test.lua` (opt-in via `POKEPORT_ROM=...`, skips
+cleanly with no ROM present) and the rest of `tests/`.
 
-Next: extend `RomAddresses`/importer coverage to more tables (items,
-trainers, abilities, maps), starting to fill out the canonical data schemas
-the roadmap's Phase 1 calls for. Working checklist:
-`../FireRed/firered-recomp-checklist.md`.
+Not yet started: maps/layouts/tilesets, scripts, encounters, natures,
+message/control-code text beyond names, save format, and everything in
+Phase 2+ (rendering, gameplay).
 
 ## Supported ROM
 
