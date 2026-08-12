@@ -27,6 +27,9 @@ local ObjectSprite = require("import.ObjectSprite")
 local Font = require("import.Font")
 local TextWindow = require("import.TextWindow")
 local TaskScheduler = require("src.core.TaskScheduler")
+local Charmap = require("import.Charmap")
+local TextRenderer = require("import.TextRenderer")
+local GbaGraphics = require("import.GbaGraphics")
 
 local BORDER_MARGIN_METATILES = 2
 
@@ -52,10 +55,9 @@ local spriteImage
 local spriteActive = false
 local fontImage
 local fontActive = false
-local fontFgColor = { r = 255, g = 255, b = 255 }
-local fontShadowColor = { r = 80, g = 80, b = 80 }
-local fontData, fontAddrs
-local fontGlyphIds
+local fontData, fontAddrs, fontPalette
+local fontTokens
+local fontTotalCharCount = 0
 local fontRevealedCount = 0
 local fontBuiltRevealedCount = -1 -- forces a rebuild the first time fontImage is needed
 local fontWindowImage -- the static border frame (TextWindow.lua), built once
@@ -79,10 +81,28 @@ local function fontRevealTask(taskId)
   data.tickCount = (data.tickCount or 0) + 1
   if data.tickCount >= FONT_REVEAL_TICKS_PER_CHAR then
     data.tickCount = 0
-    if fontGlyphIds and fontRevealedCount < #fontGlyphIds then
+    if fontRevealedCount < fontTotalCharCount then
       fontRevealedCount = fontRevealedCount + 1
     end
   end
+end
+
+-- Slices a Charmap.tokenize() list down to "the first N revealed
+-- characters, plus every non-char token (color switches, etc.) up to that
+-- point" -- so a color switch that happened before the Nth character is
+-- still in effect for the partial reveal, matching how the real printer
+-- processes control codes immediately but glyphs one at a time.
+local function sliceTokensByRevealedChars(tokens, revealedCharCount)
+  local sliced = {}
+  local charCount = 0
+  for _, token in ipairs(tokens) do
+    if token.type == "char" then
+      if charCount >= revealedCharCount then break end
+      charCount = charCount + 1
+    end
+    sliced[#sliced + 1] = token
+  end
+  return sliced
 end
 
 -- Set once the ROM verifies, so the data viewer (toggled at any time with
@@ -99,17 +119,17 @@ local viewerRecordIndex = { species = 1, moves = 1, trainers = 0, maps = 3 * 256
 -- are contiguous (0xBB-0xD4, confirmed in Charmap.lua) so this small
 -- inline table is enough for the sample string below without needing a
 -- general encoder.
-local function glyphIdsForUppercaseAndSpaces(text)
-  local ids = {}
+local function charmapBytesForUppercaseAndSpaces(text)
+  local bytes = {}
   for i = 1, #text do
     local c = text:sub(i, i)
     if c == " " then
-      ids[#ids + 1] = 0x00
+      bytes[#bytes + 1] = 0x00
     else
-      ids[#ids + 1] = 0xBB + (string.byte(c) - string.byte("A"))
+      bytes[#bytes + 1] = 0xBB + (string.byte(c) - string.byte("A"))
     end
   end
-  return ids
+  return string.char(unpack(bytes))
 end
 
 local function addLine(text)
@@ -203,7 +223,17 @@ local function loadMapFromRom(romPath)
   end
 
   fontData, fontAddrs = data, addrs
-  fontGlyphIds = glyphIdsForUppercaseAndSpaces("POKEMON FIRERED")
+  -- "POKEMON " in the default color, then a real EXT_CTRL_CODE_COLOR
+  -- switch (FC 01 04, TEXT_COLOR_RED) partway through, then "FIRERED" --
+  -- demonstrates TextRenderer actually acting on control codes rather
+  -- than just displaying them as bracketed text (Charmap.decode's job).
+  local message = charmapBytesForUppercaseAndSpaces("POKEMON ") .. string.char(0xFC, 0x01, 0x04) .. charmapBytesForUppercaseAndSpaces("FIRERED") .. string.char(Charmap.TERMINATOR)
+  fontTokens = Charmap.tokenize(message)
+  fontTotalCharCount = 0
+  for _, t in ipairs(fontTokens) do
+    if t.type == "char" then fontTotalCharCount = fontTotalCharCount + 1 end
+  end
+  fontPalette = GbaGraphics.decodePalette(data, addrs.gTextWindowPalettes) -- gTextWindowPalettes[0], the overworld dialogue box's bank
   fontRevealedCount = 0
   fontBuiltRevealedCount = -1
   scheduler:createTask(fontRevealTask, 0)
@@ -228,12 +258,11 @@ end
 -- static count would be wasted work).
 local function ensureFontImageCurrent()
   if not fontData or fontRevealedCount == fontBuiltRevealedCount then return end
-  local revealedIds = {}
-  for i = 1, fontRevealedCount do revealedIds[i] = fontGlyphIds[i] end
-  if #revealedIds == 0 then
+  if fontRevealedCount == 0 then
     fontImage = nil
   else
-    local ok, composited = pcall(Font.renderString, fontData, fontAddrs.sFontHalfRowOffsets, fontAddrs.sFontNormalLatinGlyphs, fontAddrs.sFontNormalLatinGlyphWidths, revealedIds, fontFgColor, fontShadowColor)
+    local sliced = sliceTokensByRevealedChars(fontTokens, fontRevealedCount)
+    local ok, composited = pcall(TextRenderer.renderTokens, fontData, fontAddrs, sliced, fontPalette)
     if ok then
       fontImage = buildImage(composited)
       fontImage:setFilter("nearest", "nearest")
@@ -340,7 +369,7 @@ function love.load()
     -- speed, driven by TaskScheduler in love.update); automated screenshots
     -- want the deterministic finished state instead of whatever partial
     -- reveal happened to be on-screen at capture time.
-    if fontGlyphIds then fontRevealedCount = #fontGlyphIds end
+    fontRevealedCount = fontTotalCharCount
     love.graphics.captureScreenshot(function(imageData)
       imageData:encode("png", "screenshot.png")
       love.event.quit()

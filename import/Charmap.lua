@@ -392,6 +392,80 @@ function Charmap.decode(data, stopAtTerminator)
   return table.concat(out)
 end
 
+-- Same byte-stream walk as Charmap.decode, but returns a structured token
+-- list instead of a flattened display string -- for a real renderer
+-- (TextRenderer.lua) that needs to act on control codes (switch color,
+-- pause, newline) rather than just show them as bracketed text. Token
+-- shapes:
+--   { type = "char", glyphId = <raw byte> }     -- one printable glyph
+--   { type = "newline" }
+--   { type = "color", fg = n|nil, hl = n|nil, shadow = n|nil }
+--     -- from EXT_CTRL_CODE_COLOR/HIGHLIGHT/SHADOW/COLOR_HIGHLIGHT_SHADOW
+--     -- (FC 01/02/03/04); whichever role(s) that code sets are non-nil.
+--     -- Values are TEXT_COLOR_* palette-slot indices (0-9, see
+--     -- characters.h) -- what those slots mean in RGB depends on which
+--     -- gTextWindowPalettes bank is loaded, so this module deliberately
+--     -- doesn't resolve them to colors itself.
+--   { type = "control", sub = n, params = {byte, ...} }
+--     -- any other FC control code (pause, wait, fill, etc.) -- carried
+--     -- through unresolved for the caller to act on or ignore.
+--   { type = "placeholder", name = <string> } -- FD variable placeholders
+-- Glyph ids for characters without a real font glyph mapping (rare, e.g.
+-- some Japanese-only bytes) are still emitted as "char" tokens -- it's the
+-- renderer's job to decide what to do with a glyph id it can't render, the
+-- same way Font.renderString already just reads whatever id it's given.
+function Charmap.tokenize(data, stopAtTerminator)
+  if stopAtTerminator == nil then stopAtTerminator = true end
+  local out = {}
+  local i = 1
+  local n = #data
+  while i <= n do
+    local b = byte(data, i)
+    if stopAtTerminator and b == Charmap.TERMINATOR then
+      break
+    end
+    if LINEBREAK_BYTES[b] then
+      out[#out + 1] = { type = "newline" }
+      i = i + 1
+    elseif b == 0xFD then
+      local sub = byte(data, i + 1)
+      out[#out + 1] = { type = "placeholder", name = VAR_PLACEHOLDER_NAMES[sub] or ("FD:%02X"):format(sub or 0) }
+      i = i + 2
+    elseif b == 0xFC then
+      local sub = byte(data, i + 1)
+      if sub == FC_ESCAPE then
+        local literal = byte(data, i + 2)
+        out[#out + 1] = { type = "char", glyphId = literal }
+        i = i + 3
+      elseif sub == 0x01 then -- COLOR
+        out[#out + 1] = { type = "color", fg = byte(data, i + 2) }
+        i = i + 3
+      elseif sub == 0x02 then -- HIGHLIGHT
+        out[#out + 1] = { type = "color", hl = byte(data, i + 2) }
+        i = i + 3
+      elseif sub == 0x03 then -- SHADOW
+        out[#out + 1] = { type = "color", shadow = byte(data, i + 2) }
+        i = i + 3
+      elseif sub == 0x04 then -- COLOR_HIGHLIGHT_SHADOW
+        out[#out + 1] = { type = "color", fg = byte(data, i + 2), hl = byte(data, i + 3), shadow = byte(data, i + 4) }
+        i = i + 5
+      else
+        local paramLen = FC_PARAM_LENGTHS[sub] or 0
+        local params = {}
+        for p = 0, paramLen - 1 do
+          params[#params + 1] = byte(data, i + 2 + p)
+        end
+        out[#out + 1] = { type = "control", sub = sub, params = params }
+        i = i + 2 + paramLen
+      end
+    else
+      out[#out + 1] = { type = "char", glyphId = b }
+      i = i + 1
+    end
+  end
+  return out
+end
+
 -- Decodes one entry of a fixed-stride charmap string table (species names,
 -- ability names, move names, etc. are all laid out this way: `stride` bytes
 -- per entry, real text then a 0xFF terminator then zero padding).
