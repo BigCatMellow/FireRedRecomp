@@ -22,6 +22,7 @@ local Item = require("import.Item")
 local AbilityNames = require("import.AbilityNames")
 local Charmap = require("import.Charmap")
 local Trainer = require("import.Trainer")
+local TrainerParty = require("import.TrainerParty")
 
 local passed, failed = 0, 0
 local function check(name, cond, detail)
@@ -93,6 +94,17 @@ local ben = trainers[89]
 check("decodes trainer name BEN", Charmap.decode(ben.rawName) == "BEN", Charmap.decode(ben.rawName))
 check("Ben's party size is 2", ben.partySize == 2, ben.partySize)
 check("Ben's aiFlags is 0x1", ben.aiFlags == 1, ben.aiFlags)
+
+local benParty = TrainerParty.resolve(ben, data)
+check("Ben's party is Rattata/Ekans, both lvl 11", benParty[0].species == 19 and benParty[1].species == 23 and benParty[0].lvl == 11 and benParty[1].lvl == 11)
+
+-- TRAINER_ELITE_FOUR_LORELEI = 410, ItemCustomMoves layout
+local trainersFull = Trainer.parseTable(data, addrs.gTrainers, 411)
+local lorelei = trainersFull[410]
+local loreleiParty = TrainerParty.resolve(lorelei, data)
+local dewgong = loreleiParty[0]
+check("Lorelei's first mon is Dewgong lvl 52 iv 250", dewgong.species == 87 and dewgong.lvl == 52 and dewgong.iv == 250)
+check("Dewgong's moves are Ice Beam/Surf/Hail/Safeguard", dewgong.moves[0] == 58 and dewgong.moves[1] == 57 and dewgong.moves[2] == 258 and dewgong.moves[3] == 219)
 
 print(("%d passed, %d failed"):format(passed, failed))
 os.exit(failed == 0 and 0 or 1)
