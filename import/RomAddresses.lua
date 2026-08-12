@@ -127,6 +127,17 @@ RomAddresses["41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc"] = { -- FireRed (US) v1.
   -- 3x3 corner/edge border with no visual noise.
   gStdTextWindow_Gfx = 0x08471a4c - 0x08000000,
   gTextWindowPalettes = 0x08471dec - 0x08000000,
+  -- Title screen flame OBJ sprite animation (pokefirered src/title_screen.c,
+  -- FireRed only -- LeafGreen has a leaf sprite at a different address
+  -- instead). Static/local symbols found via nm. sFlames_Gfx/_Pal are
+  -- LZ77-compressed (unlike ObjectSprite.lua's uncompressed overworld
+  -- sprites) -- confirmed from the real INCBIN_U32(...".4bpp.lz") source,
+  -- not assumed. sSpriteAnim_Flame decodes to exactly the real source's
+  -- ANIMCMD_FRAME(0,3), ANIMCMD_FRAME(4,6)...(36,6), ANIMCMD_END sequence
+  -- (verified byte-for-byte, see SpriteAnim.lua's header comment).
+  sFlames_Gfx = 0x083bf79c - 0x08000000,
+  sFlames_Pal = 0x083bf77c - 0x08000000,
+  sSpriteAnim_Flame = 0x083bfabc - 0x08000000,
 }
 
 -- Total record counts, confirmed via `arm-none-eabi-nm -S` on the real

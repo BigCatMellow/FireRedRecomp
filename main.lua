@@ -32,6 +32,9 @@ local TextRenderer = require("import.TextRenderer")
 local GbaGraphics = require("import.GbaGraphics")
 local InputState = require("src.core.InputState")
 local TextPrinterState = require("src.core.TextPrinterState")
+local Lz77 = require("import.Lz77")
+local SpriteAnim = require("import.SpriteAnim")
+local SpriteAnimator = require("src.core.SpriteAnimator")
 
 local BORDER_MARGIN_METATILES = 2
 
@@ -62,6 +65,12 @@ local fontPrinterState -- TextPrinterState.lua: tracks per-character reveal, pau
 local fontBuiltRevealTokenIndex = -1 -- forces a rebuild the first time fontImage is needed
 local fontWindowImage -- the static border frame (TextWindow.lua), built once
 
+local flameActive = false
+local flameImage
+local flameTiles, flamePalette -- decompressed flame sheet + decoded palette, decoded once
+local flameAnimator -- SpriteAnimator.lua, real title screen flame animation
+local flameBuiltFrameIndex = -1 -- forces a rebuild the first time flameImage is needed
+
 -- Real task scheduler (src/core/TaskScheduler.lua), ticked at a fixed 1/60s
 -- step in love.update -- matches the real game's VBlank-synced RunTasks().
 -- Drives per-character text reveal on the font sample view (the "text
@@ -85,6 +94,10 @@ local inputState = InputState.new()
 local FONT_REVEAL_TICKS_PER_CHAR = 4
 local function fontRevealTask(taskId)
   fontPrinterState:tick(inputState:isNewlyPressed(InputState.A_BUTTON))
+end
+
+local function flameAnimTask(taskId)
+  flameAnimator:tick()
 end
 
 -- Set once the ROM verifies, so the data viewer (toggled at any time with
@@ -184,7 +197,7 @@ local function loadMapFromRom(romPath)
   mapImage:setFilter("nearest", "nearest")
   dbg("filter set")
 
-  addLine("Press V for the data viewer, T for the title screen, P for a sprite, F for font rendering.")
+  addLine("Press V for the data viewer, T for the title screen, P for a sprite, F for font rendering, A for the animated flame.")
 
   local titleOk, titleComposited = pcall(TitleScreen.compositeFull, data, addrs)
   if titleOk then
@@ -234,6 +247,20 @@ local function loadMapFromRom(romPath)
   else
     dbg("text window frame failed: " .. tostring(windowComposited))
   end
+
+  local flameOk, flameErr = pcall(function()
+    flameTiles = Lz77.decompress(data, addrs.sFlames_Gfx + 1)
+    flamePalette = GbaGraphics.decodePalette(data, addrs.sFlames_Pal)
+    local cmds = SpriteAnim.decodeCmds(data, addrs.sSpriteAnim_Flame)
+    flameAnimator = SpriteAnimator.new(cmds)
+  end)
+  if flameOk then
+    flameBuiltFrameIndex = -1
+    scheduler:createTask(flameAnimTask, 0)
+    dbg("flame animation decoded and task created")
+  else
+    dbg("flame animation failed: " .. tostring(flameErr))
+  end
 end
 
 -- Rebuilds fontImage only when the revealed character count has actually
@@ -252,6 +279,24 @@ local function ensureFontImageCurrent()
     end
   end
   fontBuiltRevealTokenIndex = fontPrinterState.tokenIndex
+end
+
+local FLAME_TILE_WIDTH, FLAME_TILE_HEIGHT = 2, 2 -- ST_OAM_SIZE_1 SQUARE = 16x16px = 2x2 tiles
+
+-- Rebuilds flameImage only when the animator's current frame has actually
+-- changed since the last draw.
+local function ensureFlameImageCurrent()
+  if not flameTiles or not flameAnimator then return end
+  local frame = flameAnimator:currentFrame()
+  if frame.imageValue == flameBuiltFrameIndex then return end
+  -- imageValue is a tile offset (1D OBJ mapping, see ObjectSprite.lua);
+  -- divide by tiles-per-frame to get the frame index decodeFrameTiles wants.
+  local frameIndex = frame.imageValue / (FLAME_TILE_WIDTH * FLAME_TILE_HEIGHT)
+  local tiles = ObjectSprite.decodeFrameTiles(flameTiles, 0, FLAME_TILE_WIDTH, FLAME_TILE_HEIGHT, frameIndex)
+  local composited = ObjectSprite.buildImage(tiles, flamePalette, FLAME_TILE_WIDTH, FLAME_TILE_HEIGHT)
+  flameImage = buildImage(composited)
+  flameImage:setFilter("nearest", "nearest")
+  flameBuiltFrameIndex = frame.imageValue
 end
 
 -- ---------------------------------------------------------------- viewer
@@ -344,10 +389,23 @@ function love.load()
     fontActive = true
   end
 
+  -- POKEPORT_FLAME=1 boots straight into the animated flame sprite view.
+  -- POKEPORT_FLAME_TICKS=N ticks the animator forward N times before the
+  -- screenshot is taken -- used to capture two different animation frames
+  -- deterministically (e.g. tick 0 vs tick 10) rather than relying on
+  -- real elapsed time, which automated screenshot capture can't control.
+  if os.getenv("POKEPORT_FLAME") == "1" then
+    flameActive = true
+    local ticks = tonumber(os.getenv("POKEPORT_FLAME_TICKS") or "0")
+    if flameAnimator then
+      for i = 1, ticks do flameAnimator:tick() end
+    end
+  end
+
   -- love.filesystem is sandboxed to the save directory (see conf.lua's
   -- identity="firered-recomp"), so this always writes there under a fixed
   -- name rather than to an arbitrary POKEPORT_SCREENSHOT path.
-  if os.getenv("POKEPORT_SCREENSHOT") == "1" and (mapImage or viewerActive or titleActive or spriteActive or fontActive) then
+  if os.getenv("POKEPORT_SCREENSHOT") == "1" and (mapImage or viewerActive or titleActive or spriteActive or fontActive or flameActive) then
     -- The font sample normally reveals one character at a time (real text
     -- speed, driven by TaskScheduler in love.update) and can pause or wait
     -- on a keypress mid-message; automated screenshots want the
@@ -386,6 +444,7 @@ end
 
 function love.draw()
   if fontActive then ensureFontImageCurrent() end
+  if flameActive then ensureFlameImageCurrent() end
   if spriteActive then
     love.graphics.clear(0.4, 0.7, 0.3) -- solid backdrop so sprite transparency is visible
   else
@@ -416,6 +475,12 @@ function love.draw()
       -- frame's transparent interior, one border tile in from the top-left.
       love.graphics.draw(fontImage, 20 + viewport.x + TextWindow.TILE_SIZE * viewport.scale, y + 10 + viewport.y + TextWindow.TILE_SIZE * viewport.scale, 0, viewport.scale, viewport.scale)
     end
+  elseif flameActive and flameImage then
+    local windowWidth, windowHeight = love.graphics.getDimensions()
+    -- The real flame is 16x16px, tiny -- fit generously so the frame
+    -- shape is actually visible rather than a few pixels in a corner.
+    local viewport = ViewportScale.fit(flameImage:getWidth(), flameImage:getHeight(), math.min(windowWidth - 40, 320), math.min(windowHeight - (y + 10), 320))
+    love.graphics.draw(flameImage, 20 + viewport.x, y + 10 + viewport.y, 0, viewport.scale, viewport.scale)
   elseif titleActive and titleImage then
     local windowWidth, windowHeight = love.graphics.getDimensions()
     local viewport = ViewportScale.fit(titleImage:getWidth(), titleImage:getHeight(), windowWidth - 40, windowHeight - (y + 10))
@@ -435,21 +500,31 @@ function love.keypressed(key)
     titleActive = false
     spriteActive = false
     fontActive = false
+    flameActive = false
   elseif key == "t" then
     titleActive = not titleActive
     viewerActive = false
     spriteActive = false
     fontActive = false
+    flameActive = false
   elseif key == "p" then
     spriteActive = not spriteActive
     viewerActive = false
     titleActive = false
     fontActive = false
+    flameActive = false
   elseif key == "f" then
     fontActive = not fontActive
     viewerActive = false
     titleActive = false
     spriteActive = false
+    flameActive = false
+  elseif key == "a" then
+    flameActive = not flameActive
+    viewerActive = false
+    titleActive = false
+    spriteActive = false
+    fontActive = false
   elseif viewerActive then
     -- Up/Down are handled in love.update via InputState (real input-repeat
     -- timing), not here -- a plain keypressed step-once would double-step
