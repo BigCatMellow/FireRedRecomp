@@ -13,12 +13,22 @@
 -- palette table at that same absolute index (each tileset carries a full
 -- 16-slot palette array, but only its own half is meaningfully populated).
 --
--- Layer selection simplification: a metatile's correct visible layer
--- (bottom+middle, middle+top, or bottom+top -- METATILE_LAYER_TYPE_*) is
--- an attribute this module does NOT read yet (metatileAttributesPtr is
--- parsed by Tileset.lua but not consumed here). This draws both of a
--- metatile's 2x4-tile layers in order (bottom then top) unconditionally,
--- which is visually close for most metatiles but not behaviorally exact.
+-- Layer type (METATILE_ATTRIBUTE_LAYER_TYPE, bits 29-30 of a metatile's u32
+-- attribute word, NOT read by this module -- metatileAttributesPtr is
+-- parsed by Tileset.lua but unused here) does NOT decide which of a
+-- metatile's two 4-tile layers get drawn -- checked against the real
+-- DrawMetatile (pokefirered src/field_camera.c): for all three layer types
+-- (NORMAL/COVERED/SPLIT), both the bottom (entries 0-3) and top (entries
+-- 4-7) tile groups are always drawn to some background layer. What layer
+-- type actually controls is *z-order relative to object/player sprites* --
+-- whether the "top" tile group renders above or below them (SPLIT/NORMAL
+-- put it above via BG2; COVERED puts it below via BG1, so a player can walk
+-- "under" that tile group, e.g. under a tree's canopy). Since this
+-- compositor draws only the static background (no object/player sprites
+-- yet), drawing both layers unconditionally in bottom-then-top order is
+-- the behaviorally correct output today, not an approximation. Layer type
+-- will matter once sprite compositing exists and needs to interleave with
+-- one of these tile groups.
 
 local Metatile = require("import.Metatile")
 local GbaGraphics = require("import.GbaGraphics")

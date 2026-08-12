@@ -1,12 +1,14 @@
 -- Phase 1 shell: boots a window, verifies a ROM if POKEPORT_ROM points at
 -- one, and -- the first real visual proof this project produces anything
--- -- composites Pallet Town's actual map (block grid + metatiles + tile
+-- -- composites a real map's actual data (block grid + metatiles + tile
 -- graphics + palettes, straight out of that ROM) into an image and draws
--- it. Metatile layer-type attributes aren't read yet (see
--- MapCompositor.lua's doc comment), so some tiles may layer in a way that
--- doesn't exactly match the real game. No gameplay, no camera, no player:
--- this is "can we turn ROM bytes into a recognizable map," not a game yet.
--- See ../firered-recomp-roadmap.md Phase 2 for the real renderer.
+-- it. Defaults to Pallet Town; POKEPORT_MAP=group,num renders any other map
+-- (see MapCompositor.lua's doc comment on the metatile layer-type
+-- attribute this doesn't read yet -- it affects sprite z-order, not the
+-- static background, so it's not needed for what's drawn today). No
+-- gameplay, no camera, no player/object sprites: this is "can we turn ROM
+-- bytes into a recognizable map," not a game yet. See
+-- ../firered-recomp-roadmap.md Phase 2 for the real renderer.
 
 local Version = require("src.core.Version")
 local RomImporter = require("import.RomImporter")
