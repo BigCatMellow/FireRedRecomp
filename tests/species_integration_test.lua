@@ -27,6 +27,7 @@ local MapHeader = require("import.MapHeader")
 local MapLayout = require("import.MapLayout")
 local MapEvents = require("import.MapEvents")
 local MapConnections = require("import.MapConnections")
+local MapBorder = require("import.MapBorder")
 local Tileset = require("import.Tileset")
 local Lz77 = require("import.Lz77")
 local GbaGraphics = require("import.GbaGraphics")
@@ -164,6 +165,9 @@ check("palette 0 has 16 colors, not all identical (real image data)", (function(
   end
   return false
 end)())
+
+local palletBorder = MapBorder.resolve(data, palletLayout.borderPtr, palletLayout.borderWidth, palletLayout.borderHeight)
+check("Pallet Town border is {28,29,20,21}", palletBorder[0] == 28 and palletBorder[1] == 29 and palletBorder[2] == 20 and palletBorder[3] == 21)
 
 print(("%d passed, %d failed"):format(passed, failed))
 os.exit(failed == 0 and 0 or 1)

@@ -115,8 +115,9 @@ function MapCompositor.composite(data, primary, secondary, blockData, mapWidth, 
       local entries = metatileEntries(cell.metatileId)
 
       -- entries 0-3: bottom layer (2x2 subtiles), 4-7: top layer (2x2).
-      -- Draw bottom first, then top on top of it (see module doc's
-      -- layer-selection caveat).
+      -- Draw bottom first, then top on top of it -- correct for a
+      -- sprite-less static background regardless of layer type (see
+      -- module doc comment above).
       for layer = 0, 1 do
         for sub = 0, 3 do
           local entry = entries[layer * 4 + sub]
@@ -153,6 +154,38 @@ function MapCompositor.composite(data, primary, secondary, blockData, mapWidth, 
       return (row and row[x]) or { r = 0, g = 0, b = 0 }
     end,
   }
+end
+
+-- Like composite(), but pads the map with `marginMetatiles` metatiles of
+-- border tiling on every side, matching how the real game fills the area
+-- past a map's edge (pokefirered src/fieldmap.c GetBorderBlockAt: the
+-- border pattern tiles via `x mod borderWidth`, `y mod borderHeight`).
+-- border: from MapBorder.resolve(). borderWidth/borderHeight: from the same
+-- MapLayout the border came from.
+function MapCompositor.compositeWithBorder(data, primary, secondary, blockData, mapWidth, mapHeight, border, borderWidth, borderHeight, marginMetatiles)
+  local paddedWidth = mapWidth + marginMetatiles * 2
+  local paddedHeight = mapHeight + marginMetatiles * 2
+
+  local paddedBlocks = {}
+  for y = 0, paddedHeight - 1 do
+    for x = 0, paddedWidth - 1 do
+      local mapX = x - marginMetatiles
+      local mapY = y - marginMetatiles
+      local index = y * paddedWidth + x
+      if mapX >= 0 and mapX < mapWidth and mapY >= 0 and mapY < mapHeight then
+        paddedBlocks[index] = blockData[mapY * mapWidth + mapX]
+      else
+        -- Lua's % on negative numbers already returns a non-negative
+        -- result (matching C's GetBorderBlockAt after its own normalizing
+        -- `+= 8 * borderWidth` step), so this needs no special-casing for
+        -- x/y left or above the map.
+        local borderIndex = (mapX % borderWidth) + (mapY % borderHeight) * borderWidth
+        paddedBlocks[index] = { metatileId = border[borderIndex], collision = 0, elevation = 0 }
+      end
+    end
+  end
+
+  return MapCompositor.composite(data, primary, secondary, paddedBlocks, paddedWidth, paddedHeight)
 end
 
 return MapCompositor

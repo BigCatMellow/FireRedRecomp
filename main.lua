@@ -16,7 +16,10 @@ local RomAddresses = require("import.RomAddresses")
 local MapHeader = require("import.MapHeader")
 local MapLayout = require("import.MapLayout")
 local MapBlockData = require("import.MapBlockData")
+local MapBorder = require("import.MapBorder")
 local MapCompositor = require("import.MapCompositor")
+
+local BORDER_MARGIN_METATILES = 2
 
 local MAP_PALLET_TOWN = 3 * 256 + 0 -- group 3, num 0
 
@@ -87,11 +90,13 @@ local function loadMapFromRom(romPath)
   dbg("layout resolved " .. layout.width .. "x" .. layout.height)
   local blockData = MapBlockData.resolve(data, layout.mapPtr, layout.width, layout.height)
   dbg("blockData resolved")
+  local border = MapBorder.resolve(data, layout.borderPtr, layout.borderWidth, layout.borderHeight)
+  dbg("border resolved")
   local primary = MapCompositor.loadTilesetData(data, layout.primaryTilesetPtr)
   dbg("primary tileset loaded, tiles=" .. #primary.tiles)
   local secondary = MapCompositor.loadTilesetData(data, layout.secondaryTilesetPtr)
   dbg("secondary tileset loaded, tiles=" .. #secondary.tiles)
-  local composited = MapCompositor.composite(data, primary, secondary, blockData, layout.width, layout.height)
+  local composited = MapCompositor.compositeWithBorder(data, primary, secondary, blockData, layout.width, layout.height, border, layout.borderWidth, layout.borderHeight, BORDER_MARGIN_METATILES)
   dbg("composited " .. composited.width .. "x" .. composited.height)
 
   addLine(("Composited map %d,%d: %dx%d metatiles, %dx%d px"):format(math.floor(mapId / 256), mapId % 256, layout.width, layout.height, composited.width, composited.height))
