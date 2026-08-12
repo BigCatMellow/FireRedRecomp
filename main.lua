@@ -31,6 +31,7 @@ local Charmap = require("import.Charmap")
 local TextRenderer = require("import.TextRenderer")
 local GbaGraphics = require("import.GbaGraphics")
 local InputState = require("src.core.InputState")
+local TextPrinterState = require("src.core.TextPrinterState")
 
 local BORDER_MARGIN_METATILES = 2
 
@@ -57,10 +58,8 @@ local spriteActive = false
 local fontImage
 local fontActive = false
 local fontData, fontAddrs, fontPalette
-local fontTokens
-local fontTotalCharCount = 0
-local fontRevealedCount = 0
-local fontBuiltRevealedCount = -1 -- forces a rebuild the first time fontImage is needed
+local fontPrinterState -- TextPrinterState.lua: tracks per-character reveal, pauses, wait-for-press
+local fontBuiltRevealTokenIndex = -1 -- forces a rebuild the first time fontImage is needed
 local fontWindowImage -- the static border frame (TextWindow.lua), built once
 
 -- Real task scheduler (src/core/TaskScheduler.lua), ticked at a fixed 1/60s
@@ -77,40 +76,15 @@ local scheduler = TaskScheduler.new()
 -- Phase 2 "input repeat" checklist item.
 local inputState = InputState.new()
 
--- CHARS_PER_TICK: reveals 1 character every N scheduler ticks (60 ticks =
--- 1 real second), i.e. a fixed text speed. The real game has 3 selectable
--- text speeds (SLOW/MID/FAST, options_menu.c) driving the same kind of
--- per-character delay; this project doesn't have a settings UI yet
+-- FONT_REVEAL_TICKS_PER_CHAR: reveals 1 character every N scheduler ticks
+-- (60 ticks = 1 real second), i.e. a fixed text speed. The real game has 3
+-- selectable text speeds (SLOW/MID/FAST, options_menu.c) driving the same
+-- kind of per-character delay; this project doesn't have a settings UI yet
 -- (checklist: "display settings" still open), so FAST's rough feel (a
 -- handful of characters per second) is hardcoded here.
 local FONT_REVEAL_TICKS_PER_CHAR = 4
 local function fontRevealTask(taskId)
-  local data = scheduler:data(taskId)
-  data.tickCount = (data.tickCount or 0) + 1
-  if data.tickCount >= FONT_REVEAL_TICKS_PER_CHAR then
-    data.tickCount = 0
-    if fontRevealedCount < fontTotalCharCount then
-      fontRevealedCount = fontRevealedCount + 1
-    end
-  end
-end
-
--- Slices a Charmap.tokenize() list down to "the first N revealed
--- characters, plus every non-char token (color switches, etc.) up to that
--- point" -- so a color switch that happened before the Nth character is
--- still in effect for the partial reveal, matching how the real printer
--- processes control codes immediately but glyphs one at a time.
-local function sliceTokensByRevealedChars(tokens, revealedCharCount)
-  local sliced = {}
-  local charCount = 0
-  for _, token in ipairs(tokens) do
-    if token.type == "char" then
-      if charCount >= revealedCharCount then break end
-      charCount = charCount + 1
-    end
-    sliced[#sliced + 1] = token
-  end
-  return sliced
+  fontPrinterState:tick(inputState:isNewlyPressed(InputState.A_BUTTON))
 end
 
 -- Set once the ROM verifies, so the data viewer (toggled at any time with
@@ -232,25 +206,26 @@ local function loadMapFromRom(romPath)
 
   fontData, fontAddrs = data, addrs
   -- "POKEMON " in the default color, then a real EXT_CTRL_CODE_COLOR
-  -- switch (FC 01 04, TEXT_COLOR_RED) partway through, then "FIRERED" --
-  -- demonstrates TextRenderer actually acting on control codes rather
-  -- than just displaying them as bracketed text (Charmap.decode's job).
-  local message = charmapBytesForUppercaseAndSpaces("POKEMON ") .. string.char(0xFC, 0x01, 0x04) .. charmapBytesForUppercaseAndSpaces("FIRERED") .. string.char(Charmap.TERMINATOR)
-  fontTokens = Charmap.tokenize(message)
-  fontTotalCharCount = 0
-  for _, t in ipairs(fontTokens) do
-    if t.type == "char" then fontTotalCharCount = fontTotalCharCount + 1 end
-  end
+  -- switch (FC 01 04, TEXT_COLOR_RED) for "FIRERED", then a real
+  -- EXT_CTRL_CODE_PAUSE (FC 08 <30 ticks>) before switching back to white
+  -- (FC 01 01) for " VERSION" -- demonstrates TextRenderer/TextPrinterState
+  -- actually acting on control codes rather than just displaying them as
+  -- bracketed text (Charmap.decode's job).
+  local message = charmapBytesForUppercaseAndSpaces("POKEMON ")
+    .. string.char(0xFC, 0x01, 0x04) .. charmapBytesForUppercaseAndSpaces("FIRERED")
+    .. string.char(0xFC, 0x08, 30) .. string.char(0xFC, 0x01, 0x01) .. charmapBytesForUppercaseAndSpaces(" VERSION")
+    .. string.char(Charmap.TERMINATOR)
+  local tokens = Charmap.tokenize(message)
+  fontPrinterState = TextPrinterState.new(tokens, FONT_REVEAL_TICKS_PER_CHAR)
   fontPalette = GbaGraphics.decodePalette(data, addrs.gTextWindowPalettes) -- gTextWindowPalettes[0], the overworld dialogue box's bank
-  fontRevealedCount = 0
-  fontBuiltRevealedCount = -1
+  fontBuiltRevealTokenIndex = -1
   scheduler:createTask(fontRevealTask, 0)
   dbg("font reveal task created")
 
   local windowOk, windowComposited = pcall(function()
     local tiles = TextWindow.decodeFrameTiles(data, addrs.gStdTextWindow_Gfx)
     local palette = TextWindow.decodePalette(data, addrs.gTextWindowPalettes, TextWindow.STD_PALETTE_INDEX)
-    return TextWindow.compositeFrame(tiles, palette, 14, 2) -- 14x2 tiles fits "POKEMON FIRERED" (~13 tiles wide, 2 tall)
+    return TextWindow.compositeFrame(tiles, palette, 24, 2) -- 24x2 tiles fits "POKEMON FIRERED VERSION" (~22 tiles wide, 2 tall)
   end)
   if windowOk then
     fontWindowImage = buildImage(windowComposited)
@@ -265,18 +240,18 @@ end
 -- changed since the last draw (rebuilding a love.Image every frame for a
 -- static count would be wasted work).
 local function ensureFontImageCurrent()
-  if not fontData or fontRevealedCount == fontBuiltRevealedCount then return end
-  if fontRevealedCount == 0 then
+  if not fontData or not fontPrinterState or fontPrinterState.tokenIndex == fontBuiltRevealTokenIndex then return end
+  if fontPrinterState.tokenIndex == 0 then
     fontImage = nil
   else
-    local sliced = sliceTokensByRevealedChars(fontTokens, fontRevealedCount)
+    local sliced = fontPrinterState:revealedTokens()
     local ok, composited = pcall(TextRenderer.renderTokens, fontData, fontAddrs, sliced, fontPalette)
     if ok then
       fontImage = buildImage(composited)
       fontImage:setFilter("nearest", "nearest")
     end
   end
-  fontBuiltRevealedCount = fontRevealedCount
+  fontBuiltRevealTokenIndex = fontPrinterState.tokenIndex
 end
 
 -- ---------------------------------------------------------------- viewer
@@ -374,10 +349,11 @@ function love.load()
   -- name rather than to an arbitrary POKEPORT_SCREENSHOT path.
   if os.getenv("POKEPORT_SCREENSHOT") == "1" and (mapImage or viewerActive or titleActive or spriteActive or fontActive) then
     -- The font sample normally reveals one character at a time (real text
-    -- speed, driven by TaskScheduler in love.update); automated screenshots
-    -- want the deterministic finished state instead of whatever partial
-    -- reveal happened to be on-screen at capture time.
-    fontRevealedCount = fontTotalCharCount
+    -- speed, driven by TaskScheduler in love.update) and can pause or wait
+    -- on a keypress mid-message; automated screenshots want the
+    -- deterministic finished state instead of whatever partial reveal/
+    -- pause was in progress at capture time.
+    if fontPrinterState then fontPrinterState:revealAll() end
     love.graphics.captureScreenshot(function(imageData)
       imageData:encode("png", "screenshot.png")
       love.event.quit()
