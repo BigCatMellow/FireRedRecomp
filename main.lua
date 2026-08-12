@@ -35,6 +35,7 @@ local TextPrinterState = require("src.core.TextPrinterState")
 local Lz77 = require("import.Lz77")
 local SpriteAnim = require("import.SpriteAnim")
 local SpriteAnimator = require("src.core.SpriteAnimator")
+local TitleScreenFlameSpawner = require("src.core.TitleScreenFlameSpawner")
 
 local BORDER_MARGIN_METATILES = 2
 
@@ -71,6 +72,14 @@ local flameTiles, flamePalette -- decompressed flame sheet + decoded palette, de
 local flameAnimator -- SpriteAnimator.lua, real title screen flame animation
 local flameBuiltFrameIndex = -1 -- forces a rebuild the first time flameImage is needed
 
+-- Real title screen flame particle burst (TitleScreenFlameSpawner.lua),
+-- composited over the title screen (T view) rather than the standalone
+-- single-flame demo (A view) above. flameFrameImageCache maps a
+-- particle's current imageValue -> already-built love.Image, since many
+-- particles share the same animation frame at once.
+local flameSpawner
+local flameFrameImageCache = {}
+
 -- Real task scheduler (src/core/TaskScheduler.lua), ticked at a fixed 1/60s
 -- step in love.update -- matches the real game's VBlank-synced RunTasks().
 -- Drives per-character text reveal on the font sample view (the "text
@@ -98,6 +107,10 @@ end
 
 local function flameAnimTask(taskId)
   flameAnimator:tick()
+end
+
+local function flameSpawnerTask(taskId)
+  flameSpawner:tick()
 end
 
 -- Set once the ROM verifies, so the data viewer (toggled at any time with
@@ -248,16 +261,22 @@ local function loadMapFromRom(romPath)
     dbg("text window frame failed: " .. tostring(windowComposited))
   end
 
+  local flameCmds
   local flameOk, flameErr = pcall(function()
     flameTiles = Lz77.decompress(data, addrs.sFlames_Gfx + 1)
     flamePalette = GbaGraphics.decodePalette(data, addrs.sFlames_Pal)
-    local cmds = SpriteAnim.decodeCmds(data, addrs.sSpriteAnim_Flame)
-    flameAnimator = SpriteAnimator.new(cmds)
+    flameCmds = SpriteAnim.decodeCmds(data, addrs.sSpriteAnim_Flame)
+    flameAnimator = SpriteAnimator.new(flameCmds)
   end)
   if flameOk then
     flameBuiltFrameIndex = -1
     scheduler:createTask(flameAnimTask, 0)
     dbg("flame animation decoded and task created")
+
+    flameSpawner = TitleScreenFlameSpawner.new(flameCmds)
+    flameFrameImageCache = {}
+    scheduler:createTask(flameSpawnerTask, 0)
+    dbg("flame particle spawner task created")
   else
     dbg("flame animation failed: " .. tostring(flameErr))
   end
@@ -297,6 +316,21 @@ local function ensureFlameImageCurrent()
   flameImage = buildImage(composited)
   flameImage:setFilter("nearest", "nearest")
   flameBuiltFrameIndex = frame.imageValue
+end
+
+-- Returns a cached love.Image for a given flame frame imageValue, building
+-- it on first use. Multiple particles sharing the same current frame reuse
+-- the same Image rather than each rebuilding it every draw call.
+local function flameFrameImage(imageValue)
+  local cached = flameFrameImageCache[imageValue]
+  if cached then return cached end
+  local frameIndex = imageValue / (FLAME_TILE_WIDTH * FLAME_TILE_HEIGHT)
+  local tiles = ObjectSprite.decodeFrameTiles(flameTiles, 0, FLAME_TILE_WIDTH, FLAME_TILE_HEIGHT, frameIndex)
+  local composited = ObjectSprite.buildImage(tiles, flamePalette, FLAME_TILE_WIDTH, FLAME_TILE_HEIGHT)
+  local img = buildImage(composited)
+  img:setFilter("nearest", "nearest")
+  flameFrameImageCache[imageValue] = img
+  return img
 end
 
 -- ---------------------------------------------------------------- viewer
@@ -375,8 +409,15 @@ function love.load()
   end
 
   -- POKEPORT_TITLE=1 boots straight into the title screen logo view.
+  -- POKEPORT_TITLE_FLAME_TICKS=N ticks the flame particle spawner
+  -- forward N times first (same rationale as POKEPORT_FLAME_TICKS below
+  -- -- automated screenshots can't wait on real elapsed time).
   if os.getenv("POKEPORT_TITLE") == "1" then
     titleActive = true
+    local ticks = tonumber(os.getenv("POKEPORT_TITLE_FLAME_TICKS") or "0")
+    if flameSpawner then
+      for i = 1, ticks do flameSpawner:tick() end
+    end
   end
 
   -- POKEPORT_SPRITE=1 boots straight into the player-sprite view.
@@ -484,7 +525,17 @@ function love.draw()
   elseif titleActive and titleImage then
     local windowWidth, windowHeight = love.graphics.getDimensions()
     local viewport = ViewportScale.fit(titleImage:getWidth(), titleImage:getHeight(), windowWidth - 40, windowHeight - (y + 10))
-    love.graphics.draw(titleImage, 20 + viewport.x, y + 10 + viewport.y, 0, viewport.scale, viewport.scale)
+    local baseX, baseY = 20 + viewport.x, y + 10 + viewport.y
+    love.graphics.draw(titleImage, baseX, baseY, 0, viewport.scale, viewport.scale)
+    if flameSpawner then
+      -- Real title screen flame particle burst (TitleScreenFlameSpawner.lua),
+      -- overlaid on the static title composite -- particle x/y are already
+      -- in the same 240x160 real-screen pixel space titleImage uses.
+      for _, particle in ipairs(flameSpawner.particles) do
+        local img = flameFrameImage(particle.animator:currentFrame().imageValue)
+        love.graphics.draw(img, baseX + particle.x * viewport.scale, baseY + particle.y * viewport.scale, 0, viewport.scale, viewport.scale)
+      end
+    end
   elseif mapImage then
     local windowWidth, windowHeight = love.graphics.getDimensions()
     local viewport = ViewportScale.fit(mapImage:getWidth(), mapImage:getHeight(), windowWidth - 40, windowHeight - (y + 10))
