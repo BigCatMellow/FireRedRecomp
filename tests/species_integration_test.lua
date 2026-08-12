@@ -26,6 +26,7 @@ local TrainerParty = require("import.TrainerParty")
 local MapHeader = require("import.MapHeader")
 local MapLayout = require("import.MapLayout")
 local MapEvents = require("import.MapEvents")
+local MapConnections = require("import.MapConnections")
 
 local passed, failed = 0, 0
 local function check(name, cond, detail)
@@ -138,6 +139,11 @@ check("Pallet Town has 3 object events, 3 warps, 3 coord events, 5 bg events",
 check("Pallet Town's Sign Lady object event", palletEvents.objectEvents[0].x == 3 and palletEvents.objectEvents[0].y == 10 and palletEvents.objectEvents[0].movementRangeY == 4)
 check("Pallet Town's warp 0 leads to the player's house (group 4)", palletEvents.warps[0].mapGroup == 4 and palletEvents.warps[0].mapNum == 0 and palletEvents.warps[0].warpId == 1)
 check("Pallet Town's Oak trigger coord event", palletEvents.coordEvents[0].trigger == 0x4050)
+
+local palletConns = MapConnections.resolve(data, palletTown.connectionsPtr)
+check("Pallet Town has 2 connections", palletConns[0] ~= nil and palletConns[1] ~= nil and palletConns[2] == nil)
+check("north connection leads to Route 1 (group 3 num 19)", palletConns[0].direction == MapConnections.CONNECTION_NORTH and palletConns[0].mapGroup == 3 and palletConns[0].mapNum == 19)
+check("south connection leads to Route 21 North (group 3 num 39)", palletConns[1].direction == MapConnections.CONNECTION_SOUTH and palletConns[1].mapGroup == 3 and palletConns[1].mapNum == 39)
 
 print(("%d passed, %d failed"):format(passed, failed))
 os.exit(failed == 0 and 0 or 1)
