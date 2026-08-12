@@ -24,6 +24,7 @@ local DataViewer = require("src.core.DataViewer")
 local TitleScreen = require("import.TitleScreen")
 local ViewportScale = require("src.core.ViewportScale")
 local ObjectSprite = require("import.ObjectSprite")
+local Font = require("import.Font")
 
 local BORDER_MARGIN_METATILES = 2
 
@@ -47,6 +48,8 @@ local titleImage
 local titleActive = false
 local spriteImage
 local spriteActive = false
+local fontImage
+local fontActive = false
 
 -- Set once the ROM verifies, so the data viewer (toggled at any time with
 -- V) can browse records without re-reading the file.
@@ -57,6 +60,23 @@ local romData, romAddrs
 local viewerActive = false
 local viewerCategoryIndex = 1 -- index into DataViewer.CATEGORIES
 local viewerRecordIndex = { species = 1, moves = 1, trainers = 0, maps = 3 * 256 + 0 }
+
+-- Charmap.lua only decodes ROM bytes -> characters, not the reverse; A-Z
+-- are contiguous (0xBB-0xD4, confirmed in Charmap.lua) so this small
+-- inline table is enough for the sample string below without needing a
+-- general encoder.
+local function glyphIdsForUppercaseAndSpaces(text)
+  local ids = {}
+  for i = 1, #text do
+    local c = text:sub(i, i)
+    if c == " " then
+      ids[#ids + 1] = 0x00
+    else
+      ids[#ids + 1] = 0xBB + (string.byte(c) - string.byte("A"))
+    end
+  end
+  return ids
+end
 
 local function addLine(text)
   table.insert(statusLines, text)
@@ -128,7 +148,7 @@ local function loadMapFromRom(romPath)
   mapImage:setFilter("nearest", "nearest")
   dbg("filter set")
 
-  addLine("Press V for the data viewer, T for the title screen, P for a sprite.")
+  addLine("Press V for the data viewer, T for the title screen, P for a sprite, F for font rendering.")
 
   local titleOk, titleComposited = pcall(TitleScreen.compositeFull, data, addrs)
   if titleOk then
@@ -146,6 +166,15 @@ local function loadMapFromRom(romPath)
     dbg("player sprite built")
   else
     dbg("player sprite failed: " .. tostring(spriteComposited))
+  end
+
+  local fontOk, fontComposited = pcall(Font.renderString, data, addrs.sFontHalfRowOffsets, addrs.sFontNormalLatinGlyphs, addrs.sFontNormalLatinGlyphWidths, glyphIdsForUppercaseAndSpaces("POKEMON FIRERED"), { r = 255, g = 255, b = 255 }, { r = 80, g = 80, b = 80 })
+  if fontOk then
+    fontImage = buildImage(fontComposited)
+    fontImage:setFilter("nearest", "nearest")
+    dbg("font sample built")
+  else
+    dbg("font sample failed: " .. tostring(fontComposited))
   end
 end
 
@@ -234,10 +263,15 @@ function love.load()
     spriteActive = true
   end
 
+  -- POKEPORT_FONT=1 boots straight into the font-rendering sample view.
+  if os.getenv("POKEPORT_FONT") == "1" then
+    fontActive = true
+  end
+
   -- love.filesystem is sandboxed to the save directory (see conf.lua's
   -- identity="firered-recomp"), so this always writes there under a fixed
   -- name rather than to an arbitrary POKEPORT_SCREENSHOT path.
-  if os.getenv("POKEPORT_SCREENSHOT") == "1" and (mapImage or viewerActive or titleActive or spriteActive) then
+  if os.getenv("POKEPORT_SCREENSHOT") == "1" and (mapImage or viewerActive or titleActive or spriteActive or fontActive) then
     love.graphics.captureScreenshot(function(imageData)
       imageData:encode("png", "screenshot.png")
       love.event.quit()
@@ -267,6 +301,10 @@ function love.draw()
     local windowWidth, windowHeight = love.graphics.getDimensions()
     local viewport = ViewportScale.fit(spriteImage:getWidth(), spriteImage:getHeight(), windowWidth - 40, windowHeight - (y + 10))
     love.graphics.draw(spriteImage, 20 + viewport.x, y + 10 + viewport.y, 0, viewport.scale, viewport.scale)
+  elseif fontActive and fontImage then
+    local windowWidth, windowHeight = love.graphics.getDimensions()
+    local viewport = ViewportScale.fit(fontImage:getWidth(), fontImage:getHeight(), windowWidth - 40, windowHeight - (y + 10))
+    love.graphics.draw(fontImage, 20 + viewport.x, y + 10 + viewport.y, 0, viewport.scale, viewport.scale)
   elseif titleActive and titleImage then
     local windowWidth, windowHeight = love.graphics.getDimensions()
     local viewport = ViewportScale.fit(titleImage:getWidth(), titleImage:getHeight(), windowWidth - 40, windowHeight - (y + 10))
@@ -285,14 +323,22 @@ function love.keypressed(key)
     viewerActive = not viewerActive
     titleActive = false
     spriteActive = false
+    fontActive = false
   elseif key == "t" then
     titleActive = not titleActive
     viewerActive = false
     spriteActive = false
+    fontActive = false
   elseif key == "p" then
     spriteActive = not spriteActive
     viewerActive = false
     titleActive = false
+    fontActive = false
+  elseif key == "f" then
+    fontActive = not fontActive
+    viewerActive = false
+    titleActive = false
+    spriteActive = false
   elseif viewerActive then
     if key == "tab" then
       viewerCategoryIndex = (viewerCategoryIndex % #DataViewer.CATEGORIES) + 1

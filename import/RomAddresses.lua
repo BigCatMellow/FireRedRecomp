@@ -115,6 +115,12 @@ RomAddresses["41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc"] = { -- FireRed (US) v1.
   -- eye: frame 0 is unmistakably the real player character sprite.
   gObjectEventPic_RedNormal = 0x0835bb68 - 0x08000000,
   gObjectEventPal_Player = 0x0835b968 - 0x08000000,
+  -- Real dialogue-box font (FONT_NORMAL). Static/local symbols found via
+  -- nm. Verified against real 'A'/'B' glyphs (correct letterforms with
+  -- drop shadow) and the real width table ('A' is 6px wide).
+  sFontHalfRowOffsets = 0x081ea044 - 0x08000000,
+  sFontNormalLatinGlyphs = 0x081ff300 - 0x08000000,
+  sFontNormalLatinGlyphWidths = 0x08207300 - 0x08000000,
 }
 
 -- Total record counts, confirmed via `arm-none-eabi-nm -S` on the real
