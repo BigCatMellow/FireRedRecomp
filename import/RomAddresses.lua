@@ -47,6 +47,12 @@ RomAddresses["41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc"] = { -- FireRed (US) v1.
   -- `arm-none-eabi-nm pokefirered.elf`), pokefirered src/pokemon.c
   -- Verified against real HARDY/LONELY/BRAVE/ADAMANT/MODEST/QUIRKY rows.
   sNatureStatTable = 0x08252b48 - 0x08000000,
+  -- gAbilityDescriptionPointers: const u8*[ABILITIES_COUNT], pokefirered src/data/text/abilities.h
+  -- Verified against real ABILITY_NONE/ABILITY_STENCH description text.
+  gAbilityDescriptionPointers = 0x0824fb08 - 0x08000000,
+  -- gNatureNamePointers: const u8*[NUM_NATURES], pokefirered include/pokemon_summary_screen.h
+  -- Verified against real HARDY/LONELY/BRAVE/ADAMANT name text.
+  gNatureNamePointers = 0x08463e60 - 0x08000000,
 }
 
 return RomAddresses

@@ -30,6 +30,7 @@ local MapConnections = require("import.MapConnections")
 local MapBorder = require("import.MapBorder")
 local WildEncounters = require("import.WildEncounters")
 local Nature = require("import.Nature")
+local PointerStringTable = require("import.PointerStringTable")
 local Tileset = require("import.Tileset")
 local Lz77 = require("import.Lz77")
 local GbaGraphics = require("import.GbaGraphics")
@@ -200,6 +201,10 @@ local cloneEvent = celadonEvents.objectEvents[12]
 check("Celadon City's clone object event decodes correctly", cloneEvent ~= nil and cloneEvent.kind == 255)
 check("clone x/y decode as signed (-7, 21)", cloneEvent.x == -7 and cloneEvent.y == 21, cloneEvent and cloneEvent.x)
 check("clone target is MAP_ROUTE16 (group 3, num 34)", cloneEvent.targetMapGroup == 3 and cloneEvent.targetMapNum == 34)
+
+check("ABILITY_STENCH description decodes exactly, including accented e", PointerStringTable.resolveAt(data, addrs.gAbilityDescriptionPointers, 1, 60) == "Helps repel wild POKéMON.")
+check("ABILITY_NONE description", PointerStringTable.resolveAt(data, addrs.gAbilityDescriptionPointers, 0, 60) == "No special ability.")
+check("nature names decode correctly", PointerStringTable.resolveAt(data, addrs.gNatureNamePointers, 0, 20) == "HARDY" and PointerStringTable.resolveAt(data, addrs.gNatureNamePointers, 3, 20) == "ADAMANT")
 
 print(("%d passed, %d failed"):format(passed, failed))
 os.exit(failed == 0 and 0 or 1)
