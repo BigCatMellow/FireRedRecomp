@@ -107,6 +107,12 @@ check("decodes a real message with a newline control code", oakMsg == "OAK: Hey!
 local houseMsg = Charmap.decode(data:sub(0x0817d87f - 0x08000000 + 1, 0x0817d87f - 0x08000000 + 20))
 check("decodes {PLAYER} placeholder in real message text", houseMsg == "{PLAYER}\226\128\153s house", houseMsg)
 
+-- PalletTown_RivalsHouse_Text_ThereYouGoAllDone: starts with FC 06 02
+-- (FONT_NORMAL), and must decode correctly past it, not misalign.
+local fontMsg = Charmap.decode(data:sub(0x0818d8fe - 0x08000000 + 1, 0x0818d8fe - 0x08000000 + 40))
+check("FC control code (FONT) consumes exactly its param byte, text after decodes cleanly", fontMsg:sub(1, 9) == "{FC:06:02", fontMsg)
+check("text right after the FC code decodes correctly (no misalignment)", fontMsg:find("STR_VAR_1} looks dreamily content", 1, true) ~= nil, fontMsg)
+
 -- TRAINER_YOUNGSTER_BEN = 89
 local trainers = Trainer.parseTable(data, addrs.gTrainers, 90)
 local ben = trainers[89]

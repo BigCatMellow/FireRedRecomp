@@ -287,6 +287,48 @@ local VAR_PLACEHOLDER_NAMES = {
   [0x06] = "RIVAL",
 }
 
+-- 0xFC-prefixed extended control codes (charmap.txt EXT_CTRL_CODE_* /
+-- pokefirered src/text.c's TextPrinter switch on EXT_CTRL_CODE_BEGIN) each
+-- take a fixed number of parameter bytes *after* the subcode byte -- this
+-- table is transcribed directly from that switch statement (not guessed),
+-- and the FONT (0x06) row is verified against real ROM data: message
+-- PalletTown_RivalsHouse_Text_ThereYouGoAllDone starts with the exact
+-- bytes `FC 06 02`, matching FONT_NORMAL, and decoding continues correctly
+-- into the following text.
+--
+-- 0x0C (ESCAPE) is handled specially, not through this table: per
+-- text.c it reads one more byte and renders it as a literal glyph
+-- (bypassing normal control-code interpretation) rather than acting as a
+-- numeric parameter -- see charmap.txt's `TALL_PLUS = FC 0C FB`, a
+-- 3-byte sequence for one printable character.
+local FC_PARAM_LENGTHS = {
+  [0x01] = 1, -- COLOR
+  [0x02] = 1, -- HIGHLIGHT
+  [0x03] = 1, -- SHADOW
+  [0x04] = 3, -- COLOR_HIGHLIGHT_SHADOW
+  [0x05] = 1, -- PALETTE
+  [0x06] = 1, -- FONT
+  [0x07] = 0, -- RESET_FONT
+  [0x08] = 1, -- PAUSE
+  [0x09] = 0, -- PAUSE_UNTIL_PRESS
+  [0x0A] = 0, -- WAIT_SE
+  [0x0B] = 2, -- PLAY_BGM
+  -- 0x0C ESCAPE handled specially, see above
+  [0x0D] = 1, -- SHIFT_RIGHT
+  [0x0E] = 1, -- SHIFT_DOWN
+  [0x0F] = 0, -- FILL_WINDOW
+  [0x10] = 2, -- PLAY_SE
+  [0x11] = 1, -- CLEAR
+  [0x12] = 1, -- SKIP
+  [0x13] = 1, -- CLEAR_TO
+  [0x14] = 1, -- MIN_LETTER_SPACING
+  [0x15] = 0, -- JPN
+  [0x16] = 0, -- ENG
+  [0x17] = 0, -- PAUSE_MUSIC
+  [0x18] = 0, -- RESUME_MUSIC
+}
+local FC_ESCAPE = 0x0C
+
 local byte = string.byte
 
 -- Decodes charmap-encoded bytes into a UTF-8 Lua string. Stops at the
@@ -297,12 +339,11 @@ local byte = string.byte
 -- (string-variable placeholders, e.g. the player's name) become
 -- "{PLAYER}"-style tags for known subcodes, "{FD:XX}" otherwise.
 -- 0xFC+subcode (the extended control-code prefix -- colors, waits, fonts,
--- sound cues) becomes "{FC:XX}"; **only the 2-byte code itself is
--- consumed, not any trailing parameter bytes some FC subcodes take**
--- (e.g. COLOR takes 1 param byte, COLOR_HIGHLIGHT_SHADOW takes 3) -- text
--- after such a code will misdecode. Not yet fixed: doing it right needs a
--- per-subcode parameter-length table, deferred until real message text
--- using those specific codes needs decoding correctly.
+-- sound cues) becomes "{FC:XX}" (or "{FC:XX:aa,bb}" if it has parameter
+-- bytes, e.g. "{FC:01:02}" for a COLOR change to palette index 2),
+-- correctly consuming each subcode's real parameter-byte count so text
+-- after it decodes correctly. ESCAPE (0x0C) instead renders its one
+-- parameter byte as a literal glyph.
 -- Any other unmapped byte renders as a bracketed hex placeholder rather
 -- than silently dropping data.
 function Charmap.decode(data, stopAtTerminator)
@@ -324,8 +365,24 @@ function Charmap.decode(data, stopAtTerminator)
       i = i + 2
     elseif b == 0xFC then
       local sub = byte(data, i + 1)
-      out[#out + 1] = ("{FC:%02X}"):format(sub or 0)
-      i = i + 2
+      if sub == FC_ESCAPE then
+        local literal = byte(data, i + 2)
+        local ch = literal and BYTE_TO_CHAR[literal]
+        out[#out + 1] = ch or (literal and ("[%02X]"):format(literal) or "")
+        i = i + 3
+      else
+        local paramLen = FC_PARAM_LENGTHS[sub] or 0
+        if paramLen == 0 then
+          out[#out + 1] = ("{FC:%02X}"):format(sub or 0)
+        else
+          local params = {}
+          for p = 0, paramLen - 1 do
+            params[#params + 1] = ("%02X"):format(byte(data, i + 2 + p) or 0)
+          end
+          out[#out + 1] = ("{FC:%02X:%s}"):format(sub or 0, table.concat(params, ","))
+        end
+        i = i + 2 + paramLen
+      end
     else
       local ch = BYTE_TO_CHAR[b]
       out[#out + 1] = ch or ("[%02X]"):format(b)
