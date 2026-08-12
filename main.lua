@@ -44,6 +44,7 @@ local SlashSprite = require("src.core.SlashSprite")
 local SlashMask = require("import.SlashMask")
 local AffineAnim = require("import.AffineAnim")
 local AffineAnimator = require("src.core.AffineAnimator")
+local PlayerMovement = require("src.core.PlayerMovement")
 
 local BORDER_MARGIN_METATILES = 2
 
@@ -101,6 +102,26 @@ local oakSpeechImage
 local oakSpeechWindowImage
 local oakSpeechPrinterState
 local oakSpeechBuiltRevealTokenIndex = -1
+
+-- Phase 3: real grid-based player movement + collision (PlayerMovement.lua)
+-- over the already-composited map, camera-cropped to a real GBA-screen-
+-- sized (240x160px) viewport centered on the player.
+local walkActive = false
+local walkMapBlockData, walkMapWidth, walkMapHeight -- raw (unpadded) collision grid, set when the map loads
+local playerMovement
+local WALK_CAMERA_WIDTH, WALK_CAMERA_HEIGHT = 240, 160 -- real GBA screen resolution
+
+-- isBlocked callback for PlayerMovement:tryMove -- real terrain collision
+-- only (MapBlockData's already-decoded collision field, see
+-- PlayerMovement.lua's header comment for what's out of scope: object-
+-- event collision, elevation, one-way ledges). Off-map tiles (into the
+-- border padding) are also treated as blocked, since the border isn't a
+-- real walkable area.
+local function isWalkTileBlocked(x, y)
+  if not walkMapBlockData or x < 0 or x >= walkMapWidth or y < 0 or y >= walkMapHeight then return true end
+  local cell = walkMapBlockData[y * walkMapWidth + x]
+  return not cell or cell.collision ~= 0
+end
 
 local flameActive = false
 local flameImage
@@ -172,6 +193,10 @@ end
 
 local function itemBallAffineTask(taskId)
   itemBallAffineAnimator:tick()
+end
+
+local function playerMovementTask(taskId)
+  playerMovement:tick()
 end
 
 -- Set once the ROM verifies, so the data viewer (toggled at any time with
@@ -428,6 +453,26 @@ local function loadFlameAssets(data, addrs, dbg)
   end
 end
 
+-- Real player movement demo: not the canonical real starting position
+-- (that needs the new-game script/warp flow, not built yet -- see the
+-- checklist's Phase 3 "New-game naming, initial flags/vars") -- instead
+-- scans the loaded map's real collision grid for the first walkable
+-- tile, so this works on whichever map POKEPORT_MAP selected.
+local function loadWalkAssets(dbg)
+  if not walkMapBlockData then return end
+  for y = 0, walkMapHeight - 1 do
+    for x = 0, walkMapWidth - 1 do
+      if not isWalkTileBlocked(x, y) then
+        playerMovement = PlayerMovement.new(x, y, PlayerMovement.DOWN)
+        scheduler:createTask(playerMovementTask, 0)
+        dbg(("player movement started at first walkable tile %d,%d"):format(x, y))
+        return
+      end
+    end
+  end
+  dbg("player movement failed: no walkable tile found on this map")
+end
+
 local function loadMapFromRom(romPath)
   local ok, info = RomImporter.verify(romPath)
   if not ok then
@@ -464,6 +509,7 @@ local function loadMapFromRom(romPath)
   dbg("layout resolved " .. layout.width .. "x" .. layout.height)
   local blockData = MapBlockData.resolve(data, layout.mapPtr, layout.width, layout.height)
   dbg("blockData resolved")
+  walkMapBlockData, walkMapWidth, walkMapHeight = blockData, layout.width, layout.height
   local border = MapBorder.resolve(data, layout.borderPtr, layout.borderWidth, layout.borderHeight)
   dbg("border resolved")
   local primary = MapCompositor.loadTilesetData(data, layout.primaryTilesetPtr)
@@ -479,7 +525,7 @@ local function loadMapFromRom(romPath)
   mapImage:setFilter("nearest", "nearest")
   dbg("filter set")
 
-  addLine("Press V for the data viewer, T for the title screen, P for a sprite, I for an item ball, F for font rendering, O for the Oak intro text, A for the animated flame, Y for a Yes/No menu.")
+  addLine("Press V for the data viewer, T for the title screen, P for a sprite, I for an item ball, F for font rendering, O for the Oak intro text, A for the animated flame, Y for a Yes/No menu, W to walk (arrow keys).")
 
   loadTitleScreenAssets(data, addrs, dbg)
   loadSpriteAssets(data, addrs, dbg)
@@ -487,6 +533,7 @@ local function loadMapFromRom(romPath)
   loadOakSpeechAssets(data, addrs, dbg)
   loadYesNoAssets(data, addrs, dbg)
   loadFlameAssets(data, addrs, dbg)
+  loadWalkAssets(dbg)
 end
 
 -- Rebuilds fontImage only when the revealed character count has actually
@@ -745,6 +792,23 @@ function love.load()
     end
   end
 
+  -- POKEPORT_WALK=1 boots straight into the player movement/camera view.
+  -- POKEPORT_WALK_MOVES=<dir>,<dir>,... replays a sequence of moves
+  -- (down/up/left/right, each held for a full 16-frame step) before the
+  -- screenshot is taken -- deterministic movement for automated
+  -- screenshots, since real elapsed-time-based key holding can't be
+  -- scripted here.
+  if os.getenv("POKEPORT_WALK") == "1" then
+    walkActive = true
+    local moves = os.getenv("POKEPORT_WALK_MOVES")
+    if moves and playerMovement then
+      for dir in moves:gmatch("[^,]+") do
+        playerMovement:tryMove(dir, isWalkTileBlocked)
+        for i = 1, 16 do playerMovement:tick() end
+      end
+    end
+  end
+
   -- POKEPORT_FLAME=1 boots straight into the animated flame sprite view.
   -- POKEPORT_FLAME_TICKS=N ticks the animator forward N times before the
   -- screenshot is taken -- used to capture two different animation frames
@@ -771,7 +835,7 @@ function love.load()
   -- love.filesystem is sandboxed to the save directory (see conf.lua's
   -- identity="firered-recomp"), so this always writes there under a fixed
   -- name rather than to an arbitrary POKEPORT_SCREENSHOT path.
-  if os.getenv("POKEPORT_SCREENSHOT") == "1" and (mapImage or viewerActive or titleActive or spriteActive or itemBallActive or fontActive or oakSpeechActive or flameActive or yesNoActive) then
+  if os.getenv("POKEPORT_SCREENSHOT") == "1" and (mapImage or viewerActive or titleActive or spriteActive or itemBallActive or fontActive or oakSpeechActive or flameActive or yesNoActive or walkActive) then
     -- The font sample normally reveals one character at a time (real text
     -- speed, driven by TaskScheduler in love.update) and can pause or wait
     -- on a keypress mid-message; automated screenshots want the
@@ -800,12 +864,25 @@ function love.update(dt)
     inputState:update(InputState.buildMask({
       DPAD_UP = love.keyboard.isDown("up"),
       DPAD_DOWN = love.keyboard.isDown("down"),
+      DPAD_LEFT = love.keyboard.isDown("left"),
+      DPAD_RIGHT = love.keyboard.isDown("right"),
       A_BUTTON = love.keyboard.isDown("return"),
       B_BUTTON = love.keyboard.isDown("backspace"),
     }))
     if viewerActive then
       if inputState:isPressedOrRepeated(InputState.DPAD_DOWN) then viewerStep(1) end
       if inputState:isPressedOrRepeated(InputState.DPAD_UP) then viewerStep(-1) end
+    end
+    if walkActive and playerMovement then
+      -- Real continuous walking-while-held uses a plain held-key check
+      -- every frame (not the menu-style repeat-with-delay system --
+      -- that's specific to menu cursors, see InputState.lua/MenuCursor.lua),
+      -- so the next tile starts immediately once the current step finishes.
+      if inputState:isHeld(InputState.DPAD_DOWN) then playerMovement:tryMove(PlayerMovement.DOWN, isWalkTileBlocked)
+      elseif inputState:isHeld(InputState.DPAD_UP) then playerMovement:tryMove(PlayerMovement.UP, isWalkTileBlocked)
+      elseif inputState:isHeld(InputState.DPAD_LEFT) then playerMovement:tryMove(PlayerMovement.LEFT, isWalkTileBlocked)
+      elseif inputState:isHeld(InputState.DPAD_RIGHT) then playerMovement:tryMove(PlayerMovement.RIGHT, isWalkTileBlocked)
+      end
     end
     if yesNoActive and yesNoCursor and not yesNoResult then
       local outcome = yesNoCursor:processInput(inputState)
@@ -870,6 +947,25 @@ function love.draw()
     love.graphics.draw(oakSpeechWindowImage, 20 + viewport.x, y + 10 + viewport.y, 0, viewport.scale, viewport.scale)
     if oakSpeechImage then
       love.graphics.draw(oakSpeechImage, 20 + viewport.x + TextWindow.TILE_SIZE * viewport.scale, y + 10 + viewport.y + TextWindow.TILE_SIZE * viewport.scale, 0, viewport.scale, viewport.scale)
+    end
+  elseif walkActive and mapImage and playerMovement then
+    local windowWidth, windowHeight = love.graphics.getDimensions()
+    local viewport = ViewportScale.fit(WALK_CAMERA_WIDTH, WALK_CAMERA_HEIGHT, windowWidth - 40, windowHeight - (y + 10))
+    -- Camera: a real 240x160 GBA-screen-sized crop of the already-
+    -- composited map, centered on the player's real (sub-tile-
+    -- interpolated) pixel position, clamped so it never shows past the
+    -- composited image's edges.
+    local borderOffsetPx = BORDER_MARGIN_METATILES * 16
+    local playerCompositedX = playerMovement:pixelX() + borderOffsetPx
+    local playerCompositedY = playerMovement:pixelY() + borderOffsetPx
+    local mapPixelWidth, mapPixelHeight = mapImage:getDimensions()
+    local quadX = math.max(0, math.min(playerCompositedX + 8 - WALK_CAMERA_WIDTH / 2, mapPixelWidth - WALK_CAMERA_WIDTH))
+    local quadY = math.max(0, math.min(playerCompositedY + 8 - WALK_CAMERA_HEIGHT / 2, mapPixelHeight - WALK_CAMERA_HEIGHT))
+    local quad = love.graphics.newQuad(quadX, quadY, WALK_CAMERA_WIDTH, WALK_CAMERA_HEIGHT, mapPixelWidth, mapPixelHeight)
+    local baseX, baseY = 20 + viewport.x, y + 10 + viewport.y
+    love.graphics.draw(mapImage, quad, baseX, baseY, 0, viewport.scale, viewport.scale)
+    if spriteImage then
+      love.graphics.draw(spriteImage, baseX + (playerCompositedX - quadX) * viewport.scale, baseY + (playerCompositedY - quadY - 16) * viewport.scale, 0, viewport.scale, viewport.scale)
     end
   elseif yesNoActive and yesNoWindowImage then
     local windowWidth, windowHeight = love.graphics.getDimensions()
@@ -941,6 +1037,7 @@ function love.keypressed(key)
     yesNoActive = false
     itemBallActive = false
     oakSpeechActive = false
+    walkActive = false
   elseif key == "t" then
     titleActive = not titleActive
     viewerActive = false
@@ -950,6 +1047,7 @@ function love.keypressed(key)
     yesNoActive = false
     itemBallActive = false
     oakSpeechActive = false
+    walkActive = false
   elseif key == "p" then
     spriteActive = not spriteActive
     viewerActive = false
@@ -959,6 +1057,7 @@ function love.keypressed(key)
     yesNoActive = false
     itemBallActive = false
     oakSpeechActive = false
+    walkActive = false
   elseif key == "i" then
     itemBallActive = not itemBallActive
     viewerActive = false
@@ -968,6 +1067,7 @@ function love.keypressed(key)
     flameActive = false
     yesNoActive = false
     oakSpeechActive = false
+    walkActive = false
   elseif key == "f" then
     fontActive = not fontActive
     viewerActive = false
@@ -977,6 +1077,7 @@ function love.keypressed(key)
     yesNoActive = false
     itemBallActive = false
     oakSpeechActive = false
+    walkActive = false
   elseif key == "o" then
     oakSpeechActive = not oakSpeechActive
     viewerActive = false
@@ -986,6 +1087,7 @@ function love.keypressed(key)
     flameActive = false
     yesNoActive = false
     itemBallActive = false
+    walkActive = false
   elseif key == "a" then
     flameActive = not flameActive
     viewerActive = false
@@ -995,6 +1097,7 @@ function love.keypressed(key)
     yesNoActive = false
     itemBallActive = false
     oakSpeechActive = false
+    walkActive = false
   elseif key == "y" then
     yesNoActive = not yesNoActive
     itemBallActive = false
@@ -1007,6 +1110,17 @@ function love.keypressed(key)
     spriteActive = false
     fontActive = false
     flameActive = false
+    oakSpeechActive = false
+    walkActive = false
+  elseif key == "w" then
+    walkActive = not walkActive
+    viewerActive = false
+    titleActive = false
+    spriteActive = false
+    fontActive = false
+    flameActive = false
+    yesNoActive = false
+    itemBallActive = false
     oakSpeechActive = false
   elseif viewerActive then
     -- Up/Down are handled in love.update via InputState (real input-repeat
