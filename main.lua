@@ -18,6 +18,18 @@ local MapCompositor = require("import.MapCompositor")
 
 local MAP_PALLET_TOWN = 3 * 256 + 0 -- group 3, num 0
 
+-- POKEPORT_MAP=group,num overrides the default map (Pallet Town) -- used to
+-- spot-check the compositor generalizes beyond the one map it was built
+-- against, e.g. POKEPORT_MAP=3,19 (Route 1) or POKEPORT_MAP=4,0 (Pallet
+-- Town's Player's House 1F, an indoor map with a different tileset).
+local function selectedMapId()
+  local override = os.getenv("POKEPORT_MAP")
+  if not override then return MAP_PALLET_TOWN end
+  local group, num = override:match("^(%d+),(%d+)$")
+  if not group then return MAP_PALLET_TOWN end
+  return tonumber(group) * 256 + tonumber(num)
+end
+
 local statusLines = {}
 local mapImage
 local MAP_SCALE = 2
@@ -62,16 +74,29 @@ local function loadMapFromRom(romPath)
   local data = f:read("*a")
   f:close()
 
-  local header = MapHeader.resolve(data, addrs.gMapGroups, MAP_PALLET_TOWN)
-  local layout = MapLayout.resolve(data, header.mapLayoutPtr)
-  local blockData = MapBlockData.resolve(data, layout.mapPtr, layout.width, layout.height)
-  local primary = MapCompositor.loadTilesetData(data, layout.primaryTilesetPtr)
-  local secondary = MapCompositor.loadTilesetData(data, layout.secondaryTilesetPtr)
-  local composited = MapCompositor.composite(data, primary, secondary, blockData, layout.width, layout.height)
+  local DEBUG = os.getenv("POKEPORT_DEBUG") == "1"
+  local function dbg(msg) if DEBUG then print("[dbg] " .. msg) io.stdout:flush() end end
 
-  addLine(("Composited Pallet Town: %dx%d metatiles, %dx%d px"):format(layout.width, layout.height, composited.width, composited.height))
+  local mapId = selectedMapId()
+  dbg("selectedMapId " .. mapId)
+  local header = MapHeader.resolve(data, addrs.gMapGroups, mapId)
+  dbg("header resolved")
+  local layout = MapLayout.resolve(data, header.mapLayoutPtr)
+  dbg("layout resolved " .. layout.width .. "x" .. layout.height)
+  local blockData = MapBlockData.resolve(data, layout.mapPtr, layout.width, layout.height)
+  dbg("blockData resolved")
+  local primary = MapCompositor.loadTilesetData(data, layout.primaryTilesetPtr)
+  dbg("primary tileset loaded, tiles=" .. #primary.tiles)
+  local secondary = MapCompositor.loadTilesetData(data, layout.secondaryTilesetPtr)
+  dbg("secondary tileset loaded, tiles=" .. #secondary.tiles)
+  local composited = MapCompositor.composite(data, primary, secondary, blockData, layout.width, layout.height)
+  dbg("composited " .. composited.width .. "x" .. composited.height)
+
+  addLine(("Composited map %d,%d: %dx%d metatiles, %dx%d px"):format(math.floor(mapId / 256), mapId % 256, layout.width, layout.height, composited.width, composited.height))
   mapImage = buildMapImage(composited)
+  dbg("image built")
   mapImage:setFilter("nearest", "nearest")
+  dbg("filter set")
 end
 
 function love.load()
