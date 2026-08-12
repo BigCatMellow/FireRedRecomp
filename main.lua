@@ -20,6 +20,7 @@ local MapLayout = require("import.MapLayout")
 local MapBlockData = require("import.MapBlockData")
 local MapBorder = require("import.MapBorder")
 local MapCompositor = require("import.MapCompositor")
+local MapEvents = require("import.MapEvents")
 local DataViewer = require("src.core.DataViewer")
 local TitleScreen = require("import.TitleScreen")
 local ViewportScale = require("src.core.ViewportScale")
@@ -108,7 +109,10 @@ local oakSpeechBuiltRevealTokenIndex = -1
 -- sized (240x160px) viewport centered on the player.
 local walkActive = false
 local walkMapBlockData, walkMapWidth, walkMapHeight -- raw (unpadded) collision grid, set when the map loads
+local walkMapWarps -- 0-indexed array of {x, y, elevation, warpId, mapNum, mapGroup} for the current map (MapEvents.lua, real Phase 1 data)
+local walkMapId -- group*256+num of the currently-loaded map
 local playerMovement
+local loadMap, tryWarpAt -- forward-declared: playerMovementTask (below) calls tryWarpAt before its real definition later in the file
 local WALK_CAMERA_WIDTH, WALK_CAMERA_HEIGHT = 240, 160 -- real GBA screen resolution
 
 -- isBlocked callback for PlayerMovement:tryMove -- real terrain collision
@@ -117,8 +121,25 @@ local WALK_CAMERA_WIDTH, WALK_CAMERA_HEIGHT = 240, 160 -- real GBA screen resolu
 -- event collision, elevation, one-way ledges). Off-map tiles (into the
 -- border padding) are also treated as blocked, since the border isn't a
 -- real walkable area.
+--
+-- Real door metatiles have nonzero raw collision bits (confirmed against
+-- Pallet Town's player's-house door, MapBlockData at that tile) -- the
+-- real game still lets the player walk onto them because
+-- MapGridIsImpassableAt/CheckForPlayerAvatarCollision consult each
+-- metatile's real BEHAVIOR byte (MB_DOOR et al, metatileAttributes bits
+-- 0-8), not just the raw collision bits, and MB_DOOR is a real documented
+-- exception. Full metatile-attribute consumption isn't wired in yet (see
+-- checklist), so as a scoped stand-in this treats any tile matching a
+-- real decoded warp coordinate (walkMapWarps, MapEvents.lua) as walkable
+-- regardless of its raw collision bits -- narrower than the real
+-- behavior-byte check, but correct for every tile that's actually a warp.
 local function isWalkTileBlocked(x, y)
   if not walkMapBlockData or x < 0 or x >= walkMapWidth or y < 0 or y >= walkMapHeight then return true end
+  if walkMapWarps then
+    for _, warp in pairs(walkMapWarps) do
+      if warp.x == x and warp.y == y then return false end
+    end
+  end
   local cell = walkMapBlockData[y * walkMapWidth + x]
   return not cell or cell.collision ~= 0
 end
@@ -196,7 +217,11 @@ local function itemBallAffineTask(taskId)
 end
 
 local function playerMovementTask(taskId)
+  local wasMoving = playerMovement.moving
   playerMovement:tick()
+  if wasMoving and not playerMovement.moving then
+    tryWarpAt(playerMovement.tileX, playerMovement.tileY)
+  end
 end
 
 -- Set once the ROM verifies, so the data viewer (toggled at any time with
@@ -453,24 +478,96 @@ local function loadFlameAssets(data, addrs, dbg)
   end
 end
 
--- Real player movement demo: not the canonical real starting position
--- (that needs the new-game script/warp flow, not built yet -- see the
--- checklist's Phase 3 "New-game naming, initial flags/vars") -- instead
--- scans the loaded map's real collision grid for the first walkable
--- tile, so this works on whichever map POKEPORT_MAP selected.
-local function loadWalkAssets(dbg)
-  if not walkMapBlockData then return end
+-- Scans the loaded map's real collision grid for the first walkable
+-- tile -- not the canonical real new-game starting position (that needs
+-- the script/warp-triggered new-game flow, not built yet -- see the
+-- checklist's Phase 3 "New-game naming, initial flags/vars"), just a
+-- reasonable fallback so this works on whichever map got loaded.
+local function findFirstWalkableTile()
   for y = 0, walkMapHeight - 1 do
     for x = 0, walkMapWidth - 1 do
-      if not isWalkTileBlocked(x, y) then
-        playerMovement = PlayerMovement.new(x, y, PlayerMovement.DOWN)
-        scheduler:createTask(playerMovementTask, 0)
-        dbg(("player movement started at first walkable tile %d,%d"):format(x, y))
-        return
-      end
+      if not isWalkTileBlocked(x, y) then return x, y end
     end
   end
-  dbg("player movement failed: no walkable tile found on this map")
+  return nil
+end
+
+-- Called once at boot: places the player and starts the movement task.
+-- Later map loads (via a real warp, see loadMap/tryWarpAt) just
+-- reposition the existing playerMovement instead of recreating it.
+local function loadWalkAssets(dbg)
+  if not walkMapBlockData then return end
+  local x, y = findFirstWalkableTile()
+  if not x then
+    dbg("player movement failed: no walkable tile found on this map")
+    return
+  end
+  playerMovement = PlayerMovement.new(x, y, PlayerMovement.DOWN)
+  scheduler:createTask(playerMovementTask, 0)
+  dbg(("player movement started at first walkable tile %d,%d"):format(x, y))
+end
+
+-- Loads and composites a real map by id (group*256+num), setting
+-- mapImage/walkMapBlockData/walkMapWidth/walkMapHeight/walkMapWarps/
+-- walkMapId -- shared by the initial boot load and real warp-triggered
+-- map transitions (tryWarpAt below), so a warp doesn't need its own
+-- separate copy of this pipeline.
+function loadMap(data, addrs, mapId, dbg)
+  local header = MapHeader.resolve(data, addrs.gMapGroups, mapId)
+  dbg("header resolved")
+  local layout = MapLayout.resolve(data, header.mapLayoutPtr)
+  dbg("layout resolved " .. layout.width .. "x" .. layout.height)
+  local blockData = MapBlockData.resolve(data, layout.mapPtr, layout.width, layout.height)
+  dbg("blockData resolved")
+  walkMapBlockData, walkMapWidth, walkMapHeight = blockData, layout.width, layout.height
+  walkMapWarps = MapEvents.resolve(data, header.eventsPtr).warps
+  walkMapId = mapId
+  local border = MapBorder.resolve(data, layout.borderPtr, layout.borderWidth, layout.borderHeight)
+  dbg("border resolved")
+  local primary = MapCompositor.loadTilesetData(data, layout.primaryTilesetPtr)
+  dbg("primary tileset loaded, tiles=" .. #primary.tiles)
+  local secondary = MapCompositor.loadTilesetData(data, layout.secondaryTilesetPtr)
+  dbg("secondary tileset loaded, tiles=" .. #secondary.tiles)
+  local composited = MapCompositor.compositeWithBorder(data, primary, secondary, blockData, layout.width, layout.height, border, layout.borderWidth, layout.borderHeight, BORDER_MARGIN_METATILES)
+  dbg("composited " .. composited.width .. "x" .. composited.height)
+
+  addLine(("Composited map %d,%d: %dx%d metatiles, %dx%d px"):format(math.floor(mapId / 256), mapId % 256, layout.width, layout.height, composited.width, composited.height))
+  mapImage = buildImage(composited)
+  dbg("image built")
+  mapImage:setFilter("nearest", "nearest")
+  dbg("filter set")
+end
+
+-- Real warp transition: called once when the player's completed step
+-- lands on a tile matching one of the current map's real warp events
+-- (MapEvents.lua, Phase 1 data -- x/y are already in the same map-local
+-- tile coordinate system WalkMapBlockData uses). Loads the destination
+-- map and repositions the player at the destination map's own warp
+-- entry `warpId` (its real x/y -- e.g. just inside a building's door).
+-- A destination warpId outside the destination map's real warp count
+-- (the real WARP_ID_NONE convention, or just a decode surprise) falls
+-- back to that map's first walkable tile rather than crashing.
+function tryWarpAt(x, y)
+  if not walkMapWarps then return end
+  for _, warp in pairs(walkMapWarps) do
+    if warp.x == x and warp.y == y then
+      local destMapId = warp.mapGroup * 256 + warp.mapNum
+      loadMap(romData, romAddrs, destMapId, function() end)
+      local destWarp = walkMapWarps[warp.warpId]
+      local destX, destY
+      if destWarp then
+        destX, destY = destWarp.x, destWarp.y
+      else
+        destX, destY = findFirstWalkableTile()
+      end
+      if destX and playerMovement then
+        playerMovement.tileX, playerMovement.tileY = destX, destY
+        playerMovement.moving = false
+        playerMovement.stepFrame = 0
+      end
+      return
+    end
+  end
 end
 
 local function loadMapFromRom(romPath)
@@ -503,27 +600,7 @@ local function loadMapFromRom(romPath)
 
   local mapId = selectedMapId()
   dbg("selectedMapId " .. mapId)
-  local header = MapHeader.resolve(data, addrs.gMapGroups, mapId)
-  dbg("header resolved")
-  local layout = MapLayout.resolve(data, header.mapLayoutPtr)
-  dbg("layout resolved " .. layout.width .. "x" .. layout.height)
-  local blockData = MapBlockData.resolve(data, layout.mapPtr, layout.width, layout.height)
-  dbg("blockData resolved")
-  walkMapBlockData, walkMapWidth, walkMapHeight = blockData, layout.width, layout.height
-  local border = MapBorder.resolve(data, layout.borderPtr, layout.borderWidth, layout.borderHeight)
-  dbg("border resolved")
-  local primary = MapCompositor.loadTilesetData(data, layout.primaryTilesetPtr)
-  dbg("primary tileset loaded, tiles=" .. #primary.tiles)
-  local secondary = MapCompositor.loadTilesetData(data, layout.secondaryTilesetPtr)
-  dbg("secondary tileset loaded, tiles=" .. #secondary.tiles)
-  local composited = MapCompositor.compositeWithBorder(data, primary, secondary, blockData, layout.width, layout.height, border, layout.borderWidth, layout.borderHeight, BORDER_MARGIN_METATILES)
-  dbg("composited " .. composited.width .. "x" .. composited.height)
-
-  addLine(("Composited map %d,%d: %dx%d metatiles, %dx%d px"):format(math.floor(mapId / 256), mapId % 256, layout.width, layout.height, composited.width, composited.height))
-  mapImage = buildImage(composited)
-  dbg("image built")
-  mapImage:setFilter("nearest", "nearest")
-  dbg("filter set")
+  loadMap(data, addrs, mapId, dbg)
 
   addLine("Press V for the data viewer, T for the title screen, P for a sprite, I for an item ball, F for font rendering, O for the Oak intro text, A for the animated flame, Y for a Yes/No menu, W to walk (arrow keys).")
 
@@ -805,6 +882,7 @@ function love.load()
       for dir in moves:gmatch("[^,]+") do
         playerMovement:tryMove(dir, isWalkTileBlocked)
         for i = 1, 16 do playerMovement:tick() end
+        tryWarpAt(playerMovement.tileX, playerMovement.tileY)
       end
     end
   end
