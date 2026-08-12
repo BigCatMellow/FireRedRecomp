@@ -140,14 +140,21 @@ function TitleScreen.compositeLayer4bpp(data, tilesOffset, mapOffset, palOffset)
   return pixelsToImage(pixels)
 end
 
--- Composites the copyright/press-start layer, then the box art Pokémon,
--- then the logo on top -- back-to-front, matching bg3..bg0 priority order
--- (lower priority number draws on top). addrs: the RomAddresses[sha1]
--- table (needs gGraphics_TitleScreen_{GameTitleLogo,BoxArtMon,
--- CopyrightPressStart}{Tiles,Map,Pals}). The border/flames layer (bg3,
--- furthest back) isn't implemented yet -- see this module's doc comment.
+-- Composites the border backdrop, then copyright/press-start, then the box
+-- art Pokémon, then the logo on top -- back-to-front, matching bg3..bg0
+-- priority order (lower priority number draws on top). addrs: the
+-- RomAddresses[sha1] table. The animated flame/slash OBJ sprites that
+-- normally render over the border backdrop aren't implemented -- those are
+-- sprites, not a background layer, and need actual sprite/OAM composition
+-- (a separate, not-yet-built Phase 2 piece) plus animation frame stepping.
 function TitleScreen.compositeFull(data, addrs)
   local pixels = {}
+
+  local borderTilesRaw = Lz77.decompress(data, addrs.sBorderBgTiles + 1)
+  local borderTiles = GbaGraphics.decodeTiles(borderTilesRaw, 0, math.floor(#borderTilesRaw / 32))
+  local borderMapRaw = Lz77.decompress(data, addrs.sBorderBgMap + 1)
+  local borderPalette = GbaGraphics.decodePalette(data, addrs.gGraphics_TitleScreen_BackgroundPals)
+  drawLayer(pixels, borderTiles, borderMapRaw, borderPalette)
 
   local copyrightTilesRaw = Lz77.decompress(data, addrs.gGraphics_TitleScreen_CopyrightPressStartTiles + 1)
   local copyrightTiles = GbaGraphics.decodeTiles(copyrightTilesRaw, 0, math.floor(#copyrightTilesRaw / 32))

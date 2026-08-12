@@ -58,6 +58,11 @@ check("copyright/press-start image is 256x160", copyright.width == 256 and copyr
 local copyrightBar = copyright.getPixel(100, 150)
 check("copyright layer has the red bottom bar color", copyrightBar.r > 100 and copyrightBar.g < 20 and copyrightBar.b < 20, copyrightBar.r .. "," .. copyrightBar.g .. "," .. copyrightBar.b)
 
+local border = TitleScreen.compositeLayer4bpp(data, addrs.sBorderBgTiles, addrs.sBorderBgMap, addrs.gGraphics_TitleScreen_BackgroundPals)
+check("border image is 256x160", border.width == 256 and border.height == 160)
+local borderTeal = border.getPixel(100, 80)
+check("border layer has the teal backdrop band color", borderTeal.r < 100 and borderTeal.g > 150 and borderTeal.b > 130, borderTeal.r .. "," .. borderTeal.g .. "," .. borderTeal.b)
+
 local full = TitleScreen.compositeFull(data, addrs)
 check("compositeFull is 256x160", full.width == 256 and full.height == 160)
 check("compositeFull shows the logo on top (yellow at the same spot as the standalone logo)", (function()
@@ -67,6 +72,10 @@ end)())
 check("compositeFull shows the copyright bar behind the logo/box art", (function()
   local p = full.getPixel(100, 150)
   return p.r > 100 and p.g < 20 and p.b < 20
+end)())
+check("compositeFull shows the border backdrop where no other layer covers", (function()
+  local p = full.getPixel(230, 80)
+  return p.r < 100 and p.g > 150 and p.b > 130
 end)())
 
 print(("%d passed, %d failed"):format(passed, failed))

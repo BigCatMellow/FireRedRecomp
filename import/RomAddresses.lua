@@ -100,6 +100,15 @@ RomAddresses["41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc"] = { -- FireRed (US) v1.
   gGraphics_TitleScreen_CopyrightPressStartTiles = 0x08eae0b4 - 0x08000000,
   gGraphics_TitleScreen_CopyrightPressStartMap = 0x08eae374 - 0x08000000,
   gGraphics_TitleScreen_BackgroundPals = 0x08eae094 - 0x08000000,
+  -- Border background (bg3, furthest back) -- the flat backdrop band the
+  -- (not yet implemented) animated flame OBJ sprites render over. Static/
+  -- local symbols, not in the linker .map -- found via `nm`. Shares
+  -- gGraphics_TitleScreen_BackgroundPals (loaded into a different VRAM
+  -- bank in the real game, same color data). sBorderBgTiles is shared
+  -- between FireRed/LeafGreen; sBorderBgMap has a per-game variant --
+  -- this address is whichever this build's config.mk selected (FireRed).
+  sBorderBgTiles = 0x083bf58c - 0x08000000,
+  sBorderBgMap = 0x083bf5a8 - 0x08000000,
 }
 
 -- Total record counts, confirmed via `arm-none-eabi-nm -S` on the real
