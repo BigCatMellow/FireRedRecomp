@@ -15,6 +15,11 @@ local RomAddresses = {}
 RomAddresses["41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc"] = { -- FireRed (US) v1.0
   -- gSpeciesInfo: struct SpeciesInfo[NUM_SPECIES], pokefirered src/data/pokemon/species_info.h
   gSpeciesInfo = 0x08254784 - 0x08000000,
+  -- gBattleMoves: struct BattleMove[MOVES_COUNT], pokefirered src/data/battle_moves.h
+  -- Verified against real Pound (index 1) / Karate Chop (index 2) data.
+  gBattleMoves = 0x08250c04 - 0x08000000,
+  -- gTypeEffectiveness: flat (atkType,defType,mult) byte triples, pokefirered src/battle_main.c
+  gTypeEffectiveness = 0x0824f050 - 0x08000000,
 }
 
 return RomAddresses

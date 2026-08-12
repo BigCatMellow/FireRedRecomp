@@ -45,9 +45,17 @@ here:
   verification status. No rendering, no gameplay.
 - `tests/` — all unit tests pass (`lua5.1 tests/*.lua`).
 
-Next: extend `RomAddresses`/importer coverage to more tables (moves,
-items, trainers, maps), starting to fill out the canonical data schemas the
-roadmap's Phase 1 calls for.
+- `import/BattleMove.lua` — parses `struct BattleMove`. **Real record size
+  is 12 bytes, not the struct's 9** (agbcc pads byte-only structs to a
+  4-byte multiple in arrays) — caught by checking real Pound/Karate Chop
+  data, not by trusting the header.
+- `import/TypeChart.lua` — parses `gTypeEffectiveness` (flat attack/defend/
+  multiplier triples, ENDTABLE-terminated).
+
+Next: extend `RomAddresses`/importer coverage to more tables (items,
+trainers, abilities, maps), starting to fill out the canonical data schemas
+the roadmap's Phase 1 calls for. Working checklist:
+`../FireRed/firered-recomp-checklist.md`.
 
 ## Supported ROM
 
