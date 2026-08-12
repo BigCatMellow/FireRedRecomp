@@ -13,6 +13,10 @@
 --   * coord event 0 (Oak trigger): x=12, y=1, elevation=3, trigger=0x4050
 --     -- exactly VAR_MAP_SCENE_PALLET_TOWN_OAK.
 --   * bg event 0 (Oak's Lab sign): x=16, y=16, elevation=0, kind=0.
+-- ObjectEventTemplate's "clone" variant also verified: Celadon City's
+-- clone object (index 12) decodes to x=-7, y=21, targetLocalId=7,
+-- targetMapNum=34/targetMapGroup=3 (exactly MAP_ROUTE16) -- an exact match
+-- for data/maps/CeladonCity/map.json.
 --
 -- Struct layouts (pokefirered include/global.fieldmap.h):
 --
@@ -28,25 +32,37 @@
 --   0x10 bgEvents            u32 LE pointer -> BgEvent[]
 --
 -- ObjectEventTemplate (24 bytes -- struct comment says "size = 0x18", and
--- real data confirms it). Only the "normal" union variant is decoded here
--- (kind == 0, ordinary NPCs/trainers); the "clone" variant (kind != 0,
--- object-event clones referencing another map's template) is NOT handled
--- yet -- its fields are left nil.
+-- real data confirms it). Both union variants are decoded, selected by
+-- `kind` (OBJ_KIND_NORMAL=0 / OBJ_KIND_CLONE=255, pokefirered
+-- include/constants/event_objects.h): field offsets below are taken
+-- directly from the authoritative source -- the object_event/clone_event
+-- assembler macros in asm/macros/map.inc that pokefirered's own map
+-- compiler (tools/mapjson) emits from map.json -- not just inferred from
+-- the C struct, and confirmed against a real clone object (Celadon City
+-- index 12: x=-7, y=21, targetLocalId=7, targetMapNum=34, targetMapGroup=3
+-- -- exactly MAP_ROUTE16 and exactly matching data/maps/CeladonCity/map.json).
 --   0x00 localId     u8
 --   0x01 graphicsId  u8
---   0x02 kind         u8
+--   0x02 kind         u8  (OBJ_KIND_NORMAL=0 or OBJ_KIND_CLONE=255)
 --   0x03 padding (align x to 2)
 --   0x04 x             s16 LE
 --   0x06 y             s16 LE
---   0x08 elevation    u8   (normal variant)
+--   -- normal variant (kind == OBJ_KIND_NORMAL) --
+--   0x08 elevation    u8
 --   0x09 movementType u8
 --   0x0A movementRangeX:4, movementRangeY:4  u8 bitfield
---   0x0B padding (part of the u16 bitfield's second byte, unused)
+--   0x0B padding
 --   0x0C trainerType  u16 LE
 --   0x0E trainerRangeOrBerryTreeId  u16 LE
 --   0x10 script        u32 LE pointer (raw)
 --   0x14 flagId        u16 LE
 --   0x16-0x17 padding to 24 bytes
+--   -- clone variant (kind == OBJ_KIND_CLONE) --
+--   0x08 targetLocalId  u8
+--   0x09-0x0B padding (3 bytes)
+--   0x0C targetMapNum    u16 LE
+--   0x0E targetMapGroup  u16 LE
+--   0x10-0x17 padding (8 bytes) to 24 bytes
 --
 -- WarpEvent (8 bytes):
 --   0x00 x  s16 LE
@@ -98,6 +114,9 @@ local function u32le(data, offset0based)
     + byte(data, offset0based + 4) * 16777216
 end
 
+local OBJ_KIND_NORMAL = 0
+local OBJ_KIND_CLONE = 255
+
 local function parseObjectEvent(data, offset0based)
   local kind = byte(data, offset0based + 0x02 + 1)
   local mon = {
@@ -106,10 +125,8 @@ local function parseObjectEvent(data, offset0based)
     kind = kind,
     x = s16le(data, offset0based + 0x04),
     y = s16le(data, offset0based + 0x06),
-    scriptPtr = u32le(data, offset0based + 0x10),
-    flagId = u16le(data, offset0based + 0x14),
   }
-  if kind == 0 then
+  if kind == OBJ_KIND_NORMAL then
     local bitfield = byte(data, offset0based + 0x0A + 1)
     mon.elevation = byte(data, offset0based + 0x08 + 1)
     mon.movementType = byte(data, offset0based + 0x09 + 1)
@@ -117,6 +134,12 @@ local function parseObjectEvent(data, offset0based)
     mon.movementRangeY = math.floor(bitfield / 16) % 16
     mon.trainerType = u16le(data, offset0based + 0x0C)
     mon.trainerRangeOrBerryTreeId = u16le(data, offset0based + 0x0E)
+    mon.scriptPtr = u32le(data, offset0based + 0x10)
+    mon.flagId = u16le(data, offset0based + 0x14)
+  elseif kind == OBJ_KIND_CLONE then
+    mon.targetLocalId = byte(data, offset0based + 0x08 + 1)
+    mon.targetMapNum = u16le(data, offset0based + 0x0C)
+    mon.targetMapGroup = u16le(data, offset0based + 0x0E)
   end
   return mon
 end

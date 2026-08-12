@@ -33,6 +33,17 @@ local objEvent = string.char(1, 0x17, 0) .. string.char(0) -- localId,graphicsId
   .. string.char(0, 0)                                            -- trailing pad to 24
 check("objEvent fixture is 24 bytes", #objEvent == 24)
 
+-- Real Celadon City clone object event (index 12): localId=13, x=-7, y=21,
+-- targetLocalId=7, targetMapNum=34, targetMapGroup=3 (MAP_ROUTE16).
+local function s16le(n) if n < 0 then n = n + 65536 end return u16le(n) end
+local cloneEvent = string.char(13, 0x50, 255, 0) -- localId, graphicsId (placeholder), kind=OBJ_KIND_CLONE, pad
+  .. s16le(-7) .. s16le(21)                        -- x, y
+  .. string.char(7)                                  -- targetLocalId
+  .. string.char(0, 0, 0)                             -- padding
+  .. u16le(34) .. u16le(3)                             -- targetMapNum, targetMapGroup
+  .. string.rep("\0", 8)                                -- trailing padding to 24
+check("cloneEvent fixture is 24 bytes", #cloneEvent == 24)
+
 local warp = u16le(6) .. u16le(7) .. string.char(0, 1, 0, 4) -- x,y,elevation,warpId,mapNum,mapGroup
 check("warp fixture is 8 bytes", #warp == 8)
 
@@ -42,23 +53,26 @@ check("coord fixture is 16 bytes", #coord == 16)
 local bg = u16le(16) .. u16le(16) .. string.char(0, 0) .. string.char(0, 0) .. u32le(0x08165900)
 check("bg fixture is 12 bytes", #bg == 12)
 
-local mapEventsHeader = string.char(1, 1, 1, 1) -- 1 of each
+local mapEventsHeader = string.char(2, 1, 1, 1) -- 2 object events (normal + clone), 1 of each other type
   .. u32le(romBase + 0x100) -- objectEvents ptr
   .. u32le(romBase + 0x200) -- warps ptr
   .. u32le(romBase + 0x300) -- coordEvents ptr
   .. u32le(romBase + 0x400) -- bgEvents ptr
 
 local rom = mapEventsHeader
-rom = rom .. string.rep("\0", 0x100 - #rom) .. objEvent
+rom = rom .. string.rep("\0", 0x100 - #rom) .. objEvent .. cloneEvent
 rom = rom .. string.rep("\0", 0x200 - #rom) .. warp
 rom = rom .. string.rep("\0", 0x300 - #rom) .. coord
 rom = rom .. string.rep("\0", 0x400 - #rom) .. bg
 
 local ev = MapEvents.resolve(rom, romBase)
 
-check("1 object event", ev.objectEvents[0] ~= nil and ev.objectEvents[1] == nil)
+check("2 object events", ev.objectEvents[1] ~= nil and ev.objectEvents[2] == nil)
 check("object event x/y/elevation", ev.objectEvents[0].x == 3 and ev.objectEvents[0].y == 10 and ev.objectEvents[0].elevation == 3)
 check("object event movement range bitfield", ev.objectEvents[0].movementRangeX == 1 and ev.objectEvents[0].movementRangeY == 4)
+check("clone object event decodes x/y as signed", ev.objectEvents[1].x == -7 and ev.objectEvents[1].y == 21, ev.objectEvents[1].x)
+check("clone object event target fields", ev.objectEvents[1].targetLocalId == 7 and ev.objectEvents[1].targetMapNum == 34 and ev.objectEvents[1].targetMapGroup == 3)
+check("clone object event has no normal-variant fields", ev.objectEvents[1].elevation == nil and ev.objectEvents[1].scriptPtr == nil)
 
 check("warp x/y/warpId/mapGroup", ev.warps[0].x == 6 and ev.warps[0].y == 7 and ev.warps[0].warpId == 1 and ev.warps[0].mapGroup == 4)
 

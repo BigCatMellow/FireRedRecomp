@@ -193,5 +193,13 @@ local natures = Nature.parseTable(data, addrs.sNatureStatTable)
 check("MODEST nature is -atk +spAtk", natures[15].attack == -1 and natures[15].spAttack == 1)
 check("QUIRKY nature (last, index 24) is neutral", natures[24].attack == 0 and natures[24].defense == 0 and natures[24].speed == 0 and natures[24].spAttack == 0 and natures[24].spDefense == 0)
 
+-- MAP_CELADON_CITY = group 3, num 6; its object event 12 is a clone
+local celadonHeader = MapHeader.resolve(data, addrs.gMapGroups, 3 * 256 + 6)
+local celadonEvents = MapEvents.resolve(data, celadonHeader.eventsPtr)
+local cloneEvent = celadonEvents.objectEvents[12]
+check("Celadon City's clone object event decodes correctly", cloneEvent ~= nil and cloneEvent.kind == 255)
+check("clone x/y decode as signed (-7, 21)", cloneEvent.x == -7 and cloneEvent.y == 21, cloneEvent and cloneEvent.x)
+check("clone target is MAP_ROUTE16 (group 3, num 34)", cloneEvent.targetMapGroup == 3 and cloneEvent.targetMapNum == 34)
+
 print(("%d passed, %d failed"):format(passed, failed))
 os.exit(failed == 0 and 0 or 1)
