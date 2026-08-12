@@ -38,6 +38,7 @@ local SpriteAnimator = require("src.core.SpriteAnimator")
 local TitleScreenFlameSpawner = require("src.core.TitleScreenFlameSpawner")
 local PaletteFade = require("src.core.PaletteFade")
 local PaletteBlend = require("src.core.PaletteBlend")
+local MenuCursor = require("src.core.MenuCursor")
 
 local BORDER_MARGIN_METATILES = 2
 
@@ -84,6 +85,15 @@ local flameBuiltFrameIndex = -1 -- forces a rebuild the first time flameImage is
 -- particles share the same animation frame at once.
 local flameSpawner
 local flameFrameImageCache = {}
+
+-- Real Yes/No confirmation menu (MenuCursor.lua, ported from
+-- CreateYesNoMenu/Menu_MoveCursor/Menu_ProcessInput -- src/menu.c), the
+-- most common real menu construct in the game. yesNoResult is nil while
+-- undecided, then "confirm" or "cancel" once the player answers.
+local yesNoActive = false
+local yesNoCursor
+local yesNoResult
+local yesNoWindowImage, yesNoTextImage, yesNoArrowImage
 
 -- Real task scheduler (src/core/TaskScheduler.lua), ticked at a fixed 1/60s
 -- step in love.update -- matches the real game's VBlank-synced RunTasks().
@@ -219,7 +229,7 @@ local function loadMapFromRom(romPath)
   mapImage:setFilter("nearest", "nearest")
   dbg("filter set")
 
-  addLine("Press V for the data viewer, T for the title screen, P for a sprite, F for font rendering, A for the animated flame.")
+  addLine("Press V for the data viewer, T for the title screen, P for a sprite, F for font rendering, A for the animated flame, Y for a Yes/No menu.")
 
   local titleOk, titleCompositedResult = pcall(TitleScreen.compositeFull, data, addrs)
   if titleOk then
@@ -279,6 +289,37 @@ local function loadMapFromRom(romPath)
     dbg("text window frame built")
   else
     dbg("text window frame failed: " .. tostring(windowComposited))
+  end
+
+  local yesNoOk, yesNoErr = pcall(function()
+    local tiles = TextWindow.decodeFrameTiles(data, addrs.gStdTextWindow_Gfx)
+    local palette = TextWindow.decodePalette(data, addrs.gTextWindowPalettes, TextWindow.STD_PALETTE_INDEX)
+    -- 6x4 content tiles: "YES"/"NO" plus the selector arrow's column,
+    -- two 16px-tall rows (real CreateYesNoMenu's per-row height is
+    -- FONT_NORMAL's maxLetterHeight + lineSpacing, which is 16px here).
+    yesNoWindowImage = buildImage(TextWindow.compositeFrame(tiles, palette, 6, 4))
+    yesNoWindowImage:setFilter("nearest", "nearest")
+
+    -- Real gText_YesNo is "YES\nNO" (src/strings.c) -- 0xFA is one of the
+    -- real linebreak bytes Charmap.lua already recognizes.
+    local yesNoBytes = charmapBytesForUppercaseAndSpaces("YES") .. string.char(0xFA) .. charmapBytesForUppercaseAndSpaces("NO") .. string.char(Charmap.TERMINATOR)
+    local yesNoTokens = Charmap.tokenize(yesNoBytes)
+    yesNoTextImage = buildImage(TextRenderer.renderTokens(data, addrs, yesNoTokens, fontPalette))
+    yesNoTextImage:setFilter("nearest", "nearest")
+
+    -- The real selector arrow glyph, gText_SelectorArrow2 = "▶" = 0xEF
+    -- (charmap.txt), drawn to the left of whichever row is selected.
+    local arrowPixelTypes = Font.decodeGlyphPixelTypes(data, addrs.sFontHalfRowOffsets, addrs.sFontNormalLatinGlyphs, 0xEF)
+    local arrowWidth = string.byte(data, addrs.sFontNormalLatinGlyphWidths + 0xEF + 1)
+    yesNoArrowImage = buildImage(Font.buildGlyphImage(arrowPixelTypes, arrowWidth, fontPalette[1], fontPalette[3]))
+    yesNoArrowImage:setFilter("nearest", "nearest")
+  end)
+  if yesNoOk then
+    yesNoCursor = MenuCursor.new(2, 0)
+    yesNoResult = nil
+    dbg("Yes/No menu built")
+  else
+    dbg("Yes/No menu failed: " .. tostring(yesNoErr))
   end
 
   local flameCmds
@@ -475,10 +516,20 @@ function love.load()
     end
   end
 
+  -- POKEPORT_YESNO=1 boots straight into the Yes/No menu view.
+  -- POKEPORT_YESNO_CURSOR=1 moves the cursor down to NO first, for a
+  -- deterministic non-default-selection screenshot.
+  if os.getenv("POKEPORT_YESNO") == "1" then
+    yesNoActive = true
+    if yesNoCursor and os.getenv("POKEPORT_YESNO_CURSOR") == "1" then
+      yesNoCursor.cursorPos = 1
+    end
+  end
+
   -- love.filesystem is sandboxed to the save directory (see conf.lua's
   -- identity="firered-recomp"), so this always writes there under a fixed
   -- name rather than to an arbitrary POKEPORT_SCREENSHOT path.
-  if os.getenv("POKEPORT_SCREENSHOT") == "1" and (mapImage or viewerActive or titleActive or spriteActive or fontActive or flameActive) then
+  if os.getenv("POKEPORT_SCREENSHOT") == "1" and (mapImage or viewerActive or titleActive or spriteActive or fontActive or flameActive or yesNoActive) then
     -- The font sample normally reveals one character at a time (real text
     -- speed, driven by TaskScheduler in love.update) and can pause or wait
     -- on a keypress mid-message; automated screenshots want the
@@ -507,10 +558,16 @@ function love.update(dt)
     inputState:update(InputState.buildMask({
       DPAD_UP = love.keyboard.isDown("up"),
       DPAD_DOWN = love.keyboard.isDown("down"),
+      A_BUTTON = love.keyboard.isDown("return"),
+      B_BUTTON = love.keyboard.isDown("backspace"),
     }))
     if viewerActive then
       if inputState:isPressedOrRepeated(InputState.DPAD_DOWN) then viewerStep(1) end
       if inputState:isPressedOrRepeated(InputState.DPAD_UP) then viewerStep(-1) end
+    end
+    if yesNoActive and yesNoCursor and not yesNoResult then
+      local outcome = yesNoCursor:processInput(inputState)
+      if outcome == "confirm" or outcome == "cancel" then yesNoResult = outcome end
     end
   end
 end
@@ -549,6 +606,25 @@ function love.draw()
       -- frame's transparent interior, one border tile in from the top-left.
       love.graphics.draw(fontImage, 20 + viewport.x + TextWindow.TILE_SIZE * viewport.scale, y + 10 + viewport.y + TextWindow.TILE_SIZE * viewport.scale, 0, viewport.scale, viewport.scale)
     end
+  elseif yesNoActive and yesNoWindowImage then
+    local windowWidth, windowHeight = love.graphics.getDimensions()
+    local viewport = ViewportScale.fit(yesNoWindowImage:getWidth(), yesNoWindowImage:getHeight(), windowWidth - 40, windowHeight - (y + 10))
+    local baseX, baseY = 20 + viewport.x, y + 10 + viewport.y
+    love.graphics.draw(yesNoWindowImage, baseX, baseY, 0, viewport.scale, viewport.scale)
+    -- Real CreateYesNoMenu draws the selector arrow's column, then the
+    -- "YES"/"NO" text starting one arrow-width to its right -- mirrored
+    -- here as two separate draws sharing the same left inset.
+    local textX = baseX + (TextWindow.TILE_SIZE + yesNoArrowImage:getWidth()) * viewport.scale
+    if yesNoTextImage then
+      love.graphics.draw(yesNoTextImage, textX, baseY + TextWindow.TILE_SIZE * viewport.scale, 0, viewport.scale, viewport.scale)
+    end
+    if yesNoCursor and not yesNoResult then
+      local arrowY = baseY + (TextWindow.TILE_SIZE + yesNoCursor.cursorPos * 16) * viewport.scale
+      love.graphics.draw(yesNoArrowImage, baseX + TextWindow.TILE_SIZE * viewport.scale, arrowY, 0, viewport.scale, viewport.scale)
+    end
+    if yesNoResult then
+      love.graphics.print("Result: " .. (yesNoResult == "confirm" and ("Confirmed " .. (yesNoCursor.cursorPos == 0 and "YES" or "NO")) or "Cancelled") .. "  (press Y to reset)", 20, baseY + yesNoWindowImage:getHeight() * viewport.scale + 20)
+    end
   elseif flameActive and flameImage then
     local windowWidth, windowHeight = love.graphics.getDimensions()
     -- The real flame is 16x16px, tiny -- fit generously so the frame
@@ -585,30 +661,46 @@ function love.keypressed(key)
     spriteActive = false
     fontActive = false
     flameActive = false
+    yesNoActive = false
   elseif key == "t" then
     titleActive = not titleActive
     viewerActive = false
     spriteActive = false
     fontActive = false
     flameActive = false
+    yesNoActive = false
   elseif key == "p" then
     spriteActive = not spriteActive
     viewerActive = false
     titleActive = false
     fontActive = false
     flameActive = false
+    yesNoActive = false
   elseif key == "f" then
     fontActive = not fontActive
     viewerActive = false
     titleActive = false
     spriteActive = false
     flameActive = false
+    yesNoActive = false
   elseif key == "a" then
     flameActive = not flameActive
     viewerActive = false
     titleActive = false
     spriteActive = false
     fontActive = false
+    yesNoActive = false
+  elseif key == "y" then
+    yesNoActive = not yesNoActive
+    if yesNoActive and yesNoCursor then
+      yesNoCursor.cursorPos = 0
+      yesNoResult = nil
+    end
+    viewerActive = false
+    titleActive = false
+    spriteActive = false
+    fontActive = false
+    flameActive = false
   elseif viewerActive then
     -- Up/Down are handled in love.update via InputState (real input-repeat
     -- timing), not here -- a plain keypressed step-once would double-step
