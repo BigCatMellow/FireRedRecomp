@@ -24,6 +24,20 @@ local function sha1Hex(data)
   return (digest:gsub(".", function(c) return string.format("%02x", c:byte()) end))
 end
 
+-- Standalone lua5.1 (the test harness) has no `love` and no bundled crypto,
+-- so shell out to the system `sha1sum` there. Only the real LÖVE runtime
+-- path (sha1Hex above) matters for the shipped app; this is test/tooling
+-- support only.
+local function sha1HexOfFile(path)
+  local quoted = "'" .. path:gsub("'", "'\\''") .. "'"
+  local proc = io.popen("sha1sum " .. quoted)
+  if not proc then return nil, "could not run sha1sum" end
+  local line = proc:read("*l")
+  proc:close()
+  if not line then return nil, "sha1sum produced no output" end
+  return line:match("^(%x+)")
+end
+
 -- Returns (ok, info) where info is either the matched SUPPORTED entry or an
 -- error string safe to show the player.
 --
@@ -43,7 +57,16 @@ function RomImporter.verify(path)
     return false, "Could not read ROM file."
   end
 
-  local hash = sha1Hex(data)
+  local hash, hashErr
+  if love then
+    hash = sha1Hex(data)
+  else
+    hash, hashErr = sha1HexOfFile(path)
+    if not hash then
+      return false, "Could not hash ROM file: " .. tostring(hashErr)
+    end
+  end
+
   local match = SUPPORTED[hash]
   if match then
     return true, match
@@ -58,6 +81,7 @@ function RomImporter.verify(path)
 end
 
 RomImporter._sha1Hex = sha1Hex -- exposed for tests that don't have a real ROM file
+RomImporter._sha1HexOfFile = sha1HexOfFile -- exposed for the standalone-lua integration test
 RomImporter._SUPPORTED = SUPPORTED
 
 return RomImporter

@@ -17,8 +17,9 @@ Source crosswalk: [`../firered-recomp-reference/source-inventory.md`](../firered
 
 ## Status
 
-**Phase 0 done. Phase 1 (importer/data model) started.** No gameplay exists
-yet. What's here:
+**Phase 0 done. Phase 1 (importer/data model) underway — first real,
+ROM-verified extraction works end-to-end.** No gameplay exists yet. What's
+here:
 
 - Directory layout matching the roadmap's target tree.
 - `import/RomImporter.lua` — ROM identity verification (SHA-1) against the
@@ -27,15 +28,26 @@ yet. What's here:
   tilemaps, and some data tables in the ROM are LZ77-compressed). Verified
   against hand-built compressed fixtures, not yet against real ROM data.
 - `import/SpeciesInfo.lua` — parses the 28-byte `struct SpeciesInfo` record
-  (pokefirered `include/pokemon.h`) out of raw bytes. Offset-checked against
-  the struct field-by-field and unit tested. **Does not yet know the ROM
-  address of the species table** — that requires either building
-  `pokefirered-master` and reading its `.map`, or a verified symbol list for
-  the retail ROM; wiring that up is the next concrete step.
+  (pokefirered `include/pokemon.h`) out of raw bytes.
+- `import/RomAddresses.lua` — real ROM table addresses, keyed by SHA-1.
+  `gSpeciesInfo`'s address was obtained by building `pokefirered-master`
+  from source with an unprivileged local toolchain (ARM GNU toolchain +
+  `agbcc`, no sudo/apt) and reading the resulting linker `.map`. **The build
+  output is byte-identical to retail** (`sha1sum` matches the known
+  `41cb23d8...` FireRed(US) v1.0 hash this project already treats as
+  supported), so it's a legitimate stand-in for a player-supplied ROM during
+  development.
+- `tests/species_integration_test.lua` — parses Bulbasaur/Ivysaur/Venusaur/
+  Charmander's real base stats out of that built ROM and checks them
+  against known values. Passes. Opt-in via `POKEPORT_ROM=...`; skips
+  cleanly with no ROM present (a fresh checkout has none).
 - `conf.lua` / `main.lua` — boots a LÖVE2D window and reports ROM
   verification status. No rendering, no gameplay.
-- `tests/` — passing unit tests for all three import modules above
-  (`lua5.1 tests/*.lua`).
+- `tests/` — all unit tests pass (`lua5.1 tests/*.lua`).
+
+Next: extend `RomAddresses`/importer coverage to more tables (moves,
+items, trainers, maps), starting to fill out the canonical data schemas the
+roadmap's Phase 1 calls for.
 
 ## Supported ROM
 
