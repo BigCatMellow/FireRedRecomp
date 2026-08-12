@@ -18,6 +18,7 @@ local RomAddresses = require("import.RomAddresses")
 local SpeciesInfo = require("import.SpeciesInfo")
 local BattleMove = require("import.BattleMove")
 local TypeChart = require("import.TypeChart")
+local Item = require("import.Item")
 
 local passed, failed = 0, 0
 local function check(name, cond, detail)
@@ -66,6 +67,11 @@ local typeChart = TypeChart.parseTable(data, addrs.gTypeEffectiveness)
 check("type chart has rows and ends with ENDTABLE (not overrun)", #typeChart > 100, #typeChart)
 -- First row per src/battle_main.c: Normal vs Rock, not very effective.
 check("first type chart row is Normal/Rock not-very-effective", typeChart[0].multiplier == TypeChart.MUL_NOT_EFFECTIVE, typeChart[0] and typeChart[0].multiplier)
+
+-- ITEM_NONE=0, ITEM_MASTER_BALL=1, ITEM_ULTRA_BALL=2
+local items = Item.parseTable(data, addrs.gItems, 3)
+check("Master Ball itemId/price/pocket", items[1].itemId == 1 and items[1].price == 0 and items[1].pocket == 3)
+check("Ultra Ball price", items[2].price == 1200, items[2].price)
 
 print(("%d passed, %d failed"):format(passed, failed))
 os.exit(failed == 0 and 0 or 1)

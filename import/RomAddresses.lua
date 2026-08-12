@@ -20,6 +20,9 @@ RomAddresses["41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc"] = { -- FireRed (US) v1.
   gBattleMoves = 0x08250c04 - 0x08000000,
   -- gTypeEffectiveness: flat (atkType,defType,mult) byte triples, pokefirered src/battle_main.c
   gTypeEffectiveness = 0x0824f050 - 0x08000000,
+  -- gItems: struct Item[], pokefirered src/data/items.h
+  -- Verified against real Master Ball (index 1) / Ultra Ball (index 2) data.
+  gItems = 0x083db028 - 0x08000000,
 }
 
 return RomAddresses
