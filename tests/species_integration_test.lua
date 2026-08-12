@@ -32,6 +32,7 @@ local WildEncounters = require("import.WildEncounters")
 local Nature = require("import.Nature")
 local PointerStringTable = require("import.PointerStringTable")
 local MapScripts = require("import.MapScripts")
+local PokedexOrder = require("import.PokedexOrder")
 local Tileset = require("import.Tileset")
 local Lz77 = require("import.Lz77")
 local GbaGraphics = require("import.GbaGraphics")
@@ -224,6 +225,16 @@ local palletScripts = MapScripts.resolve(data, palletTown.mapScriptsPtr)
 check("Pallet Town has 2 map script hooks", palletScripts[1] ~= nil and palletScripts[2] == nil)
 check("hook 0 is ON_TRANSITION", palletScripts[0].type == MapScripts.ON_TRANSITION)
 check("hook 1 is ON_FRAME_TABLE with a resolved sub-table matching VAR_MAP_SCENE_PALLET_TOWN_OAK", palletScripts[1].type == MapScripts.ON_FRAME_TABLE and palletScripts[1].varTable[0].var == 0x4050 and palletScripts[1].varTable[0].compare == 2)
+
+local dexOrder = PokedexOrder.parseOrderTable(data, addrs.gPokedexOrder_Alphabetical)
+check("Pokedex alphabetical order entry 0 is NATIONAL_DEX_OLD_UNOWN_B (387)", dexOrder[0] == 387, dexOrder[0])
+check("Pokedex alphabetical order entry 25 is NATIONAL_DEX_ABRA (63)", dexOrder[25] == 63, dexOrder[25])
+check("species 1-5 map to national dex 1-5", (function()
+  for s = 1, 5 do
+    if PokedexOrder.speciesToNationalDexNum(data, addrs.sSpeciesToNationalPokedexNum, s) ~= s then return false end
+  end
+  return true
+end)())
 
 print(("%d passed, %d failed"):format(passed, failed))
 os.exit(failed == 0 and 0 or 1)

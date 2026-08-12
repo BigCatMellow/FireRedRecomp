@@ -53,6 +53,16 @@ RomAddresses["41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc"] = { -- FireRed (US) v1.
   -- gNatureNamePointers: const u8*[NUM_NATURES], pokefirered include/pokemon_summary_screen.h
   -- Verified against real HARDY/LONELY/BRAVE/ADAMANT name text.
   gNatureNamePointers = 0x08463e60 - 0x08000000,
+  -- gPokedexOrder_Alphabetical: u16[411], pokefirered src/data/pokemon/pokedex_orders.h
+  -- Verified against real entries (OLD_UNOWN_B=387 at index 0, ABRA=63 at index 25).
+  gPokedexOrder_Alphabetical = 0x08443fc0 - 0x08000000,
+  gPokedexOrder_Weight = 0x084442f6 - 0x08000000,
+  gPokedexOrder_Height = 0x084445fa - 0x08000000,
+  gPokedexOrder_Type = 0x084448fe - 0x08000000,
+  -- sSpeciesToNationalPokedexNum: static (no linker-map symbol; found via nm),
+  -- u16[NUM_SPECIES], pokefirered src/pokemon.c
+  -- Verified against real species 1-5 -> national dex 1-5.
+  sSpeciesToNationalPokedexNum = 0x08251fee - 0x08000000,
 }
 
 return RomAddresses
