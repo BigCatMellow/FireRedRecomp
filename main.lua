@@ -39,6 +39,7 @@ local TitleScreenFlameSpawner = require("src.core.TitleScreenFlameSpawner")
 local PaletteFade = require("src.core.PaletteFade")
 local PaletteBlend = require("src.core.PaletteBlend")
 local MenuCursor = require("src.core.MenuCursor")
+local OamShapeSize = require("import.OamShapeSize")
 
 local BORDER_MARGIN_METATILES = 2
 
@@ -65,6 +66,8 @@ local titleFadeBuiltY = -1 -- forces a rebuild the first time titleImage is need
 local titleActive = false
 local spriteImage
 local spriteActive = false
+local itemBallImage
+local itemBallActive = false
 local fontImage
 local fontActive = false
 local fontData, fontAddrs, fontPalette
@@ -229,7 +232,7 @@ local function loadMapFromRom(romPath)
   mapImage:setFilter("nearest", "nearest")
   dbg("filter set")
 
-  addLine("Press V for the data viewer, T for the title screen, P for a sprite, F for font rendering, A for the animated flame, Y for a Yes/No menu.")
+  addLine("Press V for the data viewer, T for the title screen, P for a sprite, I for an item ball, F for font rendering, A for the animated flame, Y for a Yes/No menu.")
 
   local titleOk, titleCompositedResult = pcall(TitleScreen.compositeFull, data, addrs)
   if titleOk then
@@ -251,13 +254,30 @@ local function loadMapFromRom(romPath)
     dbg("title logo failed: " .. tostring(titleCompositedResult))
   end
 
-  local spriteOk, spriteComposited = pcall(ObjectSprite.decodeFrame, data, addrs.gObjectEventPic_RedNormal, addrs.gObjectEventPal_Player, 2, 4, 0)
+  -- Tile dimensions now come from the real OAM shape/size (OamShapeSize.lua)
+  -- instead of a hand-fed 2,4 -- proves ObjectSprite.lua isn't
+  -- special-cased to this one sprite.
+  local redOam = OamShapeSize.decodeOamData(data, addrs.gObjectEventBaseOam_16x32)
+  local spriteOk, spriteComposited = pcall(ObjectSprite.decodeFrame, data, addrs.gObjectEventPic_RedNormal, addrs.gObjectEventPal_Player, redOam.widthTiles, redOam.heightTiles, 0)
   if spriteOk then
     spriteImage = buildImage(spriteComposited)
     spriteImage:setFilter("nearest", "nearest")
     dbg("player sprite built")
   else
     dbg("player sprite failed: " .. tostring(spriteComposited))
+  end
+
+  -- A second, genuinely different real object sprite (the ground Item
+  -- Ball) -- different OAM shape (SQUARE vs V_RECTANGLE) and a different
+  -- palette, decoded through the exact same general pipeline.
+  local itemBallOam = OamShapeSize.decodeOamData(data, addrs.gObjectEventBaseOam_16x16)
+  local itemBallOk, itemBallComposited = pcall(ObjectSprite.decodeFrame, data, addrs.gObjectEventPic_ItemBall, addrs.gObjectEventPal_NpcWhite, itemBallOam.widthTiles, itemBallOam.heightTiles, 0)
+  if itemBallOk then
+    itemBallImage = buildImage(itemBallComposited)
+    itemBallImage:setFilter("nearest", "nearest")
+    dbg("item ball sprite built")
+  else
+    dbg("item ball sprite failed: " .. tostring(itemBallComposited))
   end
 
   fontData, fontAddrs = data, addrs
@@ -498,6 +518,11 @@ function love.load()
     spriteActive = true
   end
 
+  -- POKEPORT_ITEMBALL=1 boots straight into the item ball sprite view.
+  if os.getenv("POKEPORT_ITEMBALL") == "1" then
+    itemBallActive = true
+  end
+
   -- POKEPORT_FONT=1 boots straight into the font-rendering sample view.
   if os.getenv("POKEPORT_FONT") == "1" then
     fontActive = true
@@ -529,7 +554,7 @@ function love.load()
   -- love.filesystem is sandboxed to the save directory (see conf.lua's
   -- identity="firered-recomp"), so this always writes there under a fixed
   -- name rather than to an arbitrary POKEPORT_SCREENSHOT path.
-  if os.getenv("POKEPORT_SCREENSHOT") == "1" and (mapImage or viewerActive or titleActive or spriteActive or fontActive or flameActive or yesNoActive) then
+  if os.getenv("POKEPORT_SCREENSHOT") == "1" and (mapImage or viewerActive or titleActive or spriteActive or itemBallActive or fontActive or flameActive or yesNoActive) then
     -- The font sample normally reveals one character at a time (real text
     -- speed, driven by TaskScheduler in love.update) and can pause or wait
     -- on a keypress mid-message; automated screenshots want the
@@ -576,7 +601,7 @@ function love.draw()
   if fontActive then ensureFontImageCurrent() end
   if flameActive then ensureFlameImageCurrent() end
   if titleActive then ensureTitleImageCurrent() end
-  if spriteActive then
+  if spriteActive or itemBallActive then
     love.graphics.clear(0.4, 0.7, 0.3) -- solid backdrop so sprite transparency is visible
   else
     love.graphics.clear(0.08, 0.08, 0.1)
@@ -597,6 +622,10 @@ function love.draw()
     local windowWidth, windowHeight = love.graphics.getDimensions()
     local viewport = ViewportScale.fit(spriteImage:getWidth(), spriteImage:getHeight(), windowWidth - 40, windowHeight - (y + 10))
     love.graphics.draw(spriteImage, 20 + viewport.x, y + 10 + viewport.y, 0, viewport.scale, viewport.scale)
+  elseif itemBallActive and itemBallImage then
+    local windowWidth, windowHeight = love.graphics.getDimensions()
+    local viewport = ViewportScale.fit(itemBallImage:getWidth(), itemBallImage:getHeight(), math.min(windowWidth - 40, 320), math.min(windowHeight - (y + 10), 320))
+    love.graphics.draw(itemBallImage, 20 + viewport.x, y + 10 + viewport.y, 0, viewport.scale, viewport.scale)
   elseif fontActive and fontWindowImage then
     local windowWidth, windowHeight = love.graphics.getDimensions()
     local viewport = ViewportScale.fit(fontWindowImage:getWidth(), fontWindowImage:getHeight(), windowWidth - 40, windowHeight - (y + 10))
@@ -662,6 +691,7 @@ function love.keypressed(key)
     fontActive = false
     flameActive = false
     yesNoActive = false
+    itemBallActive = false
   elseif key == "t" then
     titleActive = not titleActive
     viewerActive = false
@@ -669,10 +699,20 @@ function love.keypressed(key)
     fontActive = false
     flameActive = false
     yesNoActive = false
+    itemBallActive = false
   elseif key == "p" then
     spriteActive = not spriteActive
     viewerActive = false
     titleActive = false
+    fontActive = false
+    flameActive = false
+    yesNoActive = false
+    itemBallActive = false
+  elseif key == "i" then
+    itemBallActive = not itemBallActive
+    viewerActive = false
+    titleActive = false
+    spriteActive = false
     fontActive = false
     flameActive = false
     yesNoActive = false
@@ -683,6 +723,7 @@ function love.keypressed(key)
     spriteActive = false
     flameActive = false
     yesNoActive = false
+    itemBallActive = false
   elseif key == "a" then
     flameActive = not flameActive
     viewerActive = false
@@ -690,8 +731,10 @@ function love.keypressed(key)
     spriteActive = false
     fontActive = false
     yesNoActive = false
+    itemBallActive = false
   elseif key == "y" then
     yesNoActive = not yesNoActive
+    itemBallActive = false
     if yesNoActive and yesNoCursor then
       yesNoCursor.cursorPos = 0
       yesNoResult = nil

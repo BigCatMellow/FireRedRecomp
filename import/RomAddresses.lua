@@ -115,6 +115,19 @@ RomAddresses["41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc"] = { -- FireRed (US) v1.
   -- eye: frame 0 is unmistakably the real player character sprite.
   gObjectEventPic_RedNormal = 0x0835bb68 - 0x08000000,
   gObjectEventPal_Player = 0x0835b968 - 0x08000000,
+  -- Real OAM shape/size templates (pokefirered src/data/object_events/
+  -- base_oam.h) -- verified byte-for-byte against OamShapeSize.lua's
+  -- bitfield decode: 16x32 decodes to shape=2 (V_RECTANGLE) size=2,
+  -- 16x16 decodes to shape=0 (SQUARE) size=1, both matching their names.
+  gObjectEventBaseOam_16x32 = 0x083a3710 - 0x08000000,
+  gObjectEventBaseOam_16x16 = 0x083a36f0 - 0x08000000,
+  -- A second, genuinely different real object sprite (the ground Item
+  -- Ball, 16x16 square -- not the player) to prove ObjectSprite.lua
+  -- generalizes rather than being special-cased to RedNormal. Uncompressed
+  -- 4bpp (confirmed from the real INCBIN_U16 source, same convention as
+  -- the player sprite).
+  gObjectEventPic_ItemBall = 0x0838ba28 - 0x08000000,
+  gObjectEventPal_NpcWhite = 0x0836d888 - 0x08000000,
   -- Real dialogue-box font (FONT_NORMAL). Static/local symbols found via
   -- nm. Verified against real 'A'/'B' glyphs (correct letterforms with
   -- drop shadow) and the real width table ('A' is 6px wide).
