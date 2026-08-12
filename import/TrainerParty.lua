@@ -6,18 +6,19 @@
 -- Each of the 4 layouts' raw field size doesn't divide evenly by 4, and
 -- every other struct array in this ROM has turned out to be padded to a
 -- 4-byte stride (see SpeciesInfo/BattleMove/Item/Trainer) -- so the same
--- rule is applied here. Two of the four are empirically confirmed against
+-- rule is applied here. All 4 layouts are empirically confirmed against
 -- real ROM data:
---   * NoItemDefaultMoves (partyFlags=0): TRAINER_YOUNGSTER_BEN's party
---     decodes to RATTATA lvl 11 / EKANS lvl 11 at an 8-byte stride (raw
---     size 6, rounded up to 8) -- matches src/data/trainer_parties.h exactly.
---   * ItemCustomMoves (partyFlags=3): TRAINER_ELITE_FOUR_LORELEI's first
---     mon decodes to DEWGONG lvl 52, iv 250, held item NONE, moves
---     [ICE_BEAM, SURF, HAIL, SAFEGUARD] at a 16-byte stride (raw size 16,
---     already a multiple of 4) -- matches source exactly.
--- The other two (ItemDefaultMoves, NoItemCustomMoves) follow the same
--- derivation but have NOT been individually checked against a real ROM
--- record yet -- verify before relying on them for anything gameplay-critical.
+--   * NoItemDefaultMoves (partyFlags=0, stride 8): TRAINER_YOUNGSTER_BEN's
+--     party decodes to RATTATA lvl 11 / EKANS lvl 11.
+--   * NoItemCustomMoves (partyFlags=1, stride 16): TRAINER_CAMPER_LIAM's
+--     first mon decodes to GEODUDE lvl 10, moves [TACKLE, DEFENSE_CURL,
+--     NONE, NONE].
+--   * ItemDefaultMoves (partyFlags=2, stride 8): TRAINER_BLACK_BELT_KOICHI's
+--     first mon decodes to HITMONLEE lvl 37, iv 100, held item BLACK_BELT.
+--   * ItemCustomMoves (partyFlags=3, stride 16): TRAINER_ELITE_FOUR_LORELEI's
+--     first mon decodes to DEWGONG lvl 52, iv 250, held item NONE, moves
+--     [ICE_BEAM, SURF, HAIL, SAFEGUARD].
+-- All four match src/data/trainer_parties.h exactly.
 
 local TrainerParty = {}
 
@@ -32,8 +33,8 @@ end
 -- { stride, hasHeldItem, hasCustomMoves }, keyed by partyFlags (0-3).
 local LAYOUTS = {
   [0] = { stride = 8, hasHeldItem = false, hasCustomMoves = false },  -- NoItemDefaultMoves (confirmed)
-  [1] = { stride = 16, hasHeldItem = false, hasCustomMoves = true },  -- NoItemCustomMoves (derived, unverified)
-  [2] = { stride = 8, hasHeldItem = true, hasCustomMoves = false },   -- ItemDefaultMoves (derived, unverified)
+  [1] = { stride = 16, hasHeldItem = false, hasCustomMoves = true },  -- NoItemCustomMoves (confirmed)
+  [2] = { stride = 8, hasHeldItem = true, hasCustomMoves = false },   -- ItemDefaultMoves (confirmed)
   [3] = { stride = 16, hasHeldItem = true, hasCustomMoves = true },   -- ItemCustomMoves (confirmed)
 }
 

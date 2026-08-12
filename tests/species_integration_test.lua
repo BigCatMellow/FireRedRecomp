@@ -106,5 +106,15 @@ local dewgong = loreleiParty[0]
 check("Lorelei's first mon is Dewgong lvl 52 iv 250", dewgong.species == 87 and dewgong.lvl == 52 and dewgong.iv == 250)
 check("Dewgong's moves are Ice Beam/Surf/Hail/Safeguard", dewgong.moves[0] == 58 and dewgong.moves[1] == 57 and dewgong.moves[2] == 258 and dewgong.moves[3] == 219)
 
+-- TRAINER_BLACK_BELT_KOICHI = 317 (ItemDefaultMoves layout), TRAINER_CAMPER_LIAM = 142 (NoItemCustomMoves layout)
+local trainersWide = Trainer.parseTable(data, addrs.gTrainers, 318)
+local koichi = trainersWide[317]
+local koichiParty = TrainerParty.resolve(koichi, data)
+check("Koichi's Hitmonlee has held item Black Belt", koichiParty[0].species == 106 and koichiParty[0].lvl == 37 and koichiParty[0].iv == 100 and koichiParty[0].heldItem == 207)
+
+local liam = Trainer.parseTable(data, addrs.gTrainers, 143)[142]
+local liamParty = TrainerParty.resolve(liam, data)
+check("Liam's Geodude has Tackle/Defense Curl", liamParty[0].species == 74 and liamParty[0].lvl == 10 and liamParty[0].moves[0] == 33 and liamParty[0].moves[1] == 111)
+
 print(("%d passed, %d failed"):format(passed, failed))
 os.exit(failed == 0 and 0 or 1)
