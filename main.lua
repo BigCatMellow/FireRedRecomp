@@ -20,6 +20,7 @@ local MapBlockData = require("import.MapBlockData")
 local MapBorder = require("import.MapBorder")
 local MapCompositor = require("import.MapCompositor")
 local DataViewer = require("src.core.DataViewer")
+local TitleScreen = require("import.TitleScreen")
 
 local BORDER_MARGIN_METATILES = 2
 
@@ -40,6 +41,9 @@ end
 local statusLines = {}
 local mapImage
 local MAP_SCALE = 2
+local titleImage
+local titleActive = false
+local TITLE_SCALE = 2
 
 -- Set once the ROM verifies, so the data viewer (toggled at any time with
 -- V) can browse records without re-reading the file.
@@ -56,7 +60,7 @@ local function addLine(text)
 end
 
 -- Builds a love.graphics.Image from a MapCompositor.composite() result.
-local function buildMapImage(compositedMap)
+local function buildImage(compositedMap)
   local imageData = love.image.newImageData(compositedMap.width, compositedMap.height)
   for y = 0, compositedMap.height - 1 do
     for x = 0, compositedMap.width - 1 do
@@ -113,12 +117,21 @@ local function loadMapFromRom(romPath)
   dbg("composited " .. composited.width .. "x" .. composited.height)
 
   addLine(("Composited map %d,%d: %dx%d metatiles, %dx%d px"):format(math.floor(mapId / 256), mapId % 256, layout.width, layout.height, composited.width, composited.height))
-  mapImage = buildMapImage(composited)
+  mapImage = buildImage(composited)
   dbg("image built")
   mapImage:setFilter("nearest", "nearest")
   dbg("filter set")
 
-  addLine("Press V for the data viewer (species/moves/trainers/maps).")
+  addLine("Press V for the data viewer, T for the title screen logo.")
+
+  local titleOk, titleComposited = pcall(TitleScreen.compositeLogo, data, addrs.gGraphics_TitleScreen_GameTitleLogoTiles, addrs.gGraphics_TitleScreen_GameTitleLogoMap, addrs.gGraphics_TitleScreen_GameTitleLogoPals)
+  if titleOk then
+    titleImage = buildImage(titleComposited)
+    titleImage:setFilter("nearest", "nearest")
+    dbg("title logo built")
+  else
+    dbg("title logo failed: " .. tostring(titleComposited))
+  end
 end
 
 -- ---------------------------------------------------------------- viewer
@@ -196,10 +209,15 @@ function love.load()
     end
   end
 
+  -- POKEPORT_TITLE=1 boots straight into the title screen logo view.
+  if os.getenv("POKEPORT_TITLE") == "1" then
+    titleActive = true
+  end
+
   -- love.filesystem is sandboxed to the save directory (see conf.lua's
   -- identity="firered-recomp"), so this always writes there under a fixed
   -- name rather than to an arbitrary POKEPORT_SCREENSHOT path.
-  if os.getenv("POKEPORT_SCREENSHOT") == "1" and (mapImage or viewerActive) then
+  if os.getenv("POKEPORT_SCREENSHOT") == "1" and (mapImage or viewerActive or titleActive) then
     love.graphics.captureScreenshot(function(imageData)
       imageData:encode("png", "screenshot.png")
       love.event.quit()
@@ -221,6 +239,8 @@ function love.draw()
       love.graphics.print(line, 20, y)
       y = y + 20
     end
+  elseif titleActive and titleImage then
+    love.graphics.draw(titleImage, 20, y + 10, 0, TITLE_SCALE, TITLE_SCALE)
   elseif mapImage then
     love.graphics.draw(mapImage, 20, y + 10, 0, MAP_SCALE, MAP_SCALE)
   end
@@ -231,6 +251,10 @@ function love.keypressed(key)
     love.event.quit()
   elseif key == "v" then
     viewerActive = not viewerActive
+    titleActive = false
+  elseif key == "t" then
+    titleActive = not titleActive
+    viewerActive = false
   elseif viewerActive then
     if key == "tab" then
       viewerCategoryIndex = (viewerCategoryIndex % #DataViewer.CATEGORIES) + 1

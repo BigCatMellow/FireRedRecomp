@@ -80,6 +80,14 @@ RomAddresses["41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc"] = { -- FireRed (US) v1.
   -- gTypeNames: fixed-stride (TYPE_NAME_LENGTH+1 = 7 bytes) charmap string
   -- table, pokefirered src/battle_main.c. Verified against real NORMAL(0)/GRASS(12).
   gTypeNames = 0x0824f1a0 - 0x08000000,
+  -- Title screen (Phase 2 -- roadmap exit criterion, started early since
+  -- the pieces already existed). pokefirered src/title_screen.c.
+  -- gGraphics_TitleScreen_GameTitleLogo{Tiles,Map,Pals}: the logo layer,
+  -- 8bpp (not 4bpp like every other graphic here) -- verified by eye
+  -- against the real "Pokémon FireRed Version" logo art.
+  gGraphics_TitleScreen_GameTitleLogoTiles = 0x08eab8c4 - 0x08000000,
+  gGraphics_TitleScreen_GameTitleLogoMap = 0x08ead390 - 0x08000000,
+  gGraphics_TitleScreen_GameTitleLogoPals = 0x08eab6c4 - 0x08000000,
 }
 
 -- Total record counts, confirmed via `arm-none-eabi-nm -S` on the real

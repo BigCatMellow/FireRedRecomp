@@ -43,5 +43,27 @@ check("16 colors decoded", palette[15] ~= nil and palette[16] == nil)
 check("color 0 is white", palette[0].r == 255 and palette[0].g == 255 and palette[0].b == 255)
 check("color 1 is black", palette[1].r == 0 and palette[1].g == 0 and palette[1].b == 0)
 
+-- 8bpp tile: byte value = pixel index directly (0-255), no nibble packing.
+local tile8 = {}
+for i = 0, 63 do tile8[i + 1] = string.char(i) end
+tile8 = table.concat(tile8)
+local pixels8 = GbaGraphics.decode8bppTile(tile8)
+check("8bpp: 64 pixels decoded, each equal to its byte value", pixels8[0] == 0 and pixels8[1] == 1 and pixels8[63] == 63)
+
+local badSize8 = pcall(GbaGraphics.decode8bppTile, string.rep("\0", 32))
+check("rejects wrong-size 8bpp tile data (32 bytes, needs 64)", badSize8 == false)
+
+local twoTiles8 = tile8 .. string.rep(string.char(0xAA), 64)
+local decoded8 = GbaGraphics.decodeTiles8bpp(twoTiles8, 0, 2)
+check("decodeTiles8bpp reads 2 tiles", decoded8[0][0] == 0 and decoded8[1][0] == 0xAA)
+
+-- decodeFlatPalette: a flat 256-color-capable palette, not fixed at 16 --
+-- used for 8bpp backgrounds where multiple 16-color banks load into one
+-- contiguous palette (e.g. the title screen logo's 13 banks = 208 colors).
+local flatBlob = u16le(0x7FFF) .. u16le(0x001F) .. u16le(0x0000)
+local flatPalette = GbaGraphics.decodeFlatPalette(flatBlob, 0, 3)
+check("decodeFlatPalette reads exactly the requested count", flatPalette[2] ~= nil and flatPalette[3] == nil)
+check("decodeFlatPalette colors match decodeColor", flatPalette[0].r == 255 and flatPalette[1].r == 255 and flatPalette[1].g == 0)
+
 print(("%d passed, %d failed"):format(passed, failed))
 os.exit(failed == 0 and 0 or 1)

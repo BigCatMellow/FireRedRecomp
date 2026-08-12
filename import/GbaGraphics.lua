@@ -43,6 +43,33 @@ function GbaGraphics.decodeTiles(data, tilesOffset, count)
   return out
 end
 
+-- 8bpp tiles (used where a BgTemplate's paletteMode is 1, e.g. the FireRed
+-- title screen's logo layer -- confirmed by decoding it two ways: as 4bpp
+-- it's visual noise, as 8bpp it's exactly the real "Pokémon FireRed
+-- Version" logo art). 64 bytes per 8x8 tile, one full byte per pixel
+-- (0-255 palette index directly, no nibble packing).
+function GbaGraphics.decode8bppTile(tileBytes)
+  assert(#tileBytes == 64, ("8bpp tile must be 64 bytes, got %d"):format(#tileBytes))
+  local pixels = {}
+  for i = 0, 63 do
+    pixels[i] = byte(tileBytes, i + 1)
+  end
+  return pixels
+end
+
+function GbaGraphics.decodeTiles8bpp(data, tilesOffset, count)
+  local out = {}
+  for i = 0, count - 1 do
+    local start = tilesOffset + i * 64
+    local tileBytes = data:sub(start + 1, start + 64)
+    if #tileBytes < 64 then
+      error(("8bpp tile read ran past end of data at index %d"):format(i))
+    end
+    out[i] = GbaGraphics.decode8bppTile(tileBytes)
+  end
+  return out
+end
+
 -- colorBytes: exactly 2 bytes (one BGR555 color, little-endian u16).
 -- Returns r, g, b each 0-255 (5-bit channels scaled up to 8-bit by
 -- replicating the top 3 bits into the low bits, the standard GBA->RGB888
@@ -62,6 +89,25 @@ end
 function GbaGraphics.decodePalette(data, paletteOffset)
   local out = {}
   for i = 0, 15 do
+    local start = paletteOffset + i * 2
+    local colorBytes = data:sub(start + 1, start + 2)
+    if #colorBytes < 2 then
+      error(("palette read ran past end of data at color %d"):format(i))
+    end
+    local r, g, b = GbaGraphics.decodeColor(colorBytes)
+    out[i] = { r = r, g = g, b = b }
+  end
+  return out
+end
+
+-- data: full ROM bytes. paletteOffset: 0-based byte offset. count: how many
+-- colors to decode. For 8bpp ("256-color") backgrounds, GBA palette RAM
+-- isn't split into 16-color banks the way 4bpp is -- an 8bpp tile's pixel
+-- byte indexes directly into one flat palette, however many banks were
+-- loaded into it. Same color format as decodePalette, just not fixed at 16.
+function GbaGraphics.decodeFlatPalette(data, paletteOffset, count)
+  local out = {}
+  for i = 0, count - 1 do
     local start = paletteOffset + i * 2
     local colorBytes = data:sub(start + 1, start + 2)
     if #colorBytes < 2 then
