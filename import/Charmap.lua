@@ -270,24 +270,67 @@ local Charmap = {}
 Charmap.TERMINATOR = 0xFF
 Charmap.BYTE_TO_CHAR = BYTE_TO_CHAR
 
+-- Single-byte line-break control codes (charmap.txt: '\l'=scroll up window,
+-- '\p'=new paragraph, '\n'=new line). All three render as a plain newline
+-- here -- this project doesn't yet have a text window with a distinct
+-- "scroll" vs. "paragraph" behavior, so the distinction is only meaningful
+-- once one exists.
+local LINEBREAK_BYTES = { [0xFA] = true, [0xFB] = true, [0xFE] = true }
+
+-- 0xFD-prefixed codes are always exactly 2 bytes (FD + subcode), no
+-- parameters -- runtime string-variable placeholders (charmap.txt).
+local VAR_PLACEHOLDER_NAMES = {
+  [0x01] = "PLAYER",
+  [0x02] = "STR_VAR_1",
+  [0x03] = "STR_VAR_2",
+  [0x04] = "STR_VAR_3",
+  [0x06] = "RIVAL",
+}
+
 local byte = string.byte
 
 -- Decodes charmap-encoded bytes into a UTF-8 Lua string. Stops at the
 -- terminator byte (0xFF) by default, matching how name tables are laid out
 -- (real bytes, then 0xFF, then zero padding to the record's fixed stride).
--- Unmapped bytes (control codes: variable text, waits, colors, etc. -- not
--- yet handled) render as a bracketed hex placeholder rather than silently
--- dropping data, so a caller can tell decoded text from a gap.
+--
+-- Line-break codes (0xFA/0xFB/0xFE) become "\n". 0xFD+subcode
+-- (string-variable placeholders, e.g. the player's name) become
+-- "{PLAYER}"-style tags for known subcodes, "{FD:XX}" otherwise.
+-- 0xFC+subcode (the extended control-code prefix -- colors, waits, fonts,
+-- sound cues) becomes "{FC:XX}"; **only the 2-byte code itself is
+-- consumed, not any trailing parameter bytes some FC subcodes take**
+-- (e.g. COLOR takes 1 param byte, COLOR_HIGHLIGHT_SHADOW takes 3) -- text
+-- after such a code will misdecode. Not yet fixed: doing it right needs a
+-- per-subcode parameter-length table, deferred until real message text
+-- using those specific codes needs decoding correctly.
+-- Any other unmapped byte renders as a bracketed hex placeholder rather
+-- than silently dropping data.
 function Charmap.decode(data, stopAtTerminator)
   if stopAtTerminator == nil then stopAtTerminator = true end
   local out = {}
-  for i = 1, #data do
+  local i = 1
+  local n = #data
+  while i <= n do
     local b = byte(data, i)
     if stopAtTerminator and b == Charmap.TERMINATOR then
       break
     end
-    local ch = BYTE_TO_CHAR[b]
-    out[#out + 1] = ch or ("[%02X]"):format(b)
+    if LINEBREAK_BYTES[b] then
+      out[#out + 1] = "\n"
+      i = i + 1
+    elseif b == 0xFD then
+      local sub = byte(data, i + 1)
+      out[#out + 1] = "{" .. (VAR_PLACEHOLDER_NAMES[sub] or ("FD:%02X"):format(sub or 0)) .. "}"
+      i = i + 2
+    elseif b == 0xFC then
+      local sub = byte(data, i + 1)
+      out[#out + 1] = ("{FC:%02X}"):format(sub or 0)
+      i = i + 2
+    else
+      local ch = BYTE_TO_CHAR[b]
+      out[#out + 1] = ch or ("[%02X]"):format(b)
+      i = i + 1
+    end
   end
   return table.concat(out)
 end

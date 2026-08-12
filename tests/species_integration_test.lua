@@ -100,6 +100,13 @@ check("decodes BULBASAUR", Charmap.decodeAt(data, addrs.gSpeciesNames, 11, 1) ==
 check("decodes CHARMANDER", Charmap.decodeAt(data, addrs.gSpeciesNames, 11, 4) == "CHARMANDER", Charmap.decodeAt(data, addrs.gSpeciesNames, 11, 4))
 check("decodes MASTER BALL item name", Charmap.decode(items[1].rawName) == "MASTER BALL", Charmap.decode(items[1].rawName))
 
+-- Real dialogue messages with control codes, PalletTown_Text_OakDontGoOut
+-- and PalletTown_Text_PlayersHouse (addresses from pokefirered.map).
+local oakMsg = Charmap.decode(data:sub(0x0817d72c - 0x08000000 + 1, 0x0817d72c - 0x08000000 + 40))
+check("decodes a real message with a newline control code", oakMsg == "OAK: Hey! Wait!\nDon\226\128\153t go out!", oakMsg)
+local houseMsg = Charmap.decode(data:sub(0x0817d87f - 0x08000000 + 1, 0x0817d87f - 0x08000000 + 20))
+check("decodes {PLAYER} placeholder in real message text", houseMsg == "{PLAYER}\226\128\153s house", houseMsg)
+
 -- TRAINER_YOUNGSTER_BEN = 89
 local trainers = Trainer.parseTable(data, addrs.gTrainers, 90)
 local ben = trainers[89]
