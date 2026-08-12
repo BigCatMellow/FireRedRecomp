@@ -21,6 +21,7 @@ local MapBorder = require("import.MapBorder")
 local MapCompositor = require("import.MapCompositor")
 local DataViewer = require("src.core.DataViewer")
 local TitleScreen = require("import.TitleScreen")
+local ViewportScale = require("src.core.ViewportScale")
 
 local BORDER_MARGIN_METATILES = 2
 
@@ -40,10 +41,8 @@ end
 
 local statusLines = {}
 local mapImage
-local MAP_SCALE = 2
 local titleImage
 local titleActive = false
-local TITLE_SCALE = 2
 
 -- Set once the ROM verifies, so the data viewer (toggled at any time with
 -- V) can browse records without re-reading the file.
@@ -240,9 +239,13 @@ function love.draw()
       y = y + 20
     end
   elseif titleActive and titleImage then
-    love.graphics.draw(titleImage, 20, y + 10, 0, TITLE_SCALE, TITLE_SCALE)
+    local windowWidth, windowHeight = love.graphics.getDimensions()
+    local viewport = ViewportScale.fit(titleImage:getWidth(), titleImage:getHeight(), windowWidth - 40, windowHeight - (y + 10))
+    love.graphics.draw(titleImage, 20 + viewport.x, y + 10 + viewport.y, 0, viewport.scale, viewport.scale)
   elseif mapImage then
-    love.graphics.draw(mapImage, 20, y + 10, 0, MAP_SCALE, MAP_SCALE)
+    local windowWidth, windowHeight = love.graphics.getDimensions()
+    local viewport = ViewportScale.fit(mapImage:getWidth(), mapImage:getHeight(), windowWidth - 40, windowHeight - (y + 10))
+    love.graphics.draw(mapImage, 20 + viewport.x, y + 10 + viewport.y, 0, viewport.scale, viewport.scale)
   end
 end
 
