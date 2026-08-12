@@ -63,6 +63,17 @@ RomAddresses["41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc"] = { -- FireRed (US) v1.
   -- u16[NUM_SPECIES], pokefirered src/pokemon.c
   -- Verified against real species 1-5 -> national dex 1-5.
   sSpeciesToNationalPokedexNum = 0x08251fee - 0x08000000,
+  -- gMonFrontPicTable/gMonBackPicTable/gTrainerFrontPicTable: struct CompressedSpriteSheet[],
+  -- pokefirered include/data.h. Verified: Bulbasaur's front sprite decompresses
+  -- to exactly its declared size (2048 bytes).
+  gMonFrontPicTable = 0x082350ac - 0x08000000,
+  gMonBackPicTable = 0x0823654c - 0x08000000,
+  gTrainerFrontPicTable = 0x0823957c - 0x08000000,
+  -- gCryTable: struct ToneData[], pokefirered include/gba/m4a_internal.h
+  gCryTable = 0x0848c914 - 0x08000000,
+  -- gSongTable: struct Song[], pokefirered include/gba/m4a_internal.h
+  -- Verified against real mus_dummy/se_use_item/se_pc_login entries.
+  gSongTable = 0x084a32cc - 0x08000000,
 }
 
 return RomAddresses

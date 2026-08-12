@@ -33,6 +33,9 @@ local Nature = require("import.Nature")
 local PointerStringTable = require("import.PointerStringTable")
 local MapScripts = require("import.MapScripts")
 local PokedexOrder = require("import.PokedexOrder")
+local CompressedSpriteSheetTable = require("import.CompressedSpriteSheetTable")
+local CryTable = require("import.CryTable")
+local SongTable = require("import.SongTable")
 local Tileset = require("import.Tileset")
 local Lz77 = require("import.Lz77")
 local GbaGraphics = require("import.GbaGraphics")
@@ -234,6 +237,22 @@ check("species 1-5 map to national dex 1-5", (function()
     if PokedexOrder.speciesToNationalDexNum(data, addrs.sSpeciesToNationalPokedexNum, s) ~= s then return false end
   end
   return true
+end)())
+
+-- SPECIES_BULBASAUR = 1
+local bulbasaurSheet = CompressedSpriteSheetTable.resolve(data, addrs.gMonFrontPicTable, 1)
+check("Bulbasaur front sprite declares size 2048", bulbasaurSheet.size == 2048, bulbasaurSheet.size)
+local bulbasaurGfx, bulbasaurGfxErr = Lz77.decompress(data, (bulbasaurSheet.dataPtr - 0x08000000) + 1)
+check("Bulbasaur front sprite decompresses to exactly its declared size", bulbasaurGfx ~= nil and #bulbasaurGfx == bulbasaurSheet.size, bulbasaurGfxErr or (bulbasaurGfx and #bulbasaurGfx))
+
+local cry1 = CryTable.resolve(data, addrs.gCryTable, 1)
+check("cry entry 1 has plausible type/key", cry1.type == 32 and cry1.key == 60)
+
+check("gSongTable mus_dummy/se_use_item/se_pc_login match real ms/me values", (function()
+  local s0 = SongTable.resolve(data, addrs.gSongTable, 0)
+  local s1 = SongTable.resolve(data, addrs.gSongTable, 1)
+  local s2 = SongTable.resolve(data, addrs.gSongTable, 2)
+  return s0.ms == 0 and s0.me == 0 and s1.ms == 1 and s1.me == 1 and s2.ms == 1 and s2.me == 1
 end)())
 
 print(("%d passed, %d failed"):format(passed, failed))
