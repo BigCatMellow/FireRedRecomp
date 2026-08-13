@@ -197,6 +197,60 @@ RomAddresses["41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc"] = { -- FireRed (US) v1.
   -- grid). Static/local symbols, found via nm.
   gObjectEventSpriteOamTables_16x16 = 0x083a3748 - 0x08000000,
   gObjectEventSpriteOamTable_16x16_0 = 0x083a3728 - 0x08000000,
+  -- Oak intro scene graphics (pokefirered src/oak_speech.c). All four are
+  -- `static` in that translation unit, so they're absent from the linker
+  -- .map -- found via `nm pokefirered.elf`. Every one of these was then
+  -- verified BYTE-FOR-BYTE: the ROM bytes at each address, for exactly the
+  -- length implied by the next symbol's address, hash identical (sha1) to
+  -- the corresponding built asset in the decomp tree
+  -- (graphics/oak_speech/...), i.e. these are not "looks about right",
+  -- they are the real data.
+  --   sOakSpeech_Background_Pals  0x80 bytes = bg_tiles.gbapal (64 colors,
+  --     4 banks, loaded at BG_PLTT_ID(0)). Shared with the Controls Guide
+  --     and Pikachu Intro scenes.
+  --   sOakSpeech_Background_Tiles 0x44 bytes = oak_speech_bg.4bpp.lz
+  --     (LZ77 -> 320 bytes = 10 4bpp tiles).
+  --   sOakSpeech_Background_Tilemap 0xAC bytes = oak_speech_bg.bin.lz
+  --     (LZ77 -> 1280 bytes = 640 u16 entries = 32x20).
+  --   sOakSpeech_Oak_Pal          0x40 bytes = oak/pal.gbapal (32 colors,
+  --     loaded at BG_PLTT_ID(6) i.e. flat palette index 96).
+  --   sOakSpeech_Oak_Tiles        0x698 bytes = oak/pic.8bpp.lz (LZ77 ->
+  --     6144 bytes = 96 *8bpp* tiles = an 8x12-tile / 64x96px picture).
+  sOakSpeech_Background_Pals = 0x08460568 - 0x08000000,
+  sOakSpeech_Background_Tiles = 0x08460ca4 - 0x08000000,
+  sOakSpeech_Background_Tilemap = 0x08460ce8 - 0x08000000,
+  sOakSpeech_Oak_Pal = 0x08461cd4 - 0x08000000,
+  sOakSpeech_Oak_Tiles = 0x08461d14 - 0x08000000,
+  -- Dialogue-box frame graphic (pokefirered src/text_window.c,
+  -- LoadMenuMessageWindowGfx: `LoadBgTiles(..., gMenuMessageWindow_Gfx,
+  -- 0x280, ...)` = 20 uncompressed 4bpp tiles, paired with
+  -- GetTextWindowPalette(0) = gTextWindowPalettes bank 0). This is the
+  -- frame WindowFunc_DrawDialogueFrame draws -- a genuinely DIFFERENT
+  -- graphic from the already-imported gStdTextWindow_Gfx (9 tiles, bank
+  -- 3), which is the *standard menu* frame. Real (non-static) symbol,
+  -- present in the linker .map. Verified by eye: composites to the real
+  -- rounded dialogue-box frame with no visual noise.
+  gMenuMessageWindow_Gfx = 0x0841f1c8 - 0x08000000,
+  -- Object-event (NPC) graphics lookup (Phase 3 -- import/
+  -- ObjectEventGraphicsInfo.lua). gObjectEventGraphicsInfoPointers: const
+  -- struct ObjectEventGraphicsInfo *const[NUM_OBJ_EVENT_GFX=152], pokefirered
+  -- src/data/object_events/object_event_graphics_info_pointers.h -- an array
+  -- of POINTERS (not a flat struct array), indexed by an ObjectEventTemplate's
+  -- graphicsId. Static/local symbol, found via nm. Verified: entry
+  -- OBJ_EVENT_GFX_WOMAN_1 (23, Pallet Town's real Sign Lady NPC) resolves to
+  -- exactly gObjectEventGraphicsInfo_Woman1's real nm address (0x083a3d60).
+  gObjectEventGraphicsInfoPointers = 0x0839fdb0 - 0x08000000,
+  -- sObjectEventSpritePalettes: const struct SpritePalette[] (real local
+  -- array in src/event_object_movement.c, ~line 481) -- the small shared
+  -- pool of real NPC/player overworld palettes, looked up by an
+  -- ObjectEventGraphicsInfo's paletteTag (NOT one entry per graphicsId).
+  -- Static/local symbol, found via nm. Verified byte-for-byte: entry index 2
+  -- decodes to exactly gObjectEventPal_NpcGreen's real address (0x0836d868)
+  -- and tag 0x1105 (OBJ_EVENT_PAL_TAG_NPC_GREEN, exactly Woman1's real
+  -- .paletteTag); entry index 8 decodes to exactly this table's own
+  -- gObjectEventPal_Player address (0x0835b968), an independent
+  -- cross-check. Terminated by a real {NULL, 0} sentinel entry.
+  sObjectEventSpritePalettes = 0x083a5158 - 0x08000000,
 }
 
 -- Total record counts, confirmed via `arm-none-eabi-nm -S` on the real
