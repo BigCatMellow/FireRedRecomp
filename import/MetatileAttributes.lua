@@ -3,7 +3,7 @@
 -- metatile, packed per `sMetatileAttrMasks`/`sMetatileAttrShifts`):
 --   bits 0-8   BEHAVIOR (metatile_behaviors.h MB_* constants -- e.g.
 --              MB_TALL_GRASS=0x02, MB_JUMP_EAST/WEST/NORTH/SOUTH=0x38-0x3B,
---              MB_WARP_DOOR=0x69)
+--              MB_CAVE_DOOR=0x60, MB_WARP_DOOR=0x69)
 --   bits 9-13  TERRAIN
 --   bits 24-26 ENCOUNTER_TYPE
 --   bits 29-30 LAYER_TYPE
@@ -30,6 +30,7 @@ MetatileAttributes.BEHAVIOR = {
   MB_JUMP_WEST = 0x39,
   MB_JUMP_NORTH = 0x3A,
   MB_JUMP_SOUTH = 0x3B,
+  MB_CAVE_DOOR = 0x60,
   MB_WARP_DOOR = 0x69,
 }
 
