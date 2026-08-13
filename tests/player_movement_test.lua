@@ -91,5 +91,39 @@ do
   check("original DOWN movement completes uninterrupted", p.tileX == 0 and p.tileY == 1)
 end
 
+-- Ledge jump: moving toward a tile whose real jump direction matches
+-- the direction of movement covers 2 tiles over the same 16-frame
+-- duration, bypassing isBlocked entirely.
+do
+  local p = PlayerMovement.new(5, 5, PlayerMovement.UP)
+  local function alwaysBlocked() return true end
+  local function ledgeSouth(x, y)
+    if x == 5 and y == 6 then return PlayerMovement.DOWN end
+    return nil
+  end
+  p:tryMove(PlayerMovement.DOWN, alwaysBlocked, ledgeSouth)
+  check("ledge jump starts moving despite isBlocked saying true", p.moving)
+  check("ledge jump targets 2 tiles away", p.destTileX == 5 and p.destTileY == 7, p.destTileX .. "," .. p.destTileY)
+  check("ledge jump moves at double px/frame", p.moveDy == 2, p.moveDy)
+  for i = 1, 16 do p:tick() end
+  check("ledge jump lands exactly 2 tiles south", p.tileX == 5 and p.tileY == 7, p.tileX .. "," .. p.tileY)
+  check("ledge jump finishes in the real 16-frame duration", not p.moving)
+end
+
+-- A ledge only triggers when moved into from its matching real
+-- direction -- approaching from a different direction is normal
+-- blocked/unblocked movement, not a jump.
+do
+  local p = PlayerMovement.new(5, 5, PlayerMovement.DOWN)
+  local function neverBlockedHere() return false end
+  local function ledgeSouth(x, y)
+    if x == 5 and y == 6 then return PlayerMovement.DOWN end
+    return nil
+  end
+  p:tryMove(PlayerMovement.RIGHT, neverBlockedHere, ledgeSouth) -- destination (6,5), not the ledge tile
+  check("non-matching direction is a normal 1-tile move", p.destTileX == 6 and p.destTileY == 5)
+  check("non-matching direction moves at normal px/frame", p.moveDx == 1, p.moveDx)
+end
+
 print(("%d passed, %d failed"):format(passed, failed))
 os.exit(failed == 0 and 0 or 1)

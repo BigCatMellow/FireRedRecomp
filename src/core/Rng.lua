@@ -39,15 +39,22 @@ end
 -- seed: initial 32-bit RNG state (u16 in the real SeedRng, but the state
 -- itself, gRngValue, is u32 -- callers seeding with a real u16 value like
 -- the flame spawner's 30840 get identical behavior to the real code).
-function Rng.new(seed)
-  return setmetatable({ value = seed % MOD32 }, { __index = Rng })
+-- add: optional additive constant, defaulting to RAND_ADD (ISO_RANDOMIZE1's
+-- real 24691). include/random.h also defines ISO_RANDOMIZE2(val) = RAND_MULT
+-- * val + 12345 -- a second, independently-seeded LCG stream real FireRed
+-- uses for wild_encounter.c's WildEncounterRandom() (sWildEncounterData.
+-- rngState is a separate state from gRngValue). Passing add=12345 here
+-- reproduces that real stream with the same verified multiply logic.
+function Rng.new(seed, add)
+  return setmetatable({ value = seed % MOD32, add = add or RAND_ADD }, { __index = Rng })
 end
 
 -- Advances the generator and returns the next pseudorandom u16 (0-65535),
 -- exactly matching a real Random() call (or TitleScreen_rand for the
--- title screen's independent instance).
+-- title screen's independent instance, or WildEncounterRandom() when
+-- constructed with add=12345).
 function Rng:next16()
-  self.value = (mulmod32(RAND_MULT, self.value) + RAND_ADD) % MOD32
+  self.value = (mulmod32(RAND_MULT, self.value) + self.add) % MOD32
   return math.floor(self.value / 65536)
 end
 

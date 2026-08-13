@@ -42,6 +42,8 @@ local PaletteBlend = require("src.core.PaletteBlend")
 local MenuCursor = require("src.core.MenuCursor")
 local OamShapeSize = require("import.OamShapeSize")
 local SlashSprite = require("src.core.SlashSprite")
+local Tileset = require("import.Tileset")
+local MetatileAttributes = require("import.MetatileAttributes")
 local SlashMask = require("import.SlashMask")
 local AffineAnim = require("import.AffineAnim")
 local AffineAnimator = require("src.core.AffineAnimator")
@@ -64,6 +66,9 @@ local function selectedMapId()
 end
 
 local statusLines = {}
+local function addLine(text)
+  table.insert(statusLines, text)
+end
 local mapImage
 -- Title screen is drawn as several separate images (border, then the
 -- flame particles, then copyright/box art, then the logo) rather than
@@ -111,37 +116,71 @@ local walkActive = false
 local walkMapBlockData, walkMapWidth, walkMapHeight -- raw (unpadded) collision grid, set when the map loads
 local walkMapWarps -- 0-indexed array of {x, y, elevation, warpId, mapNum, mapGroup} for the current map (MapEvents.lua, real Phase 1 data)
 local walkMapId -- group*256+num of the currently-loaded map
+local walkMapPrimaryAttrsPtr, walkMapSecondaryAttrsPtr -- current map's real Tileset.metatileAttributesPtr (MetatileAttributes.lua), for tall-grass/ledge behavior lookups
+
+-- Set once the ROM verifies, so the data viewer (toggled at any time with
+-- V) can browse records without re-reading the file. Declared this early
+-- (rather than near the data-viewer state below) because
+-- getMetatileBehaviorAt, defined just below, needs it.
+local romData, romAddrs
 local playerMovement
 local loadMap, tryWarpAt -- forward-declared: playerMovementTask (below) calls tryWarpAt before its real definition later in the file
 local WALK_CAMERA_WIDTH, WALK_CAMERA_HEIGHT = 240, 160 -- real GBA screen resolution
 
+-- Real metatile BEHAVIOR byte at (x,y) (MetatileAttributes.lua, real
+-- metatileAttributes bits 0-8), or nil if off-map/not loaded yet.
+local function getMetatileBehaviorAt(x, y)
+  if not walkMapBlockData or not walkMapPrimaryAttrsPtr or x < 0 or x >= walkMapWidth or y < 0 or y >= walkMapHeight then return nil end
+  local cell = walkMapBlockData[y * walkMapWidth + x]
+  if not cell then return nil end
+  local attr = MetatileAttributes.resolveCombined(romData, walkMapPrimaryAttrsPtr, walkMapSecondaryAttrsPtr, cell.metatileId)
+  return attr.behavior
+end
+
+local MB = MetatileAttributes.BEHAVIOR
+
 -- isBlocked callback for PlayerMovement:tryMove -- real terrain collision
--- only (MapBlockData's already-decoded collision field, see
--- PlayerMovement.lua's header comment for what's out of scope: object-
--- event collision, elevation, one-way ledges). Off-map tiles (into the
+-- (MapBlockData's already-decoded collision field, see PlayerMovement.lua's
+-- header comment for what's out of scope: object-event collision,
+-- elevation mismatches, movement-range fencing). Off-map tiles (into the
 -- border padding) are also treated as blocked, since the border isn't a
 -- real walkable area.
 --
 -- Real door metatiles have nonzero raw collision bits (confirmed against
--- Pallet Town's player's-house door, MapBlockData at that tile) -- the
--- real game still lets the player walk onto them because
--- MapGridIsImpassableAt/CheckForPlayerAvatarCollision consult each
--- metatile's real BEHAVIOR byte (MB_DOOR et al, metatileAttributes bits
--- 0-8), not just the raw collision bits, and MB_DOOR is a real documented
--- exception. Full metatile-attribute consumption isn't wired in yet (see
--- checklist), so as a scoped stand-in this treats any tile matching a
--- real decoded warp coordinate (walkMapWarps, MapEvents.lua) as walkable
--- regardless of its raw collision bits -- narrower than the real
--- behavior-byte check, but correct for every tile that's actually a warp.
+-- Pallet Town's player's-house door) -- the real game still lets the
+-- player walk onto them because MapGridIsImpassableAt/
+-- CheckForPlayerAvatarCollision-adjacent code special-cases specific real
+-- BEHAVIOR bytes, not just the raw collision bits. Scoped here to the two
+-- real door behaviors relevant to buildings/caves (MB_WARP_DOOR,
+-- MB_CAVE_DOOR) -- other real passable-despite-collision behaviors (arrow
+-- warps, stairs, ladders, fall/hole warps) aren't covered.
 local function isWalkTileBlocked(x, y)
   if not walkMapBlockData or x < 0 or x >= walkMapWidth or y < 0 or y >= walkMapHeight then return true end
-  if walkMapWarps then
-    for _, warp in pairs(walkMapWarps) do
-      if warp.x == x and warp.y == y then return false end
-    end
-  end
+  local behavior = getMetatileBehaviorAt(x, y)
+  if behavior == MB.MB_WARP_DOOR or behavior == MB.MB_CAVE_DOOR then return false end
   local cell = walkMapBlockData[y * walkMapWidth + x]
   return not cell or cell.collision ~= 0
+end
+
+-- One-way ledges (event_object_movement.c's real GetLedgeJumpDirection):
+-- returns the PlayerMovement direction constant a ledge at (x,y) jumps
+-- toward, or nil if (x,y) isn't a ledge tile. See PlayerMovement.lua's
+-- tryMove header comment for exactly how this is used/what's simplified.
+local LEDGE_JUMP_DIRECTION = {
+  [MB.MB_JUMP_SOUTH] = PlayerMovement.DOWN,
+  [MB.MB_JUMP_NORTH] = PlayerMovement.UP,
+  [MB.MB_JUMP_WEST] = PlayerMovement.LEFT,
+  [MB.MB_JUMP_EAST] = PlayerMovement.RIGHT,
+}
+local function getLedgeJumpDirection(x, y)
+  return LEDGE_JUMP_DIRECTION[getMetatileBehaviorAt(x, y)]
+end
+
+-- Real tall-grass trigger tile (MB_TALL_GRASS) -- detection only; actual
+-- wild-encounter species/level selection is a separate, explicitly
+-- out-of-scope system (see checklist's "Wild encounter selection" line).
+local function isTallGrassTile(x, y)
+  return getMetatileBehaviorAt(x, y) == MB.MB_TALL_GRASS
 end
 
 local flameActive = false
@@ -221,12 +260,11 @@ local function playerMovementTask(taskId)
   playerMovement:tick()
   if wasMoving and not playerMovement.moving then
     tryWarpAt(playerMovement.tileX, playerMovement.tileY)
+    if isTallGrassTile(playerMovement.tileX, playerMovement.tileY) then
+      addLine(("Stepped into real tall grass at %d,%d (wild encounter selection not wired in)"):format(playerMovement.tileX, playerMovement.tileY))
+    end
   end
 end
-
--- Set once the ROM verifies, so the data viewer (toggled at any time with
--- V) can browse records without re-reading the file.
-local romData, romAddrs
 
 -- Data viewer state: which category/record is being browsed, and whether
 -- the viewer is showing instead of the map.
@@ -249,10 +287,6 @@ local function charmapBytesForUppercaseAndSpaces(text)
     end
   end
   return string.char(unpack(bytes))
-end
-
-local function addLine(text)
-  table.insert(statusLines, text)
 end
 
 -- Builds a love.graphics.Image from a MapCompositor/TitleScreen/
@@ -522,6 +556,8 @@ function loadMap(data, addrs, mapId, dbg)
   walkMapBlockData, walkMapWidth, walkMapHeight = blockData, layout.width, layout.height
   walkMapWarps = MapEvents.resolve(data, header.eventsPtr).warps
   walkMapId = mapId
+  walkMapPrimaryAttrsPtr = Tileset.resolve(data, layout.primaryTilesetPtr).metatileAttributesPtr
+  walkMapSecondaryAttrsPtr = Tileset.resolve(data, layout.secondaryTilesetPtr).metatileAttributesPtr
   local border = MapBorder.resolve(data, layout.borderPtr, layout.borderWidth, layout.borderHeight)
   dbg("border resolved")
   local primary = MapCompositor.loadTilesetData(data, layout.primaryTilesetPtr)
@@ -880,9 +916,12 @@ function love.load()
     local moves = os.getenv("POKEPORT_WALK_MOVES")
     if moves and playerMovement then
       for dir in moves:gmatch("[^,]+") do
-        playerMovement:tryMove(dir, isWalkTileBlocked)
+        playerMovement:tryMove(dir, isWalkTileBlocked, getLedgeJumpDirection)
         for i = 1, 16 do playerMovement:tick() end
         tryWarpAt(playerMovement.tileX, playerMovement.tileY)
+        if isTallGrassTile(playerMovement.tileX, playerMovement.tileY) then
+          addLine(("Stepped into real tall grass at %d,%d (wild encounter selection not wired in)"):format(playerMovement.tileX, playerMovement.tileY))
+        end
       end
     end
   end
@@ -956,10 +995,10 @@ function love.update(dt)
       -- every frame (not the menu-style repeat-with-delay system --
       -- that's specific to menu cursors, see InputState.lua/MenuCursor.lua),
       -- so the next tile starts immediately once the current step finishes.
-      if inputState:isHeld(InputState.DPAD_DOWN) then playerMovement:tryMove(PlayerMovement.DOWN, isWalkTileBlocked)
-      elseif inputState:isHeld(InputState.DPAD_UP) then playerMovement:tryMove(PlayerMovement.UP, isWalkTileBlocked)
-      elseif inputState:isHeld(InputState.DPAD_LEFT) then playerMovement:tryMove(PlayerMovement.LEFT, isWalkTileBlocked)
-      elseif inputState:isHeld(InputState.DPAD_RIGHT) then playerMovement:tryMove(PlayerMovement.RIGHT, isWalkTileBlocked)
+      if inputState:isHeld(InputState.DPAD_DOWN) then playerMovement:tryMove(PlayerMovement.DOWN, isWalkTileBlocked, getLedgeJumpDirection)
+      elseif inputState:isHeld(InputState.DPAD_UP) then playerMovement:tryMove(PlayerMovement.UP, isWalkTileBlocked, getLedgeJumpDirection)
+      elseif inputState:isHeld(InputState.DPAD_LEFT) then playerMovement:tryMove(PlayerMovement.LEFT, isWalkTileBlocked, getLedgeJumpDirection)
+      elseif inputState:isHeld(InputState.DPAD_RIGHT) then playerMovement:tryMove(PlayerMovement.RIGHT, isWalkTileBlocked, getLedgeJumpDirection)
       end
     end
     if yesNoActive and yesNoCursor and not yesNoResult then

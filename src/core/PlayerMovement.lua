@@ -77,11 +77,35 @@ end
 -- mid-animation either -- the real game queues the next input instead;
 -- this project doesn't queue, it just ignores the input, a documented
 -- simplification).
-function PlayerMovement:tryMove(direction, isBlocked)
+--
+-- getLedgeJumpDirection(x, y) (optional): real one-way ledges
+-- (event_object_movement.c's `GetLedgeJumpDirection`/`ShouldJumpLedge` --
+-- checked against the DESTINATION tile's real MB_JUMP_EAST/WEST/NORTH/
+-- SOUTH behavior). When the destination tile is a ledge whose real jump
+-- direction matches the direction being moved, this overrides normal
+-- movement with a forced 2-tile hop covering the ledge tile, bypassing
+-- `isBlocked` entirely -- matching the real game's `ShouldJumpLedge`
+-- check running unconditionally, before/regardless of the raw collision
+-- result. Real ledge jumps also play a distinct vertical sprite-offset
+-- animation curve (`sJumpY_Normal`) and the real jump-in-progress state
+-- is a bit more involved (`InitJump`/`UpdateJumpAnim`); this project
+-- only reproduces the coordinate outcome (2 tiles, same 16-frame
+-- duration as `JUMP_DISTANCE_NORMAL`'s real timing, so double px/frame)
+-- and skips the arc animation as a documented visual simplification.
+function PlayerMovement:tryMove(direction, isBlocked, getLedgeJumpDirection)
   if self.moving then return end
   self.facingDirection = direction
   local delta = DIRECTION_DELTA[direction]
   local destX, destY = self.tileX + delta.dx, self.tileY + delta.dy
+
+  if getLedgeJumpDirection and getLedgeJumpDirection(destX, destY) == direction then
+    self.moving = true
+    self.stepFrame = 0
+    self.moveDx, self.moveDy = delta.dx * TILE_SIZE * 2 / WALK_FRAMES_PER_TILE, delta.dy * TILE_SIZE * 2 / WALK_FRAMES_PER_TILE
+    self.destTileX, self.destTileY = self.tileX + delta.dx * 2, self.tileY + delta.dy * 2
+    return
+  end
+
   if isBlocked(destX, destY) then return end
 
   self.moving = true
