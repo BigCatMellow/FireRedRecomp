@@ -24,7 +24,7 @@ map pipeline — header/layout/events/connections/scripts/tilesets/graphics,
 a correctly-colored real map renderer, wild encounters, Pokédex order, and
 sprite/cry/song pointer tables) is built, and every module is verified
 against real ROM bytes, not just struct definitions — see
-[`../FireRed/firered-recomp-checklist.md`](../FireRed/firered-recomp-checklist.md)
+[`../FireRed/handoffs/firered-recomp-checklist.md`](../FireRed/handoffs/firered-recomp-checklist.md)
 for the complete, itemized breakdown (kept current as work lands; treat it
 as the source of truth over this section).
 
