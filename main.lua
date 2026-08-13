@@ -8,9 +8,17 @@
 -- overworld sprite (the first actual OBJ/sprite graphic decoded, as
 -- opposed to a background tilemap -- see ObjectSprite.lua). Rendering is
 -- integer-scaled and letterboxed to fit the window (ViewportScale.lua).
--- No gameplay, no camera, no moving/animated anything yet: this is "can we
--- turn ROM bytes into recognizable pictures," not a game. See
--- ../firered-recomp-roadmap.md Phase 2 for the real renderer.
+--
+-- Phase 3 turned the W (walk) view into an actual slice of the game
+-- rather than a rendering demo: real grid movement/collision/camera over
+-- the composited map, real warps between maps, real object-event NPCs
+-- (spawned, movement-ticked, drawn, and interactable), real NPC/sign
+-- dialogue driven by the real script bytecode through DialogueRunner.lua,
+-- and real wild-encounter dice rolls on entering real tall grass (rolled
+-- and reported -- there is no battle engine until Phase 4). Full view key
+-- list: V data viewer, T title screen, P player sprite, I item ball,
+-- F font sample, O Oak narration text, S full Oak intro scene, A flame
+-- sprite, Y Yes/No menu, W walk. See ../firered-recomp-roadmap.md.
 
 local Version = require("src.core.Version")
 local RomImporter = require("import.RomImporter")
@@ -48,6 +56,16 @@ local SlashMask = require("import.SlashMask")
 local AffineAnim = require("import.AffineAnim")
 local AffineAnimator = require("src.core.AffineAnimator")
 local PlayerMovement = require("src.core.PlayerMovement")
+local ObjectEventState = require("src.core.ObjectEventState")
+local ObjectEventGraphicsInfo = require("import.ObjectEventGraphicsInfo")
+local ObjectEventInteraction = require("src.core.ObjectEventInteraction")
+local ScriptBytecode = require("import.ScriptBytecode")
+local DialogueRunner = require("src.core.DialogueRunner")
+local WildEncounters = require("import.WildEncounters")
+local WildEncounterSelector = require("src.core.WildEncounterSelector")
+local WildEncounterTrigger = require("src.core.WildEncounterTrigger")
+local Rng = require("src.core.Rng")
+local OakSpeechScene = require("import.OakSpeechScene")
 
 local BORDER_MARGIN_METATILES = 2
 
@@ -109,6 +127,15 @@ local oakSpeechWindowImage
 local oakSpeechPrinterState
 local oakSpeechBuiltRevealTokenIndex = -1
 
+-- S: the full real Oak intro SCENE (OakSpeechScene.composite -- gradient
+-- background + Oak's 8bpp picture + the real dialogue frame and narration),
+-- as opposed to O above, which is only the narration text in a standalone
+-- text window. Composited once at load (it's a static 240x160 still; the
+-- scene module's own header documents the sequencing/animation that is
+-- still open) and cached, per this project's don't-redecode-per-frame rule.
+local oakSceneActive = false
+local oakSceneImage
+
 -- Phase 3: real grid-based player movement + collision (PlayerMovement.lua)
 -- over the already-composited map, camera-cropped to a real GBA-screen-
 -- sized (240x160px) viewport centered on the player.
@@ -117,6 +144,33 @@ local walkMapBlockData, walkMapWidth, walkMapHeight -- raw (unpadded) collision 
 local walkMapWarps -- 0-indexed array of {x, y, elevation, warpId, mapNum, mapGroup} for the current map (MapEvents.lua, real Phase 1 data)
 local walkMapId -- group*256+num of the currently-loaded map
 local walkMapPrimaryAttrsPtr, walkMapSecondaryAttrsPtr -- current map's real Tileset.metatileAttributesPtr (MetatileAttributes.lua), for tall-grass/ledge behavior lookups
+
+-- Everything the W view gained in the Phase 3 integration pass (real NPCs,
+-- real NPC/sign dialogue, real wild-encounter rolls), deliberately bundled
+-- into ONE table rather than a dozen module-level locals: love.draw /
+-- love.update / love.keypressed are already close to Lua 5.1's hard
+-- 60-upvalue-per-function limit (the same limit that forced
+-- loadMapFromRom to be split into per-view loader functions above), and
+-- one shared table costs each of them a single upvalue.
+--   npcs           -- ObjectEventState.new() list for the current map, rebuilt per loadMap
+--   npcImages      -- decoded standing sprites, cached by "graphicsId/facing" (never re-decoded per frame)
+--   bgEvents     -- current map's real bg events (Town Signs etc), for A-button sign reading
+--   dialogue       -- the active DialogueRunner, or nil when no message box is up
+--   dialogueWindowImage / dialogueTextImage / dialogueBuiltTokenIndex -- dialogue box rendering + reveal cache
+--   trigger        -- WildEncounterTrigger (persistent across map loads, like the real RNG streams)
+--   landInfo       -- current map's real land WildPokemonInfo, or nil
+--   encounterLine  -- last rolled encounter, shown in place of the Phase 4 battle that doesn't exist yet
+local world = {
+  npcs = {},
+  npcImages = {},
+  bgEvents = {},
+  dialogueBuiltTokenIndex = -1,
+}
+
+-- Real land-encounter slot count (ENCOUNTER_CHANCE_LAND_MONS_SLOT count,
+-- src/data/wild_encounters.h -- WildEncounters.resolveInfo needs told how
+-- many WildPokemon entries to read, the struct doesn't carry a count).
+local LAND_MONS_COUNT = 12
 
 -- Set once the ROM verifies, so the data viewer (toggled at any time with
 -- V) can browse records without re-reading the file. Declared this early
@@ -176,12 +230,11 @@ local function getLedgeJumpDirection(x, y)
   return LEDGE_JUMP_DIRECTION[getMetatileBehaviorAt(x, y)]
 end
 
--- Real tall-grass trigger tile (MB_TALL_GRASS) -- detection only; actual
--- wild-encounter species/level selection is a separate, explicitly
--- out-of-scope system (see checklist's "Wild encounter selection" line).
-local function isTallGrassTile(x, y)
-  return getMetatileBehaviorAt(x, y) == MB.MB_TALL_GRASS
-end
+-- (Real tall-grass detection used to live here as isTallGrassTile. The
+-- behavior byte is now handed straight to WildEncounterTrigger.lua, which
+-- owns both the "is this a real land encounter tile" test and the real
+-- previous-behavior tracking DoGlobalWildEncounterDiceRoll needs -- see
+-- rollWildEncounterAt below.)
 
 local flameActive = false
 local flameImage
@@ -255,14 +308,72 @@ local function itemBallAffineTask(taskId)
   itemBallAffineAnimator:tick()
 end
 
+-- Real species name out of gSpeciesNames (same fixed-stride charmap table
+-- the data viewer reads), for the encounter status line.
+local function speciesName(species)
+  local ok, name = pcall(Charmap.decodeAt, romData, romAddrs.gSpeciesNames, 11, species)
+  return ok and name or ("species #" .. tostring(species))
+end
+
+-- Runs the real wild-encounter chain for a just-completed player step: the
+-- real trigger dice (global 60% roll on a behavior change +
+-- encounterRate*16/1600 roll on the separate WildEncounterRandom stream),
+-- then the real weighted slot + level roll. There is no battle engine yet
+-- (Phase 4), so a successful roll is REPORTED, not started -- that's the
+-- whole real outcome available at this point in the project.
+local function rollWildEncounterAt(x, y)
+  if not world.trigger then return end
+  local encounter = world.trigger:onStep(getMetatileBehaviorAt(x, y), world.landInfo)
+  if not encounter then return end
+  world.encounterLine = ("Wild %s (Lv %d) appeared!  [real slot %d -- no battle engine yet, Phase 4]"):format(
+    speciesName(encounter.species), encounter.level, encounter.slot)
+  addLine(world.encounterLine)
+end
+
 local function playerMovementTask(taskId)
+  -- A real `lock`/`lockall` (and just having a message box up at all)
+  -- freezes the player -- mirrored by not ticking movement at all while a
+  -- dialogue script owns the screen.
+  if world.dialogue and world.dialogue:isActive() then return end
   local wasMoving = playerMovement.moving
   playerMovement:tick()
   if wasMoving and not playerMovement.moving then
     tryWarpAt(playerMovement.tileX, playerMovement.tileY)
-    if isTallGrassTile(playerMovement.tileX, playerMovement.tileY) then
-      addLine(("Stepped into real tall grass at %d,%d (wild encounter selection not wired in)"):format(playerMovement.tileX, playerMovement.tileY))
+    rollWildEncounterAt(playerMovement.tileX, playerMovement.tileY)
+  end
+end
+
+-- Real per-frame object-event movement ticking (ObjectEventState:tick --
+-- the real MovementType_* state machines). Runs on the same fixed 1/60s
+-- scheduler tick as the player, since that's the real VBlank cadence both
+-- share. An NPC whose real movement type has no ported per-tick handler
+-- errors loudly by design (ObjectEventState's house style); caught here
+-- per-NPC so one such NPC disables ITSELF with a visible note instead of
+-- taking the whole game down.
+local function npcMovementTask(taskId)
+  if world.dialogue and world.dialogue:isActive() then return end
+  for _, npc in ipairs(world.npcs) do
+    if not npc.tickDisabled then
+      local ok, err = pcall(npc.tick, npc)
+      if not ok then
+        npc.tickDisabled = true
+        addLine(("NPC localId %d: movement ticking disabled -- %s"):format(npc.localId, tostring(err)))
+      end
     end
+  end
+end
+
+local function dialogueTask(taskId)
+  local runner = world.dialogue
+  if not runner then return end
+  runner:tick(inputState:isNewlyPressed(InputState.A_BUTTON))
+  if runner.error then
+    addLine("Script stopped: " .. tostring(runner.error))
+    world.dialogue = nil
+    world.dialogueBuiltTokenIndex = -1
+  elseif not runner:isActive() then
+    world.dialogue = nil
+    world.dialogueBuiltTokenIndex = -1
   end
 end
 
@@ -526,6 +637,66 @@ local function findFirstWalkableTile()
   return nil
 end
 
+-- Both real RNG streams, created ONCE at first use and then kept for the
+-- whole session (never re-seeded on a map load -- the real gRngValue and
+-- sWildEncounterData.rngState both persist across map transitions; re-
+-- seeding per map would make every entry into the same patch of grass roll
+-- identically). Fixed default seed so screenshots/replays are
+-- deterministic, matching how every other *_TICKS env knob in this file
+-- trades real elapsed time for reproducibility; POKEPORT_RNG_SEED=N
+-- overrides it.
+local function ensureRngStreams()
+  if world.globalRng then return end
+  local seed = tonumber(os.getenv("POKEPORT_RNG_SEED") or "") or 0x5A0B
+  world.globalRng = Rng.new(seed)
+  world.trigger = WildEncounterTrigger.new({
+    globalRng = world.globalRng,
+    triggerRng = WildEncounterSelector.newTriggerRng(seed),
+  })
+end
+
+-- Per-map object-event (NPC) + bg-event + wild-encounter-table setup,
+-- called from loadMap so a real warp into a new map gets its own fresh NPC
+-- list instead of dragging the previous map's along. Real NPC movement
+-- draws from the shared global Random() stream (same one the encounter
+-- rolls use), matching the real game's single gRngValue.
+local function loadMapObjectEvents(data, events, mapId)
+  ensureRngStreams()
+
+  world.npcs = {}
+  world.npcImages = {}
+  world.bgEvents = events.bgEvents or {}
+  world.dialogue = nil
+  world.dialogueBuiltTokenIndex = -1
+
+  local ok, npcs, skippedClones = pcall(ObjectEventState.new, events.objectEvents, {
+    rng = world.globalRng,
+    isBlocked = isWalkTileBlocked,
+  })
+  if not ok then
+    addLine("Object events failed to build: " .. tostring(npcs))
+    return
+  end
+  world.npcs = npcs
+  -- Real OBJ_KIND_CLONE templates are reported, not silently dropped (see
+  -- ObjectEventState.lua's header -- resolving one means parsing a
+  -- different map's object events, a separate system).
+  addLine(("Loaded %d real object-event NPCs (%d clone objects skipped)"):format(#npcs, #skippedClones))
+
+  -- Real per-map land wild encounter table (gWildMonHeaders is a flat
+  -- array linear-scanned by map group/num, not indexed -- see
+  -- WildEncounters.lua). Absent for most indoor maps, which is why this
+  -- is a plain nil rather than an error.
+  world.landInfo = nil
+  local header = WildEncounters.findHeader(data, romAddrs.gWildMonHeaders, math.floor(mapId / 256), mapId % 256)
+  if header then
+    world.landInfo = WildEncounters.resolveInfo(data, header.landMonsInfoPtr, LAND_MONS_COUNT)
+  end
+  if world.landInfo then
+    addLine(("Real land encounter table loaded: encounterRate %d, %d slots"):format(world.landInfo.encounterRate, LAND_MONS_COUNT))
+  end
+end
+
 -- Called once at boot: places the player and starts the movement task.
 -- Later map loads (via a real warp, see loadMap/tryWarpAt) just
 -- reposition the existing playerMovement instead of recreating it.
@@ -538,7 +709,23 @@ local function loadWalkAssets(dbg)
   end
   playerMovement = PlayerMovement.new(x, y, PlayerMovement.DOWN)
   scheduler:createTask(playerMovementTask, 0)
+  scheduler:createTask(npcMovementTask, 0)
+  scheduler:createTask(dialogueTask, 0)
   dbg(("player movement started at first walkable tile %d,%d"):format(x, y))
+end
+
+-- The full real Oak intro scene as its own view (S). Static composite,
+-- built once here rather than per frame -- same caching rule as every
+-- other decoded image in this file.
+local function loadOakSceneAssets(data, addrs, dbg)
+  local ok, composited = pcall(OakSpeechScene.composite, data, addrs)
+  if ok then
+    oakSceneImage = buildImage(composited)
+    oakSceneImage:setFilter("nearest", "nearest")
+    dbg("Oak intro scene composited")
+  else
+    dbg("Oak intro scene failed: " .. tostring(composited))
+  end
 end
 
 -- Loads and composites a real map by id (group*256+num), setting
@@ -554,7 +741,8 @@ function loadMap(data, addrs, mapId, dbg)
   local blockData = MapBlockData.resolve(data, layout.mapPtr, layout.width, layout.height)
   dbg("blockData resolved")
   walkMapBlockData, walkMapWidth, walkMapHeight = blockData, layout.width, layout.height
-  walkMapWarps = MapEvents.resolve(data, header.eventsPtr).warps
+  local events = MapEvents.resolve(data, header.eventsPtr)
+  walkMapWarps = events.warps
   walkMapId = mapId
   walkMapPrimaryAttrsPtr = Tileset.resolve(data, layout.primaryTilesetPtr).metatileAttributesPtr
   walkMapSecondaryAttrsPtr = Tileset.resolve(data, layout.secondaryTilesetPtr).metatileAttributesPtr
@@ -566,6 +754,8 @@ function loadMap(data, addrs, mapId, dbg)
   dbg("secondary tileset loaded, tiles=" .. #secondary.tiles)
   local composited = MapCompositor.compositeWithBorder(data, primary, secondary, blockData, layout.width, layout.height, border, layout.borderWidth, layout.borderHeight, BORDER_MARGIN_METATILES)
   dbg("composited " .. composited.width .. "x" .. composited.height)
+
+  loadMapObjectEvents(data, events, mapId)
 
   addLine(("Composited map %d,%d: %dx%d metatiles, %dx%d px"):format(math.floor(mapId / 256), mapId % 256, layout.width, layout.height, composited.width, composited.height))
   mapImage = buildImage(composited)
@@ -606,6 +796,119 @@ function tryWarpAt(x, y)
   end
 end
 
+-- ---------------------------------------------------------- NPCs + scripts
+
+-- Real `faceplayer` turns the object toward the player, i.e. the reverse of
+-- whichever way the player is facing (GetOppositeDirection, src/
+-- event_object_movement.c).
+local OPPOSITE_DIRECTION = {
+  [PlayerMovement.DOWN] = PlayerMovement.UP,
+  [PlayerMovement.UP] = PlayerMovement.DOWN,
+  [PlayerMovement.LEFT] = PlayerMovement.RIGHT,
+  [PlayerMovement.RIGHT] = PlayerMovement.LEFT,
+}
+
+-- Decoded standing sprite for an NPC's current facing, cached by
+-- graphicsId+facing (the real standing frame differs per direction, and
+-- "right" is the "left" frame drawn hFlipped -- see
+-- ObjectEventGraphicsInfo.FACE_FRAME). Returns (image, hFlip), or nil if
+-- this graphicsId can't be decoded (real VAR-based dynamic ids and the one
+-- >64px multi-OAM graphic both error loudly in the decoder; cached as a
+-- negative result so a failing NPC doesn't retry every single frame).
+local function npcSprite(npc)
+  local key = npc.graphicsId .. "/" .. npc.facingDirection
+  local cached = world.npcImages[key]
+  if cached ~= nil then
+    if cached == false then return nil end
+    return cached.image, cached.hFlip
+  end
+
+  local ok, image, hFlip = pcall(function()
+    local info = ObjectEventGraphicsInfo.decode(romData, romAddrs.gObjectEventGraphicsInfoPointers, npc.graphicsId)
+    local palettePtr = ObjectEventGraphicsInfo.resolvePaletteTag(romData, romAddrs.sObjectEventSpritePalettes, info.paletteTag)
+    return ObjectEventGraphicsInfo.decodeStandingImage(romData, info, palettePtr, npc.facingDirection)
+  end)
+  if not ok then
+    world.npcImages[key] = false
+    addLine(("NPC graphicsId %d not drawable: %s"):format(npc.graphicsId, tostring(image)))
+    return nil
+  end
+
+  local built = buildImage(image)
+  built:setFilter("nearest", "nearest")
+  world.npcImages[key] = { image = built, hFlip = hFlip }
+  return built, hFlip
+end
+
+-- Real text at a ROM pointer -> Charmap tokens, for DialogueRunner. 300
+-- bytes is the same generous read-then-stop-at-terminator window
+-- loadOakSpeechAssets already uses (Charmap.tokenize stops at 0xFF).
+local function tokenizeTextAt(textPtr)
+  local offset = textPtr - ScriptBytecode.romBase
+  return Charmap.tokenize(romData:sub(offset + 1, offset + 300))
+end
+
+-- Starts a real decoded script (an NPC's scriptPtr or a bg event's sign
+-- script) running through DialogueRunner. facingNpc, when given, is the
+-- ObjectEventState the real `faceplayer` opcode should turn toward the
+-- player.
+local function startScript(scriptPtr, facingNpc)
+  if scriptPtr == 0 then
+    addLine("That object has no real script (scriptPtr 0).")
+    return
+  end
+  local ok, instructions, addrToIndex = pcall(ScriptBytecode.decode, romData, scriptPtr)
+  if not ok then
+    addLine(("Script 0x%08X failed to decode: %s"):format(scriptPtr, tostring(instructions)))
+    return
+  end
+  world.dialogue = DialogueRunner.new(instructions, addrToIndex, {
+    tokenize = tokenizeTextAt,
+    ticksPerChar = FONT_REVEAL_TICKS_PER_CHAR,
+    onFacePlayer = function()
+      if facingNpc then
+        facingNpc.facingDirection = OPPOSITE_DIRECTION[playerMovement.facingDirection] or facingNpc.facingDirection
+      end
+    end,
+  })
+  world.dialogueBuiltTokenIndex = -1
+end
+
+-- Real A-button interaction (field_control_avatar.c's
+-- GetInFrontOfPlayer -> TryStartInteraction shape): the tile one step in
+-- the player's facing direction. An object event there wins; otherwise a
+-- real bg event (Town Signs and friends, kind 0 = script sign) on that
+-- same tile is read. Ignored mid-step and while a message box is already
+-- up, matching the real ObjectEventIsMovementOverridden/script-context
+-- input gating.
+local function tryStartInteraction()
+  if not playerMovement or playerMovement.moving then return end
+  if world.dialogue and world.dialogue:isActive() then return end
+
+  local npc = ObjectEventInteraction.findInteractionTarget(
+    playerMovement.tileX, playerMovement.tileY, playerMovement.facingDirection, world.npcs)
+  if npc then
+    startScript(npc.scriptPtr, npc)
+    return
+  end
+
+  local delta = ObjectEventState.DIRECTION_DELTA[playerMovement.facingDirection]
+  if not delta then return end
+  local tx, ty = playerMovement.tileX + delta.dx, playerMovement.tileY + delta.dy
+  local i = 0
+  while world.bgEvents[i] ~= nil do
+    local bg = world.bgEvents[i]
+    -- kind 0 is the real BG_EVENT_PLAYER_FACING_ANY script sign; the other
+    -- real kinds (hidden items, secret base) reuse the union field for
+    -- non-script data and are out of scope for this pass.
+    if bg.x == tx and bg.y == ty and bg.kind == 0 then
+      startScript(bg.union, nil)
+      return
+    end
+    i = i + 1
+  end
+end
+
 local function loadMapFromRom(romPath)
   local ok, info = RomImporter.verify(romPath)
   if not ok then
@@ -638,12 +941,13 @@ local function loadMapFromRom(romPath)
   dbg("selectedMapId " .. mapId)
   loadMap(data, addrs, mapId, dbg)
 
-  addLine("Press V for the data viewer, T for the title screen, P for a sprite, I for an item ball, F for font rendering, O for the Oak intro text, A for the animated flame, Y for a Yes/No menu, W to walk (arrow keys).")
+  addLine("Press V for the data viewer, T for the title screen, P for a sprite, I for an item ball, F for font rendering, O for the Oak intro text, S for the full Oak intro scene, A for the animated flame, Y for a Yes/No menu, W to walk (arrow keys; Enter talks to NPCs/signs).")
 
   loadTitleScreenAssets(data, addrs, dbg)
   loadSpriteAssets(data, addrs, dbg)
   loadFontAssets(data, addrs, dbg)
   loadOakSpeechAssets(data, addrs, dbg)
+  loadOakSceneAssets(data, addrs, dbg)
   loadYesNoAssets(data, addrs, dbg)
   loadFlameAssets(data, addrs, dbg)
   loadWalkAssets(dbg)
@@ -680,6 +984,59 @@ local function ensureOakSpeechImageCurrent()
     end
   end
   oakSpeechBuiltRevealTokenIndex = oakSpeechPrinterState.tokenIndex
+end
+
+-- Overworld dialogue box for the W view. The frame is built once (26x4
+-- content tiles -> 28x6 with the border = 224x48px, a close stand-in for
+-- the real overworld message window's footprint at the bottom of the
+-- 240x160 screen); the text image is rebuilt only when the reveal has
+-- actually advanced, exactly like ensureFontImageCurrent.
+local DIALOGUE_CONTENT_TILES_W, DIALOGUE_CONTENT_TILES_H = 26, 4
+local function ensureDialogueImagesCurrent()
+  if not fontData or not fontPalette then return end
+  if not world.dialogueWindowImage then
+    local ok, composited = pcall(function()
+      local tiles = TextWindow.decodeFrameTiles(fontData, fontAddrs.gStdTextWindow_Gfx)
+      local palette = TextWindow.decodePalette(fontData, fontAddrs.gTextWindowPalettes, TextWindow.STD_PALETTE_INDEX)
+      return TextWindow.compositeFrame(tiles, palette, DIALOGUE_CONTENT_TILES_W, DIALOGUE_CONTENT_TILES_H)
+    end)
+    if not ok then return end
+    world.dialogueWindowImage = buildImage(composited)
+    world.dialogueWindowImage:setFilter("nearest", "nearest")
+    -- Real DrawDialogueFrame follows the frame tiles with a
+    -- FillWindowPixelBuffer flood of the interior, and the real overworld
+    -- message printer then uses TEXT_COLOR_WHITE as its background with
+    -- TEXT_COLOR_DARK_GRAY text and TEXT_COLOR_LIGHT_GRAY shadow (the same
+    -- real trio OakSpeechScene.lua's textbox already reproduces).
+    -- TextWindow.compositeFrame deliberately leaves the interior
+    -- transparent (it's the caller's job), so over a map the box would
+    -- otherwise show the field through it -- this paints the real white
+    -- background behind it. Palette indices follow TextRenderer's
+    -- TEXT_COLOR_* slot convention (palette[1] = TEXT_COLOR_WHITE).
+    local fill = fontPalette[1]
+    world.dialogueFillColor = { fill.r / 255, fill.g / 255, fill.b / 255 }
+  end
+
+  local runner = world.dialogue
+  local tokenIndex = (runner and runner.printer) and runner.printer.tokenIndex or -1
+  if tokenIndex == world.dialogueBuiltTokenIndex then return end
+  world.dialogueBuiltTokenIndex = tokenIndex
+  if tokenIndex <= 0 then
+    world.dialogueTextImage = nil
+    return
+  end
+  -- Real AddTextPrinterParameterized2(..., TEXT_COLOR_DARK_GRAY,
+  -- TEXT_COLOR_WHITE, TEXT_COLOR_LIGHT_GRAY) for an overworld message --
+  -- injected as the same kind of color token a real EXT_CTRL_CODE_COLOR
+  -- byte would produce, since TextRenderer's own default is the
+  -- white-on-transparent pair the F view wants instead.
+  local tokens = { { type = "color", fg = 2, shadow = 3 } }
+  for _, token in ipairs(runner:revealedTokens()) do tokens[#tokens + 1] = token end
+  local ok, composited = pcall(TextRenderer.renderTokens, fontData, fontAddrs, tokens, fontPalette)
+  if ok then
+    world.dialogueTextImage = buildImage(composited)
+    world.dialogueTextImage:setFilter("nearest", "nearest")
+  end
 end
 
 local FLAME_TILE_WIDTH, FLAME_TILE_HEIGHT = 2, 2 -- ST_OAM_SIZE_1 SQUARE = 16x16px = 2x2 tiles
@@ -911,6 +1268,11 @@ function love.load()
   -- screenshot is taken -- deterministic movement for automated
   -- screenshots, since real elapsed-time-based key holding can't be
   -- scripted here.
+  -- POKEPORT_WALK_TALK=1 additionally fires one real A-button interaction
+  -- after the moves finish (the NPC/sign the player ends up facing), and
+  -- POKEPORT_WALK_TALK_TICKS=N then ticks the dialogue runner N times so a
+  -- screenshot catches a partially- or fully-revealed real message --
+  -- automated capture can't press keys or wait on real elapsed time.
   if os.getenv("POKEPORT_WALK") == "1" then
     walkActive = true
     local moves = os.getenv("POKEPORT_WALK_MOVES")
@@ -919,11 +1281,21 @@ function love.load()
         playerMovement:tryMove(dir, isWalkTileBlocked, getLedgeJumpDirection)
         for i = 1, 16 do playerMovement:tick() end
         tryWarpAt(playerMovement.tileX, playerMovement.tileY)
-        if isTallGrassTile(playerMovement.tileX, playerMovement.tileY) then
-          addLine(("Stepped into real tall grass at %d,%d (wild encounter selection not wired in)"):format(playerMovement.tileX, playerMovement.tileY))
-        end
+        rollWildEncounterAt(playerMovement.tileX, playerMovement.tileY)
       end
     end
+    if os.getenv("POKEPORT_WALK_TALK") == "1" then
+      tryStartInteraction()
+      local talkTicks = tonumber(os.getenv("POKEPORT_WALK_TALK_TICKS") or "120")
+      for _ = 1, talkTicks do
+        if world.dialogue then world.dialogue:tick(false) end
+      end
+    end
+  end
+
+  -- POKEPORT_OAKSCENE=1 boots straight into the full Oak intro scene view.
+  if os.getenv("POKEPORT_OAKSCENE") == "1" then
+    oakSceneActive = true
   end
 
   -- POKEPORT_FLAME=1 boots straight into the animated flame sprite view.
@@ -952,7 +1324,7 @@ function love.load()
   -- love.filesystem is sandboxed to the save directory (see conf.lua's
   -- identity="firered-recomp"), so this always writes there under a fixed
   -- name rather than to an arbitrary POKEPORT_SCREENSHOT path.
-  if os.getenv("POKEPORT_SCREENSHOT") == "1" and (mapImage or viewerActive or titleActive or spriteActive or itemBallActive or fontActive or oakSpeechActive or flameActive or yesNoActive or walkActive) then
+  if os.getenv("POKEPORT_SCREENSHOT") == "1" and (mapImage or viewerActive or titleActive or spriteActive or itemBallActive or fontActive or oakSpeechActive or oakSceneActive or flameActive or yesNoActive or walkActive) then
     -- The font sample normally reveals one character at a time (real text
     -- speed, driven by TaskScheduler in love.update) and can pause or wait
     -- on a keypress mid-message; automated screenshots want the
@@ -990,7 +1362,12 @@ function love.update(dt)
       if inputState:isPressedOrRepeated(InputState.DPAD_DOWN) then viewerStep(1) end
       if inputState:isPressedOrRepeated(InputState.DPAD_UP) then viewerStep(-1) end
     end
-    if walkActive and playerMovement then
+    if walkActive and playerMovement and world.dialogue and world.dialogue:isActive() then
+      -- A real script's `lock`/`lockall` (and just having a message box
+      -- open) blocks field input entirely -- the A press is consumed by
+      -- the dialogue's own advance, handled in dialogueTask.
+    elseif walkActive and playerMovement then
+      if inputState:isNewlyPressed(InputState.A_BUTTON) then tryStartInteraction() end
       -- Real continuous walking-while-held uses a plain held-key check
       -- every frame (not the menu-style repeat-with-delay system --
       -- that's specific to menu cursors, see InputState.lua/MenuCursor.lua),
@@ -1011,6 +1388,7 @@ end
 function love.draw()
   if fontActive then ensureFontImageCurrent() end
   if oakSpeechActive then ensureOakSpeechImageCurrent() end
+  if walkActive then ensureDialogueImagesCurrent() end
   if flameActive then ensureFlameImageCurrent() end
   if titleActive then ensureTitleImageCurrent() end
   if spriteActive or itemBallActive then
@@ -1065,6 +1443,10 @@ function love.draw()
     if oakSpeechImage then
       love.graphics.draw(oakSpeechImage, 20 + viewport.x + TextWindow.TILE_SIZE * viewport.scale, y + 10 + viewport.y + TextWindow.TILE_SIZE * viewport.scale, 0, viewport.scale, viewport.scale)
     end
+  elseif oakSceneActive and oakSceneImage then
+    local windowWidth, windowHeight = love.graphics.getDimensions()
+    local viewport = ViewportScale.fit(oakSceneImage:getWidth(), oakSceneImage:getHeight(), windowWidth - 40, windowHeight - (y + 10))
+    love.graphics.draw(oakSceneImage, 20 + viewport.x, y + 10 + viewport.y, 0, viewport.scale, viewport.scale)
   elseif walkActive and mapImage and playerMovement then
     local windowWidth, windowHeight = love.graphics.getDimensions()
     local viewport = ViewportScale.fit(WALK_CAMERA_WIDTH, WALK_CAMERA_HEIGHT, windowWidth - 40, windowHeight - (y + 10))
@@ -1081,9 +1463,67 @@ function love.draw()
     local quad = love.graphics.newQuad(quadX, quadY, WALK_CAMERA_WIDTH, WALK_CAMERA_HEIGHT, mapPixelWidth, mapPixelHeight)
     local baseX, baseY = 20 + viewport.x, y + 10 + viewport.y
     love.graphics.draw(mapImage, quad, baseX, baseY, 0, viewport.scale, viewport.scale)
+
+    -- The map is quad-cropped to the real 240x160 GBA screen, but the
+    -- NPC/player/dialogue draws below are separate un-quadded draws, so
+    -- anything positioned off-camera (an NPC on the far side of the map,
+    -- or one mid-step at the screen edge) would otherwise spill outside
+    -- the viewport. Scissor to the same rect the map crop occupies.
+    love.graphics.setScissor(baseX, baseY, WALK_CAMERA_WIDTH * viewport.scale, WALK_CAMERA_HEIGHT * viewport.scale)
+
+    -- Real object-event NPCs, drawn through the same camera crop as the
+    -- player: their real (sub-tile-interpolated) pixel position, shifted by
+    -- the composited image's border margin, with the sprite's bottom
+    -- aligned to the tile like the player's is. hFlip for a right-facing
+    -- NPC is the renderer's job (see ObjectEventGraphicsInfo's header), so
+    -- it's a negative x scale about the sprite's own width here.
+    for _, npc in ipairs(world.npcs) do
+      local npcImage, hFlip = npcSprite(npc)
+      if npcImage then
+        local npcX = npc:pixelX() + borderOffsetPx
+        local npcY = npc:pixelY() + borderOffsetPx
+        local screenX = baseX + (npcX - quadX) * viewport.scale
+        local screenY = baseY + (npcY - quadY - (npcImage:getHeight() - 16)) * viewport.scale
+        if hFlip then
+          love.graphics.draw(npcImage, screenX + npcImage:getWidth() * viewport.scale, screenY, 0, -viewport.scale, viewport.scale)
+        else
+          love.graphics.draw(npcImage, screenX, screenY, 0, viewport.scale, viewport.scale)
+        end
+      end
+    end
+
     if spriteImage then
       love.graphics.draw(spriteImage, baseX + (playerCompositedX - quadX) * viewport.scale, baseY + (playerCompositedY - quadY - 16) * viewport.scale, 0, viewport.scale, viewport.scale)
     end
+
+    -- Real message box (DialogueRunner), drawn over the field like the
+    -- real bg0 dialogue window sitting in front of the map/OBJ layers.
+    if world.dialogue and world.dialogue.printer and world.dialogueWindowImage then
+      local boxX = baseX + 8 * viewport.scale
+      local boxY = baseY + (WALK_CAMERA_HEIGHT - world.dialogueWindowImage:getHeight() - 8) * viewport.scale
+      if world.dialogueFillColor then
+        local c = world.dialogueFillColor
+        love.graphics.setColor(c[1], c[2], c[3])
+        love.graphics.rectangle("fill", boxX, boxY,
+          world.dialogueWindowImage:getWidth() * viewport.scale, world.dialogueWindowImage:getHeight() * viewport.scale)
+        love.graphics.setColor(1, 1, 1)
+      end
+      love.graphics.draw(world.dialogueWindowImage, boxX, boxY, 0, viewport.scale, viewport.scale)
+      if world.dialogueTextImage then
+        -- Real messages page with \p (EXT "new paragraph": clear the
+        -- window and start over) and \l (scroll up a line). Charmap.lua
+        -- currently renders all three real linebreak bytes as a plain
+        -- newline (documented in its own header), so a long real message
+        -- can run past the box's 4 content rows and past its right edge
+        -- until real pagination exists. Clipped to the frame's interior
+        -- so it never spills onto the field in the meantime.
+        love.graphics.intersectScissor(boxX + TextWindow.TILE_SIZE * viewport.scale, boxY + TextWindow.TILE_SIZE * viewport.scale,
+          DIALOGUE_CONTENT_TILES_W * TextWindow.TILE_SIZE * viewport.scale, DIALOGUE_CONTENT_TILES_H * TextWindow.TILE_SIZE * viewport.scale)
+        love.graphics.draw(world.dialogueTextImage, boxX + TextWindow.TILE_SIZE * viewport.scale, boxY + TextWindow.TILE_SIZE * viewport.scale, 0, viewport.scale, viewport.scale)
+        love.graphics.setScissor(baseX, baseY, WALK_CAMERA_WIDTH * viewport.scale, WALK_CAMERA_HEIGHT * viewport.scale)
+      end
+    end
+    love.graphics.setScissor()
   elseif yesNoActive and yesNoWindowImage then
     local windowWidth, windowHeight = love.graphics.getDimensions()
     local viewport = ViewportScale.fit(yesNoWindowImage:getWidth(), yesNoWindowImage:getHeight(), windowWidth - 40, windowHeight - (y + 10))
@@ -1142,103 +1582,64 @@ function love.draw()
   end
 end
 
+-- Every view is mutually exclusive. Centralised here rather than having
+-- each key's branch re-list all the OTHER views' flags (which is how this
+-- grew, and which meant adding the S view would have required editing all
+-- nine existing branches): a view key clears everything, then toggles its
+-- own flag back on if it wasn't already the active view.
+local function clearViews()
+  viewerActive, titleActive, spriteActive, itemBallActive = false, false, false, false
+  fontActive, oakSpeechActive, oakSceneActive = false, false, false
+  flameActive, yesNoActive, walkActive = false, false, false
+end
+
 function love.keypressed(key)
   if key == "escape" then
     love.event.quit()
   elseif key == "v" then
-    viewerActive = not viewerActive
-    titleActive = false
-    spriteActive = false
-    fontActive = false
-    flameActive = false
-    yesNoActive = false
-    itemBallActive = false
-    oakSpeechActive = false
-    walkActive = false
+    local was = viewerActive
+    clearViews()
+    viewerActive = not was
   elseif key == "t" then
-    titleActive = not titleActive
-    viewerActive = false
-    spriteActive = false
-    fontActive = false
-    flameActive = false
-    yesNoActive = false
-    itemBallActive = false
-    oakSpeechActive = false
-    walkActive = false
+    local was = titleActive
+    clearViews()
+    titleActive = not was
   elseif key == "p" then
-    spriteActive = not spriteActive
-    viewerActive = false
-    titleActive = false
-    fontActive = false
-    flameActive = false
-    yesNoActive = false
-    itemBallActive = false
-    oakSpeechActive = false
-    walkActive = false
+    local was = spriteActive
+    clearViews()
+    spriteActive = not was
   elseif key == "i" then
-    itemBallActive = not itemBallActive
-    viewerActive = false
-    titleActive = false
-    spriteActive = false
-    fontActive = false
-    flameActive = false
-    yesNoActive = false
-    oakSpeechActive = false
-    walkActive = false
+    local was = itemBallActive
+    clearViews()
+    itemBallActive = not was
   elseif key == "f" then
-    fontActive = not fontActive
-    viewerActive = false
-    titleActive = false
-    spriteActive = false
-    flameActive = false
-    yesNoActive = false
-    itemBallActive = false
-    oakSpeechActive = false
-    walkActive = false
+    local was = fontActive
+    clearViews()
+    fontActive = not was
   elseif key == "o" then
-    oakSpeechActive = not oakSpeechActive
-    viewerActive = false
-    titleActive = false
-    spriteActive = false
-    fontActive = false
-    flameActive = false
-    yesNoActive = false
-    itemBallActive = false
-    walkActive = false
+    local was = oakSpeechActive
+    clearViews()
+    oakSpeechActive = not was
+  elseif key == "s" then
+    local was = oakSceneActive
+    clearViews()
+    oakSceneActive = not was
   elseif key == "a" then
-    flameActive = not flameActive
-    viewerActive = false
-    titleActive = false
-    spriteActive = false
-    fontActive = false
-    yesNoActive = false
-    itemBallActive = false
-    oakSpeechActive = false
-    walkActive = false
+    local was = flameActive
+    clearViews()
+    flameActive = not was
   elseif key == "y" then
-    yesNoActive = not yesNoActive
-    itemBallActive = false
+    local was = yesNoActive
+    clearViews()
+    yesNoActive = not was
     if yesNoActive and yesNoCursor then
       yesNoCursor.cursorPos = 0
       yesNoResult = nil
     end
-    viewerActive = false
-    titleActive = false
-    spriteActive = false
-    fontActive = false
-    flameActive = false
-    oakSpeechActive = false
-    walkActive = false
   elseif key == "w" then
-    walkActive = not walkActive
-    viewerActive = false
-    titleActive = false
-    spriteActive = false
-    fontActive = false
-    flameActive = false
-    yesNoActive = false
-    itemBallActive = false
-    oakSpeechActive = false
+    local was = walkActive
+    clearViews()
+    walkActive = not was
   elseif viewerActive then
     -- Up/Down are handled in love.update via InputState (real input-repeat
     -- timing), not here -- a plain keypressed step-once would double-step
