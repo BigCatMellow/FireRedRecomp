@@ -28,6 +28,7 @@
 -- spot-checked by eye.
 
 local GbaGraphics = require("import.GbaGraphics")
+local OamShapeSize = require("import.OamShapeSize")
 
 local ObjectSprite = {}
 
@@ -89,6 +90,83 @@ function ObjectSprite.decodeFrame(data, picOffset, palOffset, widthTiles, height
   local tiles = ObjectSprite.decodeFrameTiles(data, picOffset, widthTiles, heightTiles, frameIndex or 0)
   local palette = GbaGraphics.decodePalette(data, palOffset)
   return ObjectSprite.buildImage(tiles, palette, widthTiles, heightTiles)
+end
+
+-- Composites a real multi-OAM-entry object sprite (bigger/more complex
+-- than the single-OAM 64x64px cap decodeFrame/buildImage assume) from a
+-- decoded SubspriteTable (SubspriteTable.decodeTable/decodeSubsprites --
+-- see that module's header for the real struct verification). Real
+-- pokefirered (src/sprite.c AddSubspritesToOamBuffer) places each
+-- subsprite's own OAM entry at (spriteCornerX + x, spriteCornerY + y);
+-- for a static decode with no live camera/sprite instance this reduces to
+-- placing every subsprite in one shared coordinate space and letting the
+-- canvas bounding box fall out of the extremes -- confirmed this is
+-- exactly what real data expects: SS Anne's 4 real 64x32 subsprites at
+-- x=-32/32,y=-16/16 combine to a real 128x64 bounding box, matching
+-- gObjectEventGraphicsInfo_SSAnne's real .width=128/.height=64 declared
+-- in src/data/object_events/object_event_graphics_info.h.
+--
+-- Each subsprite's own tile data lives in the SAME pic sheet
+-- decodeFrameTiles already reads (a subsprite's real tileOffset is a
+-- tile-unit offset into it, not a separate graphic) -- confirmed for SS
+-- Anne: its raw 8-tile-wide x 16-tile-tall sheet is just four consecutive
+-- 64x32 (8x4-tile) blocks at tileOffset 0/32/64/96, and the subsprite
+-- table's x/y offsets are what rearrange those four blocks into the
+-- correct 2x2 visual grid.
+--
+-- picOffset/palOffset: same as decodeFrame (0-based ROM offsets of the
+-- pic sheet / palette; frameIndex is always 0 here -- multi-frame
+-- subsprited objects aren't exercised by the object this was verified
+-- against). subsprites: a list from SubspriteTable.decodeSubsprites.
+-- hFlip/vFlip/OAM-priority draw ordering (real AddSubspritesToOamBuffer
+-- handles both) are intentionally NOT applied -- out of scope, this
+-- composites the default (unflipped) static layout only, matching how
+-- ObjectSprite.decodeFrame already only decodes frame 0 unflipped.
+--
+-- Returns the same { width, height, getPixel(x,y) } image shape as
+-- buildImage, with (0,0) at the composited bounding box's top-left.
+function ObjectSprite.compositeSubsprites(data, picOffset, palOffset, subsprites)
+  local palette = GbaGraphics.decodePalette(data, palOffset)
+
+  local pieces = {}
+  local minX, minY, maxX, maxY = math.huge, math.huge, -math.huge, -math.huge
+  for _, s in ipairs(subsprites) do
+    local dims = OamShapeSize.PIXEL_DIMENSIONS[s.shape][s.size]
+    local widthTiles, heightTiles = dims.width / 8, dims.height / 8
+    local tiles = ObjectSprite.decodeFrameTiles(data, picOffset + s.tileOffset * 32, widthTiles, heightTiles, 0)
+    local image = ObjectSprite.buildImage(tiles, palette, widthTiles, heightTiles)
+
+    pieces[#pieces + 1] = { image = image, x = s.x, y = s.y }
+    if s.x < minX then minX = s.x end
+    if s.y < minY then minY = s.y end
+    if s.x + dims.width > maxX then maxX = s.x + dims.width end
+    if s.y + dims.height > maxY then maxY = s.y + dims.height end
+  end
+
+  local width, height = maxX - minX, maxY - minY
+  local pixels = {}
+  for _, piece in ipairs(pieces) do
+    local originX, originY = piece.x - minX, piece.y - minY
+    for y = 0, piece.image.height - 1 do
+      for x = 0, piece.image.width - 1 do
+        local p = piece.image.getPixel(x, y)
+        if p.a > 0 then
+          local canvasY, canvasX = originY + y, originX + x
+          pixels[canvasY] = pixels[canvasY] or {}
+          pixels[canvasY][canvasX] = p
+        end
+      end
+    end
+  end
+
+  return {
+    width = width,
+    height = height,
+    getPixel = function(x, y)
+      local row = pixels[y]
+      return (row and row[x]) or { r = 0, g = 0, b = 0, a = 0 }
+    end,
+  }
 end
 
 return ObjectSprite
