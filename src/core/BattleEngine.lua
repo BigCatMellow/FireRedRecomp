@@ -98,13 +98,14 @@
 --     but this engine performs no UI-level menu validation -- so that
 --     specific case still defensively no-ops with a {type="noPP"} event
 --     rather than crashing or fabricating an action.
---     NOT ported (confirmed real but out of scope): real Cmd_typecalc
---     special-cases MOVE_STRUGGLE to skip STAB and type-effectiveness
---     entirely (always neutral damage, never blocked by an immunity, e.g.
---     against a Ghost-type) -- this engine's Struggle runs the ordinary
---     typeCalc step instead, so it WILL currently register as noEffect
---     against an immune type where real FireRed would not. Flagged here
---     for a future pass; not fixed as part of the auto-Struggle trigger.
+--     Real Cmd_typecalc's MOVE_STRUGGLE special case is also ported: real
+--     Struggle skips STAB and per-row type effectiveness entirely (`if
+--     (gCurrentMove == MOVE_STRUGGLE) { gBattlescriptCurrInstr++; return;
+--     }`), dealing plain neutral, unblockable damage even against a
+--     normally-immune type (e.g. a Ghost-type). resolveMove flat-skips the
+--     BattleFormulas.typeCalc call for MOVE_STRUGGLE rather than routing it
+--     through the ordinary per-row type-chart walk with a fabricated
+--     "always neutral" row.
 --   * A faint still ends the battle -- unchanged. The real forced
 --     switch-after-faint party-select prompt is a separate, unbuilt
 --     feature (this is a bounded 1v1 engine in that one specific sense:
@@ -583,10 +584,8 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
     return
   end
 
-  events[#events + 1] = {
-    type = "useMove", side = attackerSide,
-    move = slot and slot.move or BattleEngine.MOVE_STRUGGLE,
-  }
+  local moveId = slot and slot.move or BattleEngine.MOVE_STRUGGLE
+  events[#events + 1] = { type = "useMove", side = attackerSide, move = moveId }
 
   -- Real BattleScript_EffectStatUp (every self-target UP/UP_2 effect) has
   -- NO accuracycheck step at all: attackcanceler -> attackstring ->
@@ -689,11 +688,21 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
     damage = damage * BattleFormulas.CRIT_MULTIPLIER
   end
 
-  -- 5. typecalc: STAB then per-row type effectiveness.
+  -- 5. typecalc: STAB then per-row type effectiveness. Real Cmd_typecalc
+  -- special-cases MOVE_STRUGGLE to skip this step entirely (`if
+  -- (gCurrentMove == MOVE_STRUGGLE) { gBattlescriptCurrInstr++; return; }`)
+  -- -- real Struggle always deals plain neutral damage, unblockable by any
+  -- type immunity (e.g. it still hits a Ghost-type). Ported as a flat skip
+  -- rather than routing Struggle through the ordinary per-row type-chart
+  -- walk with a fabricated "always neutral" row.
   local flags
-  damage, flags = BattleFormulas.typeCalc(
-    damage, move.type, attacker.types, defender.types, self.typeChart
-  )
+  if moveId == BattleEngine.MOVE_STRUGGLE then
+    flags = { superEffective = false, notVeryEffective = false, noEffect = false }
+  else
+    damage, flags = BattleFormulas.typeCalc(
+      damage, move.type, attacker.types, defender.types, self.typeChart
+    )
+  end
 
   -- 6. adjustnormaldamage always calls ApplyRandomDmgMultiplier, even
   -- for MOVE_RESULT_DOESNT_AFFECT_FOE; its Random() call happens before

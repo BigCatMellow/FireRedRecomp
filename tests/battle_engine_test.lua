@@ -614,6 +614,26 @@ check("Struggle deals real damage", dmgEvent ~= nil and dmgEvent.amount > 0)
 check("Struggle recoils the user via the existing RECOIL_MOVES[48] path",
   recoilEvent ~= nil and recoilEvent.amount == math.max(1, math.floor(dmgEvent.amount / 4)))
 
+-- Real Cmd_typecalc special-cases MOVE_STRUGGLE to skip STAB/type-
+-- effectiveness entirely: real Struggle hits a Ghost-type (normally
+-- immune to Normal) for plain neutral, unblockable damage. Recoil is
+-- still based on that real damage dealt, not on the fabricated-noEffect
+-- zero the ordinary Normal-vs-Ghost type-chart row would otherwise give.
+local ghostFoe = BattleEngine.makeBattler({ species = 0, level = 5, stats = charStats,
+  types = { Data.TYPE_GHOST, Data.TYPE_GHOST }, moves = { { move = Data.MOVE_TACKLE, pp = 1 } } })
+battle = BattleEngine.new({
+  player = BattleEngine.makeBattler({ species = 1, level = 5, stats = bulbaStats, types = Data.BULBASAUR.types,
+    moves = { { move = Data.MOVE_TACKLE, pp = 0 } } }),
+  foe = ghostFoe, moves = Data.moves, typeChart = Data.typeChart, rng = scriptedRng({ 0, 1, 0, 0, 1, 0 }),
+})
+events = battle:runTurn({ action = "move", moveSlot = 1 }, { action = "move", moveSlot = 1 })
+local ghostDmgEvent
+for _, e in ipairs(events) do
+  if e.type == "damage" and e.side == "player" then ghostDmgEvent = e end
+end
+check("Struggle bypasses a real Ghost-type immunity to Normal",
+  ghostDmgEvent ~= nil and ghostDmgEvent.amount > 0, ghostDmgEvent)
+
 -- Real multi-hit family (BattleEngine.MULTI_HIT_MOVES / resolveMultiHit):
 -- accuracy is checked exactly ONCE for the whole move (already covered by
 -- every accuracyCheck test above), then each hit gets its own crit roll
