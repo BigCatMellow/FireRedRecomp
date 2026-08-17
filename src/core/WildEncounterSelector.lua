@@ -132,8 +132,9 @@ end
 -- area: "land" (default) or "water" -- selects which real slot table to
 -- use; FireRed's real rock-smash encounters also use the water table
 -- (WILD_AREA_ROCKS shares ChooseWildMonIndex_WaterRock).
--- Returns { slot, species, level } -- species/level generation only, no
--- battle triggering (out of scope, Phase 4).
+-- Returns { slot, species, level } -- species/level generation only. The
+-- caller may now pass this result to the separate live battle integration;
+-- battle construction deliberately remains outside this selector.
 function WildEncounterSelector.roll(info, rng, area)
   local slot
   if area == "water" then

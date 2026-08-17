@@ -24,9 +24,9 @@
 --
 -- Explicitly NOT ported (same list WildEncounterSelector.lua documents):
 -- repel level filtering, Bike/Flute/Cleanse Tag/ability rate modifiers,
--- the encounterRateBuff step accumulator, roamers. And nothing here
--- starts a battle -- Phase 4 doesn't exist; :onStep returns the rolled
--- species/level for the caller to display.
+-- the encounterRateBuff step accumulator, roamers. This pure module still
+-- only returns the rolled species/level; main.lua owns the separate
+-- integration boundary that starts the bounded Phase 4 live battle scene.
 
 local WildEncounterSelector = require("src.core.WildEncounterSelector")
 
