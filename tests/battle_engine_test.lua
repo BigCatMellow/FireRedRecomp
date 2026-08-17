@@ -666,6 +666,50 @@ check("a missed multi-hit move deducts PP", battle.player.moves[1].pp == 9)
 check("a missed multi-hit move never reaches setmultihitcounter -- exactly one RNG draw",
   battle.rng.draws == 1, battle.rng.draws)
 
+-- Voluntary switch action: real SetActionsAndBattlersTurnOrder hoists
+-- B_ACTION_SWITCH ahead of any move (like capture/run already are), no
+-- RNG of its own; the foe still attacks the same turn, against the
+-- newly-switched-in battler. Real Cmd_switchindataupdate confirms an
+-- ordinary switch-in starts with neutral stat stages regardless of what
+-- the outgoing battler's stages were.
+battle = makeBattle({ 0, 0, 0 }, { { move = Data.MOVE_GROWL, pp = 40 } }, { { move = Data.MOVE_TACKLE, pp = 1 } })
+battle.foe.statStages.attack = 5 -- simulate a prior Growl already having landed
+local incoming = BattleEngine.makeBattler({
+  species = 99, level = 10, stats = charStats, types = Data.CHARMANDER.types,
+  moves = { { move = Data.MOVE_TACKLE, pp = 5 } },
+})
+local switchEvents = battle:runTurn({ action = "switch", battler = incoming }, { action = "move", moveSlot = 1 })
+check("switching swaps the active player battler", battle.player == incoming)
+check("a switch emits its own event before the foe's move",
+  switchEvents[2].type == "switch" and switchEvents[2].side == "player")
+check("the incoming battler starts with neutral stat stages, not carried over from the outgoing one",
+  incoming.statStages.attack == 6)
+check("the foe still attacks the same turn, landing on the newly-switched-in battler",
+  incoming.hp < incoming.maxHP)
+check("a switch consumes no RNG of its own (only the foe's ordinary attack draws)",
+  battle.rng.draws == 3, battle.rng.draws)
+
+-- The same recoil-outcome guard capture/run already rely on: a foe recoil
+-- move that faints the foe itself right after a switch must not have its
+-- outcome re-checked/overwritten by a stale player-faint recheck.
+local recoilFoe = BattleEngine.makeBattler({
+  species = 4, level = 5, stats = { hp = 1, attack = charStats.attack, defense = charStats.defense,
+    speed = charStats.speed, spAttack = charStats.spAttack, spDefense = charStats.spDefense },
+  types = Data.CHARMANDER.types, moves = { { move = Data.MOVE_TAKE_DOWN, pp = 5 } },
+})
+battle = BattleEngine.new({
+  player = BattleEngine.makeBattler({ species = 1, level = 5, stats = bulbaStats, types = Data.BULBASAUR.types,
+    moves = { { move = Data.MOVE_GROWL, pp = 40 } } }),
+  foe = recoilFoe, moves = Data.moves, typeChart = Data.typeChart, rng = scriptedRng({ 0, 0, 0 }),
+})
+local incoming2 = BattleEngine.makeBattler({
+  species = 99, level = 50, stats = { hp=200, attack=200, defense=200, speed=200, spAttack=200, spDefense=200 },
+  types = Data.BULBASAUR.types, moves = { { move = Data.MOVE_TACKLE, pp = 5 } },
+})
+battle:runTurn({ action = "switch", battler = incoming2 }, { action = "move", moveSlot = 1 })
+check("a foe recoil-faint after a switch still resolves to a real outcome, not a crash",
+  battle.outcome == "playerWon")
+
 -- Optional ROM check: exact real parser output equals the no-ROM fixture.
 local romPath = os.getenv("POKEPORT_ROM")
 if romPath then

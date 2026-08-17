@@ -33,6 +33,7 @@
 --   {type="statChange", side=<target>, stat=, stages=-1, prevented=}
 --   {type="tutorialTip", kind="damage"|"stat"}  -- Oak first-battle text
 --   {type="run", side=, success=}
+--   {type="switch", side=}                         -- voluntary switch resolved
 --   {type="throwBall", side=, target=, ball=}     -- rules-only item use
 --   {type="capture", side=, target=, ball=, shakes=, success=,
 --    automatic=}                                   -- CaptureRules result
@@ -75,8 +76,23 @@
 --     (gProtectStructs.noValidMoves -> BattleScript_NoPPForMove). Here,
 --     selecting a 0-PP move emits a {type="noPP"} event and the attacker
 --     simply loses its action for the turn. No Struggle move, no recoil.
---   * No party/switching: a faint ends the battle. Real code would run
---     the switch-in flow.
+--   * A faint still ends the battle -- unchanged. The real forced
+--     switch-after-faint party-select prompt is a separate, unbuilt
+--     feature (this is a bounded 1v1 engine in that one specific sense:
+--     it has no flow for "choose a replacement after your active mon
+--     faints"). VOLUNTARY switching, by contrast, IS supported -- see
+--     the "switch" branch of runTurn and BattlePartyBridge.
+--     findSwitchTargets/battlerFromParty. Real SetActionsAndBattlersTurnOrder
+--     hoists B_ACTION_SWITCH into the same early group as B_ACTION_USE_ITEM,
+--     resolved before any move regardless of speed -- ported the same way
+--     capture/run already are: the switch resolves immediately (no RNG),
+--     then the foe still attacks that same turn. Real Cmd_switchindataupdate
+--     confirms an ordinary (non-Baton-Pass) switch-in starts with neutral
+--     stat stages, which BattleEngine.makeBattler already defaults to, so
+--     the caller-supplied incoming battler needs no extra reset here. This
+--     engine stays fully party-agnostic -- it has no idea what a "party
+--     slot" is; BattlePartyBridge owns real switch-target eligibility
+--     (Cmd_jumpifcantswitch: living, non-Egg, not the active slot).
 --   * No status conditions, abilities, held items, weather, screens,
 --     multi-turn/charging moves, trapping, forced switching, OHKO moves,
 --     double battles, trainer AI, or EXP/level-up on victory.
@@ -857,6 +873,37 @@ function BattleEngine:runTurn(playerAction, foeAction)
   local events = {}
   self.turn = self.turn + 1
   events[#events + 1] = { type = "turnStart", turn = self.turn }
+
+  -- Real SetActionsAndBattlersTurnOrder puts B_ACTION_SWITCH in the same
+  -- early group as B_ACTION_USE_ITEM, both hoisted ahead of any move
+  -- action regardless of speed. This engine stays fully party-agnostic --
+  -- it has no idea what a "party slot" is -- so the caller (BattlePartyBridge)
+  -- already did real eligibility filtering (Cmd_jumpifcantswitch: living,
+  -- non-Egg, not the currently-active slot) and built the incoming battler
+  -- via the same generic BattlePartyBridge.battlerFromParty this engine's
+  -- initial lead already goes through. Real Cmd_switchindataupdate confirms
+  -- an ordinary switch-in (not EFFECT_BATON_PASS, not implemented anywhere
+  -- in this project) starts with neutral stat stages -- BattleEngine.
+  -- makeBattler already defaults every stage to neutral, so simply swapping
+  -- in the caller's freshly-built battler is correct with no extra reset
+  -- step. Voluntary switching only: a faint still ends the battle exactly
+  -- as documented above (the real forced switch-after-faint party-select
+  -- prompt is a separate, unbuilt feature).
+  if playerAction.action == "switch" then
+    assert(playerAction.battler and playerAction.battler.hp > 0,
+      "switch needs a caller-supplied, already-eligible battler")
+    self.player = playerAction.battler
+    events[#events + 1] = { type = "switch", side = BattleEngine.SIDE_PLAYER }
+    self:resolveMove(BattleEngine.SIDE_FOE, foeAction.moveSlot, events)
+    -- Same guard the capture/run branches below already use: a recoil/
+    -- drain move can end the battle via the foe's own faint inside
+    -- resolveMove before this checkFaint would otherwise re-check/
+    -- overwrite that outcome.
+    if not self:isOver() then
+      self:checkFaint(BattleEngine.SIDE_PLAYER, events)
+    end
+    return events
+  end
 
   -- Real SetActionsAndBattlersTurnOrder puts B_ACTION_USE_ITEM ahead of
   -- move actions. Inventory selection/removal happened before the battle

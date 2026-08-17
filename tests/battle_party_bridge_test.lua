@@ -96,5 +96,27 @@ check("factory foe keeps generated stats, moves, and personality",
     and generatedBattler.personality == generated.personality
     and generatedBattler.nature == generated.nature)
 
+-- findSwitchTargets: real Cmd_jumpifcantswitch eligibility (living,
+-- non-Egg, not the currently-active slot).
+local activeRecord = partyRecord(210)
+local benchRecord = partyRecord(211)
+local faintedBenchRecord = partyRecord(212)
+faintedBenchRecord.hp = 0
+local sb1 = {
+  playerPartyCount = 3,
+  playerParty = { activeRecord, benchRecord, faintedBenchRecord },
+}
+local targets = BattlePartyBridge.findSwitchTargets(sb1, 1)
+check("switch targets exclude the active slot and a fainted bench mon",
+  #targets == 1 and targets[1].slot == 2 and targets[1].record == benchRecord)
+
+local noOthers = BattlePartyBridge.findSwitchTargets({
+  playerPartyCount = 1, playerParty = { activeRecord },
+}, 1)
+check("a solo party has no switch targets", #noOthers == 0)
+
+local emptyState = BattlePartyBridge.findSwitchTargets({}, 1)
+check("missing party state returns an empty list, not a crash", type(emptyState) == "table" and #emptyState == 0)
+
 print(("battle_party_bridge_test: %d passed, %d failed"):format(passed, failed))
 os.exit(failed == 0 and 0 or 1)

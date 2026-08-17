@@ -7,6 +7,18 @@
 -- substruct. The bridge decodes that data when battle starts and writes
 -- current HP/PP back after each resolved turn. It never creates a party
 -- member or chooses a starter; an empty or all-fainted party has no lead.
+--
+-- Voluntary in-battle switching (BattleEngine's "switch" action) is also
+-- bridged here: findSwitchTargets finds eligible replacement party slots,
+-- and battlerFromParty (already fully generic -- it never assumed "the
+-- lead") builds the incoming battler exactly the same way it builds the
+-- initial one. Real Cmd_switchindataupdate (src/battle_script_commands.c)
+-- confirms an ordinary switch-in battler is built completely fresh from
+-- party data with neutral stat stages; only EFFECT_BATON_PASS (not
+-- implemented anywhere in this project) copies statStages/status2 forward
+-- from the outgoing battler as a special case. BattleEngine.makeBattler
+-- already defaults every stat stage to the real neutral value, so no extra
+-- reset step is needed here.
 
 local BattleEngine = require("src.core.BattleEngine")
 local BoxPokemonCodec = require("src.core.BoxPokemonCodec")
@@ -25,8 +37,12 @@ local function decodeRecord(record)
 end
 
 -- Returns the first living, non-Egg party member, matching the lead that a
--- wild battle can actually send out. The caller owns switching/whiteout;
--- this bounded 1v1 bridge only needs the initial usable lead.
+-- wild battle can actually send out. This is only the INITIAL lead; a
+-- mid-battle voluntary switch (BattleEngine's "switch" action) uses
+-- findSwitchTargets below to find an eligible replacement instead. The
+-- caller still owns whiteout, and the forced switch-after-faint prompt real
+-- FireRed shows is out of scope for this bounded 1v1 bridge (a faint ends
+-- the battle here).
 function BattlePartyBridge.findUsableLead(saveBlock1)
   if type(saveBlock1) ~= "table" then return nil, nil, "no session save state" end
   local party = saveBlock1.playerParty or {}
@@ -48,6 +64,42 @@ function BattlePartyBridge.findUsableLead(saveBlock1)
     end
   end
   return nil, nil, invalidReason or "player party has no conscious non-Egg Pokemon"
+end
+
+-- Returns every OTHER living, non-Egg party slot -- the real eligibility
+-- test a voluntary in-battle switch uses (Cmd_jumpifcantswitch,
+-- src/battle_script_commands.c): `MON_DATA_SPECIES != SPECIES_NONE`,
+-- `!MON_DATA_IS_EGG`, `MON_DATA_HP != 0`, and
+-- `gBattlerPartyIndexes[gActiveBattler] != i` (i.e. not the slot already on
+-- the field). This bridge only needs that same eligibility filter, not the
+-- full jumpifcantswitch (that real command also gates on
+-- STATUS2_WRAPPED/STATUS2_ESCAPE_PREVENTION/STATUS3_ROOTED trapping and
+-- multi-battle flank rules, none of which exist in this bounded 1v1 engine).
+-- `excludeSlot` is the 1-based party slot currently on the field (from
+-- whichever call found the active battler, e.g. findUsableLead's own
+-- returned slot). Returns an ordered list of {slot=, record=}; an empty
+-- list (not nil) when no other party member currently qualifies -- the
+-- caller decides whether "no valid switch target" is even offered as a UI
+-- option.
+function BattlePartyBridge.findSwitchTargets(saveBlock1, excludeSlot)
+  if type(saveBlock1) ~= "table" then return {}, "no session save state" end
+  local party = saveBlock1.playerParty or {}
+  local count = math.max(0, math.min(6, tonumber(saveBlock1.playerPartyCount) or 0))
+  local targets = {}
+  for slot = 1, count do
+    if slot ~= excludeSlot then
+      local record = party[slot]
+      local decoded = decodeRecord(record)
+      if decoded then
+        local species = decoded.substructs[0].species
+        local isEgg = decoded.isEgg or decoded.isBadEgg or decoded.substructs[3].isEgg
+        if species ~= 0 and not isEgg and (record.hp or 0) > 0 then
+          targets[#targets + 1] = { slot = slot, record = record }
+        end
+      end
+    end
+  end
+  return targets
 end
 
 local function moveSlotsFromBox(decoded)
