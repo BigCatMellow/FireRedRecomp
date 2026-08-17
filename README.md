@@ -17,7 +17,7 @@ Source crosswalk: [`../firered-recomp-reference/source-inventory.md`](../firered
 
 ## Status
 
-**Phase 0 and Phase 1 are both complete.** The full ROM importer/canonical
+**Phase 0 and Phase 1 are complete; Phases 2-4 have playable bounded slices.** The full ROM importer/canonical
 data model (species, moves, types, items, abilities, natures, trainers +
 parties, full text/charmap decoding including control codes, the complete
 map pipeline — header/layout/events/connections/scripts/tilesets/graphics,
@@ -34,20 +34,23 @@ a verified ROM and press **V** to browse. `tests/full_sweep_validation_test.lua`
 decodes all 411 species, 354 moves, and 743 trainers (not just hand-picked
 ones) and confirms they're all sane.
 
-**Visual milestone:** the same boot renders an actual, correctly-colored,
+**Playable milestone:** the same boot renders an actual, correctly-colored,
 recognizable map (Pallet Town by default; `POKEPORT_MAP=group,num` for any
 other — Route 1 and an indoor map are also verified) straight out of ROM
-bytes. Still no gameplay, no player, no camera — that's Phase 2+.
-
-No gameplay exists yet; Phase 2 (the real GBA renderer/scene runtime) is
-next. Every module was checked against bytes from a real, verified ROM —
+bytes. The W view now has a player/camera, movement, warps, NPC dialogue,
+real grass encounter rolls, and a bounded live FIGHT/RUN wild battle using
+ROM terrain and Pokémon art. A full new-game identity flow (gender/naming),
+starter selection in Oak's Lab, and the mandatory Oak's-lab rival tutorial
+battle (real trainer AI, win/loss rewards and heal) are also live end to
+end. It is not yet a full game loop: wild-capture result persistence,
+whiteout, full move effects, general trainer AI, and battle animation are
+still open. Every module was checked against bytes from a real, verified ROM —
 several surprises (padded record sizes, byte-offset quirks, the
 640-tile/640-metatile/7-palette primary/secondary tileset split, static
 symbols with no linker-map entry) only showed up that way. See
 `tests/species_integration_test.lua` and `tests/full_sweep_validation_test.lua`
 (both opt-in via `POKEPORT_ROM=...`, skip cleanly with no ROM present) and
-the rest of `tests/` (30 test files, 298 checks total with a verified ROM
-present).
+the full test suite (104 test files with a verified ROM present).
 
 ## Supported ROM
 
@@ -78,6 +81,15 @@ file, it composites and draws Pallet Town — press **V** to switch to the
 data viewer (Tab: cycle species/moves/trainers/maps, Up/Down: ±1 record,
 PageUp/PageDown: ±10, Left/Right: change map group, V again: back to the
 map). `POKEPORT_MAP=group,num` picks a different starting map.
+Press **N** for the post-Oak gender/player-name/rival-name flow, or press
+Enter from the **S** Oak-scene view. Its naming keyboard uses arrows,
+Enter=A, Backspace=B, Right Shift=Select/page, and Space=Start/jump-to-OK.
+Press **W** for the overworld; stepping into real tall grass can launch the
+live battle. In battle, arrows select FIGHT/RUN or a move, Enter=A, and
+Backspace=B. A normal fresh session with no starter visibly refuses a wild
+battle rather than inventing a party member. For a deterministic developer
+battle only, `POKEPORT_BATTLE=16,3 POKEPORT_BATTLE_DEBUG_PARTY=1,5 POKEPORT_BATTLE_ADVANCE=2` boots a
+deterministic Pidgey Lv3 action-menu view for screenshots/tests.
 `POKEPORT_VIEWER=category:index` (e.g. `species:1`) boots straight into a
 specific viewer record. Set `POKEPORT_SCREENSHOT=1` to save a screenshot
 (`screenshot.png` in LÖVE's save directory, e.g.

@@ -14,11 +14,13 @@
 -- the composited map, real warps between maps, real object-event NPCs
 -- (spawned, movement-ticked, drawn, and interactable), real NPC/sign
 -- dialogue driven by the real script bytecode through DialogueRunner.lua,
--- and real wild-encounter dice rolls on entering real tall grass (rolled
--- and reported -- there is no battle engine until Phase 4). Full view key
--- list: V data viewer, T title screen, P player sprite, I item ball,
--- F font sample, O Oak narration text, S full Oak intro scene, A flame
--- sprite, Y Yes/No menu, W walk. See ../firered-recomp-roadmap.md.
+-- and real wild-encounter dice rolls on entering real tall grass. A rolled
+-- encounter now starts the bounded Phase 4 1v1 battle scene
+-- (FIGHT/RUN, real ROM terrain and monster art). Full view key
+-- list: N post-Oak gender/naming flow, V data viewer, T title screen,
+-- P player sprite, I item ball, F font sample, O Oak narration text,
+-- S full Oak intro scene (Enter continues to N), A flame sprite,
+-- Y Yes/No menu, W walk. See ../firered-recomp-roadmap.md.
 
 local Version = require("src.core.Version")
 local RomImporter = require("import.RomImporter")
@@ -66,6 +68,29 @@ local WildEncounterSelector = require("src.core.WildEncounterSelector")
 local WildEncounterTrigger = require("src.core.WildEncounterTrigger")
 local Rng = require("src.core.Rng")
 local OakSpeechScene = require("import.OakSpeechScene")
+local NamingScreenScene = require("import.NamingScreenScene")
+local NewGameFlow = require("src.core.NewGameFlow")
+local NewGameDefaults = require("src.core.NewGameDefaults")
+local Battle = {
+  Trainer = require("import.Trainer"),
+  TrainerParty = require("import.TrainerParty"),
+  SpeciesInfo = require("import.SpeciesInfo"),
+  Move = require("import.BattleMove"),
+  TypeChart = require("import.TypeChart"),
+  Nature = require("import.Nature"),
+  Learnset = require("import.LevelUpLearnset"),
+  WildFactory = require("src.core.WildPokemonFactory"),
+  StarterFactory = require("src.core.StarterPokemonFactory"),
+  TrainerFactory = require("src.core.TrainerPokemonFactory"),
+  RivalAI = require("src.core.EarlyRivalAI"),
+  RivalRewards = require("src.core.EarlyRivalRewards"),
+  EarlyStory = require("src.core.EarlyStory"),
+  PokedexOrder = require("import.PokedexOrder"),
+  PartyBridge = require("src.core.BattlePartyBridge"),
+  Engine = require("src.core.BattleEngine"),
+  Controller = require("src.core.BattleSceneController"),
+  Assets = require("import.BattleSceneAssets"),
+}
 
 local BORDER_MARGIN_METATILES = 2
 
@@ -136,6 +161,229 @@ local oakSpeechBuiltRevealTokenIndex = -1
 local oakSceneActive = false
 local oakSceneImage
 
+-- Post-Oak new-game identity flow. This is one table for the same reason
+-- the Phase 3 W-view state is bundled below: main.lua's draw/update/load
+-- functions are already near Lua 5.1's 60-upvalue ceiling.
+-- `flow` is the pure NewGameFlow state machine; all Images are derived
+-- caches rebuilt only when flow.revision changes.
+local newGame = {
+  active = false,
+  builtRevision = -1,
+}
+
+-- The small runtime save/session boundary for a newly completed Oak flow.
+-- This is deliberately pure data construction: it has no LÖVE, ROM, map, or
+-- scheduler dependency, so its output can be fed directly to
+-- SaveFileCodec.encode() once actual file I/O is wired.  Its values follow
+-- NewGameInitData()/WarpToPlayersRoom() in src/new_game.c, while the trainer
+-- id follows InitPlayerTrainerId(): `(Random() << 16) |
+-- GetGeneratedTrainerIdLower()`, stored little-endian by SetTrainerId().
+--
+-- The real timer register is not available in a desktop runtime.  Callers
+-- inject both Random's next u16 and the timer-derived lower half, making this
+-- otherwise hardware-timed operation deterministic/replayable rather than
+-- inventing a desktop clock source.
+local GameSession = {}
+
+GameSession.MAP_PALLET_TOWN_PLAYERS_HOUSE_2F = 4 * 256 + 1
+GameSession.ITEM_POTION = 13 -- ITEM_POTION, include/constants/items.h
+GameSession.VARS_START = 0x4000 -- include/constants/vars.h
+
+-- The 49 map-hide flags are ordinary flag indices; FLAG_0x838 is a system
+-- flag at index 0x838.  These numeric ids are transcribed from
+-- include/constants/flags.h so the codec-compatible bit field reflects the
+-- real EventScript_ResetAllMapFlags / EnableNationalPokedex_RSE calls rather
+-- than retaining only symbolic metadata.
+GameSession._newGameFlagIds = {
+  FLAG_0x838 = 0x838,
+  FLAG_HIDE_OAK_IN_HIS_LAB = 0x02B,
+  FLAG_HIDE_OAK_IN_PALLET_TOWN = 0x02C,
+  FLAG_HIDE_BILL_HUMAN_SEA_COTTAGE = 0x033,
+  FLAG_HIDE_PEWTER_CITY_RUNNING_SHOES_GUY = 0x092,
+  FLAG_HIDE_POKEHOUSE_FUJI = 0x035,
+  FLAG_HIDE_LIFT_KEY = 0x036,
+  FLAG_HIDE_SILPH_SCOPE = 0x037,
+  FLAG_HIDE_CERULEAN_RIVAL = 0x03C,
+  FLAG_HIDE_SS_ANNE_RIVAL = 0x03D,
+  FLAG_HIDE_VERMILION_CITY_OAKS_AIDE = 0x0A1,
+  FLAG_HIDE_SAFFRON_CIVILIANS = 0x03F,
+  FLAG_HIDE_ROUTE_22_RIVAL = 0x04F,
+  FLAG_HIDE_OAK_IN_CHAMP_ROOM = 0x05A,
+  FLAG_HIDE_CREDITS_RIVAL = 0x0A3,
+  FLAG_HIDE_CREDITS_OAK = 0x0A4,
+  FLAG_HIDE_CINNABAR_BILL = 0x062,
+  FLAG_HIDE_CINNABAR_SEAGALLOP = 0x06B,
+  FLAG_HIDE_CINNABAR_POKECENTER_BILL = 0x0A2,
+  FLAG_HIDE_LORELEI_IN_HER_HOUSE = 0x08C,
+  FLAG_HIDE_SAFFRON_FAN_CLUB_BLACK_BELT = 0x06C,
+  FLAG_HIDE_SAFFRON_FAN_CLUB_ROCKER = 0x06D,
+  FLAG_HIDE_SAFFRON_FAN_CLUB_WOMAN = 0x06E,
+  FLAG_HIDE_SAFFRON_FAN_CLUB_BEAUTY = 0x06F,
+  FLAG_HIDE_TWO_ISLAND_GAME_CORNER_LOSTELLE = 0x075,
+  FLAG_HIDE_TWO_ISLAND_GAME_CORNER_BIKER = 0x074,
+  FLAG_HIDE_TWO_ISLAND_WOMAN = 0x07B,
+  FLAG_HIDE_TWO_ISLAND_BEAUTY = 0x07C,
+  FLAG_HIDE_TWO_ISLAND_POKE_MANIAC = 0x07D,
+  FLAG_HIDE_LOSTELLE_IN_HER_HOME = 0x076,
+  FLAG_HIDE_THREE_ISLAND_LONE_BIKER = 0x091,
+  FLAG_HIDE_FOUR_ISLAND_RIVAL = 0x097,
+  FLAG_HIDE_DOTTED_HOLE_SCIENTIST = 0x090,
+  FLAG_HIDE_RESORT_GORGEOUS_SELPHY = 0x094,
+  FLAG_HIDE_RESORT_GORGEOUS_INSIDE_SELPHY = 0x095,
+  FLAG_HIDE_SELPHYS_BUTLER = 0x096,
+  FLAG_HIDE_DEOXYS = 0x099,
+  FLAG_HIDE_LORELEI_HOUSE_MEOWTH_DOLL = 0x0A5,
+  FLAG_HIDE_LORELEI_HOUSE_CHANSEY_DOLL = 0x0A6,
+  FLAG_HIDE_LORELEIS_HOUSE_NIDORAN_F_DOLL = 0x0A7,
+  FLAG_HIDE_LORELEI_HOUSE_JIGGLYPUFF_DOLL = 0x0A8,
+  FLAG_HIDE_LORELEIS_HOUSE_NIDORAN_M_DOLL = 0x0A9,
+  FLAG_HIDE_LORELEIS_HOUSE_FEAROW_DOLL = 0x0AA,
+  FLAG_HIDE_LORELEIS_HOUSE_PIDGEOT_DOLL = 0x0AB,
+  FLAG_HIDE_LORELEIS_HOUSE_LAPRAS_DOLL = 0x0AC,
+  FLAG_HIDE_POSTGAME_GOSSIPERS = 0x09D,
+  FLAG_HIDE_FAME_CHECKER_ERIKA_JOURNALS = 0x09E,
+  FLAG_HIDE_FAME_CHECKER_KOGA_JOURNAL = 0x09F,
+  FLAG_HIDE_FAME_CHECKER_LT_SURGE_JOURNAL = 0x0A0,
+  FLAG_HIDE_SAFFRON_CITY_POKECENTER_SABRINA_JOURNALS = 0x0AE,
+}
+GameSession._newGameVarIds = {
+  VAR_0x403C = 0x403C,
+  VAR_MASSAGE_COOLDOWN_STEP_COUNTER = 0x4025,
+}
+
+function GameSession._zeroBytes(count)
+  return string.rep("\0", count)
+end
+
+function GameSession._setFlagBits(flagNames)
+  local bytes = {}
+  for i = 1, 288 do bytes[i] = 0 end -- SaveBlock1.flags is u8[288].
+  for _, name in ipairs(flagNames) do
+    local id = assert(GameSession._newGameFlagIds[name], "missing real new-game flag id: " .. tostring(name))
+    local byteIndex, bit = math.floor(id / 8) + 1, id % 8
+    bytes[byteIndex] = bytes[byteIndex] + 2 ^ bit
+  end
+  for i = 1, #bytes do bytes[i] = string.char(bytes[i]) end
+  return table.concat(bytes)
+end
+
+function GameSession._initialVars()
+  local vars = {}
+  for i = 1, 256 do vars[i] = 0 end -- SaveBlock1.vars is u16[256].
+  for _, entry in ipairs(NewGameDefaults.setVars) do
+    local id = assert(GameSession._newGameVarIds[entry.var], "missing real new-game var id: " .. tostring(entry.var))
+    vars[id - GameSession.VARS_START + 1] = entry.value
+  end
+  return vars
+end
+
+function GameSession._trainerIdBytes(nextRandom16, generatedTrainerIdLower)
+  local high = assert(nextRandom16, "fresh session requires injected nextRandom16")() % 0x10000
+  local low = (generatedTrainerIdLower or 0) % 0x10000
+  return string.char(low % 256, math.floor(low / 256), high % 256, math.floor(high / 256))
+end
+
+function GameSession.fromNewGame(identity, opts)
+  assert(identity and identity.playerName and identity.rivalName and identity.playerGender ~= nil,
+    "fresh session requires a completed NewGameFlow result")
+  opts = opts or {}
+  local start = NewGameDefaults.startingWarp
+  local location = { mapGroup=4, mapNum=1, warpId=start.warpId, x=start.x, y=start.y }
+  local defaults = NewGameDefaults
+  local trainerId = GameSession._trainerIdBytes(opts.nextRandom16 or function() return 0 end, opts.generatedTrainerIdLower)
+  local state = {
+    saveBlock2 = {
+      playerName=identity.playerName, playerGender=identity.playerGender,
+      specialSaveWarpFlags=defaults.saveBlock2.specialSaveWarpFlags,
+      playerTrainerId=trainerId,
+      playTimeHours=0, playTimeMinutes=0, playTimeSeconds=0, playTimeVBlanks=0,
+      optionsButtonMode=defaults.options.buttonMode,
+      options={
+        textSpeed=defaults.options.textSpeed, windowFrameType=defaults.options.windowFrameType,
+        sound=defaults.options.sound ~= 0, battleStyle=defaults.options.battleStyle ~= 0,
+        battleSceneOff=defaults.options.battleSceneOff, regionMapZoom=defaults.options.regionMapZoom,
+      },
+      pokedex={ order=0, mode=0, unused=defaults.saveBlock2.pokedexUnused, nationalMagic=0,
+        unownPersonality=0, spindaPersonality=0, unknown3=0, owned=GameSession._zeroBytes(52), seen=GameSession._zeroBytes(52) },
+      gcnLinkFlags=defaults.saveBlock2.gcnLinkFlags, unkFlag1=defaults.saveBlock2.unkFlag1,
+      unkFlag2=defaults.saveBlock2.unkFlag2, encryptionKey=defaults.saveBlock2.encryptionKey,
+    },
+    saveBlock1 = {
+      pos={ x=start.x, y=start.y }, location=location,
+      continueGameWarp={ mapGroup=0, mapNum=0, warpId=0, x=0, y=0 },
+      dynamicWarp={ mapGroup=0, mapNum=0, warpId=0, x=0, y=0 },
+      lastHealLocation={ mapGroup=0, mapNum=0, warpId=0, x=0, y=0 },
+      escapeWarp={ mapGroup=0, mapNum=0, warpId=0, x=0, y=0 },
+      savedMusic=0, weather=0, weatherCycleStage=0, flashLevel=0, mapLayoutId=0,
+      playerPartyCount=defaults.startingPartyCount, playerParty={}, money=defaults.startingMoney,
+      coins=0, registeredItem=0,
+      pcItems={ { itemId=GameSession.ITEM_POTION, quantity=defaults.startingPCItems[1].quantity } },
+      bagPocket_Items={}, bagPocket_KeyItems={}, bagPocket_PokeBalls={}, bagPocket_TMHM={}, bagPocket_Berries={},
+      seen1=GameSession._zeroBytes(52), flags=GameSession._setFlagBits(defaults.setFlags), vars=GameSession._initialVars(), gameStats={}, rivalName=identity.rivalName,
+    },
+  }
+  return setmetatable({
+    identity={ playerGender=identity.playerGender, playerName=identity.playerName, rivalName=identity.rivalName },
+    state=state, mapId=GameSession.MAP_PALLET_TOWN_PLAYERS_HOUSE_2F,
+    location={ mapGroup=4, mapNum=1, warpId=start.warpId, x=start.x, y=start.y, facing="north" },
+  }, { __index=GameSession })
+end
+
+function GameSession:setLocation(mapId, x, y, facing)
+  self.mapId = mapId
+  self.location.mapGroup, self.location.mapNum = math.floor(mapId / 256), mapId % 256
+  self.location.x, self.location.y, self.location.facing = x, y, facing or self.location.facing
+  local sb1 = self.state.saveBlock1
+  sb1.pos.x, sb1.pos.y = x, y
+  sb1.location.mapGroup, sb1.location.mapNum = self.location.mapGroup, self.location.mapNum
+  sb1.location.warpId, sb1.location.x, sb1.location.y = -1, x, y
+end
+
+function GameSession:getVar(varId)
+  assert(varId >= GameSession.VARS_START and varId <= 0x40FF,
+    "event var id out of range: " .. tostring(varId))
+  return self.state.saveBlock1.vars[varId - GameSession.VARS_START + 1] or 0
+end
+
+function GameSession:setVar(varId, value)
+  assert(varId >= GameSession.VARS_START and varId <= 0x40FF,
+    "event var id out of range: " .. tostring(varId))
+  self.state.saveBlock1.vars[varId - GameSession.VARS_START + 1] = value % 0x10000
+end
+
+function GameSession._flagBit(flags, flagId)
+  local index, bit = math.floor(flagId / 8) + 1, flagId % 8
+  local byte = string.byte(flags, index) or 0
+  return index, bit, byte, math.floor(byte / 2^bit) % 2 == 1
+end
+
+function GameSession:getFlag(flagId)
+  local _, _, _, set = GameSession._flagBit(self.state.saveBlock1.flags, flagId)
+  return set
+end
+
+function GameSession:setFlag(flagId)
+  local flags = self.state.saveBlock1.flags
+  local index, bit, byte, set = GameSession._flagBit(flags, flagId)
+  if not set then
+    self.state.saveBlock1.flags = flags:sub(1, index-1)
+      .. string.char(byte + 2^bit) .. flags:sub(index+1)
+  end
+end
+
+function GameSession:clearFlag(flagId)
+  local flags = self.state.saveBlock1.flags
+  local index, bit, byte, set = GameSession._flagBit(flags, flagId)
+  if set then
+    self.state.saveBlock1.flags = flags:sub(1, index-1)
+      .. string.char(byte - 2^bit) .. flags:sub(index+1)
+  end
+end
+
+function GameSession:usableBattleLead()
+  return Battle.PartyBridge.findUsableLead(self.state.saveBlock1)
+end
+
 -- Phase 3: real grid-based player movement + collision (PlayerMovement.lua)
 -- over the already-composited map, camera-cropped to a real GBA-screen-
 -- sized (240x160px) viewport centered on the player.
@@ -159,11 +407,14 @@ local walkMapPrimaryAttrsPtr, walkMapSecondaryAttrsPtr -- current map's real Til
 --   dialogueWindowImage / dialogueTextImage / dialogueBuiltTokenIndex -- dialogue box rendering + reveal cache
 --   trigger        -- WildEncounterTrigger (persistent across map loads, like the real RNG streams)
 --   landInfo       -- current map's real land WildPokemonInfo, or nil
---   encounterLine  -- last rolled encounter, shown in place of the Phase 4 battle that doesn't exist yet
+--   battle        -- active BattleSceneController + derived image caches
+--   battleCatalog -- ROM species/moves/type chart and static battle art
+--   encounterLine -- last rolled encounter/outcome diagnostic
 local world = {
   npcs = {},
   npcImages = {},
   bgEvents = {},
+  coordEvents = {},
   dialogueBuiltTokenIndex = -1,
 }
 
@@ -178,7 +429,8 @@ local LAND_MONS_COUNT = 12
 -- getMetatileBehaviorAt, defined just below, needs it.
 local romData, romAddrs
 local playerMovement
-local loadMap, tryWarpAt -- forward-declared: playerMovementTask (below) calls tryWarpAt before its real definition later in the file
+local loadMap, tryWarpAt, startWildBattle, syncSessionLocation, bootstrapFreshSession,
+  tryEarlyStoryTriggerAt, acceptStarterChoice -- forward-declared: movement/encounter tasks call these before their definitions
 local WALK_CAMERA_WIDTH, WALK_CAMERA_HEIGHT = 240, 160 -- real GBA screen resolution
 
 -- Real metatile BEHAVIOR byte at (x,y) (MetatileAttributes.lua, real
@@ -214,6 +466,19 @@ local function isWalkTileBlocked(x, y)
   if behavior == MB.MB_WARP_DOOR or behavior == MB.MB_CAVE_DOOR then return false end
   local cell = walkMapBlockData[y * walkMapWidth + x]
   return not cell or cell.collision ~= 0
+end
+
+-- Player collision additionally respects live object events. The existing
+-- NPC movement callbacks retain terrain-only collision until the general
+-- object-vs-object collision system lands, but the player must not walk
+-- through Oak, the rival, or the three starter balls to bypass their real
+-- A-button interactions.
+world.isPlayerWalkTileBlocked = function(x, y)
+  if isWalkTileBlocked(x, y) then return true end
+  for _, npc in ipairs(world.npcs) do
+    if not npc.moving and npc.x == x and npc.y == y then return true end
+  end
+  return false
 end
 
 -- One-way ledges (event_object_movement.c's real GetLedgeJumpDirection):
@@ -315,31 +580,35 @@ local function speciesName(species)
   return ok and name or ("species #" .. tostring(species))
 end
 
--- Runs the real wild-encounter chain for a just-completed player step: the
--- real trigger dice (global 60% roll on a behavior change +
--- encounterRate*16/1600 roll on the separate WildEncounterRandom stream),
--- then the real weighted slot + level roll. There is no battle engine yet
--- (Phase 4), so a successful roll is REPORTED, not started -- that's the
--- whole real outcome available at this point in the project.
+-- Runs the real wild-encounter chain for a just-completed player step, then
+-- hands the rolled species/level to the live Phase 4 battle scene.
 local function rollWildEncounterAt(x, y)
-  if not world.trigger then return end
+  if not world.trigger or world.battle then return end
   local encounter = world.trigger:onStep(getMetatileBehaviorAt(x, y), world.landInfo)
   if not encounter then return end
-  world.encounterLine = ("Wild %s (Lv %d) appeared!  [real slot %d -- no battle engine yet, Phase 4]"):format(
+  world.encounterLine = ("Wild %s (Lv %d) appeared!  [real slot %d]"):format(
     speciesName(encounter.species), encounter.level, encounter.slot)
   addLine(world.encounterLine)
+  startWildBattle(encounter)
 end
 
 local function playerMovementTask(taskId)
   -- A real `lock`/`lockall` (and just having a message box up at all)
   -- freezes the player -- mirrored by not ticking movement at all while a
   -- dialogue script owns the screen.
-  if world.dialogue and world.dialogue:isActive() then return end
+  if not walkActive or world.battle or world.starterChoice
+      or (world.dialogue and world.dialogue:isActive()) then return end
   local wasMoving = playerMovement.moving
   playerMovement:tick()
   if wasMoving and not playerMovement.moving then
-    tryWarpAt(playerMovement.tileX, playerMovement.tileY)
-    rollWildEncounterAt(playerMovement.tileX, playerMovement.tileY)
+    syncSessionLocation()
+    -- A warp loads/repositions into a different map. The completed step
+    -- belongs to the source map, so don't incorrectly roll the destination
+    -- tile's encounter table during that same step.
+    if not tryEarlyStoryTriggerAt(playerMovement.tileX, playerMovement.tileY)
+        and not tryWarpAt(playerMovement.tileX, playerMovement.tileY) then
+      rollWildEncounterAt(playerMovement.tileX, playerMovement.tileY)
+    end
   end
 end
 
@@ -351,7 +620,8 @@ end
 -- per-NPC so one such NPC disables ITSELF with a visible note instead of
 -- taking the whole game down.
 local function npcMovementTask(taskId)
-  if world.dialogue and world.dialogue:isActive() then return end
+  if not walkActive or world.battle or world.starterChoice
+      or (world.dialogue and world.dialogue:isActive()) then return end
   for _, npc in ipairs(world.npcs) do
     if not npc.tickDisabled then
       local ok, err = pcall(npc.tick, npc)
@@ -623,11 +893,283 @@ local function loadFlameAssets(data, addrs, dbg)
   end
 end
 
--- Scans the loaded map's real collision grid for the first walkable
--- tile -- not the canonical real new-game starting position (that needs
--- the script/warp-triggered new-game flow, not built yet -- see the
--- checklist's Phase 3 "New-game naming, initial flags/vars"), just a
--- reasonable fallback so this works on whichever map got loaded.
+-- Decodes the static ROM tables/art needed by the bounded live battle once
+-- at boot. Both monster sprites are dynamic and decoded once per encounter,
+-- never per frame: the player back sprite follows the real session lead and
+-- the foe front sprite follows the generated wild instance.
+local function loadBattleSceneAssets(data, addrs, dbg)
+  local ok, result = pcall(function()
+    local catalog = {
+      species = Battle.SpeciesInfo.parseTable(data, addrs.gSpeciesInfo, RomAddresses.COUNTS.NUM_SPECIES),
+      moves = Battle.Move.parseTable(data, addrs.gBattleMoves, RomAddresses.COUNTS.MOVES_COUNT),
+      typeChart = Battle.TypeChart.parseTable(data, addrs.gTypeEffectiveness),
+      natures = Battle.Nature.parseTable(data, addrs.sNatureStatTable),
+      trainers = Battle.Trainer.parseTable(data, addrs.gTrainers, RomAddresses.COUNTS.NUM_TRAINERS),
+    }
+    catalog.backgroundImage = buildImage(Battle.Assets.compositeGrassBackground(data, addrs))
+    catalog.backgroundImage:setFilter("nearest", "nearest")
+    return catalog
+  end)
+  if ok then
+    world.battleCatalog = result
+    dbg("battle species/move/nature/trainer tables and grass terrain built")
+  else
+    addLine("Battle scene assets failed: " .. tostring(result))
+  end
+end
+
+local ensureRngStreams
+
+-- StartWildBattle-equivalent integration boundary. Field/player/NPC input
+-- is frozen simply by world.battle being non-nil (see all three task/input
+-- guards); the same global Random()/gRngValue stream used by encounter
+-- selection is handed first to GenerateWildMon's nature/personality/IV
+-- construction, then to BattleEngine. Wild held-item selection remains
+-- deliberately omitted: SetWildMonHeldItem runs later in CreateBattleStart
+-- and consumes another Random() even for species with no distinct item.
+-- Unown's chamber/letter-constrained personality loop is also not in the
+-- ordinary factory, so those encounters fail visibly rather than silently
+-- generating the wrong form. Status effects beyond the Oak-lab
+-- Growl/Tail Whip subset, held-item mechanics, and general battle AI remain
+-- outside the bounded slice.
+startWildBattle = function(encounter)
+  local catalog = world.battleCatalog
+  if not catalog then
+    addLine("Battle could not start: ROM battle assets are unavailable.")
+    return false
+  end
+  ensureRngStreams()
+
+  local partyRecord, partySlot, playerBattler, playerDecoded, temporaryPlayer
+  if newGame.session then
+    local reason
+    partyRecord, partySlot, reason, playerDecoded = newGame.session:usableBattleLead()
+    if not partyRecord then
+      addLine("Wild battle refused: " .. tostring(reason)
+        .. ". Obtain a starter before entering a live battle.")
+      return false
+    end
+    local ok, battler = pcall(Battle.PartyBridge.battlerFromParty, partyRecord, catalog.species)
+    if not ok then
+      addLine("Wild battle refused: session lead is invalid: " .. tostring(battler))
+      return false
+    end
+    playerBattler = battler
+  else
+    -- Developer screenshots/replays can opt into an isolated temporary
+    -- party member. It is generated on its own RNG and is never inserted
+    -- into GameSession.playerParty or described as a save/session member.
+    local debugSpec = os.getenv("POKEPORT_BATTLE_DEBUG_PARTY")
+    local playerSpecies, playerLevel
+    if debugSpec then playerSpecies, playerLevel = debugSpec:match("^(%d+),(%d+)$") end
+    if not playerSpecies then
+      addLine("Wild battle refused: no session party. Set POKEPORT_BATTLE_DEBUG_PARTY=species,level only for a developer battle.")
+      return false
+    end
+    playerSpecies, playerLevel = tonumber(playerSpecies), tonumber(playerLevel)
+    local info = catalog.species[playerSpecies]
+    if not info then
+      addLine("Developer battle refused: temporary-party species is unavailable.")
+      return false
+    end
+    local ok, instance = pcall(function()
+      return Battle.WildFactory.generate({
+        species=playerSpecies, level=playerLevel, speciesInfo=info,
+        learnset=Battle.Learnset.resolve(romData, romAddrs.gLevelUpLearnsets, playerSpecies),
+        battleMoves=catalog.moves, natures=catalog.natures,
+        rng=Rng.new(tonumber(os.getenv("POKEPORT_BATTLE_DEBUG_PARTY_SEED") or "") or 0x4D3),
+        speciesName=romData:sub(romAddrs.gSpeciesNames + playerSpecies * 11 + 1,
+          romAddrs.gSpeciesNames + playerSpecies * 11 + 10),
+        trainer={ id=0, name=NewGameFlow.encodeName("DEBUG"):sub(1, 7), gender=0 },
+        metLocation=world.regionMapSectionId or 0,
+      })
+    end)
+    if not ok then
+      addLine("Developer battle refused: temporary party generation failed: " .. tostring(instance))
+      return false
+    end
+    playerBattler = Battle.PartyBridge.battlerFromGenerated(instance)
+    playerDecoded = instance.boxData
+    temporaryPlayer = true
+    addLine(("Developer-only temporary %s Lv %d is active; no session party was created.")
+      :format(speciesName(playerSpecies), playerLevel))
+  end
+
+  local foeSpecies = catalog.species[encounter.species]
+  if not foeSpecies then
+    addLine("Battle could not start: decoded foe species record is unavailable.")
+    return false
+  end
+  local trainer
+  if newGame.session then
+    local sb2 = newGame.session.state.saveBlock2
+    trainer = { id=sb2.playerTrainerId, name=sb2.playerName:sub(1, 7), gender=sb2.playerGender }
+  else
+    trainer = { id=0, name=NewGameFlow.encodeName("DEBUG"):sub(1, 7), gender=0 }
+  end
+  local okGenerate, foeInstance = pcall(function()
+    return Battle.WildFactory.generate({
+      species=encounter.species, level=encounter.level, speciesInfo=foeSpecies,
+      learnset=Battle.Learnset.resolve(romData, romAddrs.gLevelUpLearnsets, encounter.species),
+      battleMoves=catalog.moves, natures=catalog.natures, rng=world.globalRng,
+      speciesName=romData:sub(romAddrs.gSpeciesNames + encounter.species * 11 + 1,
+        romAddrs.gSpeciesNames + encounter.species * 11 + 10),
+      trainer=trainer, metLocation=world.regionMapSectionId or 0,
+    })
+  end)
+  if not okGenerate then
+    addLine("Battle could not start: wild Pokemon generation failed: " .. tostring(foeInstance))
+    return false
+  end
+  local foeBattler = Battle.PartyBridge.battlerFromGenerated(foeInstance)
+
+  local function firstDirectMoveSlot(battler)
+    for i, slot in ipairs(battler.moves) do
+      local move = catalog.moves[slot.move]
+      if slot.pp > 0 and move and move.power > 0 then return i end
+    end
+    return nil
+  end
+  local playerDirectSlot = firstDirectMoveSlot(playerBattler)
+  local foeDirectSlot = firstDirectMoveSlot(foeBattler)
+  if not playerDirectSlot or not foeDirectSlot then
+    addLine("Battle could not start: this direct-damage slice needs each battler to know a damaging move with PP.")
+    return false
+  end
+
+  local engine = Battle.Engine.new({
+    player=playerBattler, foe=foeBattler,
+    moves=catalog.moves, typeChart=catalog.typeChart, rng=world.globalRng,
+  })
+
+  local foeName = speciesName(encounter.species)
+  local playerName = Charmap.decode(playerDecoded.nickname)
+  local controller = Battle.Controller.new({
+    engine=engine, playerName=playerName, foeName=foeName,
+    foeMoveSlot=foeDirectSlot,
+    moveName=function(move) return Charmap.decodeAt(romData, romAddrs.gMoveNames, 13, move) end,
+  })
+
+  local images = {}
+  for _, imageSpec in ipairs({ {"foeImage", encounter.species, false}, {"playerImage", playerBattler.species, true} }) do
+    local ok, composite = pcall(Battle.Assets.decodeMon, romData, romAddrs, imageSpec[2], imageSpec[3])
+    if ok then
+      images[imageSpec[1]] = buildImage(composite)
+      images[imageSpec[1]]:setFilter("nearest", "nearest")
+    else
+      addLine("Battle Pokemon sprite failed: " .. tostring(composite))
+    end
+  end
+  world.battle = {
+    controller=controller, encounter=encounter, foeInstance=foeInstance,
+    foeImage=images.foeImage, playerImage=images.playerImage,
+    partyRecord=partyRecord, partySlot=partySlot, persistedTurn=0,
+    temporaryPlayer=temporaryPlayer,
+    textImages={},
+  }
+  return true
+end
+
+-- trainerbattle_earlyrival integration for lab scene 3. Trainer metadata,
+-- its one-mon party, fixed personality/IV construction, default moves, and
+-- AI flags all come from the verified ROM tables. The current renderer has
+-- no linked building-terrain or trainer-front assets, so it deliberately
+-- reuses the already-imported battle backdrop and begins at the send-out;
+-- the status line names that presentation gap rather than implying parity.
+world.startRivalBattle = function(action)
+  local catalog, session = world.battleCatalog, newGame.session
+  if not catalog or not session then
+    addLine("Oak-lab rival battle could not start: ROM catalog/session is unavailable.")
+    return false
+  end
+  ensureRngStreams()
+
+  local partyRecord, partySlot, reason, playerDecoded = session:usableBattleLead()
+  if not partyRecord then
+    addLine("Oak-lab rival battle refused: " .. tostring(reason))
+    return false
+  end
+  local ok, built = pcall(function()
+    local trainer = assert(catalog.trainers[action.trainerId], "rival trainer record is missing")
+    assert(trainer.partySize == 1 and trainer.trainerClass == 81
+      and trainer.partyFlags == 0 and trainer.aiFlags == Battle.RivalAI.AI_FLAGS,
+      "trainer record is not an Oak-lab rival")
+    local partyMon = assert(Battle.TrainerParty.resolve(trainer, romData)[0], "rival party is empty")
+    assert(partyMon.lvl == 5 and partyMon.iv == 0, "Oak-lab rival party level/IV changed")
+    local foeInfo = assert(catalog.species[partyMon.species], "rival species record is missing")
+    local foe = Battle.TrainerFactory.generate({
+      trainer=trainer, partyMon=partyMon, speciesInfo=foeInfo,
+      speciesName=romData:sub(romAddrs.gSpeciesNames + partyMon.species * 11 + 1,
+        romAddrs.gSpeciesNames + partyMon.species * 11 + 10),
+      learnset=Battle.Learnset.resolve(romData, romAddrs.gLevelUpLearnsets, partyMon.species),
+      battleMoves=catalog.moves, natures=catalog.natures, rng=world.globalRng,
+    })
+    local player = Battle.PartyBridge.battlerFromParty(partyRecord, catalog.species)
+    local engine = Battle.Engine.new({
+      player=player, foe=Battle.PartyBridge.battlerFromGenerated(foe),
+      moves=catalog.moves, typeChart=catalog.typeChart, rng=world.globalRng,
+      firstBattle=true,
+    })
+    local rivalName = Charmap.decode(session.state.saveBlock1.rivalName)
+    local playerName = Charmap.decode(playerDecoded.nickname)
+    local foeName = speciesName(foe.species)
+    local controller = Battle.Controller.new({
+      engine=engine, playerName=playerName, foeName=foeName,
+      chooseFoeMove=function(e) return Battle.RivalAI.choose(e, trainer.aiFlags) end,
+      runDisabledMessage="OAK: No! There's no running away\nfrom a TRAINER POKEMON battle!",
+      introMessages={
+        rivalName .. ": Wait, " .. Charmap.decode(session.state.saveBlock2.playerName) .. "!\nLet's check out our POKEMON!",
+        "Come on, I'll take you on!",
+        "RIVAL " .. rivalName .. " would like to battle!",
+        "RIVAL " .. rivalName .. " sent out " .. foeName .. "!",
+        "Go! " .. playerName .. "!",
+        "OAK: You've never had a POKEMON\nbattle before, have you?",
+        "The TRAINER that lowers the foe's\nHP to 0 wins.",
+        "Try battling and see for yourself!",
+      },
+      moveName=function(move) return Charmap.decodeAt(romData, romAddrs.gMoveNames, 13, move) end,
+    })
+    return {
+      trainer=trainer, foe=foe, player=player, controller=controller,
+      playerDecoded=playerDecoded, partyRecord=partyRecord, partySlot=partySlot,
+      playerName=playerName, rivalName=rivalName, foeName=foeName,
+    }
+  end)
+  if not ok then
+    addLine("Oak-lab rival battle failed source validation: " .. tostring(built))
+    return false
+  end
+
+  local images = {}
+  for _, imageSpec in ipairs({ {"foeImage", built.foe.species, false},
+      {"playerImage", built.player.species, true} }) do
+    local imageOk, composite = pcall(Battle.Assets.decodeMon,
+      romData, romAddrs, imageSpec[2], imageSpec[3])
+    if imageOk then
+      images[imageSpec[1]] = buildImage(composite)
+      images[imageSpec[1]]:setFilter("nearest", "nearest")
+    else
+      addLine("Rival-battle Pokemon sprite failed: " .. tostring(composite))
+    end
+  end
+  world.battle = {
+    kind="oakLabRival", controller=built.controller, trainerId=action.trainerId,
+    trainer=built.trainer, foeInstance=built.foe,
+    foeImage=images.foeImage, playerImage=images.playerImage,
+    partyRecord=built.partyRecord, partySlot=built.partySlot, persistedTurn=0,
+    playerName=built.playerName, rivalName=built.rivalName, settled=false,
+    textImages={},
+  }
+  newGame.story:registerSeen(Battle.PokedexOrder.speciesToNationalDexNum(
+    romData, romAddrs.sSpeciesToNationalPokedexNum, built.foe.species))
+  addLine(("Oak-lab rival tutorial started (trainer %d, Lv 5 %s). Building terrain/trainer-front presentation awaits linked ROM addresses; rules and persistence are live.")
+    :format(action.trainerId, built.foeName))
+  return true
+end
+
+-- Scans the loaded map's real collision grid for the first walkable tile:
+-- a developer-map-view and malformed-warp fallback. Fresh sessions use the
+-- canonical WarpToPlayersRoom destination below, never this heuristic.
 local function findFirstWalkableTile()
   for y = 0, walkMapHeight - 1 do
     for x = 0, walkMapWidth - 1 do
@@ -645,7 +1187,7 @@ end
 -- deterministic, matching how every other *_TICKS env knob in this file
 -- trades real elapsed time for reproducibility; POKEPORT_RNG_SEED=N
 -- overrides it.
-local function ensureRngStreams()
+ensureRngStreams = function()
   if world.globalRng then return end
   local seed = tonumber(os.getenv("POKEPORT_RNG_SEED") or "") or 0x5A0B
   world.globalRng = Rng.new(seed)
@@ -666,10 +1208,32 @@ local function loadMapObjectEvents(data, events, mapId)
   world.npcs = {}
   world.npcImages = {}
   world.bgEvents = events.bgEvents or {}
+  world.coordEvents = events.coordEvents or {}
   world.dialogue = nil
   world.dialogueBuiltTokenIndex = -1
 
-  local ok, npcs, skippedClones = pcall(ObjectEventState.new, events.objectEvents, {
+  -- SpawnObjectEventsOnMapEntry skips templates whose FLAG_HIDE_* bit is
+  -- set. Before a real session exists the map remains a data/demo view and
+  -- keeps the historical behavior of showing all decoded templates.
+  local objectEvents = events.objectEvents
+  if newGame.session then
+    objectEvents = {}
+    local sourceIndex, destIndex = 0, 0
+    while events.objectEvents[sourceIndex] ~= nil do
+      local template = events.objectEvents[sourceIndex]
+      local hiddenByFlag = template.flagId and template.flagId ~= 0
+        and newGame.session:getFlag(template.flagId)
+      local removedByStory = newGame.story
+        and newGame.story:isObjectRemoved(mapId, template.localId)
+      if not hiddenByFlag and not removedByStory then
+        objectEvents[destIndex] = template
+        destIndex = destIndex + 1
+      end
+      sourceIndex = sourceIndex + 1
+    end
+  end
+
+  local ok, npcs, skippedClones = pcall(ObjectEventState.new, objectEvents, {
     rng = world.globalRng,
     isBlocked = isWalkTileBlocked,
   })
@@ -728,6 +1292,115 @@ local function loadOakSceneAssets(data, addrs, dbg)
   end
 end
 
+local function rawCharmapStringAt(data, offset, maxLength)
+  local last = offset
+  local cap = offset + (maxLength or 256) - 1
+  while last <= cap and string.byte(data, last + 1) ~= Charmap.TERMINATOR do last = last + 1 end
+  return data:sub(offset + 1, last + 1)
+end
+
+local function renderNewGameMenuText(data, addrs, text)
+  -- Rebuild with real 0xFA linebreaks (the uppercase helper intentionally
+  -- only owns simple glyph conversion for existing demo menus).
+  local bytes = {}
+  for line in text:gmatch("[^\n]+") do
+    if #bytes > 0 then bytes[#bytes + 1] = string.char(0xFA) end
+    bytes[#bytes + 1] = charmapBytesForUppercaseAndSpaces(line)
+  end
+  bytes[#bytes + 1] = string.char(Charmap.TERMINATOR)
+  local tokens = { { type="color", fg=2, shadow=3 } }
+  for _, token in ipairs(Charmap.tokenize(table.concat(bytes))) do tokens[#tokens + 1] = token end
+  return buildImage(TextRenderer.renderTokens(data, addrs, tokens, fontPalette))
+end
+
+-- Real menu windows/assets needed around the pure NewGameFlow state.
+-- The naming keyboard itself is composited by NamingScreenScene directly
+-- from its dedicated ROM tilemaps, palettes, row strings, and cursor OBJ.
+local function loadNewGameAssets(data, addrs, dbg)
+  local ok, err = pcall(function()
+    local tiles = TextWindow.decodeFrameTiles(data, addrs.gStdTextWindow_Gfx)
+    local palette = TextWindow.decodePalette(data, addrs.gTextWindowPalettes, TextWindow.STD_PALETTE_INDEX)
+    newGame.genderWindowImage = buildImage(TextWindow.compositeFrame(tiles, palette, 9, 4))
+    newGame.rivalWindowImage = buildImage(TextWindow.compositeFrame(tiles, palette, 12, 10))
+    newGame.confirmWindowImage = buildImage(TextWindow.compositeFrame(tiles, palette, 6, 4))
+    newGame.genderTextImage = renderNewGameMenuText(data, addrs, "BOY\nGIRL")
+    newGame.rivalTextImage = renderNewGameMenuText(data, addrs, "NEW NAME\nGREEN\nGARY\nKAZ\nTORU")
+    newGame.confirmTextImage = renderNewGameMenuText(data, addrs, "YES\nNO")
+    local arrowPixels = Font.decodeGlyphPixelTypes(data, addrs.sFontHalfRowOffsets, addrs.sFontNormalLatinGlyphs, 0xEF)
+    local arrowWidth = string.byte(data, addrs.sFontNormalLatinGlyphWidths + 0xEF + 1)
+    newGame.arrowImage = buildImage(Font.buildGlyphImage(arrowPixels, arrowWidth, fontPalette[2], fontPalette[3]))
+    local fill = fontPalette[1]
+    newGame.fillColor = { fill.r / 255, fill.g / 255, fill.b / 255 }
+    for _, image in ipairs({newGame.genderWindowImage, newGame.rivalWindowImage, newGame.confirmWindowImage,
+      newGame.genderTextImage, newGame.rivalTextImage, newGame.confirmTextImage}) do
+      image:setFilter("nearest", "nearest")
+    end
+    local identityRng = Rng.new(0)
+    newGame.flow = NewGameFlow.new({ nextRandom16 = function() return identityRng:next16() end })
+    newGame.builtRevision = -1
+  end)
+  if ok then dbg("post-Oak gender/player/rival naming flow loaded")
+  else dbg("new-game identity flow failed: " .. tostring(err)) end
+end
+
+local function beginNewGameFlow()
+  if not newGame.flow then return end
+  viewerActive, titleActive, spriteActive, itemBallActive = false, false, false, false
+  fontActive, oakSpeechActive, oakSceneActive = false, false, false
+  flameActive, yesNoActive, walkActive = false, false, false
+  newGame.flow = NewGameFlow.new({ nextRandom16 = function()
+    newGame.identityRng = newGame.identityRng or Rng.new(0)
+    return newGame.identityRng:next16()
+  end })
+  newGame.active = true
+  newGame.session = nil
+  newGame.story = nil
+  world.starterChoice = nil
+  newGame.builtRevision = -1
+end
+
+local NEW_GAME_PROMPT_SYMBOL = {
+  [NewGameFlow.GENDER] = "gOakSpeech_Text_AskPlayerGender",
+  [NewGameFlow.PLAYER_CONFIRM] = "gOakSpeech_Text_SoYourNameIsPlayer",
+  [NewGameFlow.RIVAL_CHOICE] = "gOakSpeech_Text_YourRivalsNameWhatWasIt",
+  [NewGameFlow.RIVAL_CONFIRM] = "gOakSpeech_Text_ConfirmRivalName",
+}
+
+local function ensureNewGameImageCurrent()
+  local flow = newGame.flow
+  if not newGame.active or not flow or not romData or flow.revision == newGame.builtRevision then return end
+
+  local ok, composited = pcall(function()
+    if flow.state == NewGameFlow.PLAYER_NAMING or flow.state == NewGameFlow.RIVAL_NAMING then
+      return NamingScreenScene.composite(romData, romAddrs, {
+        kind = flow.state == NewGameFlow.RIVAL_NAMING and "rival" or "player",
+        state = flow.naming,
+        entryBytes = flow.naming:entryBytes(),
+      })
+    end
+
+    local symbol = NEW_GAME_PROMPT_SYMBOL[flow.state]
+    if symbol then
+      return OakSpeechScene.composite(romData, romAddrs, {
+        withOak = false,
+        tokens = Charmap.tokenize(rawCharmapStringAt(romData, romAddrs[symbol])),
+        substitutions = {
+          PLAYER = flow:displayName(flow.playerName),
+          RIVAL = flow:displayName(flow.rivalName),
+        },
+      })
+    end
+    return OakSpeechScene.composite(romData, romAddrs, { withOak=false, withText=false })
+  end)
+  if ok then
+    newGame.screenImage = buildImage(composited)
+    newGame.screenImage:setFilter("nearest", "nearest")
+  else
+    newGame.error = tostring(composited)
+  end
+  newGame.builtRevision = flow.revision
+end
+
 -- Loads and composites a real map by id (group*256+num), setting
 -- mapImage/walkMapBlockData/walkMapWidth/walkMapHeight/walkMapWarps/
 -- walkMapId -- shared by the initial boot load and real warp-triggered
@@ -736,6 +1409,7 @@ end
 function loadMap(data, addrs, mapId, dbg)
   local header = MapHeader.resolve(data, addrs.gMapGroups, mapId)
   dbg("header resolved")
+  world.regionMapSectionId = header.regionMapSectionId
   local layout = MapLayout.resolve(data, header.mapLayoutPtr)
   dbg("layout resolved " .. layout.width .. "x" .. layout.height)
   local blockData = MapBlockData.resolve(data, layout.mapPtr, layout.width, layout.height)
@@ -774,7 +1448,7 @@ end
 -- (the real WARP_ID_NONE convention, or just a decode surprise) falls
 -- back to that map's first walkable tile rather than crashing.
 function tryWarpAt(x, y)
-  if not walkMapWarps then return end
+  if not walkMapWarps then return false end
   for _, warp in pairs(walkMapWarps) do
     if warp.x == x and warp.y == y then
       local destMapId = warp.mapGroup * 256 + warp.mapNum
@@ -790,10 +1464,132 @@ function tryWarpAt(x, y)
         playerMovement.tileX, playerMovement.tileY = destX, destY
         playerMovement.moving = false
         playerMovement.stepFrame = 0
+        syncSessionLocation()
       end
-      return
+      return true
     end
   end
+  return false
+end
+
+-- Persists only the field location that is currently represented by this
+-- bounded runtime.  This is intentionally called after every completed
+-- player step and after a real warp; actual save-file writing remains a
+-- separate UI/IO concern, but a future call to SaveFileCodec.encode can use
+-- `newGame.session.state` without reconstructing where the player is.
+syncSessionLocation = function()
+  if newGame.session and playerMovement and walkMapId then
+    newGame.session:setLocation(walkMapId, playerMovement.tileX, playerMovement.tileY,
+      playerMovement.facingDirection == PlayerMovement.UP and "north"
+        or playerMovement.facingDirection == PlayerMovement.DOWN and "south"
+        or playerMovement.facingDirection == PlayerMovement.LEFT and "west" or "east")
+  end
+end
+
+-- The real naming screen seeds Random and retains a timer-derived trainer-id
+-- lower half before the rest of Oak's flow reaches NewGameInitData().  This
+-- desktop slice exposes deterministic injection knobs instead of pretending
+-- that wall-clock time is the GBA timer: POKEPORT_TRAINER_RNG_SEED and
+-- POKEPORT_TRAINER_ID_LOWER.  The pure GameSession builder still performs
+-- InitPlayerTrainerId's exact high/low composition.
+bootstrapFreshSession = function()
+  if newGame.session or not newGame.flow or not newGame.flow:isComplete() then return end
+  local rng = Rng.new(tonumber(os.getenv("POKEPORT_TRAINER_RNG_SEED") or "") or 0)
+  local lower = tonumber(os.getenv("POKEPORT_TRAINER_ID_LOWER") or "") or 0
+  newGame.session = GameSession.fromNewGame(newGame.flow:result(), {
+    nextRandom16=function() return rng:next16() end,
+    generatedTrainerIdLower=lower,
+  })
+  newGame.story = Battle.EarlyStory.new(newGame.session)
+
+  -- WarpToPlayersRoom() in src/new_game.c: Map group 4, map 1, (6,6),
+  -- WARP_ID_NONE.  The player begins facing north in this presentation's
+  -- field state; no starter or story script is fabricated here.
+  loadMap(romData, romAddrs, GameSession.MAP_PALLET_TOWN_PLAYERS_HOUSE_2F, function() end)
+  if not playerMovement then
+    addLine("Fresh save could not start: player movement assets are unavailable.")
+    return
+  end
+  local start = NewGameDefaults.startingWarp
+  playerMovement.tileX, playerMovement.tileY = start.x, start.y
+  playerMovement.facingDirection = PlayerMovement.UP
+  playerMovement.moving, playerMovement.stepFrame = false, 0
+  syncSessionLocation()
+  newGame.active = false
+  walkActive = true
+  addLine("Fresh save initialized: Player's House 2F (4,1) at 6,6; party is empty and PC has 1 Potion.")
+end
+
+-- Executes the persistent gameplay result of the two supported early-story
+-- coordinate events. The many applymovement/delay/music/text commands in
+-- Oak's escort are not represented as if they had played: the status line
+-- explicitly identifies that presentation as abbreviated. Map choice,
+-- trigger coordinates, destination, final coordinate, flags and scene vars
+-- are the real source values (EarlyStory.lua).
+tryEarlyStoryTriggerAt = function(x, y)
+  if not newGame.story then return false end
+  local action = newGame.story:onStep(walkMapId, x, y, world.coordEvents)
+  if not action then return false end
+
+  if action.kind == "oakEscort" then
+    loadMap(romData, romAddrs, action.mapId, function() end)
+    playerMovement.tileX, playerMovement.tileY = action.x, action.y
+    playerMovement.facingDirection = PlayerMovement.UP
+    playerMovement.moving, playerMovement.stepFrame = false, 0
+    syncSessionLocation()
+    addLine("Oak escorted you to his lab. Movement/dialogue timing is abbreviated; real scene state is now 2. Choose one of the three balls with A.")
+  elseif action.kind == "stayForStarter" then
+    playerMovement.tileX, playerMovement.tileY = action.x, action.y
+    playerMovement.facingDirection = PlayerMovement.UP
+    playerMovement.moving, playerMovement.stepFrame = false, 0
+    syncSessionLocation()
+    addLine("Oak stops you: choose a Pokemon before leaving the lab.")
+  elseif action.kind == "rivalBattle" then
+    playerMovement.tileX, playerMovement.tileY = action.x, action.y
+    playerMovement.facingDirection = PlayerMovement.UP
+    playerMovement.moving, playerMovement.stepFrame = false, 0
+    syncSessionLocation()
+    if not world.startRivalBattle(action) then
+      addLine("The mandatory rival encounter remains at lab scene 3 and can be retried; no progression flag was set.")
+    end
+  end
+  return true
+end
+
+acceptStarterChoice = function()
+  local prompt, catalog = world.starterChoice, world.battleCatalog
+  if not prompt or not newGame.story or not catalog then return false end
+  ensureRngStreams()
+  local choice = prompt.choice
+  local sb2 = newGame.session.state.saveBlock2
+  local ok, record = pcall(Battle.StarterFactory.generate, {
+    species=choice.species, speciesInfo=catalog.species[choice.species],
+    speciesName=romData:sub(romAddrs.gSpeciesNames + choice.species * 11 + 1,
+      romAddrs.gSpeciesNames + choice.species * 11 + 10),
+    learnset=Battle.Learnset.resolve(romData, romAddrs.gLevelUpLearnsets, choice.species),
+    battleMoves=catalog.moves, natures=catalog.natures, rng=world.globalRng,
+    trainer={ id=sb2.playerTrainerId, name=sb2.playerName:sub(1, 7), gender=sb2.playerGender },
+    metLocation=world.regionMapSectionId,
+  })
+  if not ok then
+    addLine("Starter creation failed without changing story state: " .. tostring(record))
+    newGame.story:declineStarter()
+    world.starterChoice = nil
+    return false
+  end
+  local nationalDexNo = Battle.PokedexOrder.speciesToNationalDexNum(
+    romData, romAddrs.sSpeciesToNationalPokedexNum, choice.species)
+  local accepted = newGame.story:acceptStarter(record, nationalDexNo)
+  local kept = {}
+  for _, npc in ipairs(world.npcs) do
+    if not newGame.story:isObjectRemoved(walkMapId, npc.localId) then kept[#kept + 1] = npc end
+  end
+  world.npcs = kept
+  world.starterChoice = nil
+  addLine(("Received %s Lv 5 from Oak; rival took %s. Party/save/Dex state is persistent.")
+    :format(speciesName(accepted.species), speciesName(accepted.rivalSpecies)))
+  addLine("Nickname prompt and rival-pick movement are presentation-deferred; the starter keeps its species name. The mandatory rival tutorial starts at the south trigger.")
+  return true
 end
 
 -- ---------------------------------------------------------- NPCs + scripts
@@ -882,12 +1678,28 @@ end
 -- up, matching the real ObjectEventIsMovementOverridden/script-context
 -- input gating.
 local function tryStartInteraction()
+  if world.battle then return end
   if not playerMovement or playerMovement.moving then return end
   if world.dialogue and world.dialogue:isActive() then return end
 
   local npc = ObjectEventInteraction.findInteractionTarget(
     playerMovement.tileX, playerMovement.tileY, playerMovement.facingDirection, world.npcs)
   if npc then
+    if newGame.story and walkMapId == Battle.EarlyStory.MAP_OAKS_LAB
+        and Battle.EarlyStory.STARTERS[npc.localId] then
+      local action = newGame.story:beginStarterChoice(walkMapId, npc.localId)
+      if action.kind == "confirmStarter" then
+        world.starterChoice = {
+          choice=action.choice,
+          cursor=MenuCursor.new(2, 0),
+        }
+        addLine(("Choose %s as your starter? Use Up/Down, A to confirm, B to decline.")
+          :format(speciesName(action.choice.species)))
+      else
+        addLine("Starter unavailable: " .. action.reason)
+      end
+      return
+    end
     startScript(npc.scriptPtr, npc)
     return
   end
@@ -941,7 +1753,7 @@ local function loadMapFromRom(romPath)
   dbg("selectedMapId " .. mapId)
   loadMap(data, addrs, mapId, dbg)
 
-  addLine("Press V for the data viewer, T for the title screen, P for a sprite, I for an item ball, F for font rendering, O for the Oak intro text, S for the full Oak intro scene, A for the animated flame, Y for a Yes/No menu, W to walk (arrow keys; Enter talks to NPCs/signs).")
+  addLine("Press N for the post-Oak new-game flow (or Enter from S), V data, T title, P sprite, I item, F font, O/S Oak, A flame, Y Yes/No, W walk.")
 
   loadTitleScreenAssets(data, addrs, dbg)
   loadSpriteAssets(data, addrs, dbg)
@@ -949,7 +1761,9 @@ local function loadMapFromRom(romPath)
   loadOakSpeechAssets(data, addrs, dbg)
   loadOakSceneAssets(data, addrs, dbg)
   loadYesNoAssets(data, addrs, dbg)
+  loadNewGameAssets(data, addrs, dbg)
   loadFlameAssets(data, addrs, dbg)
+  loadBattleSceneAssets(data, addrs, dbg)
   loadWalkAssets(dbg)
 end
 
@@ -1278,13 +2092,17 @@ function love.load()
     local moves = os.getenv("POKEPORT_WALK_MOVES")
     if moves and playerMovement then
       for dir in moves:gmatch("[^,]+") do
-        playerMovement:tryMove(dir, isWalkTileBlocked, getLedgeJumpDirection)
+        playerMovement:tryMove(dir, world.isPlayerWalkTileBlocked, getLedgeJumpDirection)
         for i = 1, 16 do playerMovement:tick() end
-        tryWarpAt(playerMovement.tileX, playerMovement.tileY)
-        rollWildEncounterAt(playerMovement.tileX, playerMovement.tileY)
+        syncSessionLocation()
+        if not tryEarlyStoryTriggerAt(playerMovement.tileX, playerMovement.tileY)
+            and not tryWarpAt(playerMovement.tileX, playerMovement.tileY) then
+          rollWildEncounterAt(playerMovement.tileX, playerMovement.tileY)
+        end
+        if world.battle then break end
       end
     end
-    if os.getenv("POKEPORT_WALK_TALK") == "1" then
+    if os.getenv("POKEPORT_WALK_TALK") == "1" and not world.battle then
       tryStartInteraction()
       local talkTicks = tonumber(os.getenv("POKEPORT_WALK_TALK_TICKS") or "120")
       for _ = 1, talkTicks do
@@ -1293,9 +2111,49 @@ function love.load()
     end
   end
 
+  -- POKEPORT_BATTLE=species,level boots the same live scene a grass step
+  -- launches, without depending on a particular movement/RNG sequence.
+  -- It still requires a real session lead. For isolated developer visuals
+  -- with no session at all, POKEPORT_BATTLE_DEBUG_PARTY=species,level opts
+  -- into a generated temporary battler that is never stored in GameSession.
+  -- POKEPORT_BATTLE_ADVANCE=N acknowledges N intro/result messages first,
+  -- useful for deterministic screenshots of the action menu.
+  local battleOverride = os.getenv("POKEPORT_BATTLE")
+  if battleOverride then
+    local species, level = battleOverride:match("^(%d+),(%d+)$")
+    if species and level then
+      walkActive = true
+      startWildBattle({ species=tonumber(species), level=tonumber(level), slot=0 })
+      local advances = tonumber(os.getenv("POKEPORT_BATTLE_ADVANCE") or "0") or 0
+      for _ = 1, advances do
+        if world.battle then world.battle.controller:advanceMessage() end
+      end
+    end
+  end
+
   -- POKEPORT_OAKSCENE=1 boots straight into the full Oak intro scene view.
   if os.getenv("POKEPORT_OAKSCENE") == "1" then
     oakSceneActive = true
+  end
+
+  -- POKEPORT_NEWGAME selects a deterministic point in the new identity
+  -- flow for live screenshots: gender (or 1), player, rival, complete.
+  -- Normal interactive play enters the same flow with N or Enter from S.
+  local newGameOverride = os.getenv("POKEPORT_NEWGAME")
+  if newGameOverride and newGame.flow then
+    beginNewGameFlow()
+    if newGameOverride == "player" then
+      newGame.flow:beginPlayerNaming(NewGameFlow.MALE)
+    elseif newGameOverride == "rival" then
+      newGame.flow:beginPlayerNaming(NewGameFlow.MALE)
+      newGame.flow:beginRivalChoice(NewGameFlow.encodeName("RED"))
+    elseif newGameOverride == "complete" then
+      newGame.flow.playerGender = NewGameFlow.MALE
+      newGame.flow.playerName = NewGameFlow.encodeName("RED")
+      newGame.flow.rivalName = NewGameFlow.encodeName("GREEN")
+      newGame.flow.state = NewGameFlow.COMPLETE
+      newGame.flow:_touch()
+    end
   end
 
   -- POKEPORT_FLAME=1 boots straight into the animated flame sprite view.
@@ -1324,7 +2182,7 @@ function love.load()
   -- love.filesystem is sandboxed to the save directory (see conf.lua's
   -- identity="firered-recomp"), so this always writes there under a fixed
   -- name rather than to an arbitrary POKEPORT_SCREENSHOT path.
-  if os.getenv("POKEPORT_SCREENSHOT") == "1" and (mapImage or viewerActive or titleActive or spriteActive or itemBallActive or fontActive or oakSpeechActive or oakSceneActive or flameActive or yesNoActive or walkActive) then
+  if os.getenv("POKEPORT_SCREENSHOT") == "1" and (mapImage or viewerActive or titleActive or spriteActive or itemBallActive or fontActive or oakSpeechActive or oakSceneActive or flameActive or yesNoActive or walkActive or newGame.active or world.battle) then
     -- The font sample normally reveals one character at a time (real text
     -- speed, driven by TaskScheduler in love.update) and can pause or wait
     -- on a keypress mid-message; automated screenshots want the
@@ -1344,6 +2202,92 @@ end
 -- doesn't depend on how fast this machine renders frames.
 local FIXED_TICK = 1 / 60
 local tickAccumulator = 0
+world.settleOakLabRivalBattle = function(battle)
+  if battle.kind ~= "oakLabRival" or battle.settled
+      or not battle.controller.engine.outcome then return end
+  local outcome = battle.controller.engine.outcome
+  local ok, result = pcall(function()
+    local messages = {}
+    if outcome == "playerWon" then
+      local reward = Battle.RivalRewards.applyVictory(
+        battle.partyRecord, battle.foeInstance, world.battleCatalog.species,
+        world.battleCatalog.natures,
+        Battle.Learnset.resolve(romData, romAddrs.gLevelUpLearnsets,
+          battle.controller.engine.player.species),
+        world.regionMapSectionId)
+      Battle.RivalRewards.addPrizeMoney(newGame.session.state.saveBlock1)
+      messages[#messages + 1] = ("%s gained %d EXP. Points!"):format(battle.playerName, reward.exp)
+      if reward.newLevel > reward.oldLevel then
+        messages[#messages + 1] = ("%s grew to Lv. %d!"):format(battle.playerName, reward.newLevel)
+        local live = battle.controller.engine.player
+        live.level, live.hp, live.maxHP = battle.partyRecord.level,
+          battle.partyRecord.hp, battle.partyRecord.maxHP
+        live.attack, live.defense, live.speed = battle.partyRecord.attack,
+          battle.partyRecord.defense, battle.partyRecord.speed
+        live.spAttack, live.spDefense = battle.partyRecord.spAttack, battle.partyRecord.spDefense
+        messages[#messages + 1] = {hpSide="player", hp=battle.partyRecord.hp}
+      end
+      messages[#messages + 1] = "WHAT? Unbelievable!\nI picked the wrong POKEMON!"
+      messages[#messages + 1] = "OAK: Hm! Excellent! If you win,\nyour POKEMON will grow!"
+      messages[#messages + 1] = ("%s got $%d for winning!")
+        :format(Charmap.decode(newGame.session.state.saveBlock2.playerName), Battle.RivalRewards.PRIZE_MONEY)
+    elseif outcome == "playerLost" then
+      Battle.RivalRewards.applyLoss(battle.partyRecord)
+      messages[#messages + 1] = battle.rivalName .. ": Yeah! Am I great or what?"
+      messages[#messages + 1] = "OAK: Hm... How disappointing..."
+      messages[#messages + 1] = "Since you had no warning this time,\nI'll pay for you."
+    else
+      error("trainer battle ended with an impossible outcome: " .. tostring(outcome))
+    end
+    messages[#messages + 1] = battle.rivalName
+      .. ": I'll make my POKEMON battle\nto toughen it up!"
+    messages[#messages + 1] = "Smell you later!"
+    return messages
+  end)
+  battle.settled = true
+  if ok then
+    battle.controller:appendMessages(result, Battle.Controller.COMPLETE)
+  else
+    battle.settlementError = tostring(result)
+    battle.controller:appendMessages({
+      "Rival-battle settlement failed source validation; story progress remains at scene 3.",
+    }, Battle.Controller.COMPLETE)
+    addLine("Rival-battle settlement failed: " .. tostring(result))
+  end
+end
+
+world.finishOakLabRivalBattle = function(battle)
+  if battle.settlementError then
+    world.battle = nil
+    return
+  end
+  local outcome = battle.controller.engine.outcome
+  local ok, result = pcall(function()
+    -- PalletTown_ProfessorOaksLab_EventScript_EndRivalBattle begins with
+    -- HealPlayerParty and reaches this same progression on either outcome.
+    Battle.RivalRewards.healParty(newGame.session.state.saveBlock1, world.battleCatalog.moves)
+    return newGame.story:completeRivalBattle(outcome, battle.trainerId)
+  end)
+  if not ok then
+    addLine("Rival-battle story continuation failed: " .. tostring(result))
+    world.battle = nil
+    return
+  end
+  local kept = {}
+  for _, npc in ipairs(world.npcs) do
+    if not newGame.story:isObjectRemoved(walkMapId, npc.localId) then kept[#kept + 1] = npc end
+  end
+  world.npcs = kept
+  -- The rival-exit movement ends by turning the player south in place on
+  -- the original scene-3 trigger tile.
+  playerMovement.facingDirection = PlayerMovement.DOWN
+  syncSessionLocation()
+  addLine(("Oak-lab rival battle %s: party healed, scene 4/trainer/story flags persisted, rival departed%s.")
+    :format(outcome == "playerWon" and "won" or "lost",
+      outcome == "playerWon" and ", $80 awarded" or "; Oak covered the loss"))
+  world.battle = nil
+end
+
 function love.update(dt)
   tickAccumulator = tickAccumulator + dt
   while tickAccumulator >= FIXED_TICK do
@@ -1357,12 +2301,62 @@ function love.update(dt)
       DPAD_RIGHT = love.keyboard.isDown("right"),
       A_BUTTON = love.keyboard.isDown("return"),
       B_BUTTON = love.keyboard.isDown("backspace"),
+      SELECT_BUTTON = love.keyboard.isDown("rshift"),
+      START_BUTTON = love.keyboard.isDown("space"),
     }))
     if viewerActive then
       if inputState:isPressedOrRepeated(InputState.DPAD_DOWN) then viewerStep(1) end
       if inputState:isPressedOrRepeated(InputState.DPAD_UP) then viewerStep(-1) end
     end
-    if walkActive and playerMovement and world.dialogue and world.dialogue:isActive() then
+    if world.battle then
+      world.battle.controller:processInput(inputState)
+      if world.battle.partyRecord
+          and world.battle.controller.engine.turn ~= world.battle.persistedTurn then
+        local battle = world.battle
+        local ok, err = pcall(Battle.PartyBridge.persistPartyBattler,
+          battle.partyRecord, battle.controller.engine.player)
+        battle.persistedTurn = battle.controller.engine.turn
+        if not ok then
+          addLine("Session party battle state failed to persist: " .. tostring(err))
+        end
+      end
+      if world.battle and world.battle.kind == "oakLabRival" then
+        world.settleOakLabRivalBattle(world.battle)
+      end
+      if world.battle.controller:isComplete() then
+        local battle = world.battle
+        local outcome = battle.controller.engine.outcome
+        if battle.kind == "oakLabRival" then
+          world.finishOakLabRivalBattle(battle)
+        elseif outcome == "playerLost" then
+          addLine("Battle lost. Whiteout/healing is deferred; returned to the field at the encounter tile.")
+          world.battle = nil
+        elseif outcome == "playerWon" then
+          addLine("Wild battle won. Experience/rewards are not in this bounded slice.")
+          world.battle = nil
+        else
+          addLine("Returned to the field after running from the wild battle.")
+          world.battle = nil
+        end
+      end
+    elseif newGame.active and newGame.flow then
+      newGame.flow:processInput(inputState)
+      if newGame.flow:isComplete() then bootstrapFreshSession() end
+    elseif walkActive and world.starterChoice then
+      local outcome = world.starterChoice.cursor:processInput(inputState)
+      if outcome == "confirm" and world.starterChoice.cursor.cursorPos == 0 then
+        acceptStarterChoice()
+      elseif outcome == "confirm" or outcome == "cancel" then
+        local declined = newGame.story:declineStarter()
+        world.starterChoice = nil
+        addLine(("Declined %s; all three real choices remain available.")
+          :format(declined and speciesName(declined.species) or "starter"))
+      end
+    elseif oakSceneActive and inputState:isNewlyPressed(InputState.A_BUTTON) then
+      -- The S view is the real Oak narration frame; A continues into the
+      -- real next task family, starting gender selection.
+      beginNewGameFlow()
+    elseif walkActive and playerMovement and world.dialogue and world.dialogue:isActive() then
       -- A real script's `lock`/`lockall` (and just having a message box
       -- open) blocks field input entirely -- the A press is consumed by
       -- the dialogue's own advance, handled in dialogueTask.
@@ -1372,10 +2366,10 @@ function love.update(dt)
       -- every frame (not the menu-style repeat-with-delay system --
       -- that's specific to menu cursors, see InputState.lua/MenuCursor.lua),
       -- so the next tile starts immediately once the current step finishes.
-      if inputState:isHeld(InputState.DPAD_DOWN) then playerMovement:tryMove(PlayerMovement.DOWN, isWalkTileBlocked, getLedgeJumpDirection)
-      elseif inputState:isHeld(InputState.DPAD_UP) then playerMovement:tryMove(PlayerMovement.UP, isWalkTileBlocked, getLedgeJumpDirection)
-      elseif inputState:isHeld(InputState.DPAD_LEFT) then playerMovement:tryMove(PlayerMovement.LEFT, isWalkTileBlocked, getLedgeJumpDirection)
-      elseif inputState:isHeld(InputState.DPAD_RIGHT) then playerMovement:tryMove(PlayerMovement.RIGHT, isWalkTileBlocked, getLedgeJumpDirection)
+      if inputState:isHeld(InputState.DPAD_DOWN) then playerMovement:tryMove(PlayerMovement.DOWN, world.isPlayerWalkTileBlocked, getLedgeJumpDirection)
+      elseif inputState:isHeld(InputState.DPAD_UP) then playerMovement:tryMove(PlayerMovement.UP, world.isPlayerWalkTileBlocked, getLedgeJumpDirection)
+      elseif inputState:isHeld(InputState.DPAD_LEFT) then playerMovement:tryMove(PlayerMovement.LEFT, world.isPlayerWalkTileBlocked, getLedgeJumpDirection)
+      elseif inputState:isHeld(InputState.DPAD_RIGHT) then playerMovement:tryMove(PlayerMovement.RIGHT, world.isPlayerWalkTileBlocked, getLedgeJumpDirection)
       end
     end
     if yesNoActive and yesNoCursor and not yesNoResult then
@@ -1385,7 +2379,156 @@ function love.update(dt)
   end
 end
 
+local function drawNewGameFlow(y)
+  ensureNewGameImageCurrent()
+  if not newGame.screenImage or not newGame.flow then return end
+  local windowWidth, windowHeight = love.graphics.getDimensions()
+  local viewport = ViewportScale.fit(240, 160, windowWidth - 40, windowHeight - (y + 10))
+  -- Keep the same y-origin convention as other views. The menu helper's
+  -- fixed 30 below corresponds to y+10 when status occupies one line;
+  -- adjust it here so overlays remain locked to GBA screen coordinates.
+  local baseX, baseY = 20 + viewport.x, y + 10 + viewport.y
+  love.graphics.draw(newGame.screenImage, baseX, baseY, 0, viewport.scale, viewport.scale)
+
+  local flow = newGame.flow
+  local function menu(image, textImage, cursor, sx, sy)
+    local fill = newGame.fillColor
+    local x, yy = baseX + sx * viewport.scale, baseY + sy * viewport.scale
+    if fill then
+      love.graphics.setColor(fill[1], fill[2], fill[3])
+      love.graphics.rectangle("fill", x + 8 * viewport.scale, yy + 8 * viewport.scale,
+        (image:getWidth() - 16) * viewport.scale, (image:getHeight() - 16) * viewport.scale)
+      love.graphics.setColor(1, 1, 1)
+    end
+    love.graphics.draw(image, x, yy, 0, viewport.scale, viewport.scale)
+    if textImage then
+      love.graphics.draw(textImage, x + (8 + newGame.arrowImage:getWidth()) * viewport.scale,
+        yy + 9 * viewport.scale, 0, viewport.scale, viewport.scale)
+    end
+    if cursor and newGame.arrowImage then
+      love.graphics.draw(newGame.arrowImage, x + 8 * viewport.scale,
+        yy + (9 + cursor.cursorPos * 16) * viewport.scale, 0, viewport.scale, viewport.scale)
+    end
+  end
+
+  if flow.state == NewGameFlow.GENDER then
+    menu(newGame.genderWindowImage, newGame.genderTextImage, flow.genderCursor, 136, 64)
+  elseif flow.state == NewGameFlow.RIVAL_CHOICE then
+    menu(newGame.rivalWindowImage, newGame.rivalTextImage, flow.rivalChoiceCursor, 8, 8)
+  elseif flow.state == NewGameFlow.PLAYER_CONFIRM or flow.state == NewGameFlow.RIVAL_CONFIRM then
+    menu(newGame.confirmWindowImage, newGame.confirmTextImage, flow.confirmCursor, 8, 8)
+  elseif flow.state == NewGameFlow.COMPLETE then
+    local gender = flow.playerGender == NewGameFlow.FEMALE and "GIRL" or "BOY"
+    local summary = ("IDENTITY COMPLETE\n%s  %s\nRIVAL  %s\nSTARTING FRESH SAVE")
+      :format(gender, flow:displayName(flow.playerName), flow:displayName(flow.rivalName))
+    love.graphics.setColor(0.05, 0.08, 0.12, 0.82)
+    love.graphics.rectangle("fill", baseX + 16 * viewport.scale, baseY + 40 * viewport.scale, 208 * viewport.scale, 72 * viewport.scale)
+    love.graphics.setColor(1, 1, 1)
+    love.graphics.print(summary, baseX + 24 * viewport.scale, baseY + 48 * viewport.scale, 0, viewport.scale, viewport.scale)
+  end
+  if newGame.error then love.graphics.print("New-game render error: " .. newGame.error, baseX, baseY + 165 * viewport.scale) end
+end
+
+local function battleTextImage(text, darkText)
+  local battle = world.battle
+  if not battle or not fontData or not fontPalette then return nil end
+  local key = (darkText and "dark:" or "light:") .. text
+  if battle.textImages[key] ~= nil then return battle.textImages[key] or nil end
+  local ok, composited = pcall(TextRenderer.renderTokens, fontData, fontAddrs,
+    Battle.Assets.textTokens(text, darkText), fontPalette)
+  if not ok then battle.textImages[key] = false; return nil end
+  local image = buildImage(composited)
+  image:setFilter("nearest", "nearest")
+  battle.textImages[key] = image
+  return image
+end
+
+-- Minimal live battle presentation over the real ROM grass terrain/front/
+-- back sprites. Health-box/window chrome is intentionally drawn with the
+-- current native primitives; importing the full battle-interface tilemap
+-- and healthbox sprite system belongs to the broader Phase 4 UI pass.
+local function drawBattleScene(y)
+  local battle, catalog = world.battle, world.battleCatalog
+  if not battle or not catalog then return end
+  local controller = battle.controller
+  local windowWidth, windowHeight = love.graphics.getDimensions()
+  local viewport = ViewportScale.fit(240, 160, windowWidth - 40, windowHeight - (y + 10))
+  local baseX, baseY, scale = 20 + viewport.x, y + 10 + viewport.y, viewport.scale
+  love.graphics.draw(catalog.backgroundImage, baseX, baseY, 0, scale, scale)
+
+  if battle.foeImage and controller.displayedHP.foe > 0 then
+    love.graphics.draw(battle.foeImage, baseX + 144 * scale, baseY + 8 * scale, 0, scale, scale)
+  end
+  if battle.playerImage and controller.displayedHP.player > 0 then
+    love.graphics.draw(battle.playerImage, baseX + 40 * scale, baseY + 48 * scale, 0, scale, scale)
+  end
+
+  local function drawText(text, x, yy, dark)
+    local image = battleTextImage(text, dark)
+    if image then love.graphics.draw(image, baseX + x * scale, baseY + yy * scale, 0, scale, scale) end
+  end
+  local function healthBox(side, x, yy)
+    local battler = controller.engine:battler(side)
+    local hp = controller.displayedHP[side]
+    local name = side == "player" and controller.playerName or controller.foeName
+    love.graphics.setColor(0.96, 0.96, 0.9)
+    love.graphics.rectangle("fill", baseX + x*scale, baseY + yy*scale, 108*scale, 31*scale)
+    love.graphics.setColor(0.12, 0.12, 0.12)
+    love.graphics.rectangle("line", baseX + x*scale, baseY + yy*scale, 108*scale, 31*scale)
+    love.graphics.setColor(1, 1, 1)
+    drawText(name .. " Lv" .. battler.level, x+4, yy+1, true)
+    love.graphics.setColor(0.15, 0.15, 0.15)
+    love.graphics.rectangle("fill", baseX+(x+24)*scale, baseY+(yy+20)*scale, 78*scale, 5*scale)
+    local ratio = battler.maxHP > 0 and hp / battler.maxHP or 0
+    local r, g = ratio <= 0.2 and 0.85 or (ratio <= 0.5 and 0.95 or 0.2), ratio <= 0.2 and 0.15 or (ratio <= 0.5 and 0.75 or 0.75)
+    love.graphics.setColor(r, g, 0.12)
+    love.graphics.rectangle("fill", baseX+(x+25)*scale, baseY+(yy+21)*scale, 76*ratio*scale, 3*scale)
+    love.graphics.setColor(1, 1, 1)
+    drawText("HP", x+4, yy+13, true)
+  end
+  healthBox("foe", 8, 8)
+  healthBox("player", 124, 72)
+
+  love.graphics.setColor(0.96, 0.96, 0.92)
+  love.graphics.rectangle("fill", baseX, baseY + 112*scale, 240*scale, 48*scale)
+  love.graphics.setColor(0.1, 0.1, 0.12)
+  love.graphics.rectangle("line", baseX, baseY + 112*scale, 240*scale, 48*scale)
+  love.graphics.setColor(1, 1, 1)
+
+  local function cursorAt(x, yy)
+    love.graphics.setColor(0.15, 0.15, 0.18)
+    love.graphics.polygon("fill", baseX+x*scale, baseY+yy*scale,
+      baseX+(x+5)*scale, baseY+(yy+4)*scale, baseX+x*scale, baseY+(yy+8)*scale)
+    love.graphics.setColor(1, 1, 1)
+  end
+
+  if controller.state == Battle.Controller.MESSAGES then
+    drawText(controller:message() or "", 8, 119, true)
+  elseif controller.state == Battle.Controller.ACTION then
+    drawText("What will\n" .. controller.playerName .. " do?", 7, 115, true)
+    local labels = { "FIGHT", "BAG", "POKEMON", "RUN" }
+    local positions = { {133,115}, {193,115}, {133,135}, {193,135} }
+    for i, label in ipairs(labels) do drawText(label, positions[i][1], positions[i][2], true) end
+    local p = positions[controller.actionCursor + 1]
+    cursorAt(p[1] - 8, p[2] + 3)
+  elseif controller.state == Battle.Controller.MOVE then
+    for i, moveSlot in ipairs(controller.engine.player.moves) do
+      local col, row = (i-1)%2, math.floor((i-1)/2)
+      drawText(Charmap.decodeAt(romData, romAddrs.gMoveNames, 13, moveSlot.move), 16+col*82, 115+row*18, true)
+    end
+    local slot = controller.engine.player.moves[controller.moveCursor + 1]
+    if slot then
+      local move = catalog.moves[slot.move]
+      drawText(("PP %d/%d"):format(slot.pp, move.pp), 177, 115, true)
+      drawText(Charmap.decodeAt(romData, romAddrs.gTypeNames, 7, move.type), 177, 135, true)
+    end
+    local col, row = controller.moveCursor%2, math.floor(controller.moveCursor/2)
+    cursorAt(8+col*82, 118+row*18)
+  end
+end
+
 function love.draw()
+  if newGame.active then ensureNewGameImageCurrent() end
   if fontActive then ensureFontImageCurrent() end
   if oakSpeechActive then ensureOakSpeechImageCurrent() end
   if walkActive then ensureDialogueImagesCurrent() end
@@ -1402,7 +2545,11 @@ function love.draw()
     y = y + 20
   end
 
-  if viewerActive then
+  if world.battle then
+    drawBattleScene(y)
+  elseif newGame.active then
+    drawNewGameFlow(y)
+  elseif viewerActive then
     y = y + 10
     for _, line in ipairs(viewerLines()) do
       love.graphics.print(line, 20, y)
@@ -1523,6 +2670,25 @@ function love.draw()
         love.graphics.setScissor(baseX, baseY, WALK_CAMERA_WIDTH * viewport.scale, WALK_CAMERA_HEIGHT * viewport.scale)
       end
     end
+
+    -- Bounded presentation of the real MSGBOX_YESNO starter confirmation.
+    -- The imported general dialogue runner cannot yet suspend a full map
+    -- script at yesnobox, so this overlay uses the same two-row MenuCursor
+    -- input semantics and labels the choice directly. Acquisition still
+    -- occurs only through the actual lab ball object interaction.
+    if world.starterChoice then
+      local prompt = world.starterChoice
+      local boxX, boxY = baseX + 16*viewport.scale, baseY + 104*viewport.scale
+      love.graphics.setColor(0.96, 0.96, 0.92)
+      love.graphics.rectangle("fill", boxX, boxY, 208*viewport.scale, 48*viewport.scale)
+      love.graphics.setColor(0.1, 0.1, 0.12)
+      love.graphics.rectangle("line", boxX, boxY, 208*viewport.scale, 48*viewport.scale)
+      love.graphics.print(("Choose %s?  %s YES   %s NO"):format(
+        speciesName(prompt.choice.species), prompt.cursor.cursorPos == 0 and ">" or " ",
+        prompt.cursor.cursorPos == 1 and ">" or " "),
+        boxX + 8*viewport.scale, boxY + 14*viewport.scale, 0, viewport.scale, viewport.scale)
+      love.graphics.setColor(1, 1, 1)
+    end
     love.graphics.setScissor()
   elseif yesNoActive and yesNoWindowImage then
     local windowWidth, windowHeight = love.graphics.getDimensions()
@@ -1591,11 +2757,21 @@ local function clearViews()
   viewerActive, titleActive, spriteActive, itemBallActive = false, false, false, false
   fontActive, oakSpeechActive, oakSceneActive = false, false, false
   flameActive, yesNoActive, walkActive = false, false, false
+  newGame.active = false
 end
 
 function love.keypressed(key)
   if key == "escape" then
     love.event.quit()
+  elseif world.battle then
+    -- StartWildBattle locks field controls and freezes object events in
+    -- the real game. Battle input is polled through InputState in
+    -- love.update; view hotkeys must not let the player abandon the scene.
+    return
+  elseif world.starterChoice then
+    -- The real starter yes/no box owns field input until confirmed or
+    -- declined. Menu input is polled through InputState in love.update.
+    return
   elseif key == "v" then
     local was = viewerActive
     clearViews()
@@ -1624,6 +2800,10 @@ function love.keypressed(key)
     local was = oakSceneActive
     clearViews()
     oakSceneActive = not was
+  elseif key == "n" then
+    local was = newGame.active
+    clearViews()
+    if not was then beginNewGameFlow() end
   elseif key == "a" then
     local was = flameActive
     clearViews()
@@ -1656,4 +2836,10 @@ function love.keypressed(key)
       viewerStepGroup(-1)
     end
   end
+end
+
+-- Keep the live LÖVE entrypoint unchanged, while allowing the pure fresh
+-- session constructor to be exercised by the plain-Lua targeted test.
+if ... == "main" then
+  return { GameSession=GameSession }
 end
