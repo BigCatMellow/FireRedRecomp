@@ -986,6 +986,125 @@ end
 check("the real 5th-turn expiry emits a screenExpired event for the player's reflect",
   expiredEvent ~= nil and expiredEvent.side == "player" and expiredEvent.screen == "reflect", expiredEvent)
 
+-- Forced switch-after-faint (checkFaint's caller-supplied hasReplacement
+-- dispatch, BattleEngine:resolveForcedSwitch). Real BattleScript_
+-- HandleFaintedMon's checkteamslost step (Cmd_checkteamslost, src/
+-- battle_script_commands.c:3385) only sets gBattleOutcome once a whole
+-- team's total HP is 0 -- not just because the one battler that fainted
+-- has 0 HP -- so a fainted side with a caller-confirmed living replacement
+-- must block on a forced switch instead of ending the battle. See
+-- BattleEngine.lua's header forced-switch paragraph for the full real
+-- control-flow citation trail (BattleTurnPassed -> HandleFaintedMonActions
+-- -> BattleScript_HandleFaintedMon -> Cmd_openpartyscreen).
+battle = makeBattle({ 0, 1, 0 }, { { move = Data.MOVE_TACKLE, pp = 35 } }, { { move = Data.MOVE_TACKLE, pp = 1 } })
+battle.player.speed = 20 -- player strikes first
+battle.foe.hp = 1
+battle.hasReplacement = function(side) return side == BattleEngine.SIDE_FOE end
+events = battle:runTurn({ action = "move", moveSlot = 1 }, { action = "move", moveSlot = 1 })
+check("a faint with an eligible replacement does NOT end the battle",
+  battle.outcome == nil, battle.outcome)
+check("a faint with an eligible replacement blocks on awaitingForcedSwitch instead",
+  battle.awaitingForcedSwitch == BattleEngine.SIDE_FOE, battle.awaitingForcedSwitch)
+local forcedFaintEvent, forcedSwitchEvent
+for _, e in ipairs(events) do
+  if e.type == "faint" then forcedFaintEvent = e end
+  if e.type == "forcedSwitchNeeded" then forcedSwitchEvent = e end
+end
+check("a forcedSwitchNeeded event fires for the fainted side, not a battleEnd",
+  forcedFaintEvent ~= nil and forcedFaintEvent.side == "foe"
+    and forcedSwitchEvent ~= nil and forcedSwitchEvent.side == "foe", events)
+check("runTurn refuses to start another turn while a forced switch is pending",
+  not pcall(function() battle:runTurn({ action = "move", moveSlot = 1 }, { action = "move", moveSlot = 1 }) end))
+
+-- Regression check: an explicit hasReplacement(side) == false still ends
+-- the battle exactly as this project's pre-existing (pre-forced-switch)
+-- behavior always did -- no forcedSwitchNeeded event, real battleEnd fires.
+battle = makeBattle({ 0, 1, 0 }, { { move = Data.MOVE_TACKLE, pp = 35 } }, { { move = Data.MOVE_TACKLE, pp = 1 } })
+battle.player.speed = 20
+battle.foe.hp = 1
+battle.hasReplacement = function(side) return false end
+events = battle:runTurn({ action = "move", moveSlot = 1 }, { action = "move", moveSlot = 1 })
+check("a faint with no eligible replacement still ends the battle as before",
+  battle.outcome == "playerWon" and battle.awaitingForcedSwitch == nil, battle.outcome)
+local sawForcedSwitchEvent = false
+for _, e in ipairs(events) do
+  if e.type == "forcedSwitchNeeded" then sawForcedSwitchEvent = true end
+end
+check("no forcedSwitchNeeded event fires when there is no eligible replacement",
+  not sawForcedSwitchEvent)
+
+-- Omitting hasReplacement entirely (the default, nil) must reproduce this
+-- exact pre-existing behavior too -- zero risk of regressing any caller
+-- that predates this feature. Already covered by every other faint test
+-- above (none of them set hasReplacement), re-asserted here for clarity.
+check("the default engine (no hasReplacement) still ends the battle on any faint",
+  makeBattle({}, {}, {}).hasReplacement == nil)
+
+-- resolveForcedSwitch supplies the caller-built replacement. Built via
+-- BattleEngine.makeBattler exactly like any other switch-in (mirroring
+-- BattlePartyBridge.battlerFromParty), so it already starts with real
+-- neutral stat stages -- same real Cmd_switchindataupdate fact the
+-- voluntary-switch test above already exercises.
+battle = makeBattle({ 0, 1, 0 }, { { move = Data.MOVE_TACKLE, pp = 35 } }, { { move = Data.MOVE_TACKLE, pp = 1 } })
+battle.player.speed = 20
+battle.foe.hp = 1
+battle.hasReplacement = function(side) return side == BattleEngine.SIDE_FOE end
+battle:runTurn({ action = "move", moveSlot = 1 }, { action = "move", moveSlot = 1 })
+local forcedIncoming = BattleEngine.makeBattler({
+  species = 4, level = 5, stats = charStats, types = Data.CHARMANDER.types,
+  moves = { { move = Data.MOVE_TACKLE, pp = 10 } },
+})
+local resolveEvents = battle:resolveForcedSwitch(BattleEngine.SIDE_FOE, forcedIncoming)
+check("resolveForcedSwitch swaps in the caller-supplied battler", battle.foe == forcedIncoming)
+check("the incoming battler starts with real neutral stat stages",
+  forcedIncoming.statStages.attack == 6, forcedIncoming.statStages.attack)
+check("resolveForcedSwitch clears the pending forced-switch state",
+  battle.awaitingForcedSwitch == nil)
+check("resolveForcedSwitch emits its own event",
+  resolveEvents[1].type == "forcedSwitchResolved" and resolveEvents[1].side == "foe", resolveEvents[1])
+check("the battle is still not over -- resolveForcedSwitch supplies a replacement, it isn't a win",
+  not battle:isOver())
+check("runTurn works normally again once the forced switch is resolved",
+  pcall(function() battle:runTurn({ action = "move", moveSlot = 1 }, { action = "move", moveSlot = 1 }) end))
+
+-- Real BattleTurnPassed (src/battle_main.c:2953) runs DoFieldEndTurnEffects
+-- (Reflect/Light Screen decay) BEFORE HandleFaintedMonActions -- the
+-- function that actually computes gBattleOutcome via checkteamslost -- so
+-- `gBattleOutcome == 0` is still true, and screens still decay, on the very
+-- turn a battler faints with a replacement pending. Only a turn that truly
+-- ends the whole battle skips decay (already covered by the pre-existing
+-- "fainted player does not get a second action" test above, which never
+-- sees a screenExpired/timer change after battleEnd).
+battle = makeBattle({ 0, 1, 0 }, { { move = Data.MOVE_TACKLE, pp = 35 } }, { { move = Data.MOVE_TACKLE, pp = 1 } })
+battle.player.speed = 20
+battle.foe.hp = 1
+battle.sideStatus.player.reflect = true
+battle.sideStatus.player.reflectTimer = 5
+battle.hasReplacement = function(side) return side == BattleEngine.SIDE_FOE end
+battle:runTurn({ action = "move", moveSlot = 1 }, { action = "move", moveSlot = 1 })
+check("Reflect still decays on a turn that ends in a pending forced switch (real gBattleOutcome stays 0)",
+  battle.sideStatus.player.reflectTimer == 4, battle.sideStatus.player.reflectTimer)
+
+-- Conservative edge case this project deliberately doesn't chase into real
+-- hardware: EFFECT_RECOIL can faint the ATTACKER itself while the DEFENDER
+-- is still alive and hasn't acted yet this turn. Rather than assume the
+-- still-healthy defender gets to attack an unreplaced, same-turn-fainted
+-- opponent, runTurn halts the rest of the turn the instant
+-- awaitingForcedSwitch is set, exactly like it already does for isOver().
+battle = makeBattle({ 0, 1, 0 }, { { move = Data.MOVE_TAKE_DOWN, pp = 20 } }, { { move = Data.MOVE_TACKLE, pp = 1 } })
+battle.player.speed = 20 -- player strikes first
+battle.player.hp = 1 -- any recoil faints the player
+battle.hasReplacement = function(side) return side == BattleEngine.SIDE_PLAYER end
+events = battle:runTurn({ action = "move", moveSlot = 1 }, { action = "move", moveSlot = 1 })
+check("a recoil-faint with a pending forced switch reports the player's own faint",
+  battle.awaitingForcedSwitch == BattleEngine.SIDE_PLAYER, battle.awaitingForcedSwitch)
+local foeActed = false
+for _, e in ipairs(events) do
+  if e.type == "useMove" and e.side == "foe" then foeActed = true end
+end
+check("the still-healthy foe does not get to act this same turn while the forced switch is pending",
+  not foeActed, events)
+
 -- Optional ROM check: exact real parser output equals the no-ROM fixture.
 local romPath = os.getenv("POKEPORT_ROM")
 if romPath then

@@ -29,6 +29,13 @@
 --   {type="recoil", side=<attacker>, amount=, hpRemaining=}
 --   {type="drain", side=<attacker>, amount=, hpRemaining=}
 --   {type="faint", side=}
+--   {type="forcedSwitchNeeded", side=}             -- fainted side has a real
+--    living, eligible party replacement (caller-determined); the battle is
+--    NOT over -- no {type="battleEnd"} follows -- but runTurn refuses to
+--    start another turn until BattleEngine:resolveForcedSwitch(side,
+--    newBattler) is called. See the header's forced-switch paragraph below.
+--   {type="forcedSwitchResolved", side=}           -- resolveForcedSwitch
+--    supplied the replacement; the battle may proceed normally again.
 --   {type="noPP", side=, move=}                   -- see the Struggle stub
 --   {type="statChange", side=<target>, stat=, stages=-1, prevented=}
 --   {type="screenSet", side=, screen="reflect"|"lightScreen", turns=5}
@@ -109,23 +116,93 @@
 --     BattleFormulas.typeCalc call for MOVE_STRUGGLE rather than routing it
 --     through the ordinary per-row type-chart walk with a fabricated
 --     "always neutral" row.
---   * A faint still ends the battle -- unchanged. The real forced
---     switch-after-faint party-select prompt is a separate, unbuilt
---     feature (this is a bounded 1v1 engine in that one specific sense:
---     it has no flow for "choose a replacement after your active mon
---     faints"). VOLUNTARY switching, by contrast, IS supported -- see
---     the "switch" branch of runTurn and BattlePartyBridge.
---     findSwitchTargets/battlerFromParty. Real SetActionsAndBattlersTurnOrder
---     hoists B_ACTION_SWITCH into the same early group as B_ACTION_USE_ITEM,
---     resolved before any move regardless of speed -- ported the same way
---     capture/run already are: the switch resolves immediately (no RNG),
---     then the foe still attacks that same turn. Real Cmd_switchindataupdate
---     confirms an ordinary (non-Baton-Pass) switch-in starts with neutral
---     stat stages, which BattleEngine.makeBattler already defaults to, so
---     the caller-supplied incoming battler needs no extra reset here. This
---     engine stays fully party-agnostic -- it has no idea what a "party
---     slot" is; BattlePartyBridge owns real switch-target eligibility
+--   * VOLUNTARY switching IS supported -- see the "switch" branch of
+--     runTurn and BattlePartyBridge.findSwitchTargets/battlerFromParty. Real
+--     SetActionsAndBattlersTurnOrder hoists B_ACTION_SWITCH into the same
+--     early group as B_ACTION_USE_ITEM, resolved before any move regardless
+--     of speed -- ported the same way capture/run already are: the switch
+--     resolves immediately (no RNG), then the foe still attacks that same
+--     turn. Real Cmd_switchindataupdate confirms an ordinary (non-Baton-Pass)
+--     switch-in starts with neutral stat stages, which BattleEngine.
+--     makeBattler already defaults to, so the caller-supplied incoming
+--     battler needs no extra reset here. This engine stays fully
+--     party-agnostic -- it has no idea what a "party slot" is;
+--     BattlePartyBridge owns real switch-target eligibility
 --     (Cmd_jumpifcantswitch: living, non-Egg, not the active slot).
+--   * FORCED switch-after-faint IS supported -- see checkFaint's
+--     `hasReplacement` dispatch and BattleEngine:resolveForcedSwitch. Real
+--     control flow (verified end to end, not guessed): BattleTurnPassed
+--     (src/battle_main.c:2953) runs DoFieldEndTurnEffects/
+--     DoBattlerEndTurnEffects while `gBattleOutcome == 0`, THEN calls
+--     HandleFaintedMonActions (src/battle_util.c:1144) -- which, per fainted
+--     battler, executes BattleScript_HandleFaintedMon (data/
+--     battle_scripts_1.s:2824). That script's `checkteamslost` step (Cmd_
+--     checkteamslost, src/battle_script_commands.c:3385) is what actually
+--     sets gBattleOutcome to WON/LOST, and it does so by summing each whole
+--     TEAM's total HP, not by looking at the one battler that just fainted --
+--     confirming the brief's assumption that a faint only ends the battle
+--     when its side has no further living, non-Egg party member. The forced
+--     party-select step itself is `openpartyscreen BS_FAINTED,
+--     BattleScript_FaintedMonEnd` (that same script) -> Cmd_openpartyscreen
+--     (src/battle_script_commands.c ~4855-4873): if HasNoMonsToSwitch, the
+--     battler is marked permanently gAbsentBattlerFlags and the script falls
+--     through to FaintedMonEnd (battle stays/ends exactly as this project's
+--     pre-existing no-replacement case already did); otherwise real FireRed
+--     blocks on a party-select menu (BtlController_EmitChoosePokemon) before
+--     the NEXT turn's action selection can even begin -- ported as
+--     BattleEngine.awaitingForcedSwitch, a side string that blocks runTurn
+--     (see its top assert) until BattleEngine:resolveForcedSwitch(side,
+--     newBattler) supplies the caller-built replacement (built the same
+--     BattlePartyBridge.battlerFromParty way as any other switch-in, so it
+--     already starts with neutral stat stages -- see the voluntary-switch
+--     paragraph above; no separate reset is needed here either).
+--     WHICH side(s): this engine has no idea what "trainer battle" or "wild
+--     battle" even mean (party-agnostic, same as everywhere else in this
+--     file) -- so `hasReplacement` is a plain caller-supplied
+--     `function(side) -> boolean` passed to BattleEngine.new(), mirroring
+--     how BattlePartyBridge.findSwitchTargets already answers the identical
+--     question for voluntary switching. A wild encounter's caller simply
+--     never returns true for the foe side (a lone wild Pokemon's "team" is
+--     always exactly one, matching real GetMonData total-HP-of-party==0
+--     immediately); a trainer battle's caller can return true for either
+--     side. Omitting `hasReplacement` entirely (nil) preserves this
+--     project's exact pre-existing behavior -- every faint ends the battle,
+--     zero risk of regressing any caller or test that predates this feature.
+--     DOES a faint interrupt the rest of the turn: real Cmd_attackcanceler
+--     (src/battle_script_commands.c:819) opens every single move's battle
+--     script with `if (gBattleMons[gBattlerAttacker].hp == 0) { ... jump to
+--     BattleScript_MoveEnd }` -- i.e. a fainted battler's OWN next scheduled
+--     action silently no-ops. Combined with this engine's strict
+--     one-action-per-side-per-turn shape, the only battler that can still be
+--     scheduled to act after a same-turn faint is the one that just fainted
+--     (the other side, if it hadn't moved yet, already has nothing left to
+--     out-order it with) -- so this project's pre-existing "stop resolving
+--     the turn immediately on any faint" structure was already exactly
+--     correct for the ordinary defender-faints-from-attacker's-hit case, and
+--     needed no change. The one real subtlety this project's recoil/drain
+--     work had not yet had to confront: EFFECT_RECOIL can faint the
+--     ATTACKER itself (checkFaint(attackerSide,...) inside resolveMove)
+--     while the DEFENDER is still alive and has not yet acted this turn --
+--     real per-battler-slot scripting has no explicit "is my target's
+--     replacement pending" gate for this, so rather than chase that
+--     unverified edge case, runTurn conservatively also halts remaining
+--     action processing whenever self.awaitingForcedSwitch is set (not just
+--     when isOver()), matching this project's existing bias toward stopping
+--     the turn the instant any faint changes battle state.
+--     Reflect/Light Screen timers ARE still decayed on a turn that ends in a
+--     pending forced switch (but NOT on a turn that ends the whole battle):
+--     real BattleTurnPassed calls DoFieldEndTurnEffects/
+--     DoBattlerEndTurnEffects BEFORE HandleFaintedMonActions -- the function
+--     that actually computes gBattleOutcome via checkteamslost -- so
+--     `gBattleOutcome == 0` (decaySideTimers' existing real gate, see its
+--     own comment below) is STILL true on the very turn a battler faints
+--     with a replacement pending, and only becomes nonzero once
+--     checkteamslost later finds a whole team at 0 HP. Ported for free: a
+--     pending forced switch leaves self.outcome nil (isOver() stays false),
+--     so decaySideTimers' pre-existing `not self:isOver()` guards already do
+--     the right real thing without needing their own edit; only the
+--     "stop processing more actions" guards needed the extra
+--     awaitingForcedSwitch check described above.
 --   * No status conditions, abilities, held items, weather,
 --     multi-turn/charging moves, trapping, forced switching, OHKO moves,
 --     double battles, trainer AI, or EXP/level-up on victory.
@@ -574,6 +651,14 @@ end
 --                  indexed by real move id
 --   typeChart   -- import/TypeChart.lua parseTable() rows
 --   rng         -- an Rng instance (the real global Random() stream)
+--   hasReplacement -- optional `function(side) -> boolean`. checkFaint calls
+--                  this when a battler faints to decide real
+--                  BattleScript_HandleFaintedMon's fork (see the header's
+--                  forced-switch paragraph): true means the side has a
+--                  living, eligible party replacement, so the battle blocks
+--                  on BattleEngine:resolveForcedSwitch instead of ending.
+--                  Omitted (nil) reproduces this project's exact
+--                  pre-existing behavior -- every faint ends the battle.
 function BattleEngine.new(opts)
   assert(opts.player and opts.foe, "BattleEngine needs both battlers")
   assert(opts.moves, "BattleEngine needs the gBattleMoves table")
@@ -604,6 +689,18 @@ function BattleEngine.new(opts)
     tutorialPlayerDamageDone = false,
     tutorialPlayerStatDone = false,
     outcome = nil,
+    -- See BattleEngine.new's opts doc and the header's forced-switch
+    -- paragraph. hasReplacement is caller-supplied and optional; nil means
+    -- "no party tracking", so checkFaint always ends the battle exactly as
+    -- it did before this feature existed.
+    hasReplacement = opts.hasReplacement,
+    -- Real gAbsentBattlerFlags-adjacent blocking state: the side string
+    -- ("player"/"foe") whose fainted battler still needs a caller-supplied
+    -- replacement via resolveForcedSwitch, or nil when no forced switch is
+    -- pending. runTurn refuses to start another turn while this is set (see
+    -- its top assert) -- the real analogue of real FireRed blocking on the
+    -- party-select menu before HandleTurnActionSelectionState can run again.
+    awaitingForcedSwitch = nil,
   }, BattleEngine)
 end
 
@@ -1134,12 +1231,24 @@ function BattleEngine:resolveMultiHit(attackerSide, attacker, defenderSide, defe
 end
 
 -- Checks for a faint on `side`, appending events and setting the outcome.
--- Returns true if the battle ended.
+-- Returns true if the battle should stop resolving further actions this
+-- turn -- either because the battle truly ended, OR because a forced
+-- switch is now pending (see the header's forced-switch paragraph and
+-- BattleEngine:resolveForcedSwitch). Real BattleScript_HandleFaintedMon's
+-- fork (checkteamslost, then openpartyscreen) is mirrored here via the
+-- caller-supplied `self.hasReplacement` predicate: real gBattleOutcome is
+-- only set once a WHOLE team's total HP is 0, never by one battler fainting
+-- while its side still has a living, eligible replacement.
 function BattleEngine:checkFaint(side, events)
   local battler = self:battler(side)
   if battler.hp > 0 then return false end
   battler.hp = 0
   events[#events + 1] = { type = "faint", side = side }
+  if self.hasReplacement and self.hasReplacement(side) then
+    self.awaitingForcedSwitch = side
+    events[#events + 1] = { type = "forcedSwitchNeeded", side = side }
+    return true
+  end
   if side == BattleEngine.SIDE_PLAYER then
     self.outcome = "playerLost"
   else
@@ -1149,6 +1258,29 @@ function BattleEngine:checkFaint(side, events)
   return true
 end
 
+-- Supplies the caller-built replacement for a pending forced switch (see
+-- checkFaint and the header's forced-switch paragraph). `newBattler` must
+-- already be an eligible, living battler -- built the same
+-- BattlePartyBridge.battlerFromParty way as any other switch-in, so it
+-- already starts with neutral stat stages (real Cmd_switchindataupdate;
+-- see the voluntary-switch header paragraph) with no extra reset needed
+-- here. Returns the events this step produces, matching this project's
+-- always-return-an-event-list convention, so a caller can feed it through
+-- the same presentation pipeline as runTurn's own return value.
+function BattleEngine:resolveForcedSwitch(side, newBattler)
+  assert(self.awaitingForcedSwitch == side,
+    ("no forced switch is pending for side %s"):format(tostring(side)))
+  assert(newBattler and newBattler.hp > 0,
+    "resolveForcedSwitch needs a caller-supplied, already-eligible battler")
+  if side == BattleEngine.SIDE_PLAYER then
+    self.player = newBattler
+  else
+    self.foe = newBattler
+  end
+  self.awaitingForcedSwitch = nil
+  return { { type = "forcedSwitchResolved", side = side } }
+end
+
 -- Runs one full turn. Each action is a table:
 --   {action="move", moveSlot=n}   -- use the move in that 1-based slot
 --   {action="run"}                -- player only (real singles run)
@@ -1156,6 +1288,12 @@ end
 -- Returns the ordered event list for the turn.
 function BattleEngine:runTurn(playerAction, foeAction)
   assert(not self:isOver(), "battle is already over")
+  -- Real analogue: FireRed blocks on the forced-switch party-select menu
+  -- (Cmd_openpartyscreen) before HandleTurnActionSelectionState can run
+  -- again for the next turn. See checkFaint/resolveForcedSwitch and the
+  -- header's forced-switch paragraph.
+  assert(not self.awaitingForcedSwitch,
+    "a forced switch is pending; call resolveForcedSwitch first")
   local events = {}
   self.turn = self.turn + 1
   events[#events + 1] = { type = "turnStart", turn = self.turn }
@@ -1290,14 +1428,36 @@ function BattleEngine:runTurn(playerAction, foeAction)
     local side, action = entry[1], entry[2]
     if self:battler(side).hp > 0 then
       self:resolveMove(side, action.moveSlot, events)
-      -- A recoil/drain move can already have ended the battle via the
-      -- attacker's own faint inside resolveMove (real attacker-faints-first
-      -- ordering -- see that function's step 8a). Don't let a defender that
-      -- also happens to be at 0 HP re-check and overwrite the real outcome.
-      if self:isOver() then
+      -- A recoil/drain move can already have ended the battle -- OR queued
+      -- a forced switch -- via the attacker's own faint inside resolveMove
+      -- (real attacker-faints-first ordering -- see that function's step
+      -- 8a). Don't let a defender that also happens to be at 0 HP re-check
+      -- and overwrite the real outcome. The awaitingForcedSwitch check
+      -- (isOver() alone is NOT enough here: a pending forced switch
+      -- deliberately leaves self.outcome nil, see checkFaint) also stops
+      -- this turn from letting the other, still-healthy side attack a
+      -- same-turn-fainted opponent before its replacement arrives -- see
+      -- the header's forced-switch paragraph for why real source doesn't
+      -- give this specific edge case (attacker recoils itself out before
+      -- the defender has acted) an unambiguous real answer, and why this
+      -- project conservatively halts the turn here instead.
+      if self:isOver() or self.awaitingForcedSwitch then
+        -- Real gBattleOutcome == 0 gate (see decaySideTimers' comment):
+        -- real BattleTurnPassed runs DoFieldEndTurnEffects BEFORE
+        -- HandleFaintedMonActions computes gBattleOutcome via
+        -- checkteamslost, so a turn that leaves a forced switch pending
+        -- (isOver() still false; only a TRUE battle end sets self.outcome)
+        -- still decays Reflect/Light Screen timers -- only a turn that
+        -- truly ends the whole battle skips it.
+        if not self:isOver() then
+          self:decaySideTimers(events)
+        end
         return events
       end
       if self:checkFaint(otherSide(side), events) then
+        if not self:isOver() then
+          self:decaySideTimers(events)
+        end
         return events
       end
     end

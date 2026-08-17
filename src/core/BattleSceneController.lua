@@ -172,6 +172,13 @@ function BattleSceneController:_eventMessages(events)
       add("It doesn't affect " .. name(event.target) .. "...")
     elseif event.type == "faint" then
       add(name(event.side) .. " fainted!", { hpSide = event.side, hp = 0 })
+    elseif event.type == "forcedSwitchNeeded" then
+      -- Bounded placeholder, same choice already made for "switch": no live
+      -- party-select scene exists yet (BattleEngine's forced-switch engine
+      -- primitive is real -- see BattleEngine.lua's header -- but building
+      -- that UI is a separate, explicitly out-of-scope task). A real
+      -- FireRed player would see the party-select menu here instead.
+      add(name(event.side) .. " must send out\na new POKEMON!")
     elseif event.type == "noPP" then
       add("There's no PP left for this move!")
     elseif event.type == "statChange" then
