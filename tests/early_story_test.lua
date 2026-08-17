@@ -98,6 +98,14 @@ check("trainer send-out registers the rival species seen but not owned",
   dexBit(session.state.saveBlock2.pokedex.seen, 7)
     and dexBit(session.state.saveBlock1.seen1, 7)
     and not dexBit(session.state.saveBlock2.pokedex.owned, 7))
+
+story:registerCaught(19)
+check("a real capture marks both seen and owned (real HandleSetPokedexFlag semantics)",
+  dexBit(session.state.saveBlock2.pokedex.seen, 19)
+    and dexBit(session.state.saveBlock1.seen1, 19)
+    and dexBit(session.state.saveBlock2.pokedex.owned, 19))
+check("registerCaught does not mark an unrelated species owned",
+  not dexBit(session.state.saveBlock2.pokedex.owned, 7))
 local completed = story:completeRivalBattle("playerLost", 326)
 check("early-rival loss returns to the common script without whiteout",
   completed.outcome == "playerLost" and session:getVar(EarlyStory.VAR_OAKS_LAB_SCENE) == 4

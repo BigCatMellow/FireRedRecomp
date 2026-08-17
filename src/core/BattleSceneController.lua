@@ -6,11 +6,25 @@
 -- The 2x2 action and move cursors mirror HandleInputChooseAction and
 -- HandleInputChooseMove in pokefirered/src/battle_controller_player.c:
 -- Left/Right xor bit 0 and Up/Down xor bit 1 when the destination exists.
--- A chooses, B backs out of the move menu. Only FIGHT and RUN have live
--- engine actions in this bounded slice; BAG and POKEMON deliberately show
--- a visible unavailable message instead of pretending those systems work.
+-- A chooses, B backs out of the move menu. FIGHT and RUN have live engine
+-- actions; POKEMON switching deliberately still shows an unavailable
+-- message (no live-scene party-select UI exists yet, even though
+-- BattleEngine's "switch" action itself is real -- see BattleEngine.lua).
+--
+-- BAG is bounded, not fully general: this controller only knows how to
+-- throw a plain real ITEM_POKE_BALL (CaptureRules.ITEM_POKE_BALL) --
+-- there's no live item-browsing/pocket-selection menu, matching this
+-- project's established "the pure rules layer exists before its full UI"
+-- pattern (see CaptureRewards.lua/PokemonMart.lua, built the same way).
+-- `opts.bag` is an optional real Bag.lua instance; if the caller doesn't
+-- supply one, or it has no balls, BAG still shows a bounded "no balls"
+-- message rather than crashing or pretending a throw happened. A real
+-- ball is always consumed on a throw attempt regardless of catch
+-- success, matching real FireRed (Cmd_handleballthrow's caller already
+-- removed the item from the bag before the throw even resolves).
 
 local InputState = require("src.core.InputState")
+local CaptureRules = require("src.core.CaptureRules")
 
 local BattleSceneController = {}
 BattleSceneController.__index = BattleSceneController
@@ -34,6 +48,7 @@ function BattleSceneController.new(opts)
     foeMoveSlot = opts.foeMoveSlot or 1,
     chooseFoeMove = opts.chooseFoeMove,
     runDisabledMessage = opts.runDisabledMessage,
+    bag = opts.bag,
     state = BattleSceneController.MESSAGES,
     actionCursor = 0,
     moveCursor = 0,
@@ -161,6 +176,19 @@ function BattleSceneController:_eventMessages(events)
       end
     elseif event.type == "run" then
       add(event.success and "Got away safely!" or "Can't escape!")
+    elseif event.type == "throwBall" then
+      add(self.playerName .. " threw a POKé BALL!")
+    elseif event.type == "capture" then
+      if event.success then
+        add("Gotcha! " .. self.foeName .. " was caught!")
+      else
+        -- Bounded, single-message result: this engine reports the real
+        -- shake count (CaptureRules) but doesn't animate a shake-by-shake
+        -- sequence, so a compact single line covers every outcome rather
+        -- than fabricating per-shake real-FireRed message variants this
+        -- project hasn't verified against source.
+        add(name(event.target) .. " broke free!")
+      end
     end
   end
   return entries
@@ -210,7 +238,12 @@ function BattleSceneController:processInput(input)
       elseif self.actionCursor == 3 then
         self:_runTurn({ action = "run" })
       elseif self.actionCursor == 1 then
-        self:_setMessages({ { text = "The BAG is not available yet." } }, BattleSceneController.ACTION)
+        if self.bag and self.bag:quantityOf(CaptureRules.ITEM_POKE_BALL) > 0 then
+          self.bag:removeItem(CaptureRules.ITEM_POKE_BALL, 1)
+          self:_runTurn({ action = "capture" })
+        else
+          self:_setMessages({ { text = "You don't have any POKé BALLS!" } }, BattleSceneController.ACTION)
+        end
       else
         self:_setMessages({ { text = "POKEMON switching is not available yet." } }, BattleSceneController.ACTION)
       end

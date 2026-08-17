@@ -75,13 +75,22 @@ check("outcome is not exited before message acknowledgement", not c:isComplete()
 c:processInput(input(InputState.A_BUTTON))
 check("acknowledging final run message completes scene", c:isComplete() and c.engine.outcome == "ran")
 
--- Bounded unavailable actions return visibly to the action menu.
+-- BAG with no real Bag instance (or an empty one) stays a bounded,
+-- visible "no balls" message rather than crashing or pretending a throw
+-- happened -- POKEMON switching still shows its own unavailable message
+-- (no live-scene party-select UI exists yet).
 c = controller(); c:advanceMessage(); c:advanceMessage()
 c:processInput(input(InputState.DPAD_RIGHT)); c:processInput(input(InputState.A_BUTTON))
-check("BAG gap is explicit", c:message() == "The BAG is not available yet.")
+check("BAG with no bag instance stays a bounded message", c:message() == "You don't have any POKé BALLS!", c:message())
 c:processInput(input(InputState.B_BUTTON))
 check("B also acknowledges a battle message", c.state == BattleSceneController.ACTION)
 c:processInput(noInput)
+
+c:processInput(input(InputState.DPAD_LEFT)); c:processInput(input(InputState.DPAD_DOWN))
+c:processInput(input(InputState.A_BUTTON))
+check("POKEMON switching is still explicitly unavailable in the live scene",
+  c:message() == "POKEMON switching is not available yet.", c:message())
+c:processInput(input(InputState.B_BUTTON))
 
 -- The bounded Oak-lab status effect is a normal selectable move.
 c = controller(); c:advanceMessage(); c:advanceMessage()
@@ -103,6 +112,38 @@ c.engine.player.moves = { {move=999,pp=10}, {move=Data.MOVE_TACKLE,pp=35} }
 c:processInput(input(InputState.A_BUTTON)); c:processInput(input(InputState.A_BUTTON))
 check("unsupported status effects remain an explicit boundary",
   c:message() == "That move's effect is not available yet." and c.engine.player.moves[1].pp == 10)
+
+-- Real BAG wiring: with a bag that actually has a Poke Ball, BAG throws
+-- one (consuming it regardless of outcome, matching real
+-- RemoveBagItem-before-throw semantics) and the engine's real "capture"
+-- action resolves through the controller, ending the scene either way.
+do
+  local Bag = require("src.core.Bag")
+  local CaptureRules = require("src.core.CaptureRules")
+  local itemLookup = { [CaptureRules.ITEM_POKE_BALL] = { pocket = Bag.POCKET_POKE_BALLS } }
+  local bag = Bag.new(itemLookup)
+  bag:addItem(CaptureRules.ITEM_POKE_BALL, 1)
+
+  local engine = BattleEngine.new({
+    player = BattleEngine.makeBattler({ species=1, level=5, stats=bs, types=Data.BULBASAUR.types,
+      moves={{move=Data.MOVE_TACKLE,pp=35}} }),
+    foe = BattleEngine.makeBattler({ species=4, catchRate=255, level=5, stats=cs,
+      types=Data.CHARMANDER.types, moves={{move=Data.MOVE_TACKLE,pp=35}} }),
+    moves=Data.moves, typeChart=Data.typeChart,
+    rng = { draws=0, next16=function(self) self.draws=self.draws+1; return 65535 end }, -- always-fail shake roll
+  })
+  local bagController = BattleSceneController.new({
+    engine=engine, playerName="BULBASAUR", foeName="CHARMANDER", bag=bag,
+    moveName=function() return "TACKLE" end,
+  })
+  bagController:advanceMessage(); bagController:advanceMessage()
+  bagController:processInput(input(InputState.DPAD_RIGHT))
+  bagController:processInput(input(InputState.A_BUTTON))
+  check("a real ball is consumed from the bag on a throw attempt",
+    bag:quantityOf(CaptureRules.ITEM_POKE_BALL) == 0)
+  check("BAG actually resolves the engine's real capture action",
+    bagController:message() == "BULBASAUR threw a POKé BALL!", bagController:message())
+end
 
 print(("%d passed, %d failed"):format(passed, failed))
 os.exit(failed == 0 and 0 or 1)

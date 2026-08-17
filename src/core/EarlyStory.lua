@@ -149,6 +149,19 @@ function EarlyStory:registerSeen(nationalDexNo)
   if sb1.seen2 then sb1.seen2 = setDexBit(sb1.seen2, nationalDexNo) end
 end
 
+-- Real HandleSetPokedexFlag(FLAG_SET_CAUGHT, ...): sets the owned bit
+-- (same real independent-but-usually-paired-with-seen semantics
+-- src/core/CaptureRewards.lua's markCaught already documents for its own
+-- DexTracker-shaped callers -- this is the same real fact applied to
+-- this project's session-state byte-string dex representation instead).
+-- Marks seen too, since a capture always follows the mon being seen in
+-- this same battle.
+function EarlyStory:registerCaught(nationalDexNo)
+  self:registerSeen(nationalDexNo)
+  local sb2 = self.session.state.saveBlock2
+  sb2.pokedex.owned = setDexBit(sb2.pokedex.owned, nationalDexNo)
+end
+
 -- Mirrors PalletTown_..._ChoseStarter through RivalTakesStarter:
 -- ScriptGiveMon puts the mon in party and sets seen/caught; then the map
 -- script sets the two system/story flags, VAR_STARTER_MON, removes the

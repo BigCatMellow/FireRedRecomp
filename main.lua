@@ -81,6 +81,7 @@ local Battle = {
   Nature = require("import.Nature"),
   Learnset = require("import.LevelUpLearnset"),
   WildFactory = require("src.core.WildPokemonFactory"),
+  CaptureRules = require("src.core.CaptureRules"),
   StarterFactory = require("src.core.StarterPokemonFactory"),
   TrainerFactory = require("src.core.TrainerPokemonFactory"),
   RivalAI = require("src.core.EarlyRivalAI"),
@@ -2468,6 +2469,44 @@ function love.update(dt)
             end
           else
             addLine("Wild battle won. No session party to reward (developer battle).")
+          end
+          world.battle = nil
+        elseif outcome == "caught" then
+          if newGame.session and battle.foeInstance then
+            local sb1, sb2 = newGame.session.state.saveBlock1, newGame.session.state.saveBlock2
+            local liveFoe = battle.controller.engine.foe
+            local ok, caught = pcall(Battle.WildFactory.capture, battle.foeInstance, {
+              ball = Battle.CaptureRules.ITEM_POKE_BALL,
+              trainer = { id=sb2.playerTrainerId, name=sb2.playerName:sub(1, 7), gender=sb2.playerGender },
+              hp = liveFoe.hp, status = liveFoe.status, moveSlots = liveFoe.moves,
+            })
+            if ok then
+              local nationalDexNo = Battle.PokedexOrder.speciesToNationalDexNum(
+                romData, romAddrs.sSpeciesToNationalPokedexNum, battle.foeInstance.species)
+              -- Real GiveMonToPlayer tries the party first; PC-box overflow
+              -- (src/core/CaptureRewards.lua's giveMonToPlayer, real
+              -- SendMonToPC) needs a live PcBoxes instance this session
+              -- doesn't carry yet -- flagged, not silently dropped: a full
+              -- party still marks the Dex (real HandleSetPokedexFlag ran
+              -- regardless of where GiveMonToPlayer routed the mon) but
+              -- says plainly that the capture itself wasn't stored.
+              if (sb1.playerPartyCount or 0) < 6 then
+                sb1.playerParty = sb1.playerParty or {}
+                sb1.playerParty[sb1.playerPartyCount + 1] = caught
+                sb1.playerPartyCount = sb1.playerPartyCount + 1
+                addLine(("Gotcha! %s was caught and added to the party!"):format(speciesName(battle.foeInstance.species)))
+              else
+                addLine(("Gotcha! %s was caught, but the party is full and PC-box storage isn't wired into the live session yet -- this capture was NOT saved.")
+                  :format(speciesName(battle.foeInstance.species)))
+              end
+              if nationalDexNo then
+                newGame.story:registerCaught(nationalDexNo)
+              end
+            else
+              addLine("Captured, but persistence failed: " .. tostring(caught))
+            end
+          else
+            addLine("Wild battle: caught, but no session party to persist to (developer battle).")
           end
           world.battle = nil
         else
