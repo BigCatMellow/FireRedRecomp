@@ -42,15 +42,16 @@ real grass encounter rolls, and a bounded live FIGHT/RUN wild battle using
 ROM terrain and Pokémon art. A full new-game identity flow (gender/naming),
 starter selection in Oak's Lab, and the mandatory Oak's-lab rival tutorial
 battle (real trainer AI, win/loss rewards and heal) are also live end to
-end. It is not yet a full game loop: wild-capture result persistence,
-whiteout, full move effects, general trainer AI, and battle animation are
-still open. Every module was checked against bytes from a real, verified ROM —
+end, and losing a wild battle now runs a real whiteout (money loss, party
+heal, respawn at the last real heal location). It is not yet a full game
+loop: wild-capture result persistence, full move effects, general trainer
+AI, and battle animation are still open. Every module was checked against bytes from a real, verified ROM —
 several surprises (padded record sizes, byte-offset quirks, the
 640-tile/640-metatile/7-palette primary/secondary tileset split, static
 symbols with no linker-map entry) only showed up that way. See
 `tests/species_integration_test.lua` and `tests/full_sweep_validation_test.lua`
 (both opt-in via `POKEPORT_ROM=...`, skip cleanly with no ROM present) and
-the full test suite (106 test files with a verified ROM present).
+the full test suite (107 test files with a verified ROM present).
 
 ## Supported ROM
 

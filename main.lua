@@ -85,6 +85,7 @@ local Battle = {
   TrainerFactory = require("src.core.TrainerPokemonFactory"),
   RivalAI = require("src.core.EarlyRivalAI"),
   RivalRewards = require("src.core.EarlyRivalRewards"),
+  WhiteoutRules = require("src.core.WhiteoutRules"),
   EarlyStory = require("src.core.EarlyStory"),
   PokedexOrder = require("import.PokedexOrder"),
   PartyBridge = require("src.core.BattlePartyBridge"),
@@ -2426,7 +2427,24 @@ function love.update(dt)
         if battle.kind == "oakLabRival" then
           world.finishOakLabRivalBattle(battle)
         elseif outcome == "playerLost" then
-          addLine("Battle lost. Whiteout/healing is deferred; returned to the field at the encounter tile.")
+          local sb1 = newGame.session.state.saveBlock1
+          local topLevel = Battle.WhiteoutRules.highestPartyLevel(sb1.playerParty, sb1.playerPartyCount)
+          local badgeCount = Battle.WhiteoutRules.countBadges(function(id) return newGame.session:getFlag(id) end)
+          local loss = Battle.WhiteoutRules.computeMoneyLoss(topLevel, badgeCount, sb1.money or 0)
+          sb1.money = (sb1.money or 0) - loss
+          Battle.RivalRewards.healParty(sb1, world.battleCatalog.moves)
+          local start = NewGameDefaults.startingWarp
+          local respawn = Battle.WhiteoutRules.respawnLocation(sb1.lastHealLocation,
+            { mapGroup=4, mapNum=1, warpId=start.warpId, x=start.x, y=start.y })
+          loadMap(romData, romAddrs, respawn.mapGroup * 256 + respawn.mapNum, function() end)
+          if playerMovement then
+            playerMovement.tileX, playerMovement.tileY = respawn.x, respawn.y
+            playerMovement.facingDirection = PlayerMovement.DOWN
+            playerMovement.moving, playerMovement.stepFrame = false, 0
+          end
+          syncSessionLocation()
+          addLine(("Whiteout: lost $%d, party healed, respawned at %d,%d (%d,%d)."):format(
+            loss, respawn.mapGroup, respawn.mapNum, respawn.x, respawn.y))
           world.battle = nil
         elseif outcome == "playerWon" then
           addLine("Wild battle won. Experience/rewards are not in this bounded slice.")
