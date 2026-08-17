@@ -45,6 +45,10 @@ M.MOVE_AGILITY = 97
 M.MOVE_SCREECH = 103
 M.MOVE_QUICK_ATTACK = 98
 M.MOVE_AMNESIA = 133
+M.MOVE_ACID = 51
+M.MOVE_PSYCHIC = 94
+M.MOVE_STEEL_WING = 211
+M.MOVE_METAL_CLAW = 232
 
 -- Real MOVE_TARGET_* bits (include/battle.h).
 M.MOVE_TARGET_SELECTED = 0
@@ -84,6 +88,19 @@ M.moves = {
                            secondaryEffectChance = 0, target = M.MOVE_TARGET_BOTH, priority = 0, flags = 0 },
   [M.MOVE_QUICK_ATTACK] = { effect = 103, power = 40, type = M.TYPE_NORMAL, accuracy = 100, pp = 30,
                             secondaryEffectChance = 0, target = 0, priority = 1, flags = 0x33 },
+  -- The real "_HIT" secondary-effect family (BattleEngine.HIT_VARIANT_STAT_
+  -- MOVES): ordinary damaging moves with a chance to also change a stat.
+  -- Acid/Psychic: opponent-target DOWN_HIT (real target field is just the
+  -- ordinary damage target, not the secondary-effect direction -- see
+  -- BattleEngine.lua's header). Metal Claw/Steel Wing: self-target UP_HIT.
+  [M.MOVE_ACID] = { effect = 69, power = 40, type = M.TYPE_POISON, accuracy = 100, pp = 30,
+                    secondaryEffectChance = 10, target = M.MOVE_TARGET_BOTH, priority = 0, flags = 0 },
+  [M.MOVE_PSYCHIC] = { effect = 72, power = 90, type = M.TYPE_PSYCHIC, accuracy = 100, pp = 10,
+                       secondaryEffectChance = 10, target = M.MOVE_TARGET_SELECTED, priority = 0, flags = 0 },
+  [M.MOVE_STEEL_WING] = { effect = 138, power = 70, type = M.TYPE_STEEL, accuracy = 90, pp = 25,
+                          secondaryEffectChance = 10, target = M.MOVE_TARGET_SELECTED, priority = 0, flags = 0 },
+  [M.MOVE_METAL_CLAW] = { effect = 139, power = 50, type = M.TYPE_STEEL, accuracy = 95, pp = 35,
+                          secondaryEffectChance = 10, target = M.MOVE_TARGET_SELECTED, priority = 0, flags = 0 },
 }
 
 -- Real gSpeciesInfo base stats + types.

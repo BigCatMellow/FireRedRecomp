@@ -242,6 +242,115 @@ check("an 85-accuracy Screech misses on real roll 90", statEvents[2].type == "mi
 check("a missed stat-DOWN move still deducts PP", battle.player.moves[1].pp == 39)
 check("a missed stat-DOWN move consumes exactly one RNG draw", battle.rng.draws == 1)
 
+-- Real "_HIT" secondary-effect family (BattleEngine.HIT_VARIANT_STAT_
+-- MOVES): an ordinary damaging move that, after the normal
+-- accuracy/crit/damage/type pipeline, rolls a fresh
+-- Random()%100<=secondaryEffectChance chance (Cmd_seteffectwithchance) to
+-- also apply a 1-stage stat change. Real move records: Acid
+-- (EFFECT_DEFENSE_DOWN_HIT, opponent, secondaryEffectChance=10), Psychic
+-- (EFFECT_SPECIAL_DEFENSE_DOWN_HIT, opponent, chance=10), Metal Claw
+-- (EFFECT_ATTACK_UP_HIT, self, chance=10), Steel Wing
+-- (EFFECT_DEFENSE_UP_HIT, self, chance=10). Isolated with resolveMove
+-- directly so each RNG-draw-count assertion is exact: a landed hit always
+-- consumes accuracy(1) + crit(1) + damage-random-multiplier(1) +
+-- seteffectwithchance(1) = 4 draws, regardless of whether the roll
+-- succeeds.
+
+-- Roll succeeds exactly at the real `<=percentChance` boundary (roll value
+-- 10, chance 10): opponent-target DOWN_HIT lowers the foe's stat.
+battle = makeBattle({ 0, 1, 0, 10 }, { { move = Data.MOVE_ACID, pp = 30 } }, { { move = Data.MOVE_TACKLE, pp = 1 } })
+statEvents = {}
+battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, statEvents)
+check("Acid deals damage and, on a boundary-success roll, lowers the foe's Defense by 1",
+  statEvents[2].type == "damage"
+    and statEvents[3].type == "statChange" and statEvents[3].side == "foe"
+    and statEvents[3].stat == "defense" and statEvents[3].stages == -1 and statEvents[3].stage == 5,
+  statEvents[3])
+check("a landed _HIT move consumes exactly four RNG draws (acc/crit/dmg/secondary)", battle.rng.draws == 4, battle.rng.draws)
+
+-- Roll fails just past the boundary (roll value 11, chance 10): damage
+-- still applies, no stat-change event, same four draws consumed.
+battle = makeBattle({ 0, 1, 0, 11 }, { { move = Data.MOVE_ACID, pp = 30 } }, { { move = Data.MOVE_TACKLE, pp = 1 } })
+statEvents = {}
+battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, statEvents)
+check("Acid still deals damage but a just-failed roll applies no stat change",
+  statEvents[2].type == "damage" and #statEvents == 2, statEvents[3])
+check("a failed secondary roll still consumes the same four RNG draws", battle.rng.draws == 4, battle.rng.draws)
+
+-- Psychic: another opponent-target DOWN_HIT, different stat (Sp. Defense).
+battle = makeBattle({ 0, 1, 0, 0 }, { { move = Data.MOVE_PSYCHIC, pp = 10 } }, { { move = Data.MOVE_TACKLE, pp = 1 } })
+statEvents = {}
+battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, statEvents)
+check("Psychic on a successful roll lowers the foe's Sp. Defense by 1",
+  statEvents[3].type == "statChange" and statEvents[3].side == "foe" and statEvents[3].stat == "spDefense"
+    and statEvents[3].stages == -1 and statEvents[3].stage == 5, statEvents[3])
+
+-- Metal Claw: self-target UP_HIT raises the user's own Attack.
+battle = makeBattle({ 0, 1, 0, 0 }, { { move = Data.MOVE_METAL_CLAW, pp = 35 } }, { { move = Data.MOVE_TACKLE, pp = 1 } })
+statEvents = {}
+battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, statEvents)
+check("Metal Claw on a successful roll raises the user's own Attack by 1",
+  statEvents[3].type == "statChange" and statEvents[3].side == "player" and statEvents[3].stat == "attack"
+    and statEvents[3].stages == 1 and statEvents[3].stage == 7, statEvents[3])
+
+-- Steel Wing: self-target UP_HIT raises the user's own Defense.
+battle = makeBattle({ 0, 1, 0, 0 }, { { move = Data.MOVE_STEEL_WING, pp = 25 } }, { { move = Data.MOVE_TACKLE, pp = 1 } })
+statEvents = {}
+battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, statEvents)
+check("Steel Wing on a successful roll raises the user's own Defense by 1",
+  statEvents[3].type == "statChange" and statEvents[3].side == "player" and statEvents[3].stat == "defense"
+    and statEvents[3].stages == 1 and statEvents[3].stage == 7, statEvents[3])
+
+-- A _HIT move can still miss (same accuracycheck as any damaging move); a
+-- miss returns before ppreduce's later steps and never reaches
+-- seteffectwithchance, consuming only its one accuracy draw.
+battle = makeBattle({ 90 }, { { move = Data.MOVE_STEEL_WING, pp = 25 } }, { { move = Data.MOVE_TACKLE, pp = 1 } })
+statEvents = {}
+battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, statEvents)
+check("a 90-accuracy Steel Wing misses on real roll 91", statEvents[2].type == "miss")
+check("a missed _HIT move consumes exactly one RNG draw and rolls no secondary chance",
+  battle.rng.draws == 1, battle.rng.draws)
+
+-- A 0x type-effectiveness hit still consumes the real seteffectwithchance
+-- Random() call (it is the first operand of a short-circuiting C `&&`
+-- chain and is NOT skipped by the no-effect check), but never applies the
+-- effect -- verified here with secondaryEffectChance forced to 100 so a
+-- skipped-vs-discarded roll would otherwise be unmistakable.
+local hitVariantMoves = {}
+for k, v in pairs(Data.moves) do hitVariantMoves[k] = v end
+hitVariantMoves[997] = { effect = 68, power = 40, type = Data.TYPE_ELECTRIC, accuracy = 100, pp = 1,
+                         secondaryEffectChance = 100, target = 0, priority = 0, flags = 0 }
+local groundFoeHit = BattleEngine.makeBattler({ species = 0, level = 5, stats = charStats, types = { Data.TYPE_GROUND, Data.TYPE_GROUND }, moves = { { move = Data.MOVE_TACKLE, pp = 1 } } })
+local electricPlayerHit = BattleEngine.makeBattler({ species = 0, level = 5, stats = bulbaStats, types = { Data.TYPE_ELECTRIC, Data.TYPE_ELECTRIC }, moves = { { move = 997, pp = 1 } } })
+battle = BattleEngine.new({ player = electricPlayerHit, foe = groundFoeHit, moves = hitVariantMoves, typeChart = Data.typeChart, rng = scriptedRng({ 0, 1, 0, 0 }) })
+statEvents = {}
+battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, statEvents)
+check("a type-immune _HIT move emits noEffect and applies no stat change even with a guaranteed-success chance",
+  statEvents[2].type == "noEffect" and #statEvents == 2, statEvents[3])
+check("no-effect still consumes all four real RNG draws, including the discarded secondary roll",
+  battle.rng.draws == 4, battle.rng.draws)
+check("no-effect _HIT move (EFFECT_ATTACK_DOWN_HIT) leaves the foe's Attack stage untouched",
+  battle.foe.statStages.attack == 6, battle.foe.statStages.attack)
+
+-- Boundary: user already at MAX_STAT_STAGE prevents a successful UP_HIT
+-- roll from doing anything further, matching STAT_STAGE_MOVES's existing
+-- boundary semantics -- still emitted as a prevented statChange event.
+battle = makeBattle({ 0, 1, 0, 0 }, { { move = Data.MOVE_METAL_CLAW, pp = 35 } }, { { move = Data.MOVE_TACKLE, pp = 1 } })
+battle.player.statStages.attack = 12
+statEvents = {}
+battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, statEvents)
+check("Metal Claw's secondary effect at MAX_STAT_STAGE is prevented, not silently clamped",
+  statEvents[3].type == "statChange" and statEvents[3].stages == 0 and statEvents[3].prevented == true, statEvents[3])
+
+-- Boundary: opponent already at MIN_STAT_STAGE prevents a successful
+-- DOWN_HIT roll.
+battle = makeBattle({ 0, 1, 0, 0 }, { { move = Data.MOVE_ACID, pp = 30 } }, { { move = Data.MOVE_TACKLE, pp = 1 } })
+battle.foe.statStages.defense = 0
+statEvents = {}
+battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, statEvents)
+check("Acid's secondary effect at MIN_STAT_STAGE is prevented, not silently clamped",
+  statEvents[3].type == "statChange" and statEvents[3].stages == 0 and statEvents[3].prevented == true, statEvents[3])
+
 -- supportsMove correctly rejects the real effect ids that the real
 -- gBattleScriptsForMoveEffects table wires to BattleScript_EffectHit
 -- instead of a stat-change script (see BattleEngine.lua's header note);

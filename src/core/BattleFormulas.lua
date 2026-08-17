@@ -410,6 +410,21 @@ end
 
 BattleFormulas.CRIT_MULTIPLIER = 2 -- real gCritMultiplier on a crit (Gen 3)
 
+-- Real secondary-effect roll from Cmd_seteffectwithchance
+-- (src/battle_script_commands.c:2774): `Random() % 100 <= percentChance`.
+-- Consumes exactly one Random() call. Note this is evaluated as the FIRST
+-- operand of a C `&&` chain in the real function, so it runs -- and always
+-- consumes its Random() -- on every non-miss hit reaching that command,
+-- INCLUDING a MOVE_RESULT_NO_EFFECT (0x type-effectiveness) hit; only the
+-- actual effect application is separately gated on NO_EFFECT by the real
+-- function's later `&&` terms. Callers must still call this on a no-effect
+-- hit to consume the real RNG draw, and simply discard a `true` result.
+-- No MOVE_EFFECT_CERTAIN / Serene Grace handling here -- out of this
+-- project's scope (see BattleEngine.lua's header).
+function BattleFormulas.secondaryEffectRoll(rng, percentChance)
+  return (rng:next16() % 100) <= percentChance
+end
+
 -- Real speed used for turn order (GetWhoStrikesFirst, src/battle_main.c
 -- :3428). Paralysis/items/abilities/badges deliberately not modeled.
 function BattleFormulas.effectiveSpeed(battler)

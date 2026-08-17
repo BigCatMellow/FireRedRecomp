@@ -81,16 +81,29 @@
 --     EXP/level-up on victory.
 --   * Pure single-stat stage-change moves (Growl/Tail Whip's full real
 --     family) ARE supported -- see BattleEngine.STAT_STAGE_MOVES and the
---     move.power == 0 branch of resolveMove. Still explicitly NOT ported:
---     the "_HIT" effects (EFFECT_SPEED_DOWN_HIT=70,
+--     move.power == 0 branch of resolveMove.
+--   * The real "_HIT" secondary-effect family (EFFECT_ATTACK_DOWN_HIT=68,
+--     EFFECT_DEFENSE_DOWN_HIT=69, EFFECT_SPEED_DOWN_HIT=70,
 --     EFFECT_SPECIAL_ATTACK_DOWN_HIT=71, EFFECT_SPECIAL_DEFENSE_DOWN_HIT=72,
 --     EFFECT_ACCURACY_DOWN_HIT=73, EFFECT_DEFENSE_UP_HIT=138,
---     EFFECT_ATTACK_UP_HIT=139) -- secondary chance-based stat drops bolted
---     onto a damaging move (Acid, Psychic, ...), which need the move's
---     secondaryEffectChance field and a probability roll this engine
---     doesn't wire for stat effects yet; and non-pure-single-stat effects
+--     EFFECT_ATTACK_UP_HIT=139) IS supported -- see
+--     BattleEngine.HIT_VARIANT_STAT_MOVES and resolveMove's post-damage
+--     step. These are ordinary damaging moves (Acid, Psychic, Metal Claw,
+--     ...) that run the exact same accuracy/crit/damage/type pipeline as
+--     any other hit, then -- only when that hit landed and had an effect
+--     (not a miss, not a 0x-type-effectiveness no-effect) -- roll a fresh
+--     Random()%100<=secondaryEffectChance chance (real
+--     Cmd_seteffectwithchance) to apply a 1-stage stat change: DOWN_HIT ids
+--     to the opponent, UP_HIT ids to the user itself. On a no-effect hit
+--     the real function still consumes that Random() call (it's the first
+--     operand of a short-circuiting C `&&` chain) but never applies the
+--     effect; this is ported exactly -- see the noEffect branch of
+--     resolveMove and BattleFormulas.secondaryEffectRoll's comment. Not
+--     ported: MOVE_EFFECT_CERTAIN (always-trigger; no move wired here uses
+--     it) and Serene Grace's chance-doubling (no ability system exists yet).
+--     Still explicitly not ported: non-pure-single-stat effects
 --     (EFFECT_HAZE, EFFECT_FOCUS_ENERGY, EFFECT_TRANSFORM, EFFECT_REST,
---     etc). supportsMove() correctly rejects all of these.
+--     etc). supportsMove() correctly rejects those.
 --   * Real data/battle_scripts_1.s ALSO defines EFFECT_SPEED_UP=12,
 --     EFFECT_SPECIAL_DEFENSE_UP=14, EFFECT_ACCURACY_UP=15,
 --     EFFECT_ACCURACY_UP_2=55, EFFECT_EVASION_UP_2=56,
@@ -157,6 +170,30 @@ BattleEngine.STAT_STAGE_MOVES = {
   [59] = { stat = "defense",   delta = -2 }, -- EFFECT_DEFENSE_DOWN_2
   [60] = { stat = "speed",     delta = -2 }, -- EFFECT_SPEED_DOWN_2
   [62] = { stat = "spDefense", delta = -2 }, -- EFFECT_SPECIAL_DEFENSE_DOWN_2
+}
+
+-- The real "_HIT" secondary-effect family: an ordinary damaging move
+-- (accuracycheck -> ... -> datahpupdate, same pipeline as every other
+-- direct-damage move) that, after damage resolves, has a chance
+-- (gBattleMoves[move].secondaryEffectChance) to also apply a 1-stage stat
+-- change (Cmd_seteffectwithchance -> BattleScript_EffectHit's tail; see
+-- resolveMove's post-damage step). Unlike STAT_STAGE_MOVES, the DOWN/UP
+-- split here is NOT derived from the move's real `target` byte (that field
+-- just says "ordinary damage target"); it's a separate real fact per id,
+-- confirmed against data/battle_scripts_1.s's setmoveeffect calls
+-- (MOVE_EFFECT_*_MINUS_1 with no AFFECTS_USER flag for the DOWN ids;
+-- MOVE_EFFECT_*_PLUS_1 | MOVE_EFFECT_AFFECTS_USER for the UP ids) and
+-- against real gBattleMoves users in src/data/battle_moves.h (Acid/Psychic
+-- opponent-target DOWN, Metal Claw/Meteor Mash/Steel Wing self-target UP).
+BattleEngine.HIT_VARIANT_STAT_MOVES = {
+  [68] = { stat = "attack",    delta = -1, targetSelf = false }, -- EFFECT_ATTACK_DOWN_HIT
+  [69] = { stat = "defense",   delta = -1, targetSelf = false }, -- EFFECT_DEFENSE_DOWN_HIT
+  [70] = { stat = "speed",     delta = -1, targetSelf = false }, -- EFFECT_SPEED_DOWN_HIT
+  [71] = { stat = "spAttack",  delta = -1, targetSelf = false }, -- EFFECT_SPECIAL_ATTACK_DOWN_HIT
+  [72] = { stat = "spDefense", delta = -1, targetSelf = false }, -- EFFECT_SPECIAL_DEFENSE_DOWN_HIT
+  [73] = { stat = "accuracy",  delta = -1, targetSelf = false }, -- EFFECT_ACCURACY_DOWN_HIT
+  [138] = { stat = "defense",  delta =  1, targetSelf = true },  -- EFFECT_DEFENSE_UP_HIT
+  [139] = { stat = "attack",   delta =  1, targetSelf = true },  -- EFFECT_ATTACK_UP_HIT
 }
 
 -- Builds a battler table from computed stats. `stats` is a
@@ -375,6 +412,15 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
     -- No HP changes for an immunity, but its exact RNG consumption above
     -- is observable in later actions and seeded replays.
     events[#events + 1] = { type = "noEffect", side = attackerSide, target = defenderSide }
+    -- Real Cmd_seteffectwithchance still runs on a no-effect hit (the
+    -- script isn't branched around it) and its Random() call is the FIRST
+    -- operand of a C `&&` chain, so it is evaluated unconditionally before
+    -- the later `&&` term that checks MOVE_RESULT_NO_EFFECT and blocks the
+    -- actual effect. The roll must still be consumed here; its result is
+    -- simply discarded. See BattleFormulas.secondaryEffectRoll's comment.
+    if BattleEngine.HIT_VARIANT_STAT_MOVES[move.effect] then
+      BattleFormulas.secondaryEffectRoll(self.rng, move.secondaryEffectChance)
+    end
     return
   end
 
@@ -400,6 +446,39 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
       and not self.tutorialPlayerDamageDone then
     self.tutorialPlayerDamageDone = true
     events[#events + 1] = { type="tutorialTip", kind="damage" }
+  end
+
+  -- 8. seteffectwithchance (real Cmd_seteffectwithchance, after
+  -- resultmessage/waitmessage and before tryfaintmon): a fresh
+  -- Random()%100<=percentChance roll, consumed exactly once here because
+  -- this hit landed and had an effect (the noEffect branch above already
+  -- handled -- and returned out of -- the no-effect case, which still
+  -- consumes this same roll but never applies it).
+  local hitVariant = BattleEngine.HIT_VARIANT_STAT_MOVES[move.effect]
+  if hitVariant then
+    local succeeded = BattleFormulas.secondaryEffectRoll(self.rng, move.secondaryEffectChance)
+    if succeeded then
+      local targetSide = hitVariant.targetSelf and attackerSide or defenderSide
+      local target = self:battler(targetSide)
+      local stat = hitVariant.stat
+      local delta = hitVariant.delta
+      local current = target.statStages[stat]
+      local atLimit = (delta > 0 and current == BattleFormulas.MAX_STAT_STAGE)
+        or (delta < 0 and current == BattleFormulas.MIN_STAT_STAGE)
+      if atLimit then
+        events[#events + 1] = {
+          type="statChange", side=targetSide, stat=stat, stages=0, prevented=true,
+        }
+      else
+        local newStage = current + delta
+        if newStage < BattleFormulas.MIN_STAT_STAGE then newStage = BattleFormulas.MIN_STAT_STAGE end
+        if newStage > BattleFormulas.MAX_STAT_STAGE then newStage = BattleFormulas.MAX_STAT_STAGE end
+        target.statStages[stat] = newStage
+        events[#events + 1] = {
+          type="statChange", side=targetSide, stat=stat, stages=delta, stage=newStage,
+        }
+      end
+    end
   end
 end
 
