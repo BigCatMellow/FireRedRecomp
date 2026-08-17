@@ -174,6 +174,8 @@ do
   local messages = c:_eventMessages({ { type = "recoil", side = "foe", amount = 5, hpRemaining = 10 } })
   check("recoil names the attacker, matching real sText_PkmnHitWithRecoil",
     messages[1].text == "CHARMANDER is hit\nwith recoil!", messages[1].text)
+  check("recoil's hpSide is the attacker (recoil changes the attacker's OWN hp)",
+    messages[1].hpSide == "foe" and messages[1].hp == 10, messages[1].hpSide)
 end
 
 do
@@ -181,6 +183,8 @@ do
   local messages = c:_eventMessages({ { type = "drain", side = "player", amount = 5, hpRemaining = 20 } })
   check("drain names the DEFENDER (whose energy was drained), matching real sText_PkmnEnergyDrained",
     messages[1].text == "CHARMANDER had its\nenergy drained!", messages[1].text)
+  check("drain's hpSide is still the attacker (a real heal), even though the MESSAGE names the other side",
+    messages[1].hpSide == "player" and messages[1].hp == 20, messages[1].hpSide)
 end
 
 do

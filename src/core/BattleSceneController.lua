@@ -211,13 +211,17 @@ function BattleSceneController:_eventMessages(events)
     elseif event.type == "recoil" then
       -- Real sText_PkmnHitWithRecoil (src/battle_message.c): "<mon> is
       -- hit with recoil!" -- the attacker, since recoil damages the
-      -- move's own user.
-      add(name(event.side) .. " is hit\nwith recoil!")
+      -- move's own user. hpSide=event.side (not otherSide): recoil/drain
+      -- change the ATTACKER's own HP, unlike "damage" whose hpSide is
+      -- the target -- get this backwards and the wrong HP bar animates.
+      add(name(event.side) .. " is hit\nwith recoil!", { hpSide = event.side, hp = event.hpRemaining })
     elseif event.type == "drain" then
       -- Real sText_PkmnEnergyDrained: "<mon> had its energy drained!" --
       -- real FireRed names the DEFENDER here (the mon the HP was drained
-      -- FROM), even though it's the attacker's own side that heals.
-      add(name(otherSide(event.side)) .. " had its\nenergy drained!")
+      -- FROM) in the MESSAGE, even though it's the attacker's own side
+      -- whose HP bar actually changes (a real heal) -- hpSide must stay
+      -- event.side (the attacker) despite the message naming the other side.
+      add(name(otherSide(event.side)) .. " had its\nenergy drained!", { hpSide = event.side, hp = event.hpRemaining })
     elseif event.type == "multiHit" then
       -- Real sText_HitXTimes: "Hit N time(s)!" -- only emitted when the
       -- sequence completes without an early stop (matching real
