@@ -2447,7 +2447,28 @@ function love.update(dt)
             loss, respawn.mapGroup, respawn.mapNum, respawn.x, respawn.y))
           world.battle = nil
         elseif outcome == "playerWon" then
-          addLine("Wild battle won. Experience/rewards are not in this bounded slice.")
+          if battle.partyRecord and battle.foeInstance then
+            local ok, reward = pcall(Battle.RivalRewards.applyWildVictory,
+              battle.partyRecord, battle.foeInstance, world.battleCatalog.species,
+              world.battleCatalog.natures,
+              Battle.Learnset.resolve(romData, romAddrs.gLevelUpLearnsets,
+                battle.controller.engine.player.species),
+              world.regionMapSectionId)
+            if ok then
+              local levelMsg = ""
+              if reward.newLevel > reward.oldLevel then
+                levelMsg = (" Grew to Lv. %d!"):format(reward.newLevel)
+              end
+              addLine(("Wild battle won: gained %d EXP.%s"):format(reward.exp, levelMsg))
+              if reward.skippedLevelUpMoves then
+                addLine("(A level-up move was reached but not learned -- no move-learn UI yet.)")
+              end
+            else
+              addLine("Wild battle won, but reward application failed: " .. tostring(reward))
+            end
+          else
+            addLine("Wild battle won. No session party to reward (developer battle).")
+          end
           world.battle = nil
         else
           addLine("Returned to the field after running from the wild battle.")

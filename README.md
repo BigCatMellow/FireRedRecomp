@@ -51,7 +51,7 @@ several surprises (padded record sizes, byte-offset quirks, the
 symbols with no linker-map entry) only showed up that way. See
 `tests/species_integration_test.lua` and `tests/full_sweep_validation_test.lua`
 (both opt-in via `POKEPORT_ROM=...`, skip cleanly with no ROM present) and
-the full test suite (107 test files with a verified ROM present).
+the full test suite (108 test files with a verified ROM present).
 
 ## Supported ROM
 

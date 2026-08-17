@@ -1,6 +1,12 @@
--- Persistent reward/heal rules for the mandatory Oak-lab battle.  The
--- battle is a normal trainer battle for EXP/EV/prize purposes, followed by
--- the map script's unconditional HealPlayerParty on either outcome.
+-- Persistent reward/heal rules, originally built for the mandatory
+-- Oak-lab battle (a normal trainer battle for EXP/EV/prize purposes,
+-- followed by the map script's unconditional HealPlayerParty on either
+-- outcome) but reused as-is wherever the same real functions apply:
+-- healParty is real HealPlayerParty regardless of caller (also reused by
+-- WhiteoutRules.lua for the whiteout heal), and applyVictory's core
+-- EXP/EV/friendship/level-up math is real Cmd_getexp regardless of
+-- trainer-vs-wild (see applyWildVictory, a thin wrapper for the one real
+-- difference: the trainer-battle 150% EXP bonus).
 
 local BoxPokemonCodec = require("src.core.BoxPokemonCodec")
 local ExperienceTable = require("src.core.ExperienceTable")
@@ -52,26 +58,53 @@ local function friendshipLevelDelta(friendship)
   return 5
 end
 
--- Applies the single participating mon's trainer EXP and defeated-mon EVs.
--- The three source learnsets contain no level-6 move; fail if a future data
--- change violates that bounded fact rather than skipping a learn prompt.
-function EarlyRivalRewards.applyVictory(record, foe, speciesTable, natures, learnset, currentMapSection)
+-- Applies the single participating mon's EXP and defeated-mon EVs. Real
+-- Cmd_getexp (src/battle_script_commands.c): base
+-- `calculatedExp = foeInfo.expYield * foe.level / 7`, then
+-- `gBattleMoveDamage *= 150/100` ONLY `if (gBattleTypeFlags &
+-- BATTLE_TYPE_TRAINER)` -- an ordinary wild-battle win gets no such
+-- bonus. opts.expMultiplierPercent defaults to 150 (this function's
+-- original trainer-battle caller, the Oak-lab rival) so the existing
+-- call site's behavior is unchanged; EarlyRivalRewards.applyWildVictory
+-- below passes 100 for the real wild-battle case instead of duplicating
+-- this whole function.
+--
+-- The three Oak-lab rival learnsets contain no level-6 move, so the
+-- original rival caller wants a loud failure if a future data change
+-- ever violates that bounded fact rather than silently skipping a learn
+-- prompt (opts.allowLevelUpMoveGap defaults to false, preserving that).
+-- An ordinary wild battle can legitimately cross a level-up-move
+-- threshold on any win, so its caller passes true instead -- the real
+-- move-learn prompt/UI doesn't exist in this project yet, so the new
+-- move is deliberately NOT taught (record.moves is left unchanged) and
+-- each skipped entry is returned in the result for the caller to
+-- optionally report, rather than silently pretending nothing happened.
+function EarlyRivalRewards.applyVictory(record, foe, speciesTable, natures, learnset, currentMapSection, opts)
+  opts = opts or {}
+  local expMultiplierPercent = opts.expMultiplierPercent or 150
+  local allowLevelUpMoveGap = opts.allowLevelUpMoveGap or false
+
   local mon = decode(record)
   local ownInfo = assert(speciesTable[mon.substructs[0].species], "player species info missing")
   local foeInfo = assert(speciesTable[foe.species], "foe species info missing")
   local oldLevel, oldMaxHP = record.level, record.maxHP
   local exp = math.floor(foeInfo.expYield * foe.level / 7)
-  exp = math.floor(exp * 150 / 100) -- trainer battle bonus
+  exp = math.floor(exp * expMultiplierPercent / 100)
 
   addEvs(mon, foeInfo.evYield)
   mon.substructs[0].experience = mon.substructs[0].experience + exp
   local newLevel = ExperienceTable.levelForExp(ownInfo.growthRate, mon.substructs[0].experience)
   newLevel = math.min(100, newLevel)
 
+  local skippedLevelUpMoves = nil
   for _, entry in ipairs(learnset or {}) do
     if entry.level > oldLevel and entry.level <= newLevel then
-      error(("Oak-lab reward unexpectedly requires level-up move %d at level %d")
-        :format(entry.move, entry.level))
+      if not allowLevelUpMoveGap then
+        error(("Oak-lab reward unexpectedly requires level-up move %d at level %d")
+          :format(entry.move, entry.level))
+      end
+      skippedLevelUpMoves = skippedLevelUpMoves or {}
+      skippedLevelUpMoves[#skippedLevelUpMoves + 1] = { move = entry.move, level = entry.level }
     end
   end
 
@@ -96,7 +129,19 @@ function EarlyRivalRewards.applyVictory(record, foe, speciesTable, natures, lear
 
   record.box = BoxPokemonCodec.encode(mon)
   record.boxData = mon
-  return { exp=exp, oldLevel=oldLevel, newLevel=newLevel }
+  return { exp=exp, oldLevel=oldLevel, newLevel=newLevel, skippedLevelUpMoves=skippedLevelUpMoves }
+end
+
+-- Real ordinary (non-trainer) battle win: same Cmd_getexp/EV/friendship/
+-- level-up rules as applyVictory, just without the real BATTLE_TYPE_
+-- TRAINER 150% EXP bonus, and without this project's rival-specific
+-- "no learnset gap is possible" guarantee -- an arbitrary wild win can
+-- legitimately cross a level-up-move threshold, so the new move is
+-- skipped (not taught) rather than erroring; see applyVictory's header
+-- for exactly what that means and how the caller learns about it.
+function EarlyRivalRewards.applyWildVictory(record, foe, speciesTable, natures, learnset, currentMapSection)
+  return EarlyRivalRewards.applyVictory(record, foe, speciesTable, natures, learnset, currentMapSection,
+    { expMultiplierPercent = 100, allowLevelUpMoveGap = true })
 end
 
 -- AdjustFriendshipOnBattleFaint chooses FAINT_SMALL for this equal-level
