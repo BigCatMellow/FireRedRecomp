@@ -50,7 +50,7 @@ several surprises (padded record sizes, byte-offset quirks, the
 symbols with no linker-map entry) only showed up that way. See
 `tests/species_integration_test.lua` and `tests/full_sweep_validation_test.lua`
 (both opt-in via `POKEPORT_ROM=...`, skip cleanly with no ROM present) and
-the full test suite (104 test files with a verified ROM present).
+the full test suite (106 test files with a verified ROM present).
 
 ## Supported ROM
 
@@ -90,6 +90,9 @@ Backspace=B. A normal fresh session with no starter visibly refuses a wild
 battle rather than inventing a party member. For a deterministic developer
 battle only, `POKEPORT_BATTLE=16,3 POKEPORT_BATTLE_DEBUG_PARTY=1,5 POKEPORT_BATTLE_ADVANCE=2` boots a
 deterministic Pidgey Lv3 action-menu view for screenshots/tests.
+Press **K** to save the active session (a fixed file inside LÖVE's
+sandboxed save directory) or **L** to load it back, from any view; a
+loaded session resumes on its saved map at its saved position.
 `POKEPORT_VIEWER=category:index` (e.g. `species:1`) boots straight into a
 specific viewer record. Set `POKEPORT_SCREENSHOT=1` to save a screenshot
 (`screenshot.png` in LÖVE's save directory, e.g.

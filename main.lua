@@ -71,6 +71,7 @@ local OakSpeechScene = require("import.OakSpeechScene")
 local NamingScreenScene = require("import.NamingScreenScene")
 local NewGameFlow = require("src.core.NewGameFlow")
 local NewGameDefaults = require("src.core.NewGameDefaults")
+local SaveFileCodec = require("src.core.SaveFileCodec")
 local Battle = {
   Trainer = require("import.Trainer"),
   TrainerParty = require("import.TrainerParty"),
@@ -329,6 +330,32 @@ function GameSession.fromNewGame(identity, opts)
   }, { __index=GameSession })
 end
 
+-- Reconstructs a live session from a SaveFileCodec.decode()d state -- the
+-- load-file counterpart to fromNewGame. `state` is already the exact
+-- shape encodeSaveBlock1/encodeSaveBlock2 round-trip, so no field
+-- translation is needed here, only deriving the two runtime-only
+-- conveniences (identity, mapId/location) fromNewGame also carries
+-- alongside the save-compatible `state` table.
+--
+-- Real FireRed derives the post-load facing direction from which side of
+-- the destination warp tile the player entered through (WarpIntoMap);
+-- this project's `location` field doesn't store that, so a loaded
+-- session always faces south -- a documented simplification, matching
+-- how bootstrapFreshSession also picks one fixed starting facing.
+function GameSession.fromSavedState(state)
+  assert(state and state.saveBlock1 and state.saveBlock2, "decoded save state is required")
+  local loc = assert(state.saveBlock1.location, "decoded save has no location field")
+  return setmetatable({
+    identity={
+      playerGender=state.saveBlock2.playerGender,
+      playerName=state.saveBlock2.playerName,
+      rivalName=state.saveBlock1.rivalName,
+    },
+    state=state, mapId=loc.mapGroup * 256 + loc.mapNum,
+    location={ mapGroup=loc.mapGroup, mapNum=loc.mapNum, warpId=loc.warpId, x=loc.x, y=loc.y, facing="south" },
+  }, { __index=GameSession })
+end
+
 function GameSession:setLocation(mapId, x, y, facing)
   self.mapId = mapId
   self.location.mapGroup, self.location.mapNum = math.floor(mapId / 256), mapId % 256
@@ -416,6 +443,14 @@ local world = {
   bgEvents = {},
   coordEvents = {},
   dialogueBuiltTokenIndex = -1,
+  -- saveCounter/saveBytes: the codec's own gSaveCounter-equivalent and
+  -- the last full on-disk buffer this runtime produced, so a repeat save
+  -- alternates real physical slots instead of rewriting the same one
+  -- every time (see SaveFileCodec.encode's previousCounter/previousBytes
+  -- params). Both start nil/0 for a runtime that hasn't saved or loaded
+  -- yet; loadGameFile() fills them in from the file's own header.
+  saveCounter = 0,
+  saveBytes = nil,
 }
 
 -- Real land-encounter slot count (ENCOUNTER_CHANCE_LAND_MONS_SLOT count,
@@ -1518,6 +1553,68 @@ bootstrapFreshSession = function()
   newGame.active = false
   walkActive = true
   addLine("Fresh save initialized: Player's House 2F (4,1) at 6,6; party is empty and PC has 1 Potion.")
+end
+
+-- Real save-file name is a fixed slot inside the cartridge's own flash,
+-- not something the player names; this project's equivalent is one fixed
+-- file inside LÖVE's sandboxed save directory (see conf.lua's t.identity).
+local SAVE_FILENAME = "firered_recomp.sav"
+
+-- Writes newGame.session.state through SaveFileCodec.encode(), passing
+-- world.saveCounter/saveBytes as previousCounter/previousBytes so a
+-- repeat save alternates the codec's two physical slots exactly like the
+-- real dual-slot save does, instead of always rewriting slot 0.
+function saveGame()
+  if not newGame.session then
+    addLine("Nothing to save: no active session.")
+    return
+  end
+  local bytes, counter = SaveFileCodec.encode(newGame.session.state, world.saveCounter, world.saveBytes)
+  local ok, err = love.filesystem.write(SAVE_FILENAME, bytes)
+  if not ok then
+    addLine("Save failed: " .. tostring(err))
+    return
+  end
+  world.saveCounter, world.saveBytes = counter, bytes
+  addLine(("Saved (slot generation %d)."):format(counter))
+end
+
+-- Reads SAVE_FILENAME back, validates+selects a slot via
+-- SaveFileCodec.decode (real corruption-fallback rules), and replaces the
+-- live session with GameSession.fromSavedState()'s reconstruction --
+-- loading the decoded map and repositioning the player exactly the way
+-- bootstrapFreshSession positions a brand new one.
+function loadGameFile()
+  if not love.filesystem.getInfo(SAVE_FILENAME) then
+    addLine("Load failed: no save file exists yet.")
+    return
+  end
+  local contents = love.filesystem.read(SAVE_FILENAME)
+  if not contents then
+    addLine("Load failed: could not read the save file.")
+    return
+  end
+  local state, info = SaveFileCodec.decode(contents)
+  if not state then
+    addLine("Load failed: " .. tostring(info and info.status or "unreadable save data"))
+    return
+  end
+
+  newGame.session = GameSession.fromSavedState(state)
+  newGame.story = Battle.EarlyStory.new(newGame.session)
+  world.saveCounter, world.saveBytes = info.saveCounter, contents
+
+  loadMap(romData, romAddrs, newGame.session.mapId, function() end)
+  if playerMovement then
+    playerMovement.tileX, playerMovement.tileY = newGame.session.location.x, newGame.session.location.y
+    playerMovement.facingDirection = PlayerMovement.DOWN
+    playerMovement.moving, playerMovement.stepFrame = false, 0
+  end
+  clearViews()
+  walkActive = true
+  addLine(("Loaded save (slot generation %d): map %d,%d at %d,%d."):format(
+    info.saveCounter, newGame.session.location.mapGroup, newGame.session.location.mapNum,
+    newGame.session.location.x, newGame.session.location.y))
 end
 
 -- Executes the persistent gameplay result of the two supported early-story
@@ -2820,6 +2917,15 @@ function love.keypressed(key)
     local was = walkActive
     clearViews()
     walkActive = not was
+  elseif key == "k" and walkActive and newGame.session and not world.dialogue then
+    -- Only meaningful mid-playthrough (an active session, not mid-dialogue,
+    -- same restriction the real game's own save prompt implies).
+    saveGame()
+  elseif key == "l" then
+    -- Loading is allowed from any non-blocked view (see the world.battle/
+    -- starterChoice early returns above) so a save can be resumed straight
+    -- from boot, not only from the walk view.
+    loadGameFile()
   elseif viewerActive then
     -- Up/Down are handled in love.update via InputState (real input-repeat
     -- timing), not here -- a plain keypressed step-once would double-step
