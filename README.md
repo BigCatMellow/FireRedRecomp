@@ -51,7 +51,7 @@ several surprises (padded record sizes, byte-offset quirks, the
 symbols with no linker-map entry) only showed up that way. See
 `tests/species_integration_test.lua` and `tests/full_sweep_validation_test.lua`
 (both opt-in via `POKEPORT_ROM=...`, skip cleanly with no ROM present) and
-the full test suite (108 test files with a verified ROM present).
+the full test suite (111 test files with a verified ROM present).
 
 ## Supported ROM
 
@@ -94,6 +94,10 @@ deterministic Pidgey Lv3 action-menu view for screenshots/tests.
 Press **K** to save the active session (a fixed file inside LÖVE's
 sandboxed save directory) or **L** to load it back, from any view; a
 loaded session resumes on its saved map at its saved position.
+Press **M** for the real Viridian City Poké Mart BUY flow (real prices,
+real purchase math, real Bag persistence) against the active session's
+money/bag -- a dev-reachable trigger, since real map/NPC/script
+interaction to walk in and talk to the clerk isn't wired yet.
 `POKEPORT_VIEWER=category:index` (e.g. `species:1`) boots straight into a
 specific viewer record. Set `POKEPORT_SCREENSHOT=1` to save a screenshot
 (`screenshot.png` in LÖVE's save directory, e.g.

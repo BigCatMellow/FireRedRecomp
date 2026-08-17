@@ -92,6 +92,7 @@ local Battle = {
   Item = require("import.Item"),
   SessionBagBridge = require("src.core.SessionBagBridge"),
   PokemonMart = require("src.core.PokemonMart"),
+  MartMenu = require("src.core.PokemonMartMenu"),
   PartyBridge = require("src.core.BattlePartyBridge"),
   Engine = require("src.core.BattleEngine"),
   Controller = require("src.core.BattleSceneController"),
@@ -686,6 +687,23 @@ local function dialogueTask(taskId)
     world.dialogueBuiltTokenIndex = -1
   end
 end
+
+-- Real ViridianCity_Mart_Items (data/maps/ViridianCity_Mart/scripts.inc):
+-- the first Poke Mart the player can reach, and this project's only
+-- currently-imported mart stock list. Real map/NPC/script interaction to
+-- actually walk in and trigger this (the real `pokemart` script command)
+-- isn't wired yet -- pressing M below opens it directly, from any
+-- session location, as a dev-reachable trigger for the otherwise-fully-
+-- real PokemonMartMenu/PokemonMart/Bag/SessionBagBridge pipeline, the
+-- same "pure+tested layer before its live map trigger" pattern this
+-- project already used for e.g. the naming screen before New Game's own
+-- proper story flow existed.
+--
+-- world.martActive/world.martMenu (not separate top-level locals): this
+-- file is already near Lua 5.1's hard 200-local-variable-per-chunk limit
+-- (a different, file-wide cap from the per-function 60-upvalue limit
+-- documented elsewhere in this file), so new small pieces of state get
+-- folded into the existing world table instead of adding new slots.
 
 -- Data viewer state: which category/record is being browsed, and whether
 -- the viewer is showing instead of the map.
@@ -1407,6 +1425,42 @@ local function beginNewGameFlow()
   newGame.builtRevision = -1
 end
 
+-- Opens the real Viridian Mart's BUY flow against the active session's
+-- real bag/money -- SessionBagBridge.fromSaveBlock1, same as
+-- startWildBattle already builds one.
+world.beginMart = function()
+  if not newGame.session or not world.battleCatalog or not world.battleCatalog.items then
+    addLine("Mart could not open: no active session or ROM item table unavailable.")
+    return
+  end
+  local sb1 = newGame.session.state.saveBlock1
+  local bag = Battle.SessionBagBridge.fromSaveBlock1(sb1, world.battleCatalog.items)
+  -- Real ViridianCity_Mart_Items (data/maps/ViridianCity_Mart/scripts.inc):
+  -- POKE_BALL(4), POTION(13), ANTIDOTE(14), PARALYZE_HEAL(18). Real map/
+  -- NPC/script interaction to actually walk in and trigger this (the
+  -- real `pokemart` command) isn't wired yet -- pressing M below opens
+  -- it directly, from any session location, as a dev-reachable trigger
+  -- for the otherwise-fully-real PokemonMartMenu/PokemonMart/Bag/
+  -- SessionBagBridge pipeline.
+  world.martMenu = Battle.MartMenu.new({
+    itemIds = { 4, 13, 14, 18 }, itemLookup = world.battleCatalog.items,
+    bag = bag, money = sb1.money or 0,
+  })
+end
+
+-- Writes the mart's real final bag/money state back into the session,
+-- matching startWildBattle's own bag-persists-on-battle-end convention.
+world.closeMart = function()
+  if world.martMenu and newGame.session then
+    local sb1 = newGame.session.state.saveBlock1
+    Battle.SessionBagBridge.toSaveBlock1(world.martMenu.bag, sb1)
+    sb1.money = world.martMenu.money
+    addLine(("Left the mart. Money: $%d."):format(sb1.money))
+  end
+  world.martMenu = nil
+  world.martActive = false
+end
+
 local NEW_GAME_PROMPT_SYMBOL = {
   [NewGameFlow.GENDER] = "gOakSpeech_Text_AskPlayerGender",
   [NewGameFlow.PLAYER_CONFIRM] = "gOakSpeech_Text_SoYourNameIsPlayer",
@@ -2079,6 +2133,42 @@ local function viewerLines()
   return lines
 end
 
+-- Plain text-line rendering, same pattern as viewerLines() -- real ROM-
+-- backed window/menu art (the NamingScreenScene.lua treatment) is a
+-- separate, later piece; this proves the real data/logic pipeline works
+-- end to end without waiting on that.
+world.martLines = function()
+  local function martItemName(itemId)
+    local entry = world.battleCatalog and world.battleCatalog.items and world.battleCatalog.items[itemId]
+    if not entry then return "ITEM " .. tostring(itemId) end
+    local ok, name = pcall(Charmap.decode, entry.rawName, true)
+    return ok and name or ("ITEM " .. tostring(itemId))
+  end
+  local m = world.martMenu
+  local lines = { ("POKE MART -- Money: $%d  (M: leave)"):format(m.money) }
+  if m.state == Battle.MartMenu.LIST then
+    lines[#lines + 1] = "Up/Down: choose, A: buy, B: leave"
+    for i, itemId in ipairs(m.itemIds) do
+      local price = world.battleCatalog.items[itemId].price
+      local cursor = (i - 1 == m.listCursor) and "> " or "  "
+      lines[#lines + 1] = ("%s%s  $%d"):format(cursor, martItemName(itemId), price)
+    end
+  elseif m.state == Battle.MartMenu.QUANTITY then
+    lines[#lines + 1] = ("%s  In bag: %d"):format(martItemName(m.selectedItemId), m.bag:quantityOf(m.selectedItemId))
+    lines[#lines + 1] = ("x%02d   $%d  (Up/Down +-1, Left/Right +-10)"):format(
+      m.quantity, world.battleCatalog.items[m.selectedItemId].price * m.quantity)
+    lines[#lines + 1] = "A: confirm, B: back"
+  elseif m.state == Battle.MartMenu.CONFIRM then
+    lines[#lines + 1] = ("%s x%d -- $%d. Buy it?  (A: yes, B: no)"):format(
+      martItemName(m.selectedItemId), m.quantity,
+      world.battleCatalog.items[m.selectedItemId].price * m.quantity)
+  elseif m.state == Battle.MartMenu.MESSAGE then
+    lines[#lines + 1] = m.message
+    lines[#lines + 1] = "(A or B to continue)"
+  end
+  return lines
+end
+
 local function viewerStep(delta)
   local category = viewerCategory()
   if category == "maps" then
@@ -2532,6 +2622,9 @@ function love.update(dt)
           world.battle = nil
         end
       end
+    elseif world.martActive and world.martMenu then
+      world.martMenu:processInput(inputState)
+      if world.martMenu:isDone() then world.closeMart() end
     elseif newGame.active and newGame.flow then
       newGame.flow:processInput(inputState)
       if newGame.flow:isComplete() then bootstrapFreshSession() end
@@ -2740,6 +2833,12 @@ function love.draw()
 
   if world.battle then
     drawBattleScene(y)
+  elseif world.martActive and world.martMenu then
+    y = y + 10
+    for _, line in ipairs(world.martLines()) do
+      love.graphics.print(line, 20, y)
+      y = y + 20
+    end
   elseif newGame.active then
     drawNewGameFlow(y)
   elseif viewerActive then
@@ -2951,6 +3050,7 @@ local function clearViews()
   fontActive, oakSpeechActive, oakSceneActive = false, false, false
   flameActive, yesNoActive, walkActive = false, false, false
   newGame.active = false
+  if world.martActive then world.closeMart() end -- persists bag/money before leaving
 end
 
 function love.keypressed(key)
@@ -3013,6 +3113,13 @@ function love.keypressed(key)
     local was = walkActive
     clearViews()
     walkActive = not was
+  elseif key == "m" then
+    local was = world.martActive
+    clearViews()
+    if not was then
+      world.beginMart()
+      world.martActive = world.martMenu ~= nil
+    end
   elseif key == "k" and walkActive and newGame.session and not world.dialogue then
     -- Only meaningful mid-playthrough (an active session, not mid-dialogue,
     -- same restriction the real game's own save prompt implies).
