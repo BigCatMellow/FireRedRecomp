@@ -200,5 +200,26 @@ do
   check("switch produces a real, non-empty status message", messages[1] and #messages[1].text > 0)
 end
 
+do
+  local c = controller()
+  local messages = c:_eventMessages({
+    { type = "screenSet", side = "player", screen = "reflect", turns = 5 },
+    { type = "screenSet", side = "foe", screen = "lightScreen", turns = 5 },
+    { type = "screenFailed", side = "player", screen = "reflect" },
+    { type = "screenExpired", side = "player", screen = "reflect" },
+    { type = "screenExpired", side = "foe", screen = "lightScreen" },
+  })
+  check("screenSet reflect uses the real \"raised DEFENSE!\" message",
+    messages[1].text == "BULBASAUR's REFLECT\nraised DEFENSE!", messages[1].text)
+  check("screenSet lightScreen uses the real \"raised SP. DEF!\" message",
+    messages[2].text == "CHARMANDER's LIGHT SCREEN\nraised SP. DEF!", messages[2].text)
+  check("screenFailed uses the real \"But it failed!\" message",
+    messages[3].text == "But it failed!", messages[3].text)
+  check("screenExpired on the player side uses \"Your team's\"",
+    messages[4].text == "Your team's REFLECT\nwore off!", messages[4].text)
+  check("screenExpired on the foe side uses \"The foe's\"",
+    messages[5].text == "The foe's LIGHT SCREEN\nwore off!", messages[5].text)
+end
+
 print(("%d passed, %d failed"):format(passed, failed))
 os.exit(failed == 0 and 0 or 1)

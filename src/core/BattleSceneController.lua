@@ -240,6 +240,29 @@ function BattleSceneController:_eventMessages(events)
       add(event.success and "Got away safely!" or "Can't escape!")
     elseif event.type == "throwBall" then
       add(self.playerName .. " threw a POKé BALL!")
+    elseif event.type == "screenSet" then
+      -- Real sText_PkmnRaisedDef/sText_PkmnRaisedSpDef (src/battle_
+      -- message.c): "<mon>'s REFLECT\nraised DEFENSE!" / "<mon>'s LIGHT
+      -- SCREEN\nraised SP. DEF!" (single-battle B_MSG_SET_REFLECT_SINGLE/
+      -- B_MSG_SET_LIGHTSCREEN_SINGLE variant -- the double-battle "a
+      -- little" wording is out of scope, single battle only).
+      if event.screen == "reflect" then
+        add(possessive(name(event.side)) .. " REFLECT\nraised DEFENSE!")
+      else
+        add(possessive(name(event.side)) .. " LIGHT SCREEN\nraised SP. DEF!")
+      end
+    elseif event.type == "screenFailed" then
+      -- Real B_MSG_SIDE_STATUS_FAILED -> sText_ButItFailed.
+      add("But it failed!")
+    elseif event.type == "screenExpired" then
+      -- Real sText_PkmnsXWoreOff: "<side>'s REFLECT/LIGHT SCREEN\nwore
+      -- off!" -- side-prefix wording mirrors this project's existing
+      -- sText_TeamStoppedWorking/sText_FoeStoppedWorking pattern ("Your
+      -- team's"/"The foe's") since B_ATK_PREFIX1 is the same real
+      -- side-dependent prefix.
+      local screenName = event.screen == "reflect" and "REFLECT" or "LIGHT SCREEN"
+      local prefix = event.side == "player" and "Your team's" or "The foe's"
+      add(prefix .. " " .. screenName .. "\nwore off!")
     elseif event.type == "capture" then
       if event.success then
         add("Gotcha! " .. self.foeName .. " was caught!")
