@@ -35,9 +35,21 @@ M.TYPE_DARK = 17
 
 -- Real move ids (include/constants/moves.h).
 M.MOVE_TACKLE = 33
-M.MOVE_EMBER = 52
+M.MOVE_SWORDS_DANCE = 14
+M.MOVE_SAND_ATTACK = 28
+M.MOVE_TAIL_WHIP = 39
 M.MOVE_GROWL = 45
+M.MOVE_EMBER = 52
+M.MOVE_STRING_SHOT = 81
+M.MOVE_AGILITY = 97
+M.MOVE_SCREECH = 103
 M.MOVE_QUICK_ATTACK = 98
+M.MOVE_AMNESIA = 133
+
+-- Real MOVE_TARGET_* bits (include/battle.h).
+M.MOVE_TARGET_SELECTED = 0
+M.MOVE_TARGET_BOTH = 0x08
+M.MOVE_TARGET_USER = 0x10
 
 -- Real gBattleMoves records, keyed by real move id, in the exact shape
 -- import/BattleMove.lua produces from ROM bytes.
@@ -46,6 +58,30 @@ M.moves = {
                       secondaryEffectChance = 0, target = 0, priority = 0, flags = 0x33 },
   [M.MOVE_EMBER] = { effect = 4, power = 40, type = M.TYPE_FIRE, accuracy = 100, pp = 25,
                      secondaryEffectChance = 10, target = 0, priority = 0, flags = 0x12 },
+  -- Growl/Tail Whip: EFFECT_ATTACK_DOWN/EFFECT_DEFENSE_DOWN, real
+  -- opponent-target (MOVE_TARGET_BOTH in a real single battle still
+  -- resolves against the lone foe), 1-stage stat moves.
+  [M.MOVE_GROWL] = { effect = 18, power = 0, type = M.TYPE_NORMAL, accuracy = 100, pp = 40,
+                     secondaryEffectChance = 0, target = M.MOVE_TARGET_BOTH, priority = 0, flags = 0 },
+  [M.MOVE_TAIL_WHIP] = { effect = 19, power = 0, type = M.TYPE_NORMAL, accuracy = 100, pp = 30,
+                         secondaryEffectChance = 0, target = M.MOVE_TARGET_BOTH, priority = 0, flags = 0 },
+  -- Swords Dance/Agility/Amnesia: real self-target (MOVE_TARGET_USER)
+  -- 2-stage stat-UP moves. Real accuracy field is 0 (unused -- no
+  -- accuracycheck step in their real battle script).
+  [M.MOVE_SWORDS_DANCE] = { effect = 50, power = 0, type = M.TYPE_NORMAL, accuracy = 0, pp = 30,
+                            secondaryEffectChance = 0, target = M.MOVE_TARGET_USER, priority = 0, flags = 0 },
+  [M.MOVE_AGILITY] = { effect = 52, power = 0, type = M.TYPE_PSYCHIC, accuracy = 0, pp = 30,
+                       secondaryEffectChance = 0, target = M.MOVE_TARGET_USER, priority = 0, flags = 0 },
+  [M.MOVE_AMNESIA] = { effect = 54, power = 0, type = M.TYPE_PSYCHIC, accuracy = 0, pp = 20,
+                       secondaryEffectChance = 0, target = M.MOVE_TARGET_USER, priority = 0, flags = 0 },
+  -- Sand-Attack/Screech/String Shot: real opponent-target 1- and 2-stage
+  -- stat-DOWN moves (Screech is EFFECT_DEFENSE_DOWN_2).
+  [M.MOVE_SAND_ATTACK] = { effect = 23, power = 0, type = M.TYPE_GROUND, accuracy = 100, pp = 15,
+                           secondaryEffectChance = 0, target = M.MOVE_TARGET_SELECTED, priority = 0, flags = 0 },
+  [M.MOVE_SCREECH] = { effect = 59, power = 0, type = M.TYPE_NORMAL, accuracy = 85, pp = 40,
+                       secondaryEffectChance = 0, target = M.MOVE_TARGET_SELECTED, priority = 0, flags = 0 },
+  [M.MOVE_STRING_SHOT] = { effect = 20, power = 0, type = M.TYPE_BUG, accuracy = 95, pp = 40,
+                           secondaryEffectChance = 0, target = M.MOVE_TARGET_BOTH, priority = 0, flags = 0 },
   [M.MOVE_QUICK_ATTACK] = { effect = 103, power = 40, type = M.TYPE_NORMAL, accuracy = 100, pp = 30,
                             secondaryEffectChance = 0, target = 0, priority = 1, flags = 0x33 },
 }

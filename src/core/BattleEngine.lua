@@ -75,11 +75,34 @@
 --     simply loses its action for the turn. No Struggle move, no recoil.
 --   * No party/switching: a faint ends the battle. Real code would run
 --     the switch-in flow.
---   * No status conditions, abilities, held items, weather, screens, stat-
---     stage-changing moves other than Growl/Tail Whip, multi-turn/charging moves,
---     trapping, forced switching, secondary move effects (Ember cannot
---     burn), multi-hit moves, OHKO moves, recoil/drain, double battles,
---     trainer AI, or EXP/level-up on victory.
+--   * No status conditions, abilities, held items, weather, screens,
+--     multi-turn/charging moves, trapping, forced switching, multi-hit
+--     moves, OHKO moves, recoil/drain, double battles, trainer AI, or
+--     EXP/level-up on victory.
+--   * Pure single-stat stage-change moves (Growl/Tail Whip's full real
+--     family) ARE supported -- see BattleEngine.STAT_STAGE_MOVES and the
+--     move.power == 0 branch of resolveMove. Still explicitly NOT ported:
+--     the "_HIT" effects (EFFECT_SPEED_DOWN_HIT=70,
+--     EFFECT_SPECIAL_ATTACK_DOWN_HIT=71, EFFECT_SPECIAL_DEFENSE_DOWN_HIT=72,
+--     EFFECT_ACCURACY_DOWN_HIT=73, EFFECT_DEFENSE_UP_HIT=138,
+--     EFFECT_ATTACK_UP_HIT=139) -- secondary chance-based stat drops bolted
+--     onto a damaging move (Acid, Psychic, ...), which need the move's
+--     secondaryEffectChance field and a probability roll this engine
+--     doesn't wire for stat effects yet; and non-pure-single-stat effects
+--     (EFFECT_HAZE, EFFECT_FOCUS_ENERGY, EFFECT_TRANSFORM, EFFECT_REST,
+--     etc). supportsMove() correctly rejects all of these.
+--   * Real data/battle_scripts_1.s ALSO defines EFFECT_SPEED_UP=12,
+--     EFFECT_SPECIAL_DEFENSE_UP=14, EFFECT_ACCURACY_UP=15,
+--     EFFECT_ACCURACY_UP_2=55, EFFECT_EVASION_UP_2=56,
+--     EFFECT_SPECIAL_ATTACK_DOWN_2=61, EFFECT_ACCURACY_DOWN_2=63, and
+--     EFFECT_EVASION_DOWN_2=64, but the real gBattleScriptsForMoveEffects
+--     table (that file, lines ~40-88) wires every one of those eight ids
+--     to BattleScript_EffectHit, NOT to BattleScript_EffectStatUp/Down --
+--     i.e. despite the names, none of them actually run a stat-change
+--     script in the real game, and no real gBattleMoves entry uses any of
+--     them (checked against src/data/battle_moves.h). STAT_STAGE_MOVES
+--     deliberately omits these eight; supportsMove() correctly rejects
+--     them too.
 --   * Capture is intentionally the first normal Poke Ball/no-status slice.
 --     CaptureRules owns the exact formula/shake RNG. This engine neither
 --     removes inventory nor copies a caught mon to party/PC or updates the
@@ -98,6 +121,43 @@ BattleEngine.SIDE_PLAYER = "player"
 BattleEngine.SIDE_FOE = "foe"
 BattleEngine.EFFECT_ATTACK_DOWN = 18
 BattleEngine.EFFECT_DEFENSE_DOWN = 19
+
+-- Real MOVE_TARGET_USER bit (include/battle.h: (1 << 4)). Whether a move
+-- targets its own user is decoded straight from the move's real `target`
+-- byte -- import/BattleMove.lua already exposes it verbatim -- rather than
+-- assumed from the effect id's UP/DOWN naming, so this stays correct even
+-- for a hypothetical real move whose target doesn't match its id family.
+local MOVE_TARGET_USER = 0x10
+
+-- The real pure single-stat stage-change effect family: every EFFECT_*
+-- id (include/constants/battle_move_effects.h) that data/battle_scripts_1.s
+-- actually routes to BattleScript_EffectStatUp or BattleScript_EffectStatDown
+-- (not just BattleScript_EffectHit -- see the header's DOCUMENTED STUBS
+-- note on the eight ids that alias to EffectHit despite their names).
+-- `stat` matches a BattleEngine battler's statStages key; `delta` is the
+-- signed real setstatchanger stage count (matching goesUp=FALSE for the
+-- positive UP/UP_2 entries, goesUp=TRUE for the negative DOWN/DOWN_2
+-- entries in that file).
+BattleEngine.STAT_STAGE_MOVES = {
+  [10] = { stat = "attack",    delta =  1 }, -- EFFECT_ATTACK_UP
+  [11] = { stat = "defense",   delta =  1 }, -- EFFECT_DEFENSE_UP
+  [13] = { stat = "spAttack",  delta =  1 }, -- EFFECT_SPECIAL_ATTACK_UP
+  [16] = { stat = "evasion",   delta =  1 }, -- EFFECT_EVASION_UP
+  [18] = { stat = "attack",    delta = -1 }, -- EFFECT_ATTACK_DOWN
+  [19] = { stat = "defense",   delta = -1 }, -- EFFECT_DEFENSE_DOWN
+  [20] = { stat = "speed",     delta = -1 }, -- EFFECT_SPEED_DOWN
+  [23] = { stat = "accuracy",  delta = -1 }, -- EFFECT_ACCURACY_DOWN
+  [24] = { stat = "evasion",   delta = -1 }, -- EFFECT_EVASION_DOWN
+  [50] = { stat = "attack",    delta =  2 }, -- EFFECT_ATTACK_UP_2
+  [51] = { stat = "defense",   delta =  2 }, -- EFFECT_DEFENSE_UP_2
+  [52] = { stat = "speed",     delta =  2 }, -- EFFECT_SPEED_UP_2
+  [53] = { stat = "spAttack",  delta =  2 }, -- EFFECT_SPECIAL_ATTACK_UP_2
+  [54] = { stat = "spDefense", delta =  2 }, -- EFFECT_SPECIAL_DEFENSE_UP_2
+  [58] = { stat = "attack",    delta = -2 }, -- EFFECT_ATTACK_DOWN_2
+  [59] = { stat = "defense",   delta = -2 }, -- EFFECT_DEFENSE_DOWN_2
+  [60] = { stat = "speed",     delta = -2 }, -- EFFECT_SPEED_DOWN_2
+  [62] = { stat = "spDefense", delta = -2 }, -- EFFECT_SPECIAL_DEFENSE_DOWN_2
+}
 
 -- Builds a battler table from computed stats. `stats` is a
 -- PokemonStats.calculateAll() result (hp/attack/defense/speed/spAttack/
@@ -182,9 +242,8 @@ function BattleEngine:isOver()
 end
 
 function BattleEngine:supportsMove(move)
-  return move and (move.power > 0
-    or move.effect == BattleEngine.EFFECT_ATTACK_DOWN
-    or move.effect == BattleEngine.EFFECT_DEFENSE_DOWN)
+  if not move then return false end
+  return move.power > 0 or BattleEngine.STAT_STAGE_MOVES[move.effect] ~= nil
 end
 
 -- Resolves one attack, appending its events. Returns nothing; the caller
@@ -216,18 +275,40 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
 
   events[#events + 1] = { type = "useMove", side = attackerSide, move = slot.move }
 
+  -- Real BattleScript_EffectStatUp (every self-target UP/UP_2 effect) has
+  -- NO accuracycheck step at all: attackcanceler -> attackstring ->
+  -- ppreduce -> statbuffchange. It cannot miss and consumes zero Random()
+  -- calls for accuracy. BattleScript_EffectStatDown (every opponent-target
+  -- DOWN/DOWN_2 effect) DOES run accuracycheck, same as any damaging move.
+  -- Self-vs-opponent targeting is derived from the move's real `target`
+  -- field (MOVE_TARGET_USER), not assumed from the UP/DOWN id naming, so
+  -- this stays correct-because-derived rather than correct-by-coincidence.
+  local statEntry = BattleEngine.STAT_STAGE_MOVES[move.effect]
+  local isSelfTargetStat = statEntry ~= nil
+    and math.floor((move.target or 0) / MOVE_TARGET_USER) % 2 == 1
+  local needsAccuracyCheck = not isSelfTargetStat
+
   -- The FIRST_BATTLE controller deliberately skips the first player
-  -- accuracy RNG independently for a damaging move and for a stat move.
-  -- Foe attacks and subsequent player moves use the ordinary path.
-  local tutorialAccuracy = self.firstBattle and attackerSide == BattleEngine.SIDE_PLAYER
+  -- accuracy RNG independently for a damaging move and for a (DOWN-family)
+  -- stat move that actually rolls one. Foe attacks and subsequent player
+  -- moves use the ordinary path.
+  local tutorialAccuracy = needsAccuracyCheck and self.firstBattle
+    and attackerSide == BattleEngine.SIDE_PLAYER
     and ((move.power > 0 and not self.tutorialPlayerDamageDone)
       or (move.power == 0 and not self.tutorialPlayerStatDone))
-  local hit = tutorialAccuracy or BattleFormulas.accuracyCheck(
-    move.accuracy, attacker.statStages.accuracy,
-    defender.statStages.evasion, self.rng)
+  local hit
+  if needsAccuracyCheck then
+    hit = tutorialAccuracy or BattleFormulas.accuracyCheck(
+      move.accuracy, attacker.statStages.accuracy,
+      defender.statStages.evasion, self.rng)
+  else
+    hit = true
+  end
 
-  -- 2. ppreduce -- real order: after the accuracy roll, and on the miss
-  -- path too (BattleScript_PrintMoveMissed also runs ppreduce).
+  -- 2. ppreduce -- real order: after the accuracy roll (or, for a
+  -- self-target UP move, in the same slot where accuracycheck would have
+  -- been), and on the miss path too (BattleScript_PrintMoveMissed also
+  -- runs ppreduce).
   slot.pp = slot.pp - 1
 
   if not hit then
@@ -236,16 +317,25 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
   end
 
   if move.power == 0 then
-    local stat = move.effect == BattleEngine.EFFECT_ATTACK_DOWN and "attack" or "defense"
-    if defender.statStages[stat] == BattleFormulas.MIN_STAT_STAGE then
+    local stat = statEntry.stat
+    local delta = statEntry.delta
+    local targetSide = isSelfTargetStat and attackerSide or defenderSide
+    local target = self:battler(targetSide)
+    local current = target.statStages[stat]
+    local atLimit = (delta > 0 and current == BattleFormulas.MAX_STAT_STAGE)
+      or (delta < 0 and current == BattleFormulas.MIN_STAT_STAGE)
+    if atLimit then
       events[#events + 1] = {
-        type="statChange", side=defenderSide, stat=stat, stages=0, prevented=true,
+        type="statChange", side=targetSide, stat=stat, stages=0, prevented=true,
       }
     else
-      defender.statStages[stat] = defender.statStages[stat] - 1
+      local newStage = current + delta
+      if newStage < BattleFormulas.MIN_STAT_STAGE then newStage = BattleFormulas.MIN_STAT_STAGE end
+      if newStage > BattleFormulas.MAX_STAT_STAGE then newStage = BattleFormulas.MAX_STAT_STAGE end
+      target.statStages[stat] = newStage
       events[#events + 1] = {
-        type="statChange", side=defenderSide, stat=stat, stages=-1,
-        stage=defender.statStages[stat],
+        type="statChange", side=targetSide, stat=stat, stages=delta,
+        stage=newStage,
       }
       if self.firstBattle and attackerSide == BattleEngine.SIDE_PLAYER
           and not self.tutorialPlayerStatDone then

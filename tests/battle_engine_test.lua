@@ -148,6 +148,113 @@ battle.player.statStages.speed = 12
 events = battle:runTurn({ action = "run" }, { action = "move", moveSlot = 1 })
 check("run ignores speed stages and can fail from raw speed", events[2].type == "run" and not events[2].success and battle.runTries == 1)
 
+-- Full real single-stat stage-change family (BattleEngine.STAT_STAGE_MOVES):
+-- self-target UP/UP_2 effects (BattleScript_EffectStatUp) have NO
+-- accuracycheck step and cannot miss; opponent-target DOWN/DOWN_2 effects
+-- (BattleScript_EffectStatDown) still roll accuracycheck, exactly like
+-- Growl/Tail Whip's existing real path. Isolated with resolveMove directly
+-- (rather than runTurn) so each RNG-draw-count assertion below is exact.
+-- Real move records: Swords Dance (EFFECT_ATTACK_UP_2, self), Agility
+-- (EFFECT_SPEED_UP_2, self), Amnesia (EFFECT_SPECIAL_DEFENSE_UP_2, self),
+-- Sand-Attack (EFFECT_ACCURACY_DOWN, opponent), Screech
+-- (EFFECT_DEFENSE_DOWN_2, opponent), String Shot (EFFECT_SPEED_DOWN,
+-- opponent).
+
+-- Growl/Tail Whip regression check under the new table-driven dispatch.
+battle = makeBattle({ 0 }, { { move = Data.MOVE_GROWL, pp = 40 } }, { { move = Data.MOVE_TACKLE, pp = 1 } })
+local statEvents = {}
+battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, statEvents)
+check("Growl still lowers the foe's Attack by 1 real stage (regression)",
+  statEvents[2].type == "statChange" and statEvents[2].side == "foe" and statEvents[2].stat == "attack"
+    and statEvents[2].stages == -1 and statEvents[2].stage == 5, statEvents[2])
+check("Growl still consumes exactly one accuracy RNG draw (regression)", battle.rng.draws == 1, battle.rng.draws)
+
+-- Self-target UP move: zero RNG consumed, cannot miss, raises the user's
+-- own stat by the real stage count.
+battle = makeBattle({}, { { move = Data.MOVE_SWORDS_DANCE, pp = 30 } }, { { move = Data.MOVE_TACKLE, pp = 1 } })
+statEvents = {}
+battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, statEvents)
+check("Swords Dance raises the user's own Attack by 2 real stages",
+  statEvents[2].type == "statChange" and statEvents[2].side == "player" and statEvents[2].stat == "attack"
+    and statEvents[2].stages == 2 and statEvents[2].stage == 8, statEvents[2])
+check("self-target stat-UP move consumes zero RNG (no real accuracycheck step)", battle.rng.draws == 0, battle.rng.draws)
+
+battle = makeBattle({}, { { move = Data.MOVE_AGILITY, pp = 30 } }, { { move = Data.MOVE_TACKLE, pp = 1 } })
+statEvents = {}
+battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, statEvents)
+check("Agility raises the user's own Speed by 2",
+  statEvents[2].stat == "speed" and statEvents[2].stages == 2 and statEvents[2].stage == 8)
+check("Agility also consumes zero RNG", battle.rng.draws == 0)
+
+battle = makeBattle({}, { { move = Data.MOVE_AMNESIA, pp = 20 } }, { { move = Data.MOVE_TACKLE, pp = 1 } })
+statEvents = {}
+battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, statEvents)
+check("Amnesia raises the user's own Sp. Defense by 2",
+  statEvents[2].stat == "spDefense" and statEvents[2].stages == 2 and statEvents[2].stage == 8)
+
+-- Opponent-target DOWN move: exactly one accuracy RNG draw is still
+-- consumed on a hit, exactly like Growl/Tail Whip.
+battle = makeBattle({ 0 }, { { move = Data.MOVE_SAND_ATTACK, pp = 15 } }, { { move = Data.MOVE_TACKLE, pp = 1 } })
+statEvents = {}
+battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, statEvents)
+check("Sand-Attack lowers the foe's Accuracy by 1",
+  statEvents[2].type == "statChange" and statEvents[2].side == "foe" and statEvents[2].stat == "accuracy"
+    and statEvents[2].stages == -1 and statEvents[2].stage == 5)
+check("opponent-target stat-DOWN move consumes exactly one accuracy RNG draw", battle.rng.draws == 1, battle.rng.draws)
+
+battle = makeBattle({ 0 }, { { move = Data.MOVE_SCREECH, pp = 40 } }, { { move = Data.MOVE_TACKLE, pp = 1 } })
+statEvents = {}
+battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, statEvents)
+check("Screech lowers the foe's Defense by 2 real stages",
+  statEvents[2].stat == "defense" and statEvents[2].stages == -2 and statEvents[2].stage == 4)
+
+battle = makeBattle({ 0 }, { { move = Data.MOVE_STRING_SHOT, pp = 40 } }, { { move = Data.MOVE_TACKLE, pp = 1 } })
+statEvents = {}
+battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, statEvents)
+check("String Shot lowers the foe's Speed by 1",
+  statEvents[2].stat == "speed" and statEvents[2].stages == -1 and statEvents[2].stage == 5)
+
+-- Boundary: already at MAX_STAT_STAGE (12) prevents a further UP move,
+-- symmetric with the existing MIN-side Growl/Tail Whip behavior.
+battle = makeBattle({}, { { move = Data.MOVE_SWORDS_DANCE, pp = 30 } }, { { move = Data.MOVE_TACKLE, pp = 1 } })
+battle.player.statStages.attack = 12
+statEvents = {}
+battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, statEvents)
+check("stat-UP move already at MAX_STAT_STAGE is prevented, not silently clamped",
+  statEvents[2].type == "statChange" and statEvents[2].stages == 0 and statEvents[2].prevented == true, statEvents[2])
+check("prevented UP move still consumes zero RNG", battle.rng.draws == 0)
+
+-- Boundary: already at MIN_STAT_STAGE (0) prevents a further DOWN move
+-- (existing behavior, re-checked against the new table-driven dispatch).
+battle = makeBattle({ 0 }, { { move = Data.MOVE_SAND_ATTACK, pp = 15 } }, { { move = Data.MOVE_TACKLE, pp = 1 } })
+battle.foe.statStages.accuracy = 0
+statEvents = {}
+battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, statEvents)
+check("stat-DOWN move already at MIN_STAT_STAGE is prevented",
+  statEvents[2].type == "statChange" and statEvents[2].stages == 0 and statEvents[2].prevented == true, statEvents[2])
+
+-- A DOWN-family move can still miss (it does run accuracycheck); the miss
+-- still deducts PP and consumes only its one accuracy draw.
+battle = makeBattle({ 90 }, { { move = Data.MOVE_SCREECH, pp = 40 } }, { { move = Data.MOVE_TACKLE, pp = 1 } })
+statEvents = {}
+battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, statEvents)
+check("an 85-accuracy Screech misses on real roll 90", statEvents[2].type == "miss")
+check("a missed stat-DOWN move still deducts PP", battle.player.moves[1].pp == 39)
+check("a missed stat-DOWN move consumes exactly one RNG draw", battle.rng.draws == 1)
+
+-- supportsMove correctly rejects the real effect ids that the real
+-- gBattleScriptsForMoveEffects table wires to BattleScript_EffectHit
+-- instead of a stat-change script (see BattleEngine.lua's header note);
+-- no real move uses any of these ids either.
+check("supportsMove rejects EFFECT_SPEED_UP=12 (real id aliases to EffectHit)",
+  not battle:supportsMove({ power = 0, effect = 12 }))
+check("supportsMove rejects EFFECT_ACCURACY_UP_2=55 (real id aliases to EffectHit)",
+  not battle:supportsMove({ power = 0, effect = 55 }))
+check("supportsMove rejects EFFECT_EVASION_DOWN_2=64 (real id aliases to EffectHit)",
+  not battle:supportsMove({ power = 0, effect = 64 }))
+check("supportsMove still accepts EFFECT_ATTACK_UP_2=50 (Swords Dance's real effect)",
+  battle:supportsMove({ power = 0, effect = 50 }))
+
 -- A zero-power status move is outside this direct-damage slice and must
 -- fail loudly instead of being turned into accidental minimum damage.
 local growlMoves = {}
