@@ -351,6 +351,144 @@ battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, statEvents)
 check("Acid's secondary effect at MIN_STAT_STAGE is prevented, not silently clamped",
   statEvents[3].type == "statChange" and statEvents[3].stages == 0 and statEvents[3].prevented == true, statEvents[3])
 
+-- Real recoil family (BattleEngine.RECOIL_MOVES): EFFECT_RECOIL=48 (Take
+-- Down, Submission, Struggle -- 25% recoil) and EFFECT_DOUBLE_EDGE=198
+-- (Double-Edge -- 33% recoil). Real Cmd_seteffectsecondary's recoil cases
+-- consume NO extra Random() call (MOVE_EFFECT_CERTAIN, not a chance roll),
+-- so a landed hit consumes exactly the ordinary acc/crit/damage-multiplier
+-- three draws -- one fewer than the _HIT family's four.
+battle = makeBattle({ 0, 1, 0 }, { { move = Data.MOVE_TAKE_DOWN, pp = 20 } }, { { move = Data.MOVE_TACKLE, pp = 1 } })
+statEvents = {}
+battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, statEvents)
+local dealt = statEvents[2].amount
+local expectedRecoil = math.floor(dealt / 4)
+if expectedRecoil == 0 then expectedRecoil = 1 end
+check("Take Down deals damage then docks the attacker 1/4 of the real dealt HP",
+  statEvents[2].type == "damage"
+    and statEvents[3].type == "recoil" and statEvents[3].side == "player"
+    and statEvents[3].amount == expectedRecoil
+    and statEvents[3].hpRemaining == bulbaStats.hp - expectedRecoil,
+  statEvents[3])
+check("a landed recoil move consumes exactly the ordinary three RNG draws (no extra roll)",
+  battle.rng.draws == 3, battle.rng.draws)
+
+battle = makeBattle({ 0, 1, 0 }, { { move = Data.MOVE_SUBMISSION, pp = 25 } }, { { move = Data.MOVE_TACKLE, pp = 1 } })
+statEvents = {}
+battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, statEvents)
+dealt = statEvents[2].amount
+expectedRecoil = math.floor(dealt / 4)
+if expectedRecoil == 0 then expectedRecoil = 1 end
+check("Submission (also real EFFECT_RECOIL) docks the attacker the same 1/4 formula",
+  statEvents[3].type == "recoil" and statEvents[3].amount == expectedRecoil, statEvents[3])
+
+battle = makeBattle({ 0, 1, 0 }, { { move = Data.MOVE_DOUBLE_EDGE, pp = 15 } }, { { move = Data.MOVE_TACKLE, pp = 1 } })
+statEvents = {}
+battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, statEvents)
+dealt = statEvents[2].amount
+expectedRecoil = math.floor(dealt / 3)
+if expectedRecoil == 0 then expectedRecoil = 1 end
+check("Double-Edge docks the attacker 1/3 of the real dealt HP (real EFFECT_DOUBLE_EDGE, separate id)",
+  statEvents[3].type == "recoil" and statEvents[3].amount == expectedRecoil, statEvents[3])
+
+-- Minimum-1 floor: clamp the defender to a tiny HP total so the real
+-- already-clamped dealt-HP fraction floors to 0 and must be forced to 1,
+-- exactly like real Cmd_seteffectsecondary's `if (gBattleMoveDamage == 0)
+-- gBattleMoveDamage = 1`.
+battle = makeBattle({ 0, 1, 0 }, { { move = Data.MOVE_TAKE_DOWN, pp = 20 } }, { { move = Data.MOVE_TACKLE, pp = 1 } })
+battle.foe.hp = 2
+statEvents = {}
+battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, statEvents)
+check("Take Down recoil floors to the real minimum of 1 when hpDealt/4 would round to 0",
+  statEvents[2].amount == 2 and statEvents[3].amount == 1, statEvents[3])
+
+battle = makeBattle({ 0, 1, 0 }, { { move = Data.MOVE_DOUBLE_EDGE, pp = 15 } }, { { move = Data.MOVE_TACKLE, pp = 1 } })
+battle.foe.hp = 2
+statEvents = {}
+battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, statEvents)
+check("Double-Edge recoil also floors to the real minimum of 1 (hpDealt/3 rounds to 0)",
+  statEvents[2].amount == 2 and statEvents[3].amount == 1, statEvents[3])
+
+-- Recoil never applies on a type-immune (no-effect) hit: real
+-- Cmd_seteffectwithchance's MOVE_EFFECT_CERTAIN branch (how the recoil
+-- family actually triggers) is explicitly gated on
+-- `!(gMoveResultFlags & MOVE_RESULT_NO_EFFECT)`, and this is real-reachable
+-- since Take Down/Double-Edge are Normal-type and Ghost is immune to Normal.
+local recoilMoves = {}
+for k, v in pairs(Data.moves) do recoilMoves[k] = v end
+local ghostFoe = BattleEngine.makeBattler({ species = 0, level = 5, stats = charStats, types = { Data.TYPE_GHOST, Data.TYPE_GHOST }, moves = { { move = Data.MOVE_TACKLE, pp = 1 } } })
+local normalAttacker = BattleEngine.makeBattler({ species = 0, level = 5, stats = bulbaStats, types = { Data.TYPE_NORMAL, Data.TYPE_NORMAL }, moves = { { move = Data.MOVE_TAKE_DOWN, pp = 20 } } })
+battle = BattleEngine.new({ player = normalAttacker, foe = ghostFoe, moves = recoilMoves, typeChart = Data.typeChart, rng = scriptedRng({ 0, 1, 0 }) })
+statEvents = {}
+battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, statEvents)
+check("Take Down against a Ghost-type target emits noEffect and applies no recoil at all",
+  statEvents[2].type == "noEffect" and #statEvents == 2, statEvents[3])
+check("no-effect recoil consumes only the ordinary three RNG draws (no extra roll to skip)",
+  battle.rng.draws == 3, battle.rng.draws)
+check("no-effect recoil leaves the attacker's own HP untouched",
+  battle.player.hp == bulbaStats.hp, battle.player.hp)
+
+-- Real drain family (BattleEngine.DRAIN_MOVES): EFFECT_ABSORB=3 (Absorb,
+-- Mega Drain, Giga Drain, Leech Life) heals the attacker 1/2 of the real
+-- dealt HP, minimum 1, clamped at maxHP (real Cmd_datahpupdate's HP-goes-up
+-- branch).
+battle = makeBattle({ 0, 1, 0 }, { { move = Data.MOVE_ABSORB, pp = 20 } }, { { move = Data.MOVE_TACKLE, pp = 1 } })
+battle.player.hp = 5
+statEvents = {}
+battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, statEvents)
+dealt = statEvents[2].amount
+local expectedHeal = math.floor(dealt / 2)
+if expectedHeal == 0 then expectedHeal = 1 end
+check("Absorb deals damage then heals the attacker 1/2 of the real dealt HP",
+  statEvents[3].type == "drain" and statEvents[3].side == "player"
+    and statEvents[3].amount == expectedHeal
+    and statEvents[3].hpRemaining == math.min(bulbaStats.hp, 5 + expectedHeal),
+  statEvents[3])
+check("a landed drain move also consumes exactly the ordinary three RNG draws", battle.rng.draws == 3)
+
+-- Healing-clamp case: attacker missing only 1 HP, but the real dealt damage
+-- is well over 2, so the naive 1/2 heal would push past maxHP -- must clamp
+-- at maxHP exactly, matching this project's established heal-clamp pattern.
+battle = makeBattle({ 0, 1, 0 }, { { move = Data.MOVE_ABSORB, pp = 20 } }, { { move = Data.MOVE_TACKLE, pp = 1 } })
+battle.player.hp = bulbaStats.hp - 1
+statEvents = {}
+battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, statEvents)
+check("Absorb's heal is clamped at the attacker's real maxHP, not overshot",
+  statEvents[3].type == "drain" and battle.player.hp == bulbaStats.hp, battle.player.hp)
+
+-- Minimum-1 floor for drain too.
+battle = makeBattle({ 0, 1, 0 }, { { move = Data.MOVE_ABSORB, pp = 20 } }, { { move = Data.MOVE_TACKLE, pp = 1 } })
+battle.foe.hp = 1
+battle.player.hp = 5
+statEvents = {}
+battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, statEvents)
+check("Absorb's heal floors to the real minimum of 1 when hpDealt/2 would round to 0",
+  statEvents[2].amount == 1 and statEvents[3].amount == 1, statEvents[3])
+
+-- Real attacker-faints-first ordering (verified against
+-- BattleScript_MoveEffectRecoil/BattleScript_EffectAbsorb, both of which
+-- run `tryfaintmon BS_ATTACKER` and RETURN before the calling script's
+-- `tryfaintmon BS_TARGET`): a devastating recoil hit that both drops the
+-- defender to 0 and recoils the attacker to 0 on the same swing must
+-- resolve the attacker's own faint FIRST, deciding the real outcome even
+-- though the defender also reaches 0 HP the same turn. Driven through
+-- runTurn (not resolveMove directly) so the turn loop's own
+-- faint-double-check guard is exercised too.
+battle = makeBattle({ 0, 1, 0 }, { { move = Data.MOVE_TAKE_DOWN, pp = 20 } }, { { move = Data.MOVE_TACKLE, pp = 1 } })
+battle.player.speed = 20 -- player strikes first
+battle.player.hp = 1
+battle.foe.hp = 1
+events = battle:runTurn({ action = "move", moveSlot = 1 }, { action = "move", moveSlot = 1 })
+check("a lethal-both-ways recoil hit reports the attacker's own faint, not the defender's",
+  events[3].type == "damage" and events[3].hpRemaining == 0
+    and events[4].type == "recoil" and events[4].hpRemaining == 0
+    and events[5].type == "faint" and events[5].side == "player"
+    and events[6].type == "battleEnd" and events[6].outcome == "playerLost",
+  events)
+check("the real outcome is decided by the attacker's own faint (playerLost), not the defender's KO",
+  battle.outcome == "playerLost")
+check("the turn ends immediately after the attacker's own faint -- no duplicate defender faint event",
+  #events == 6, #events)
+
 -- supportsMove correctly rejects the real effect ids that the real
 -- gBattleScriptsForMoveEffects table wires to BattleScript_EffectHit
 -- instead of a stat-change script (see BattleEngine.lua's header note);
@@ -363,6 +501,13 @@ check("supportsMove rejects EFFECT_EVASION_DOWN_2=64 (real id aliases to EffectH
   not battle:supportsMove({ power = 0, effect = 64 }))
 check("supportsMove still accepts EFFECT_ATTACK_UP_2=50 (Swords Dance's real effect)",
   battle:supportsMove({ power = 0, effect = 50 }))
+-- EFFECT_DREAM_EATER=8 has power > 0 (it would otherwise pass the ordinary
+-- damaging-move check) but real BattleScript_EffectDreamEater only works
+-- against a sleeping target, a precondition this project doesn't model;
+-- supportsMove must reject it explicitly rather than silently running it as
+-- ordinary undrained damage.
+check("supportsMove rejects EFFECT_DREAM_EATER=8 despite power > 0 (needs unmodeled sleep status)",
+  not battle:supportsMove({ power = 100, effect = 8 }))
 
 -- A zero-power status move is outside this direct-damage slice and must
 -- fail loudly instead of being turned into accidental minimum damage.

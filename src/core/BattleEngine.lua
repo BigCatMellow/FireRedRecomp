@@ -26,6 +26,8 @@
 --   {type="critical", side=}                      -- emitted before damage
 --   {type="damage", side=<attacker>, target=<defender side>, amount=,
 --    hpRemaining=, superEffective=, notVeryEffective=}
+--   {type="recoil", side=<attacker>, amount=, hpRemaining=}
+--   {type="drain", side=<attacker>, amount=, hpRemaining=}
 --   {type="faint", side=}
 --   {type="noPP", side=, move=}                   -- see the Struggle stub
 --   {type="statChange", side=<target>, stat=, stages=-1, prevented=}
@@ -77,8 +79,8 @@
 --     the switch-in flow.
 --   * No status conditions, abilities, held items, weather, screens,
 --     multi-turn/charging moves, trapping, forced switching, multi-hit
---     moves, OHKO moves, recoil/drain, double battles, trainer AI, or
---     EXP/level-up on victory.
+--     moves, OHKO moves, double battles, trainer AI, or EXP/level-up on
+--     victory.
 --   * Pure single-stat stage-change moves (Growl/Tail Whip's full real
 --     family) ARE supported -- see BattleEngine.STAT_STAGE_MOVES and the
 --     move.power == 0 branch of resolveMove.
@@ -104,6 +106,63 @@
 --     Still explicitly not ported: non-pure-single-stat effects
 --     (EFFECT_HAZE, EFFECT_FOCUS_ENERGY, EFFECT_TRANSFORM, EFFECT_REST,
 --     etc). supportsMove() correctly rejects those.
+--   * Recoil and drain ARE supported -- see BattleEngine.RECOIL_MOVES /
+--     BattleEngine.DRAIN_MOVES and resolveMove's step 8a. EFFECT_RECOIL=48
+--     (Take Down, Submission, and Struggle -- all three real gBattleMoves
+--     entries share this one effect id) docks the attacker 1/4 of the
+--     actual (already-clamped) HP it just dealt, minimum 1; EFFECT_DOUBLE_
+--     EDGE=198 (Double-Edge only) docks 1/3, minimum 1; EFFECT_ABSORB=3
+--     (Absorb, Mega Drain, Giga Drain, Leech Life) heals the attacker 1/2,
+--     minimum 1, clamped at maxHP. Ordinary damaging moves otherwise --
+--     same accuracy/crit/damage/type pipeline, applied only once real
+--     damage has actually been dealt to the defender. Verified against real
+--     Cmd_seteffectsecondary (src/battle_script_commands.c's
+--     MOVE_EFFECT_RECOIL_25/33 cases) and Cmd_negativedamage, and against
+--     the real battle scripts (data/battle_scripts_1.s):
+--       - Recoil is real-gated off on a type-immune (no-effect) hit: real
+--         Cmd_seteffectwithchance's MOVE_EFFECT_CERTAIN branch (which is
+--         how the recoil family, setmoveeffect'd as CERTAIN, actually
+--         triggers -- no Random() roll at all, unlike the _HIT chance
+--         family sharing that same real instruction slot) explicitly checks
+--         `!(gMoveResultFlags & MOVE_RESULT_NO_EFFECT)`. Ported by simply
+--         placing the recoil dispatch after the existing noEffect early
+--         return, same as the _HIT family. This is real-reachable (Take
+--         Down/Double-Edge are Normal-type; Ghost is immune to Normal).
+--       - Absorb's real `negativedamage` script step is technically NOT
+--         gated on MOVE_RESULT_NO_EFFECT at all (unlike recoil, it isn't
+--         routed through Cmd_seteffectwithchance); taken completely
+--         literally it would still force a minimum 1-HP heal on a no-effect
+--         hit, using whatever gHpDealt happens to still hold from a
+--         previous, unrelated datahpupdate call (real Cmd_datahpupdate
+--         leaves gHpDealt completely untouched, not even zeroed, when
+--         MOVE_RESULT_NO_EFFECT is set) -- i.e. real hardware behavior here
+--         depends on unrelated prior battle state, not a formula of the
+--         current hit. This is also permanently unreachable in real
+--         FireRed: every EFFECT_ABSORB move is Grass or Bug type, and the
+--         real gTypeEffectiveness table has zero immunities to either type.
+--         Ported the same clean way as recoil (skip on noEffect) since
+--         that's both behaviorally unreachable and the only sane choice for
+--         a stateless per-move engine.
+--     Real ordering, verified against BattleScript_MoveEffectRecoil and
+--     BattleScript_EffectAbsorb: both apply the attacker's own HP change
+--     and run `tryfaintmon BS_ATTACKER` BEFORE returning to the calling
+--     script, which only then runs `tryfaintmon BS_TARGET` -- so a hit that
+--     both drops the defender to 0 and recoils/drains the attacker to 0 on
+--     the same swing resolves the attacker's own faint FIRST. resolveMove
+--     calls checkFaint for the attacker right there in step 8a, and
+--     runTurn's call sites all check isOver() immediately after
+--     resolveMove returns so they never re-check (and potentially
+--     overwrite) an outcome the attacker's own faint already decided.
+--     Not ported: the "no PP -> auto-Struggle" trigger (separate, larger,
+--     explicitly out-of-scope feature -- see the noPP stub above; Struggle
+--     works fine here as an ordinary EFFECT_RECOIL move if a slot happens
+--     to hold move id MOVE_STRUGGLE=165), EFFECT_RECOIL_IF_MISS=45 (Jump
+--     Kick/Hi Jump Kick's crash-on-miss damage -- a different real effect
+--     id and mechanic), and EFFECT_DREAM_EATER=8 (heals like Absorb but
+--     real BattleScript_EffectDreamEater only works against a sleeping
+--     target -- a status-condition precondition this project doesn't model;
+--     supportsMove() explicitly rejects it rather than silently running it
+--     as ordinary undrained damage).
 --   * Real data/battle_scripts_1.s ALSO defines EFFECT_SPEED_UP=12,
 --     EFFECT_SPECIAL_DEFENSE_UP=14, EFFECT_ACCURACY_UP=15,
 --     EFFECT_ACCURACY_UP_2=55, EFFECT_EVASION_UP_2=56,
@@ -134,6 +193,14 @@ BattleEngine.SIDE_PLAYER = "player"
 BattleEngine.SIDE_FOE = "foe"
 BattleEngine.EFFECT_ATTACK_DOWN = 18
 BattleEngine.EFFECT_DEFENSE_DOWN = 19
+-- EFFECT_DREAM_EATER=8: real BattleScript_EffectDreamEater
+-- (data/battle_scripts_1.s:427) jumps straight to "wasn't affected" unless
+-- the target's real status1 has STATUS1_SLEEP set -- a status-condition
+-- precondition this engine doesn't model. supportsMove() rejects it
+-- explicitly below so it doesn't fall through to the ordinary damage path
+-- (its power field is > 0, so it would otherwise silently pass the
+-- power > 0 check and run as ordinary undrained damage).
+BattleEngine.EFFECT_DREAM_EATER = 8
 
 -- Real MOVE_TARGET_USER bit (include/battle.h: (1 << 4)). Whether a move
 -- targets its own user is decoded straight from the move's real `target`
@@ -194,6 +261,60 @@ BattleEngine.HIT_VARIANT_STAT_MOVES = {
   [73] = { stat = "accuracy",  delta = -1, targetSelf = false }, -- EFFECT_ACCURACY_DOWN_HIT
   [138] = { stat = "defense",  delta =  1, targetSelf = true },  -- EFFECT_DEFENSE_UP_HIT
   [139] = { stat = "attack",   delta =  1, targetSelf = true },  -- EFFECT_ATTACK_UP_HIT
+}
+
+-- The real recoil family: an ordinary damaging move that, immediately after
+-- dealing damage, docks the ATTACKER's own HP by a fraction of the actual
+-- (already-clamped) HP it just removed from the defender. Real
+-- Cmd_seteffectsecondary / SetMoveEffect (src/battle_script_commands.c
+-- ~2508 and ~2711): `gBattleMoveDamage = gHpDealt / divisor; if 0, force 1`.
+-- `divisor` matches the real MOVE_EFFECT_RECOIL_25 (Take Down, Submission,
+-- and Struggle -- all three real gBattleMoves entries literally share
+-- EFFECT_RECOIL, confirmed against src/data/battle_moves.h) and
+-- MOVE_EFFECT_RECOIL_33 (Double-Edge only) cases. Real BattleScript_
+-- EffectRecoil/EffectDoubleEdge (data/battle_scripts_1.s) `setmoveeffect`
+-- this with MOVE_EFFECT_CERTAIN before falling into BattleScript_EffectHit,
+-- so it lands at the exact same real script position as the _HIT family's
+-- seteffectwithchance step above -- but MOVE_EFFECT_CERTAIN means
+-- Cmd_seteffectwithchance takes its certain-effect branch with NO Random()
+-- roll at all (confirmed against that function's real body), unlike the
+-- _HIT family's chance roll. Also confirmed: that same real function guards
+-- BOTH its certain-effect branch and its chance-roll branch with
+-- `!(gMoveResultFlags & MOVE_RESULT_NO_EFFECT)`, so recoil genuinely never
+-- triggers on a type-immune hit (reachable in real play: Take Down/
+-- Double-Edge are Normal-type, and Ghost is immune to Normal) -- ported by
+-- simply placing this dispatch after resolveMove's existing noEffect early
+-- return, same as the _HIT family.
+BattleEngine.RECOIL_MOVES = {
+  [48] = { divisor = 4 },  -- EFFECT_RECOIL (Take Down, Submission, Struggle)
+  [198] = { divisor = 3 }, -- EFFECT_DOUBLE_EDGE (Double-Edge)
+}
+
+-- The real drain family: EFFECT_ABSORB (Absorb, Mega Drain, Giga Drain,
+-- Leech Life -- confirmed against src/data/battle_moves.h) heals the
+-- attacker by a fraction of the actual HP just dealt. Real Cmd_negativedamage
+-- (src/battle_script_commands.c:6643): `gBattleMoveDamage = -(gHpDealt /
+-- divisor); if 0, force -1`. Unlike the recoil family, real
+-- BattleScript_EffectAbsorb's `negativedamage` step is NOT gated behind a
+-- MOVE_RESULT_NO_EFFECT check anywhere in the real script or the real
+-- command itself -- it's a plain unconditional script instruction, not
+-- routed through Cmd_seteffectwithchance at all. Taken completely literally
+-- this means real Absorb would still force a 1-HP heal on an immune hit
+-- using whatever gHpDealt happens to still hold from a previous, unrelated
+-- datahpupdate call (real Cmd_datahpupdate leaves the gHpDealt global
+-- entirely untouched -- not even zeroed -- when MOVE_RESULT_NO_EFFECT is
+-- set, confirmed against that function's real body). That's not a
+-- real per-move formula, it's stale/leftover global state from whatever
+-- else happened earlier in the battle, and it is provably unreachable in
+-- real FireRed play anyway: every EFFECT_ABSORB move is Grass (Absorb/Mega
+-- Drain/Giga Drain) or Bug (Leech Life) type, and the real gTypeEffectiveness
+-- table has zero immunities to either type, so a no-effect Absorb-family
+-- hit can never happen on real hardware. Ported the same clean way as
+-- recoil (skip on noEffect, via the existing early return) since that is
+-- both behaviorally unreachable and the only sane choice for a stateless
+-- per-move engine.
+BattleEngine.DRAIN_MOVES = {
+  [3] = { divisor = 2 }, -- EFFECT_ABSORB (Absorb, Mega Drain, Giga Drain, Leech Life)
 }
 
 -- Builds a battler table from computed stats. `stats` is a
@@ -280,6 +401,7 @@ end
 
 function BattleEngine:supportsMove(move)
   if not move then return false end
+  if move.effect == BattleEngine.EFFECT_DREAM_EATER then return false end
   return move.power > 0 or BattleEngine.STAT_STAGE_MOVES[move.effect] ~= nil
 end
 
@@ -448,6 +570,56 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
     events[#events + 1] = { type="tutorialTip", kind="damage" }
   end
 
+  -- 8a. Recoil/drain: a real self-inflicted HP change derived from the
+  -- actual, already-clamped `damage` just dealt (real gHpDealt). See
+  -- BattleEngine.RECOIL_MOVES/DRAIN_MOVES for the exact real formulas and
+  -- their per-family noEffect gating.
+  --
+  -- Real ordering (verified against data/battle_scripts_1.s):
+  -- BattleScript_MoveEffectRecoil and BattleScript_EffectAbsorb both apply
+  -- the attacker's own HP change and run `tryfaintmon BS_ATTACKER` BEFORE
+  -- returning to the calling script, which only then runs
+  -- `tryfaintmon BS_TARGET`. So a hit that both drops the defender to 0 and
+  -- recoils/drains the attacker to 0 on the same swing resolves the
+  -- attacker's own faint FIRST -- this is the real outcome even for a
+  -- simultaneous double-KO. checkFaint is called here, for the attacker,
+  -- before control returns to runTurn's existing defender-faint check.
+  local recoilEntry = BattleEngine.RECOIL_MOVES[move.effect]
+  if recoilEntry then
+    local recoil = math.floor(damage / recoilEntry.divisor)
+    if recoil == 0 then recoil = 1 end
+    if recoil > attacker.hp then recoil = attacker.hp end
+    attacker.hp = attacker.hp - recoil
+    events[#events + 1] = {
+      type = "recoil", side = attackerSide, amount = recoil, hpRemaining = attacker.hp,
+    }
+    if self:checkFaint(attackerSide, events) then
+      return
+    end
+  end
+
+  local drainEntry = BattleEngine.DRAIN_MOVES[move.effect]
+  if drainEntry then
+    local heal = math.floor(damage / drainEntry.divisor)
+    if heal == 0 then heal = 1 end
+    -- Real Cmd_datahpupdate's HP-goes-up branch clamps at maxHP (src/
+    -- battle_script_commands.c ~1789-1794), matching this project's
+    -- established heal-clamp pattern (e.g. WildPokemonFactory/
+    -- BattlePartyBridge's math.max(0, math.min(maxHP, hp))).
+    attacker.hp = math.max(0, math.min(attacker.maxHP, attacker.hp + heal))
+    events[#events + 1] = {
+      type = "drain", side = attackerSide, amount = heal, hpRemaining = attacker.hp,
+    }
+    -- Real BattleScript_EffectAbsorb also runs tryfaintmon BS_ATTACKER
+    -- before BS_TARGET; a heal can never itself faint the attacker, but
+    -- checkFaint is called here anyway for structural symmetry with the
+    -- recoil path (and correctness if this table ever gains a
+    -- Liquid-Ooze-style negative-drain entry).
+    if self:checkFaint(attackerSide, events) then
+      return
+    end
+  end
+
   -- 8. seteffectwithchance (real Cmd_seteffectwithchance, after
   -- resultmessage/waitmessage and before tryfaintmon): a fresh
   -- Random()%100<=percentChance roll, consumed exactly once here because
@@ -539,7 +711,12 @@ function BattleEngine:runTurn(playerAction, foeAction)
       return events
     end
     self:resolveMove(BattleEngine.SIDE_FOE, foeAction.moveSlot, events)
-    self:checkFaint(BattleEngine.SIDE_PLAYER, events)
+    -- A recoil/drain move can already have ended the battle via the foe's
+    -- own faint inside resolveMove (see its real attacker-faints-first
+    -- ordering note); don't re-check/overwrite the outcome if so.
+    if not self:isOver() then
+      self:checkFaint(BattleEngine.SIDE_PLAYER, events)
+    end
     return events
   end
 
@@ -561,7 +738,9 @@ function BattleEngine:runTurn(playerAction, foeAction)
     end
     -- Failed run: the player loses the action, the foe still attacks.
     self:resolveMove(BattleEngine.SIDE_FOE, foeAction.moveSlot, events)
-    self:checkFaint(BattleEngine.SIDE_PLAYER, events)
+    if not self:isOver() then
+      self:checkFaint(BattleEngine.SIDE_PLAYER, events)
+    end
     return events
   end
 
@@ -582,6 +761,13 @@ function BattleEngine:runTurn(playerAction, foeAction)
     local side, action = entry[1], entry[2]
     if self:battler(side).hp > 0 then
       self:resolveMove(side, action.moveSlot, events)
+      -- A recoil/drain move can already have ended the battle via the
+      -- attacker's own faint inside resolveMove (real attacker-faints-first
+      -- ordering -- see that function's step 8a). Don't let a defender that
+      -- also happens to be at 0 HP re-check and overwrite the real outcome.
+      if self:isOver() then
+        return events
+      end
       if self:checkFaint(otherSide(side), events) then
         return events
       end

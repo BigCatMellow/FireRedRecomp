@@ -49,6 +49,10 @@ M.MOVE_ACID = 51
 M.MOVE_PSYCHIC = 94
 M.MOVE_STEEL_WING = 211
 M.MOVE_METAL_CLAW = 232
+M.MOVE_TAKE_DOWN = 36
+M.MOVE_DOUBLE_EDGE = 38
+M.MOVE_SUBMISSION = 66
+M.MOVE_ABSORB = 71
 
 -- Real MOVE_TARGET_* bits (include/battle.h).
 M.MOVE_TARGET_SELECTED = 0
@@ -101,6 +105,19 @@ M.moves = {
                           secondaryEffectChance = 10, target = M.MOVE_TARGET_SELECTED, priority = 0, flags = 0 },
   [M.MOVE_METAL_CLAW] = { effect = 139, power = 50, type = M.TYPE_STEEL, accuracy = 95, pp = 35,
                           secondaryEffectChance = 10, target = M.MOVE_TARGET_SELECTED, priority = 0, flags = 0 },
+  -- Recoil family (BattleEngine.RECOIL_MOVES): Take Down/Submission share
+  -- real EFFECT_RECOIL=48 (25% recoil); Double-Edge is the separate real
+  -- EFFECT_DOUBLE_EDGE=198 (33% recoil).
+  [M.MOVE_TAKE_DOWN] = { effect = 48, power = 90, type = M.TYPE_NORMAL, accuracy = 85, pp = 20,
+                        secondaryEffectChance = 0, target = M.MOVE_TARGET_SELECTED, priority = 0, flags = 0 },
+  [M.MOVE_SUBMISSION] = { effect = 48, power = 80, type = M.TYPE_FIGHTING, accuracy = 80, pp = 25,
+                          secondaryEffectChance = 0, target = M.MOVE_TARGET_SELECTED, priority = 0, flags = 0 },
+  [M.MOVE_DOUBLE_EDGE] = { effect = 198, power = 120, type = M.TYPE_NORMAL, accuracy = 100, pp = 15,
+                           secondaryEffectChance = 0, target = M.MOVE_TARGET_SELECTED, priority = 0, flags = 0 },
+  -- Drain family (BattleEngine.DRAIN_MOVES): real EFFECT_ABSORB=3 (50%
+  -- heal); Absorb itself.
+  [M.MOVE_ABSORB] = { effect = 3, power = 20, type = M.TYPE_GRASS, accuracy = 100, pp = 20,
+                      secondaryEffectChance = 0, target = M.MOVE_TARGET_SELECTED, priority = 0, flags = 0 },
 }
 
 -- Real gSpeciesInfo base stats + types.
