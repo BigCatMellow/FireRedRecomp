@@ -301,6 +301,19 @@ function ScriptInterpreter:step()
   elseif op == "removeitem" then
     callHook(world, "onRemoveItem", self:getVar(instr.itemVarId), self:getVar(instr.quantityVarId))
     self.pc = self:resolveAddr(nextAddr)
+  elseif op == "pokemart" then
+    -- Real ScrCmd_pokemart's ScriptContext_Stop() pauses execution until
+    -- the real mart menu closes, but this VM never self-pauses (every
+    -- opcode here always advances self.pc in the same :step() call, same
+    -- as message/waitbuttonpress) -- callers that want the real "don't
+    -- resume until the mart closes" behavior must gate their own :step()
+    -- cadence on world.onPokemart's own completion, the same real-time-
+    -- driver responsibility DialogueRunner.lua's header already documents
+    -- for waitbuttonpress. onPokemart is deliberately unhooked by
+    -- DialogueRunner today (see its header: every opcode outside the
+    -- message family stays unhooked there), matching real trainerbattle.
+    callHook(world, "onPokemart", instr.itemListPtr)
+    self.pc = self:resolveAddr(nextAddr)
   elseif op == "applymovement" then
     callHook(world, "onApplyMovement", self:getVar(instr.localIdVarId), instr.movementScriptPtr)
     self.pc = self:resolveAddr(nextAddr)

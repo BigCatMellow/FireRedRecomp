@@ -97,5 +97,63 @@ local text = Charmap.decode(textBytes)
 check("real decoded text is PalletTown_Text_TownSign's exact real content",
   text == "PALLET TOWN\nShades of your journey await!", text)
 
+-- Real Viridian City Mart clerk script (data/maps/ViridianCity_Mart/
+-- scripts.inc): message, waitmessage, then `pokemart
+-- ViridianCity_Mart_Items`, then a real trailing msgbox/release/end --
+-- the clerk's object event script is at ViridianCity_Mart's group 5,
+-- map 3 (MAP_VIRIDIAN_CITY_MART, include/constants/map_groups.h:
+-- `(3 | (5 << 8))` -- num=3, group=5).
+local MAP_VIRIDIAN_CITY_MART = 5 * 256 + 3
+local martHeader = MapHeader.resolve(data, addrs.gMapGroups, MAP_VIRIDIAN_CITY_MART)
+local martEvents = MapEvents.resolve(data, martHeader.eventsPtr)
+check("Viridian Mart map has at least one object event (the clerk)",
+  martEvents.objectEvents and martEvents.objectEvents[0] ~= nil)
+
+-- Real script content confirms which object event is the clerk (its
+-- decoded instructions must reach a real `pokemart` opcode); scan every
+-- object event on the map rather than assuming a specific local id, so
+-- this doesn't silently break if the real event ordering ever surprises.
+local pokemartInstr, pokemartAddrToIndex, clerkPtr
+local i = 0
+while martEvents.objectEvents[i] do
+  local obj = martEvents.objectEvents[i]
+  if obj.scriptPtr and obj.scriptPtr ~= 0 then
+    local ok2, decoded, a2i = pcall(ScriptBytecode.decode, data, obj.scriptPtr)
+    if ok2 then
+      for _, instr in ipairs(decoded) do
+        if instr.op == "pokemart" then
+          pokemartInstr, pokemartAddrToIndex, clerkPtr = decoded, a2i, obj.scriptPtr
+          break
+        end
+      end
+    end
+  end
+  if pokemartInstr then break end
+  i = i + 1
+end
+check("found the real clerk object event whose script contains a real pokemart opcode",
+  pokemartInstr ~= nil, "no object event script on Viridian Mart decoded a pokemart opcode")
+
+if pokemartInstr then
+  local pokemartAt
+  for _, instr in ipairs(pokemartInstr) do
+    if instr.op == "pokemart" then pokemartAt = instr end
+  end
+  -- Real ViridianCity_Mart_Items: ITEM_POKE_BALL(4), ITEM_POTION(13),
+  -- ITEM_ANTIDOTE(14), ITEM_PARALYZE_HEAL(18), ITEM_NONE(0) terminator --
+  -- confirms the decoded pointer really does resolve to the same real
+  -- stock list src/core/PokemonMartMenu.lua/main.lua's `M` view hardcodes.
+  local base = pokemartAt.itemListPtr - ScriptBytecode.romBase
+  local function u16leAt(off)
+    local b1, b2 = data:byte(base + off + 1), data:byte(base + off + 2)
+    return b1 + b2 * 256
+  end
+  local realItems = { u16leAt(0), u16leAt(2), u16leAt(4), u16leAt(6), u16leAt(8) }
+  check("real ViridianCity_Mart_Items resolves to POKE_BALL/POTION/ANTIDOTE/PARALYZE_HEAL/NONE",
+    realItems[1] == 4 and realItems[2] == 13 and realItems[3] == 14
+      and realItems[4] == 18 and realItems[5] == 0,
+    table.concat(realItems, ","))
+end
+
 print(("%d passed, %d failed"):format(passed, failed))
 os.exit(failed == 0 and 0 or 1)

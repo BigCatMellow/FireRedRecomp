@@ -53,6 +53,7 @@
 --   0x69 lockall, 0x6a lock, 0x6b releaseall, 0x6c release,
 --   0x6d waitbuttonpress, 0x6e yesnobox, 0x6f multichoice,
 --   0x79 givemon, 0x7a giveegg,
+--   0x86 pokemart,
 --   0x97 fadescreen, 0x98 fadescreenspeed.
 --
 -- Explicitly NOT implemented (real opcodes, deliberately out of scope --
@@ -323,6 +324,24 @@ op(0x79, "givemon", function(cur)
     unkParam1 = unkParam1, unkParam2 = unkParam2, unkParam3 = readU8(cur) }
 end, "seq")
 op(0x7a, "giveegg", function(cur) return { speciesVarId = readU16(cur) } end, "seq")
+
+-- Real ScrCmd_pokemart (src/scrcmd.c): one real u32 pointer arg (the
+-- item-list table, e.g. ViridianCity_Mart_Items -- an array of real u16
+-- item ids terminated by ITEM_NONE, a separate real table this decoder
+-- does not itself resolve, matching how e.g. warp's destination map data
+-- is decoded as raw ids without this module reaching into MapHeader).
+-- Real handler body is exactly `CreatePokemartMenu(ptr);
+-- ScriptContext_Stop();` -- ScriptContext_Stop pauses THIS script's own
+-- execution until the real mart menu closes and calls back in, but the
+-- script does resume afterward at the real next instruction (confirmed
+-- against ViridianCity_Mart/scripts.inc: `pokemart ...` is directly
+-- followed by a real `msgbox`/`release`/`end` sequence that only makes
+-- sense if execution continues past it) -- "seq" here, same as
+-- waitbuttonpress/message, not "terminal": the actual pause-until-closed
+-- behavior belongs to whatever real-time driver calls :step() (see
+-- ScriptInterpreter.lua's callHook comments), not to this decoder's flow
+-- classification.
+op(0x86, "pokemart", function(cur) return { itemListPtr = readU32(cur) } end, "seq")
 
 op(0x97, "fadescreen", function(cur) return { mode = readU8(cur) } end, "seq")
 op(0x98, "fadescreenspeed", function(cur)

@@ -205,7 +205,37 @@ do
     and instr9.defeatSpeechPtr == defeatB and instr9.victorySpeechPtr == victoryB and instr9.cannotBattleSpeechPtr == nil)
 end
 
--- 7) An unimplemented opcode byte must decode to a stub and make the
+-- 7) pokemart: real ScrCmd_pokemart's single u32 item-list pointer arg,
+--    decoded exactly like the real ViridianCity_Mart clerk's script
+--    (`pokemart ViridianCity_Mart_Items` followed by a real msgbox/
+--    release/end -- confirming the real script DOES resume after this
+--    opcode, not stop there, matching this decoder's "seq" flow choice).
+do
+  local itemListAddr = 0x08123456
+  local bytes = u8(0x86) .. u32le(itemListAddr) -- pokemart <ptr>
+    .. u8(0x67) .. u32le(0x08001000)             -- message (real script's "Please come again")
+    .. u8(0x6c)                                  -- release
+    .. u8(0x02)                                  -- end
+  local data, entry = image(bytes)
+  local instrs, addrToIndex = ScriptBytecode.decode(data, entry)
+  check("pokemart decodes with a real trailing script (message/release/end reachable after it)",
+    #instrs == 4 and instrs[1].op == "pokemart" and instrs[1].itemListPtr == itemListAddr
+      and instrs[2].op == "message" and instrs[3].op == "release" and instrs[4].op == "end",
+    instrs[1] and instrs[1].itemListPtr)
+
+  local seenPtr, messagesAfter = nil, 0
+  local vm = ScriptInterpreter.new(instrs, addrToIndex, {
+    onPokemart = function(ptr) seenPtr = ptr end,
+    onMessage = function() messagesAfter = messagesAfter + 1 end,
+  })
+  local finished = vm:run(100)
+  check("script finished cleanly past pokemart", finished)
+  check("onPokemart hook receives the real item-list pointer", seenPtr == itemListAddr, seenPtr)
+  check("the script keeps running past pokemart to the real trailing message (not terminal)",
+    messagesAfter == 1)
+end
+
+-- 8) An unimplemented opcode byte must decode to a stub and make the
 --    interpreter fail loudly (not silently no-op), per the handoff doc.
 do
   local bytes = u8(0xFF) -- not in gScriptCmdTable's decoded subset
