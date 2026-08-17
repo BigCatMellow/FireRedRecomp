@@ -57,6 +57,7 @@ M.MOVE_DOUBLE_SLAP = 3
 M.MOVE_FURY_ATTACK = 31
 M.MOVE_DOUBLE_KICK = 24
 M.MOVE_BONEMERANG = 155
+M.MOVE_STRUGGLE = 165
 
 -- Real MOVE_TARGET_* bits (include/battle.h).
 M.MOVE_TARGET_SELECTED = 0
@@ -137,6 +138,14 @@ M.moves = {
                            secondaryEffectChance = 0, target = M.MOVE_TARGET_SELECTED, priority = 0, flags = 0x33 },
   [M.MOVE_BONEMERANG] = { effect = 44, power = 50, type = M.TYPE_GROUND, accuracy = 90, pp = 10,
                           secondaryEffectChance = 0, target = M.MOVE_TARGET_SELECTED, priority = 0, flags = 0x32 },
+  -- Struggle (BattleEngine.MOVE_STRUGGLE / the auto-Struggle trigger):
+  -- real EFFECT_RECOIL=48 (same family as Take Down/Submission above),
+  -- ordinary accuracy=100 (checked normally, not an always-hit special
+  -- case -- see BattleEngine.lua's header). Real flags = FLAG_MAKES_CONTACT
+  -- (1) | FLAG_PROTECT_AFFECTED(2) | FLAG_MIRROR_MOVE_AFFECTED(0x10) |
+  -- FLAG_KINGS_ROCK_AFFECTED(0x20) = 0x33.
+  [M.MOVE_STRUGGLE] = { effect = 48, power = 50, type = M.TYPE_NORMAL, accuracy = 100, pp = 1,
+                        secondaryEffectChance = 0, target = M.MOVE_TARGET_SELECTED, priority = 0, flags = 0x33 },
 }
 
 -- Real gSpeciesInfo base stats + types.

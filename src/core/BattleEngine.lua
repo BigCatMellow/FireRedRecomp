@@ -72,10 +72,39 @@
 --
 -- DOCUMENTED STUBS / SIMPLIFICATIONS in this slice (each is a real
 -- mechanic deliberately not ported, never a silently wrong formula):
---   * Struggle: real FireRed makes a mon with no usable PP use MOVE_STRUGGLE
---     (gProtectStructs.noValidMoves -> BattleScript_NoPPForMove). Here,
---     selecting a 0-PP move emits a {type="noPP"} event and the attacker
---     simply loses its action for the turn. No Struggle move, no recoil.
+--   * Struggle IS supported -- see resolveMove's real AreAllMovesUnusable
+--     check (src/battle_util.c) at the top of the function. This engine
+--     only ever models the PP move-limitation (no status conditions,
+--     Disable, Torment, Taunt, Imprison, Encore, or held items), so the
+--     real "every one of the battler's move slots is unusable" condition
+--     reduces to exactly one checkable thing here: every move slot the
+--     battler has is at 0 PP. When that holds, real battle_main.c
+--     (search noValidMoves) sets `gCurrentMove = gChosenMove =
+--     MOVE_STRUGGLE` and `gHitMarker |= HITMARKER_NO_PPDEDUCT` -- ported
+--     the same way: the caller's requested moveSlot is ignored entirely
+--     and BattleEngine.MOVE_STRUGGLE=165 (a caller-supplied self.moves
+--     entry, since it is never actually stored in a battler's own move
+--     slots) is resolved instead, with the ppreduce step skipped (there is
+--     no slot to decrement). Struggle (real effect = EFFECT_RECOIL=48,
+--     power=50, accuracy=100) then runs the ordinary accuracy-checked
+--     damage pipeline like any other move -- confirmed against real
+--     Cmd_accuracycheck (src/battle_script_commands.c), which has no
+--     MOVE_STRUGGLE special case at all, so Struggle really can miss, not
+--     an always-hit move -- and its recoil falls straight through the
+--     already-implemented BattleEngine.RECOIL_MOVES[48] path. Separately,
+--     if only the caller's SELECTED slot is at 0 PP while another slot
+--     still has PP, that's a state the real move-select menu would never
+--     produce (a 0-PP move is greyed out while others remain choosable),
+--     but this engine performs no UI-level menu validation -- so that
+--     specific case still defensively no-ops with a {type="noPP"} event
+--     rather than crashing or fabricating an action.
+--     NOT ported (confirmed real but out of scope): real Cmd_typecalc
+--     special-cases MOVE_STRUGGLE to skip STAB and type-effectiveness
+--     entirely (always neutral damage, never blocked by an immunity, e.g.
+--     against a Ghost-type) -- this engine's Struggle runs the ordinary
+--     typeCalc step instead, so it WILL currently register as noEffect
+--     against an immune type where real FireRed would not. Flagged here
+--     for a future pass; not fixed as part of the auto-Struggle trigger.
 --   * A faint still ends the battle -- unchanged. The real forced
 --     switch-after-faint party-select prompt is a separate, unbuilt
 --     feature (this is a bounded 1v1 engine in that one specific sense:
@@ -168,10 +197,10 @@
 --     runTurn's call sites all check isOver() immediately after
 --     resolveMove returns so they never re-check (and potentially
 --     overwrite) an outcome the attacker's own faint already decided.
---     Not ported: the "no PP -> auto-Struggle" trigger (separate, larger,
---     explicitly out-of-scope feature -- see the noPP stub above; Struggle
---     works fine here as an ordinary EFFECT_RECOIL move if a slot happens
---     to hold move id MOVE_STRUGGLE=165), EFFECT_RECOIL_IF_MISS=45 (Jump
+--     The "no valid moves -> auto-Struggle" trigger IS ported -- see the
+--     Struggle paragraph above and resolveMove's real AreAllMovesUnusable
+--     check at the top of the function.
+--     Not ported: EFFECT_RECOIL_IF_MISS=45 (Jump
 --     Kick/Hi Jump Kick's crash-on-miss damage -- a different real effect
 --     id and mechanic), and EFFECT_DREAM_EATER=8 (heals like Absorb but
 --     real BattleScript_EffectDreamEater only works against a sleeping
@@ -343,6 +372,13 @@ BattleEngine.RECOIL_MOVES = {
   [198] = { divisor = 3 }, -- EFFECT_DOUBLE_EDGE (Double-Edge)
 }
 
+-- Real MOVE_STRUGGLE id (include/constants/moves.h). Used only by the
+-- auto-Struggle trigger in resolveMove -- see the header's Struggle
+-- paragraph. Struggle is never stored in a battler's move slots (real
+-- gBattleMons[].moves never contains it); a caller's `moves` table needs
+-- an entry keyed by this id for the trigger to have anything to resolve.
+BattleEngine.MOVE_STRUGGLE = 165
+
 -- The real drain family: EFFECT_ABSORB (Absorb, Mega Drain, Giga Drain,
 -- Leech Life -- confirmed against src/data/battle_moves.h) heals the
 -- attacker by a fraction of the actual HP just dealt. Real Cmd_negativedamage
@@ -486,27 +522,71 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
   local defenderSide = otherSide(attackerSide)
   local defender = self:battler(defenderSide)
 
-  local slot = attacker.moves[moveSlot]
-  if not slot then
-    error(("battler %s has no move in slot %d"):format(attackerSide, moveSlot))
+  -- Real AreAllMovesUnusable (src/battle_util.c) checked BEFORE the caller's
+  -- chosen slot is even looked at: CheckMoveLimitations ORs together several
+  -- real reasons a slot can be unusable (0 PP, Disable, Torment, Taunt,
+  -- Imprison, Encore, Choice Band lock), and if every one of the battler's
+  -- move slots ends up unusable, `gProtectStructs[].noValidMoves` is set.
+  -- This engine models none of those other mechanics (no status conditions,
+  -- no Disable/Taunt/Imprison/Encore, no held items) -- confirmed by reading
+  -- CheckMoveLimitations end to end, none of those fields exist anywhere in
+  -- this codebase -- so for this engine the real condition reduces to
+  -- exactly one checkable thing: every move slot the battler has is at 0 PP.
+  local allMovesUnusable = true
+  for i = 1, #attacker.moves do
+    if attacker.moves[i].pp > 0 then
+      allMovesUnusable = false
+      break
+    end
   end
-  local move = self.moves[slot.move]
-  if not move then
-    error(("unknown move id %s"):format(tostring(slot.move)))
+
+  local slot, move
+  if allMovesUnusable then
+    -- Real battle_main.c (search noValidMoves): `gCurrentMove = gChosenMove
+    -- = MOVE_STRUGGLE; gHitMarker |= HITMARKER_NO_PPDEDUCT`. The real move
+    -- menu doesn't even let the player choose in this state -- it
+    -- substitutes Struggle automatically -- so this is a precondition check
+    -- on the whole battler, and it overrides whatever `moveSlot` the caller
+    -- passed. There is no real move slot for Struggle (no `slot` local);
+    -- ppreduce below must be skipped entirely for it.
+    move = self.moves[BattleEngine.MOVE_STRUGGLE]
+    if not move then
+      error("battle needs a moves[" .. BattleEngine.MOVE_STRUGGLE ..
+        "] (MOVE_STRUGGLE) entry for the auto-Struggle trigger")
+    end
+  else
+    slot = attacker.moves[moveSlot]
+    if not slot then
+      error(("battler %s has no move in slot %d"):format(attackerSide, moveSlot))
+    end
+    move = self.moves[slot.move]
+    if not move then
+      error(("unknown move id %s"):format(tostring(slot.move)))
+    end
   end
 
   if not self:supportsMove(move) then
     error(("unsupported move effect %d for non-damaging move %d")
-      :format(move.effect or -1, slot.move))
+      :format(move.effect or -1, slot and slot.move or BattleEngine.MOVE_STRUGGLE))
   end
 
-  -- Documented Struggle stub (see header): out of PP means no action.
-  if slot.pp <= 0 then
+  -- Defensive path only, real-game-unreachable: the caller selected a
+  -- specific 0-PP slot while at least one OTHER slot of this battler still
+  -- has PP (allMovesUnusable is false, so `slot` is set here, not Struggle).
+  -- The real move-select menu greys out a 0-PP move and would never let a
+  -- player submit this choice while another move remains available -- but
+  -- this engine performs no UI-level move-menu validation, so a caller can
+  -- still pass such a moveSlot. Don't crash, don't invent an action: keep
+  -- the pre-existing no-op/noPP behavior for this specific unreachable case.
+  if slot and slot.pp <= 0 then
     events[#events + 1] = { type = "noPP", side = attackerSide, move = slot.move }
     return
   end
 
-  events[#events + 1] = { type = "useMove", side = attackerSide, move = slot.move }
+  events[#events + 1] = {
+    type = "useMove", side = attackerSide,
+    move = slot and slot.move or BattleEngine.MOVE_STRUGGLE,
+  }
 
   -- Real BattleScript_EffectStatUp (every self-target UP/UP_2 effect) has
   -- NO accuracycheck step at all: attackcanceler -> attackstring ->
@@ -541,8 +621,12 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
   -- 2. ppreduce -- real order: after the accuracy roll (or, for a
   -- self-target UP move, in the same slot where accuracycheck would have
   -- been), and on the miss path too (BattleScript_PrintMoveMissed also
-  -- runs ppreduce).
-  slot.pp = slot.pp - 1
+  -- runs ppreduce). Real HITMARKER_NO_PPDEDUCT means Struggle (no `slot`,
+  -- see above) skips this step entirely -- there is no move slot of its
+  -- own to decrement.
+  if slot then
+    slot.pp = slot.pp - 1
+  end
 
   if not hit then
     events[#events + 1] = { type = "miss", side = attackerSide }

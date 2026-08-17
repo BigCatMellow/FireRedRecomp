@@ -522,11 +522,97 @@ battle = BattleEngine.new({
 local ok = pcall(function() battle:runTurn({ action = "move", moveSlot = 1 }, { action = "move", moveSlot = 1 }) end)
 check("unsupported zero-power move fails loudly", not ok)
 
--- Explicit no-PP stub: no Struggle is silently invented in this first
--- slice, and the other battler can still act.
-battle = makeBattle({ 0, 1, 0 }, { { move = Data.MOVE_TACKLE, pp = 0 } }, { { move = Data.MOVE_EMBER, pp = 1 } })
+-- Real AreAllMovesUnusable trigger: a battler with only ONE move slot at
+-- 0 PP has ALL of its (one) move slots unusable, so real FireRed auto-
+-- Struggles here rather than skipping the turn -- this is no longer the
+-- old documented no-PP stub. `0,1,0` is Struggle's own accuracy/crit/
+-- damage roll (hit, no crit, 100% multiplier); Struggle's real EFFECT_
+-- RECOIL=48 damage/recoil math is exercised again below in more detail.
+battle = makeBattle({ 0, 1, 0, 0, 1, 0 }, { { move = Data.MOVE_TACKLE, pp = 0 } }, { { move = Data.MOVE_EMBER, pp = 1 } })
 events = battle:runTurn({ action = "move", moveSlot = 1 }, { action = "move", moveSlot = 1 })
-check("zero PP emits documented noPP event", events[#events].type == "noPP" or events[2].type == "noPP")
+local struggleUse
+for _, e in ipairs(events) do
+  if e.type == "useMove" and e.side == "player" then struggleUse = e end
+end
+check("a single 0-PP move slot auto-Struggles instead of the old noPP stub",
+  struggleUse ~= nil and struggleUse.move == Data.MOVE_STRUGGLE)
+check("Struggle's own slot PP is never touched by the auto-trigger",
+  battle.player.moves[1].pp == 0)
+
+-- Real defensive case: multiple move slots where only the SELECTED one is
+-- at 0 PP while another slot still has PP. The real move-select menu would
+-- never let a player submit this (a 0-PP move is greyed out while another
+-- remains choosable), but this engine does no UI-level menu validation, so
+-- it must not crash or fabricate an action -- confirmed from source
+-- (AreAllMovesUnusable only fires when EVERY slot is unusable) that this
+-- specific case is NOT an auto-Struggle trigger; the pre-existing no-op
+-- {type="noPP"} path is correct here and is preserved unchanged.
+battle = makeBattle({ 0, 1, 0 },
+  { { move = Data.MOVE_TACKLE, pp = 0 }, { move = Data.MOVE_EMBER, pp = 25 } },
+  { { move = Data.MOVE_EMBER, pp = 1 } })
+events = battle:runTurn({ action = "move", moveSlot = 1 }, { action = "move", moveSlot = 1 })
+check("selecting one empty slot while another still has PP still no-ops with noPP, not Struggle",
+  (events[#events].type == "noPP" or events[2].type == "noPP")
+  and battle.player.moves[1].pp == 0 and battle.player.moves[2].pp == 25)
+
+-- All slots at 0 PP (multiple real move slots, all exhausted) auto-
+-- Struggles regardless of which moveSlot the caller happens to request --
+-- real AreAllMovesUnusable is a battler-wide precondition checked before
+-- the requested slot is even looked at. Passing moveSlot=2 (itself a real,
+-- empty, 0-PP slot) must still resolve Struggle's own real data
+-- (self.moves[165]), not slot 2's move.
+battle = makeBattle({ 0, 1, 0, 0, 1, 0 },
+  { { move = Data.MOVE_TACKLE, pp = 0 }, { move = Data.MOVE_EMBER, pp = 0 } },
+  { { move = Data.MOVE_EMBER, pp = 1 } })
+events = battle:runTurn({ action = "move", moveSlot = 2 }, { action = "move", moveSlot = 1 })
+struggleUse = nil
+for _, e in ipairs(events) do
+  if e.type == "useMove" and e.side == "player" then struggleUse = e end
+end
+check("all move slots at 0 PP auto-Struggles even when moveSlot points at an empty slot",
+  struggleUse ~= nil and struggleUse.move == Data.MOVE_STRUGGLE)
+check("neither real move slot's PP changes when Struggle is auto-selected",
+  battle.player.moves[1].pp == 0 and battle.player.moves[2].pp == 0)
+
+-- Struggle is an ordinary accuracy-checked move (real accuracy=100, no
+-- MOVE_STRUGGLE special case in Cmd_accuracycheck) -- it can miss like any
+-- other move. With both battlers at neutral stat stages a real 100-
+-- accuracy move mathematically cannot miss (calc=100, and roll%100+1 tops
+-- out at 100), so raise the defender's evasion stage to real max (+6, real
+-- MAX_STAT_STAGE=12) the same way a real Sand-Attack/Double Team sequence
+-- would, dropping the effective hit ratio below 100 and making a miss
+-- reachable via an ordinary roll -- confirming Struggle really runs
+-- BattleFormulas.accuracyCheck with no special-casing, not a hidden
+-- always-hit shortcut. Foe (faster) uses Ember first as a normal hit
+-- (draws 1-3), then the boosted-evasion foe causes the player's Struggle
+-- accuracy roll (draw 4) to miss.
+battle = makeBattle({ 0, 1, 0, 50 }, { { move = Data.MOVE_TACKLE, pp = 0 } }, { { move = Data.MOVE_EMBER, pp = 1 } })
+battle.foe.statStages.evasion = 12
+events = battle:runTurn({ action = "move", moveSlot = 1 }, { action = "move", moveSlot = 1 })
+local playerMiss
+for _, e in ipairs(events) do
+  if e.type == "miss" and e.side == "player" then playerMiss = e end
+end
+check("Struggle runs the ordinary accuracy check and can miss",
+  playerMiss ~= nil)
+check("a missed Struggle still consumes no PP from any real slot",
+  battle.player.moves[1].pp == 0)
+
+-- Struggle deals damage and recoils the user via the already-implemented
+-- EFFECT_RECOIL=48 path (BattleEngine.RECOIL_MOVES[48], divisor 4, min 1) --
+-- this reuses the exact same recoil pipeline Take Down/Submission already
+-- exercise above, so a passing assertion here is also a regression check
+-- that recoil is still wired correctly for Struggle specifically.
+battle = makeBattle({ 0, 1, 0, 0, 1, 0 }, { { move = Data.MOVE_TACKLE, pp = 0 } }, { { move = Data.MOVE_EMBER, pp = 1 } })
+events = battle:runTurn({ action = "move", moveSlot = 1 }, { action = "move", moveSlot = 1 })
+local dmgEvent, recoilEvent
+for _, e in ipairs(events) do
+  if e.type == "damage" and e.side == "player" then dmgEvent = e end
+  if e.type == "recoil" and e.side == "player" then recoilEvent = e end
+end
+check("Struggle deals real damage", dmgEvent ~= nil and dmgEvent.amount > 0)
+check("Struggle recoils the user via the existing RECOIL_MOVES[48] path",
+  recoilEvent ~= nil and recoilEvent.amount == math.max(1, math.floor(dmgEvent.amount / 4)))
 
 -- Real multi-hit family (BattleEngine.MULTI_HIT_MOVES / resolveMultiHit):
 -- accuracy is checked exactly ONCE for the whole move (already covered by
@@ -734,6 +820,7 @@ if romPath then
   check("ROM Tackle record fully matches fixture", sameMove(realMoves[Data.MOVE_TACKLE], Data.moves[Data.MOVE_TACKLE]))
   check("ROM Ember record fully matches fixture", sameMove(realMoves[Data.MOVE_EMBER], Data.moves[Data.MOVE_EMBER]))
   check("ROM Quick Attack record fully matches fixture", sameMove(realMoves[Data.MOVE_QUICK_ATTACK], Data.moves[Data.MOVE_QUICK_ATTACK]))
+  check("ROM Struggle record fully matches fixture", sameMove(realMoves[Data.MOVE_STRUGGLE], Data.moves[Data.MOVE_STRUGGLE]))
   check("ROM Bulbasaur stats/types match fixture", realSpecies[1].baseHP == Data.BULBASAUR.baseHP and realSpecies[1].types[1] == Data.BULBASAUR.types[1] and realSpecies[1].types[2] == Data.BULBASAUR.types[2])
   check("ROM Charmander stats/types match fixture", realSpecies[4].baseHP == Data.CHARMANDER.baseHP and realSpecies[4].types[1] == Data.CHARMANDER.types[1])
   check("ROM type chart has the real 111 rows and Electric->Ground immunity", realTypes[110] ~= nil and realTypes[19].multiplier == 0)
