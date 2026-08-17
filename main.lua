@@ -423,6 +423,10 @@ end
 local walkActive = false
 local walkMapBlockData, walkMapWidth, walkMapHeight -- raw (unpadded) collision grid, set when the map loads
 local walkMapWarps -- 0-indexed array of {x, y, elevation, warpId, mapNum, mapGroup} for the current map (MapEvents.lua, real Phase 1 data)
+-- world.walkMapConnections (not a local): the current map's real
+-- MapConnections (import/MapConnections.lua), or {} if none -- kept off
+-- the main chunk's own locals for the same real Lua 200-local-per-chunk
+-- limit noted elsewhere in this file (see world.beginMart's comment).
 local walkMapId -- group*256+num of the currently-loaded map
 local walkMapPrimaryAttrsPtr, walkMapSecondaryAttrsPtr -- current map's real Tileset.metatileAttributesPtr (MetatileAttributes.lua), for tall-grass/ledge behavior lookups
 
@@ -472,6 +476,8 @@ local romData, romAddrs
 local playerMovement
 local loadMap, tryWarpAt, startWildBattle, syncSessionLocation, bootstrapFreshSession,
   tryEarlyStoryTriggerAt, acceptStarterChoice -- forward-declared: movement/encounter tasks call these before their definitions
+-- world.connectionForEdge/world.tryConnectionAt (not locals): same real
+-- 200-local-per-chunk limit as world.walkMapConnections above.
 local WALK_CAMERA_WIDTH, WALK_CAMERA_HEIGHT = 240, 160 -- real GBA screen resolution
 
 -- Real metatile BEHAVIOR byte at (x,y) (MetatileAttributes.lua, real
@@ -501,8 +507,37 @@ local MB = MetatileAttributes.BEHAVIOR
 -- real door behaviors relevant to buildings/caves (MB_WARP_DOOR,
 -- MB_CAVE_DOOR) -- other real passable-despite-collision behaviors (arrow
 -- warps, stairs, ladders, fall/hole warps) aren't covered.
+-- Real GetMapBorderIdAt/GetIncomingConnection (src/fieldmap.c): a step
+-- exactly one tile past the current map's edge is allowed, not blocked,
+-- when a real MapConnection exists for that edge's direction. Returns the
+-- matching connection, or nil. Simplified vs. real source: this project
+-- doesn't yet resolve the destination map's own width/height here to
+-- reject a connection whose real coverage doesn't reach this particular
+-- (x,y) (IsCoordInIncomingConnectingMap's own bounds check) -- fine for
+-- every map connection landed so far (Pallet Town's north/south
+-- connections are each the one and only connection for that direction
+-- and span the whole shared edge), but a future map with more than one
+-- partial connection per direction would need that check added.
+world.connectionForEdge = function(x, y)
+  if not world.walkMapConnections then return nil end
+  local MapConnections = require("import.MapConnections")
+  local direction
+  if x < 0 then direction = MapConnections.CONNECTION_WEST
+  elseif x >= walkMapWidth then direction = MapConnections.CONNECTION_EAST
+  elseif y < 0 then direction = MapConnections.CONNECTION_NORTH
+  elseif y >= walkMapHeight then direction = MapConnections.CONNECTION_SOUTH
+  else return nil end
+  for _, conn in pairs(world.walkMapConnections) do
+    if conn.direction == direction then return conn end
+  end
+  return nil
+end
+
 local function isWalkTileBlocked(x, y)
-  if not walkMapBlockData or x < 0 or x >= walkMapWidth or y < 0 or y >= walkMapHeight then return true end
+  if not walkMapBlockData then return true end
+  if x < 0 or x >= walkMapWidth or y < 0 or y >= walkMapHeight then
+    return world.connectionForEdge(x, y) == nil
+  end
   local behavior = getMetatileBehaviorAt(x, y)
   if behavior == MB.MB_WARP_DOOR or behavior == MB.MB_CAVE_DOOR then return false end
   local cell = walkMapBlockData[y * walkMapWidth + x]
@@ -647,6 +682,7 @@ local function playerMovementTask(taskId)
     -- belongs to the source map, so don't incorrectly roll the destination
     -- tile's encounter table during that same step.
     if not tryEarlyStoryTriggerAt(playerMovement.tileX, playerMovement.tileY)
+        and not world.tryConnectionAt(playerMovement.tileX, playerMovement.tileY)
         and not tryWarpAt(playerMovement.tileX, playerMovement.tileY) then
       rollWildEncounterAt(playerMovement.tileX, playerMovement.tileY)
     end
@@ -1566,6 +1602,7 @@ function loadMap(data, addrs, mapId, dbg)
   walkMapBlockData, walkMapWidth, walkMapHeight = blockData, layout.width, layout.height
   local events = MapEvents.resolve(data, header.eventsPtr)
   walkMapWarps = events.warps
+  world.walkMapConnections = (header.connectionsPtr ~= 0) and require("import.MapConnections").resolve(data, header.connectionsPtr) or {}
   walkMapId = mapId
   walkMapPrimaryAttrsPtr = Tileset.resolve(data, layout.primaryTilesetPtr).metatileAttributesPtr
   walkMapSecondaryAttrsPtr = Tileset.resolve(data, layout.secondaryTilesetPtr).metatileAttributesPtr
@@ -1619,6 +1656,46 @@ function tryWarpAt(x, y)
     end
   end
   return false
+end
+
+-- Real edge-of-map connection crossing (src/fieldmap.c's
+-- SetPositionFromConnection, adapted from that function's pixel/camera
+-- coordinate space into this project's direct tile-local coordinates).
+-- Unlike a door/cave warp, real FireRed scrolls the camera seamlessly
+-- across two simultaneously-rendered adjacent maps rather than cutting to
+-- a freshly loaded one -- this project doesn't have dual-map rendering,
+-- so this is a documented simplification: a discrete map-swap the instant
+-- the completed step lands past the edge, at the exact real destination
+-- tile SetPositionFromConnection itself computes. Per real source, the
+-- perpendicular axis carries `connection.offset`; the axis along the
+-- crossed edge places the player at the corresponding far edge of the new
+-- map (e.g. crossing north lands on the new map's own southmost row).
+world.tryConnectionAt = function(x, y)
+  local conn = world.connectionForEdge(x, y)
+  if not conn then return false end
+  local MapConnections = require("import.MapConnections")
+  local destMapId = conn.mapGroup * 256 + conn.mapNum
+  loadMap(romData, romAddrs, destMapId, function() end)
+  local destX, destY
+  if conn.direction == MapConnections.CONNECTION_NORTH then
+    destX, destY = x - conn.offset, walkMapHeight - 1
+  elseif conn.direction == MapConnections.CONNECTION_SOUTH then
+    destX, destY = x - conn.offset, 0
+  elseif conn.direction == MapConnections.CONNECTION_WEST then
+    destX, destY = walkMapWidth - 1, y - conn.offset
+  else -- CONNECTION_EAST
+    destX, destY = 0, y - conn.offset
+  end
+  if destX < 0 or destX >= walkMapWidth or destY < 0 or destY >= walkMapHeight then
+    destX, destY = findFirstWalkableTile()
+  end
+  if destX and playerMovement then
+    playerMovement.tileX, playerMovement.tileY = destX, destY
+    playerMovement.moving = false
+    playerMovement.stepFrame = 0
+    syncSessionLocation()
+  end
+  return true
 end
 
 -- Persists only the field location that is currently represented by this
