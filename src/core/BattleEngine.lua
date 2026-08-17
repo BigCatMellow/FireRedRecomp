@@ -31,6 +31,9 @@
 --   {type="faint", side=}
 --   {type="noPP", side=, move=}                   -- see the Struggle stub
 --   {type="statChange", side=<target>, stat=, stages=-1, prevented=}
+--   {type="screenSet", side=, screen="reflect"|"lightScreen", turns=5}
+--   {type="screenFailed", side=, screen="reflect"|"lightScreen"} -- already active
+--   {type="screenExpired", side=, screen="reflect"|"lightScreen"} -- real 5-turn timer hit 0
 --   {type="tutorialTip", kind="damage"|"stat"}  -- Oak first-battle text
 --   {type="run", side=, success=}
 --   {type="switch", side=}                         -- voluntary switch resolved
@@ -123,7 +126,7 @@
 --     engine stays fully party-agnostic -- it has no idea what a "party
 --     slot" is; BattlePartyBridge owns real switch-target eligibility
 --     (Cmd_jumpifcantswitch: living, non-Egg, not the active slot).
---   * No status conditions, abilities, held items, weather, screens,
+--   * No status conditions, abilities, held items, weather,
 --     multi-turn/charging moves, trapping, forced switching, OHKO moves,
 --     double battles, trainer AI, or EXP/level-up on victory.
 --   * Pure single-stat stage-change moves (Growl/Tail Whip's full real
@@ -258,6 +261,81 @@
 --     helper (real Cmd_datahpupdate's HP-subtraction-floored-at-0 plus its
 --     damage event and FIRST_BATTLE tip), matching this project's existing
 --     shared-helper pattern.
+--   * Reflect and Light Screen ARE supported -- see BattleEngine.
+--     SCREEN_MOVES, resolveMove's move.power==0 dispatch, resolveScreenMove,
+--     decaySideTimers, and BattleFormulas.calculateBaseDamage's screen
+--     halving. Real EFFECT_REFLECT=65 (MOVE_REFLECT only) and
+--     EFFECT_LIGHT_SCREEN=35 (MOVE_LIGHT_SCREEN only) -- confirmed against
+--     src/data/battle_moves.h. Real BattleScript_EffectReflect/
+--     EffectLightScreen (data/battle_scripts_1.s): attackcanceler ->
+--     attackstring -> ppreduce -> setreflect/setlightscreen -> [message] ->
+--     MoveEnd -- NO accuracycheck step, the same self-target
+--     (MOVE_TARGET_USER), zero-RNG shape as STAT_STAGE_MOVES' self-target
+--     UP family, so this reuses that exact "no accuracy roll" detection
+--     rather than a separate mechanism. Real Cmd_setreflect/
+--     Cmd_setlightscreen (src/battle_script_commands.c): if the CASTER's
+--     own side already has the status active, it's a real no-op failure
+--     (MOVE_RESULT_MISSED, a "but it failed" message, no RNG, no state
+--     change, timer NOT refreshed) -- otherwise the flag sets on the
+--     caster's own side and a real 5-turn gSideTimers[side].reflectTimer/
+--     lightscreenTimer = 5 starts. This engine tracks that per-side state
+--     in BattleEngine.new()'s new self.sideStatus table (keyed by side
+--     string, since it's genuinely a per-SIDE status, outliving a
+--     voluntary switch on that side -- real gSideStatuses is never reset by
+--     an ordinary switch-in).
+--
+--     Damage-halving: real CalculateBaseDamage (src/pokemon.c) applies
+--     Reflect (physical branch, ~2542) / Light Screen (special branch,
+--     ~2600) in the exact real order `.../50 -> (burn halving, not
+--     modeled) -> Reflect/Light Screen halving -> (double-battle halving,
+--     not modeled) -> minimum-1 clamp`, tested against the DEFENDER's own
+--     side (real `sideStatus` param is the defender's, not the attacker's)
+--     and gated on a non-crit hit only (real `&& gCritMultiplier == 1` --
+--     a crit bypasses screens entirely). This project's pre-existing code
+--     applied its minimum-1 clamp immediately after the `/50` step, with
+--     no slot for a halving step before that clamp -- fixed by moving the
+--     physical branch's clamp to AFTER the new Reflect halving (separately
+--     from the special branch's Light Screen halving, matching how the
+--     real function has two nearly-identical but distinct blocks), so a
+--     1-damage physical hit halved by Reflect truncates to 0 and is then
+--     correctly clamped back up to 1 by the same real `if (damage == 0)
+--     damage = 1` clamp -- not a special "Reflect can't reduce below 1"
+--     rule, and not the wrong "clamp to 1 first, then halve to 0" order.
+--     The special branch genuinely has no such clamp in real source, with
+--     or without Light Screen -- a special hit Light Screen halves to 0
+--     legitimately stays 0, ported unchanged. Real double-battle
+--     `2 * (damage / 3)` variant and the real double-battle-specific
+--     message id are out of scope (single battle only, matching this
+--     project's whole scope).
+--
+--     End-of-turn decay: real ENDTURN_REFLECT/ENDTURN_LIGHT_SCREEN cases of
+--     DoFieldEndTurnEffects (src/battle_util.c) -- the first "end of turn"
+--     phase this engine has, added as BattleEngine:decaySideTimers, called
+--     from runTurn. Real BattleTurnPassed (src/battle_main.c:2953) only
+--     runs DoFieldEndTurnEffects when `gBattleOutcome == 0` (the battle is
+--     still continuing after every action chosen for the turn has
+--     finished) -- confirmed by reading HandleEndTurn_ContinueBattle, this
+--     is NOT conditioned on "an ordinary move exchange happened": it also
+--     fires after a switch-only turn or a failed capture/run attempt,
+--     since none of those decide gBattleOutcome. Only a turn that DOES
+--     decide the outcome this turn (a successful catch, a successful run,
+--     or a faint) skips it. Ported as `not self:isOver()` guards at every
+--     one of runTurn's normal-exit points (the switch branch, the
+--     failed-capture path, the failed-run path, and the ordinary two-move
+--     loop's fall-through), mirroring the real gBattleOutcome==0 gate
+--     exactly rather than gating on action type. Each active timer
+--     decrements by 1 (real per-side order: side 0 then side 1, ported as
+--     player then foe); reaching 0 clears the status and this project
+--     emits a {type="screenExpired"} event (real
+--     BattleScript_SideStatusWoreOff's message, adapted to this project's
+--     event-stream style rather than a string-table system it doesn't
+--     have).
+--
+--     Not ported: Safeguard/Mist (separate real effect ids with different
+--     real mechanics -- status-condition blocking and stat-lowering
+--     blocking respectively, neither of which this task covers) and Brick
+--     Break's real screen-removal special case
+--     (src/battle_script_commands.c ~9445) -- a different move entirely.
 --   * Capture is intentionally the first normal Poke Ball/no-status slice.
 --     CaptureRules owns the exact formula/shake RNG. This engine neither
 --     removes inventory nor copies a caught mon to party/PC or updates the
@@ -428,6 +506,26 @@ BattleEngine.MULTI_HIT_MOVES = {
   [44] = { fixed = 2 },   -- EFFECT_DOUBLE_HIT (Double Kick, Bonemerang): always exactly 2 hits.
 }
 
+-- The real screen family: a self-target (real MOVE_TARGET_USER, same
+-- targeting bit as STAT_STAGE_MOVES' self-target UP branch) side-wide
+-- damage-halving status. Real EFFECT_REFLECT=65 (MOVE_REFLECT only) and
+-- EFFECT_LIGHT_SCREEN=35 (MOVE_LIGHT_SCREEN only) -- confirmed against
+-- src/data/battle_moves.h, no other real gBattleMoves entry uses either
+-- id. Real BattleScript_EffectReflect/EffectLightScreen (data/
+-- battle_scripts_1.s): attackcanceler -> attackstring -> ppreduce ->
+-- setreflect/setlightscreen -> [message] -> MoveEnd -- NO accuracycheck
+-- step at all, exactly the same shape as STAT_STAGE_MOVES' self-target UP
+-- family, so resolveMove's existing isSelfTargetStat detection is
+-- extended to cover this table too rather than duplicating the "0 RNG,
+-- can't miss" logic. The string value is the key into
+-- BattleEngine's per-side sideStatus table (see BattleEngine.new) and
+-- doubles as the suffix of its paired Timer field ("reflect" ->
+-- .reflect/.reflectTimer, "lightScreen" -> .lightScreen/.lightScreenTimer).
+BattleEngine.SCREEN_MOVES = {
+  [65] = "reflect",     -- EFFECT_REFLECT (Reflect)
+  [35] = "lightScreen", -- EFFECT_LIGHT_SCREEN (Light Screen)
+}
+
 -- Builds a battler table from computed stats. `stats` is a
 -- PokemonStats.calculateAll() result (hp/attack/defense/speed/spAttack/
 -- spDefense). `types` is {type1, type2} (real gSpeciesInfo.types --
@@ -489,6 +587,19 @@ function BattleEngine.new(opts)
     rng = opts.rng,
     turn = 0,
     runTries = 0, -- real gBattleStruct->runTries
+    -- Real gSideStatuses/gSideTimers, reduced to the two fields this slice
+    -- models (SIDE_STATUS_REFLECT/SIDE_STATUS_LIGHTSCREEN and their paired
+    -- reflectTimer/lightscreenTimer, src/battle_util.c). Keyed by side
+    -- string (matching this engine's SIDE_PLAYER/SIDE_FOE convention, not
+    -- the real battler-index side) since this is a per-SIDE status, not
+    -- per-battler -- it survives a voluntary switch on that side (real
+    -- gSideStatuses is never cleared on an ordinary switch-in; only a
+    -- fainted mon's whole side leaving battle would matter, which this
+    -- bounded 1v1 engine doesn't model).
+    sideStatus = {
+      [BattleEngine.SIDE_PLAYER] = { reflect = false, reflectTimer = 0, lightScreen = false, lightScreenTimer = 0 },
+      [BattleEngine.SIDE_FOE] = { reflect = false, reflectTimer = 0, lightScreen = false, lightScreenTimer = 0 },
+    },
     firstBattle = opts.firstBattle == true,
     tutorialPlayerDamageDone = false,
     tutorialPlayerStatDone = false,
@@ -514,6 +625,7 @@ function BattleEngine:supportsMove(move)
   if not move then return false end
   if move.effect == BattleEngine.EFFECT_DREAM_EATER then return false end
   return move.power > 0 or BattleEngine.STAT_STAGE_MOVES[move.effect] ~= nil
+    or BattleEngine.SCREEN_MOVES[move.effect] ~= nil
 end
 
 -- Resolves one attack, appending its events. Returns nothing; the caller
@@ -598,7 +710,11 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
   local statEntry = BattleEngine.STAT_STAGE_MOVES[move.effect]
   local isSelfTargetStat = statEntry ~= nil
     and math.floor((move.target or 0) / MOVE_TARGET_USER) % 2 == 1
-  local needsAccuracyCheck = not isSelfTargetStat
+  -- Reflect/Light Screen (BattleEngine.SCREEN_MOVES) share this exact real
+  -- shape: a self-target move (real MOVE_TARGET_USER) whose battle script
+  -- has no accuracycheck step at all -- see SCREEN_MOVES' own comment.
+  local screenStatusKey = BattleEngine.SCREEN_MOVES[move.effect]
+  local needsAccuracyCheck = not isSelfTargetStat and not screenStatusKey
 
   -- The FIRST_BATTLE controller deliberately skips the first player
   -- accuracy RNG independently for a damaging move and for a (DOWN-family)
@@ -633,6 +749,10 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
   end
 
   if move.power == 0 then
+    if screenStatusKey then
+      self:resolveScreenMove(attackerSide, screenStatusKey, events)
+      return
+    end
     local stat = statEntry.stat
     local delta = statEntry.delta
     local targetSide = isSelfTargetStat and attackerSide or defenderSide
@@ -682,8 +802,12 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
   local isCrit = rolledCrit and not (self.firstBattle and not self.tutorialPlayerDamageDone)
 
   -- 4. damagecalc: base damage, then the real x2 crit multiply, which
-  -- happens BEFORE typecalc.
-  local damage = BattleFormulas.calculateBaseDamage(attacker, defender, move, isCrit)
+  -- happens BEFORE typecalc. Real `sideStatus` param is the DEFENDER's own
+  -- side (self.sideStatus[defenderSide] already has exactly the .reflect/
+  -- .lightScreen fields calculateBaseDamage expects); a crit's non-crit
+  -- gate is handled inside that function, not here.
+  local damage = BattleFormulas.calculateBaseDamage(
+    attacker, defender, move, isCrit, self.sideStatus[defenderSide])
   if isCrit then
     damage = damage * BattleFormulas.CRIT_MULTIPLIER
   end
@@ -816,6 +940,74 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
   end
 end
 
+-- Real Cmd_setreflect/Cmd_setlightscreen (src/battle_script_commands.c
+-- ~6415 and its lightscreen twin): if the CASTER's own side already has
+-- this status active, real MOVE_RESULT_MISSED is set and a "but it failed"
+-- message fires -- no RNG, no state change (real gSideTimers is left
+-- alone, not refreshed to 5). Otherwise the flag is set on the caster's
+-- OWN side (real `GET_BATTLER_SIDE(gBattlerAttacker)` -- a screen always
+-- protects the mover's own side, never the target's) and a real 5-turn
+-- `gSideTimers[side].reflectTimer/lightscreenTimer = 5` starts. `statusKey`
+-- is "reflect" or "lightScreen" (BattleEngine.SCREEN_MOVES); the paired
+-- Timer field is `statusKey .. "Timer"`, matching the two fields
+-- BattleEngine.new() initializes per side.
+function BattleEngine:resolveScreenMove(attackerSide, statusKey, events)
+  local status = self.sideStatus[attackerSide]
+  if status[statusKey] then
+    events[#events + 1] = { type = "screenFailed", side = attackerSide, screen = statusKey }
+    return
+  end
+  status[statusKey] = true
+  status[statusKey .. "Timer"] = 5
+  events[#events + 1] = { type = "screenSet", side = attackerSide, screen = statusKey, turns = 5 }
+end
+
+-- Real ENDTURN_REFLECT/ENDTURN_LIGHT_SCREEN cases of DoFieldEndTurnEffects
+-- (src/battle_util.c:466) -- the first "end of turn" phase this engine has.
+-- Real per-side order: side 0 (gBattleStruct->turnSideTracker == 0) before
+-- side 1 -- ported the same way, player before foe. Each active timer
+-- decrements by 1; when it reaches 0 the real code clears
+-- gSideStatuses[side] and runs BattleScript_SideStatusWoreOff (a real
+-- "protection wore off" message) -- represented here as a
+-- {type="screenExpired"} event, matching this project's existing
+-- per-side-effect event shape (e.g. {type="statChange", ...}) rather than
+-- inventing a message-string system this project doesn't have.
+--
+-- WHEN this runs (see runTurn's call sites): real BattleTurnPassed
+-- (src/battle_main.c:2953) only calls DoFieldEndTurnEffects when
+-- `gBattleOutcome == 0`, i.e. the battle is still continuing after every
+-- action chosen for this turn has finished executing. That is NOT the
+-- same thing as "an ordinary two-move exchange happened" -- real
+-- HandleEndTurn_ContinueBattle (src/battle_main.c) transitions to
+-- BattleTurnPassed unconditionally once the turn's chosen actions (move,
+-- voluntary switch, or a failed capture/run attempt) are done, with no
+-- special case for switch/item turns. So a switch-only turn or a
+-- failed-capture/failed-run turn still ticks these timers down exactly
+-- like a plain two-move turn does; only a turn that decides the battle
+-- outcome this turn (capture success, run success, or a faint) skips it.
+-- Ported as `not self:isOver()` at every one of runTurn's normal-exit
+-- points below, mirroring the real `gBattleOutcome == 0` gate exactly
+-- rather than gating on which action type occurred.
+function BattleEngine:decaySideTimers(events)
+  for _, side in ipairs({ BattleEngine.SIDE_PLAYER, BattleEngine.SIDE_FOE }) do
+    local status = self.sideStatus[side]
+    if status.reflect then
+      status.reflectTimer = status.reflectTimer - 1
+      if status.reflectTimer <= 0 then
+        status.reflect = false
+        events[#events + 1] = { type = "screenExpired", side = side, screen = "reflect" }
+      end
+    end
+    if status.lightScreen then
+      status.lightScreenTimer = status.lightScreenTimer - 1
+      if status.lightScreenTimer <= 0 then
+        status.lightScreen = false
+        events[#events + 1] = { type = "screenExpired", side = side, screen = "lightScreen" }
+      end
+    end
+  end
+end
+
 -- Real datahpupdate's HP subtraction (floored at 0), plus the resulting
 -- "damage" event and the FIRST_BATTLE damage-tutorial tip. Shared by the
 -- ordinary single-hit path (resolveMove's step 7) and resolveMultiHit's
@@ -904,7 +1096,8 @@ function BattleEngine:resolveMultiHit(attackerSide, attacker, defenderSide, defe
     local rolledCrit = BattleFormulas.critRoll(self.rng, 0)
     local isCrit = rolledCrit and not (self.firstBattle and not self.tutorialPlayerDamageDone)
 
-    local damage = BattleFormulas.calculateBaseDamage(attacker, defender, move, isCrit)
+    local damage = BattleFormulas.calculateBaseDamage(
+      attacker, defender, move, isCrit, self.sideStatus[defenderSide])
     if isCrit then
       damage = damage * BattleFormulas.CRIT_MULTIPLIER
     end
@@ -995,6 +1188,13 @@ function BattleEngine:runTurn(playerAction, foeAction)
     if not self:isOver() then
       self:checkFaint(BattleEngine.SIDE_PLAYER, events)
     end
+    -- Real gBattleOutcome == 0 gate (see decaySideTimers' comment): a
+    -- switch-only turn still reaches real BattleTurnPassed and ticks the
+    -- Reflect/Light Screen timers down, as long as the battle didn't just
+    -- end.
+    if not self:isOver() then
+      self:decaySideTimers(events)
+    end
     return events
   end
 
@@ -1034,6 +1234,12 @@ function BattleEngine:runTurn(playerAction, foeAction)
     if not self:isOver() then
       self:checkFaint(BattleEngine.SIDE_PLAYER, events)
     end
+    -- A failed capture still reaches real BattleTurnPassed (gBattleOutcome
+    -- is only set by a SUCCESSFUL catch, handled by the early return
+    -- above) -- so the timers still tick down here too.
+    if not self:isOver() then
+      self:decaySideTimers(events)
+    end
     return events
   end
 
@@ -1057,6 +1263,12 @@ function BattleEngine:runTurn(playerAction, foeAction)
     self:resolveMove(BattleEngine.SIDE_FOE, foeAction.moveSlot, events)
     if not self:isOver() then
       self:checkFaint(BattleEngine.SIDE_PLAYER, events)
+    end
+    -- A failed run still reaches real BattleTurnPassed (a SUCCESSFUL run
+    -- sets gBattleOutcome and returns above, before this point) -- the
+    -- timers still tick down.
+    if not self:isOver() then
+      self:decaySideTimers(events)
     end
     return events
   end
@@ -1090,6 +1302,11 @@ function BattleEngine:runTurn(playerAction, foeAction)
       end
     end
   end
+
+  -- Both actions for this ordinary move-exchange turn resolved without
+  -- deciding the battle outcome -- the real gBattleOutcome == 0 case that
+  -- reaches BattleTurnPassed and runs DoFieldEndTurnEffects.
+  self:decaySideTimers(events)
 
   return events
 end

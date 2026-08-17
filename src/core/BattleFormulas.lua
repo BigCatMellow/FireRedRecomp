@@ -97,12 +97,24 @@
 --
 -- Real modifiers NOT ported here (all no-ops in this slice, each because
 -- the system it depends on doesn't exist yet): held items and their hold
--- effects, abilities, badge stat boosts, burn's attack halving, Reflect/
--- Light Screen, weather, Explosion's defense halving, double-battle
--- spread-damage halving, Helping Hand, Charge, Flash Fire, Levitate and
--- Wonder Guard. Each is a documented gap, not an approximation: the
--- ported code paths above are byte-for-byte the real ones for a plain
--- single-battle direct-damage move with no items/abilities/status.
+-- effects, abilities, badge stat boosts, burn's attack halving, weather,
+-- Explosion's defense halving, double-battle spread-damage halving,
+-- Helping Hand, Charge, Flash Fire, Levitate and Wonder Guard. Each is a
+-- documented gap, not an approximation: the ported code paths above are
+-- byte-for-byte the real ones for a plain single-battle direct-damage move
+-- with no items/abilities/status.
+--
+-- 8. Reflect / Light Screen halving IS supported, inside
+--    calculateBaseDamage -- see that function's own comment for the exact
+--    real insertion point (src/pokemon.c's physical branch ~2542 and
+--    special branch ~2600) and the minimum-1-clamp ordering fix this
+--    required. Setting the status itself (real Cmd_setreflect/
+--    Cmd_setlightscreen) and its 5-turn end-of-turn decay
+--    (ENDTURN_REFLECT/ENDTURN_LIGHT_SCREEN, src/battle_util.c) live in
+--    BattleEngine.lua, not here -- this file only ever applies the
+--    already-decided halving to a damage number. Real double-battle
+--    2*(damage/3) variant and Brick Break's screen-removal are both out of
+--    scope (see BattleEngine.lua's header).
 
 local BattleFormulas = {}
 
@@ -204,7 +216,13 @@ end
 -- move: a parsed gBattleMoves record (import/BattleMove.lua) -- .power,
 --   .type.
 -- isCrit: whether Cmd_critcalc set gCritMultiplier to 2 this hit.
-function BattleFormulas.calculateBaseDamage(attacker, defender, move, isCrit)
+-- defenderScreens: optional {reflect=, lightScreen=} -- the DEFENDING
+--   side's own gSideStatuses flags (real `sideStatus` param is the
+--   defender's side, not the attacker's -- confirmed against the real
+--   function signature/call site). BattleEngine passes its
+--   self.sideStatus[defenderSide] table straight through, since that
+--   table already has exactly these two boolean fields.
+function BattleFormulas.calculateBaseDamage(attacker, defender, move, isCrit, defenderScreens)
   local moveType = move.type
   local power = move.power
   local damage = 0
@@ -235,7 +253,23 @@ function BattleFormulas.calculateBaseDamage(attacker, defender, move, isCrit)
     damage = idiv(damage, damageHelper)
     damage = idiv(damage, 50)
 
-    -- Real physical-only minimum-1 clamp (see header).
+    -- Real Reflect halving (src/pokemon.c ~2542): `if ((sideStatus &
+    -- SIDE_STATUS_REFLECT) && gCritMultiplier == 1) damage /= 2;` -- gated
+    -- on a NON-crit hit (a crit bypasses screens entirely), tested against
+    -- the DEFENDER's own side status. Real double-battle
+    -- `2 * (damage / 3)` variant is out of scope (single battle only).
+    if defenderScreens and defenderScreens.reflect and not isCrit then
+      damage = idiv(damage, 2)
+    end
+
+    -- Real physical-only minimum-1 clamp (see header). This must run AFTER
+    -- the Reflect halving above, not before -- real source order is
+    -- `.../50 -> (burn halving, not modeled) -> Reflect halving ->
+    -- (double-battle halving, not modeled) -> if (damage == 0) damage = 1`.
+    -- A 1-damage hit halved by Reflect truncates to 0 and is then clamped
+    -- back up to 1 by this same real clamp (not a special "Reflect can't
+    -- reduce below 1" rule -- it's the ordinary minimum-1 clamp, which just
+    -- happens to run after the halving now).
     if damage == 0 then
       damage = 1
     end
@@ -266,7 +300,18 @@ function BattleFormulas.calculateBaseDamage(attacker, defender, move, isCrit)
 
     damage = idiv(damage, damageHelper)
     damage = idiv(damage, 50)
-    -- No minimum-1 clamp here: real special branch genuinely lacks one.
+
+    -- Real Light Screen halving (src/pokemon.c ~2600), the special-branch
+    -- mirror of the Reflect halving above: same non-crit gate, tested
+    -- against the defender's own side status. Real double-battle
+    -- `2 * (damage / 3)` variant is out of scope (single battle only).
+    if defenderScreens and defenderScreens.lightScreen and not isCrit then
+      damage = idiv(damage, 2)
+    end
+    -- No minimum-1 clamp here: real special branch genuinely lacks one,
+    -- confirmed still true even after Light Screen halving -- real source
+    -- has no such clamp anywhere in this branch, so a special hit that
+    -- Light Screen halves to 0 legitimately stays 0.
   end
 
   return damage + 2

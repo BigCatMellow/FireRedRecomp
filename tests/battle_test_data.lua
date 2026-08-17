@@ -58,6 +58,8 @@ M.MOVE_FURY_ATTACK = 31
 M.MOVE_DOUBLE_KICK = 24
 M.MOVE_BONEMERANG = 155
 M.MOVE_STRUGGLE = 165
+M.MOVE_LIGHT_SCREEN = 113
+M.MOVE_REFLECT = 115
 
 -- Real MOVE_TARGET_* bits (include/battle.h).
 M.MOVE_TARGET_SELECTED = 0
@@ -146,6 +148,15 @@ M.moves = {
   -- FLAG_KINGS_ROCK_AFFECTED(0x20) = 0x33.
   [M.MOVE_STRUGGLE] = { effect = 48, power = 50, type = M.TYPE_NORMAL, accuracy = 100, pp = 1,
                         secondaryEffectChance = 0, target = M.MOVE_TARGET_SELECTED, priority = 0, flags = 0x33 },
+  -- Screen family (BattleEngine.SCREEN_MOVES): real self-target
+  -- (MOVE_TARGET_USER), accuracy=0 (unused -- no accuracycheck step in
+  -- their real battle script, exactly like Swords Dance/Agility/Amnesia
+  -- above), EFFECT_REFLECT=65 / EFFECT_LIGHT_SCREEN=35. Real flags =
+  -- FLAG_SNATCH_AFFECTED (1<<3 = 0x08) for both.
+  [M.MOVE_LIGHT_SCREEN] = { effect = 35, power = 0, type = M.TYPE_PSYCHIC, accuracy = 0, pp = 30,
+                            secondaryEffectChance = 0, target = M.MOVE_TARGET_USER, priority = 0, flags = 0x08 },
+  [M.MOVE_REFLECT] = { effect = 65, power = 0, type = M.TYPE_PSYCHIC, accuracy = 0, pp = 20,
+                       secondaryEffectChance = 0, target = M.MOVE_TARGET_USER, priority = 0, flags = 0x08 },
 }
 
 -- Real gSpeciesInfo base stats + types.

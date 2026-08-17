@@ -816,6 +816,176 @@ battle:runTurn({ action = "switch", battler = incoming2 }, { action = "move", mo
 check("a foe recoil-faint after a switch still resolves to a real outcome, not a crash",
   battle.outcome == "playerWon")
 
+-- Reflect / Light Screen (BattleEngine.SCREEN_MOVES, resolveScreenMove,
+-- decaySideTimers; BattleFormulas.calculateBaseDamage's screen halving).
+-- Real EFFECT_REFLECT=65 / EFFECT_LIGHT_SCREEN=35, self-target
+-- (MOVE_TARGET_USER), no accuracycheck step -- same 0-RNG shape as
+-- Swords Dance above.
+
+-- Setting Reflect: 0 RNG, real 5-turn timer, real screenSet event.
+battle = makeBattle({}, { { move = Data.MOVE_REFLECT, pp = 20 } }, { { move = Data.MOVE_TACKLE, pp = 1 } })
+statEvents = {}
+battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, statEvents)
+check("Reflect sets the caster's own side status and a real 5-turn timer",
+  statEvents[2].type == "screenSet" and statEvents[2].side == "player"
+    and statEvents[2].screen == "reflect" and statEvents[2].turns == 5, statEvents[2])
+check("Reflect is stored on the player's own sideStatus, real 5-turn timer",
+  battle.sideStatus.player.reflect == true and battle.sideStatus.player.reflectTimer == 5)
+check("self-target screen move consumes zero RNG (no real accuracycheck step)", battle.rng.draws == 0)
+
+-- Setting Light Screen: same shape, different table key.
+battle = makeBattle({}, { { move = Data.MOVE_LIGHT_SCREEN, pp = 30 } }, { { move = Data.MOVE_TACKLE, pp = 1 } })
+statEvents = {}
+battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, statEvents)
+check("Light Screen sets the caster's own side status and a real 5-turn timer",
+  statEvents[2].type == "screenSet" and statEvents[2].side == "player"
+    and statEvents[2].screen == "lightScreen" and statEvents[2].turns == 5, statEvents[2])
+check("Light Screen is stored on the player's own sideStatus, real 5-turn timer",
+  battle.sideStatus.player.lightScreen == true and battle.sideStatus.player.lightScreenTimer == 5)
+
+-- Real Cmd_setreflect: if the caster's own side already has the status,
+-- it's a no-op failure -- no RNG, no state change, timer NOT refreshed.
+battle = makeBattle({}, { { move = Data.MOVE_REFLECT, pp = 20 } }, { { move = Data.MOVE_TACKLE, pp = 1 } })
+statEvents = {}
+battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, statEvents)
+battle.sideStatus.player.reflectTimer = 3 -- simulate an already-decayed timer
+statEvents = {}
+battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, statEvents)
+check("casting Reflect while already active fails instead of refreshing it",
+  statEvents[2].type == "screenFailed" and statEvents[2].side == "player" and statEvents[2].screen == "reflect",
+  statEvents[2])
+check("a failed Reflect cast does not reset the real timer",
+  battle.sideStatus.player.reflectTimer == 3)
+check("a failed Reflect cast still consumes zero RNG", battle.rng.draws == 0)
+
+-- Physical hit against a Reflect-protected side takes real halved damage.
+-- Hand-computed against BattleFormulas.calculateBaseDamage directly:
+-- undefended Lv5 Bulbasaur Tackle on Lv5 Charmander is the real 4 (already
+-- verified above); with the foe's own side Reflect-protected it's the real
+-- halved 3 (2, halved from the real pre-clamp 2, stays 2, +2 == 4 without
+-- Reflect; with Reflect the pre-clamp 2 halves to 1, +2 == 3).
+battle = makeBattle({ 0, 1, 0 }, { { move = Data.MOVE_TACKLE, pp = 1 } }, { { move = Data.MOVE_TACKLE, pp = 1 } })
+battle.sideStatus.foe.reflect = true
+statEvents = {}
+battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, statEvents)
+check("a Reflect-protected foe takes real halved Tackle damage (4 -> 3)",
+  statEvents[2].type == "damage" and statEvents[2].amount == 3, statEvents[2])
+
+-- Special hit against a Light-Screen-protected side takes real halved
+-- damage. Undefended Lv5 Charmander Ember on Lv5 Bulbasaur is the real 14
+-- (already verified in the very first test above -- Ember gets both real
+-- STAB and Fire-vs-Grass super effectiveness against Bulbasaur, applied
+-- AFTER calculateBaseDamage's own halving step). Light Screen halves the
+-- pre-STAB/pre-type base from 5 to 3 (calculateBaseDamage's own halving,
+-- matching the earlier direct BattleFormulas check); STAB then makes that
+-- 3*15/10=4 (truncated), and the real Fire-vs-Grass 2x row then makes that
+-- the real final 8.
+battle = makeBattle({ 0, 1, 0 }, { { move = Data.MOVE_TACKLE, pp = 1 } }, { { move = Data.MOVE_EMBER, pp = 1 } })
+battle.sideStatus.player.lightScreen = true
+statEvents = {}
+battle:resolveMove(BattleEngine.SIDE_FOE, 1, statEvents)
+check("a Light-Screen-protected player takes real halved Ember damage (14 -> 8)",
+  statEvents[2].type == "damage" and statEvents[2].amount == 8, statEvents[2])
+
+-- Light Screen does not affect a physical hit, and Reflect does not affect
+-- a special hit -- each screen is real type-specific.
+battle = makeBattle({ 0, 1, 0 }, { { move = Data.MOVE_TACKLE, pp = 1 } }, { { move = Data.MOVE_TACKLE, pp = 1 } })
+battle.sideStatus.foe.lightScreen = true
+statEvents = {}
+battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, statEvents)
+check("Light Screen does not halve a physical Tackle hit (stays real 4)",
+  statEvents[2].amount == 4, statEvents[2])
+
+battle = makeBattle({ 0, 1, 0 }, { { move = Data.MOVE_TACKLE, pp = 1 } }, { { move = Data.MOVE_EMBER, pp = 1 } })
+battle.sideStatus.player.reflect = true
+statEvents = {}
+battle:resolveMove(BattleEngine.SIDE_FOE, 1, statEvents)
+check("Reflect does not halve a special Ember hit (stays real 14)",
+  statEvents[2].amount == 14, statEvents[2])
+
+-- A critical hit bypasses screens entirely (real `&& gCritMultiplier == 1`
+-- gate). Force a crit (rng % 16 == 0) against a Reflect-protected foe and
+-- confirm the resulting damage matches the ordinary (unhalved) crit
+-- damage: real base-with-crit is still 4 (this fixture's neutral stat
+-- stages mean the crit stat-ignoring branches don't change anything), x2
+-- crit multiplier = 8, neutral type/STAB, 100% random multiplier = 8.
+battle = makeBattle({ 0, 0, 0 }, { { move = Data.MOVE_TACKLE, pp = 1 } }, { { move = Data.MOVE_TACKLE, pp = 1 } })
+battle.sideStatus.foe.reflect = true
+statEvents = {}
+battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, statEvents)
+check("a critical hit ignores Reflect entirely, dealing the real unhalved crit damage",
+  statEvents[2].type == "critical" and statEvents[3].type == "damage" and statEvents[3].amount == 8,
+  statEvents[3])
+
+-- The minimum-1-after-halving edge case this task's clamp-ordering fix
+-- exists for: a hand-built attacker/defender/move where the real pre-clamp
+-- physical damage is exactly 1 (attack=2, power=1, level=100, factor
+-- (2*100/5+2)=42, damage=2*1*42=84, defense=1, 84/1=84, 84/50=1). Without
+-- Reflect that 1 is never clamped (1 ~= 0), returning the real 1+2=3.
+-- WITH Reflect, halving 1 truncates to 0 -- the real clamp
+-- `if (damage == 0) damage = 1` must still fire AFTER that halving,
+-- clamping back up to 1, so the real final result is the SAME 1+2=3 --
+-- not the wrong 0+2=2 a clamp-before-halve ordering bug would produce.
+local BattleFormulas = require("src.core.BattleFormulas")
+local edgeAttacker = { level = 100, attack = 2, defense = 1, spAttack = 2, spDefense = 1, statStages = {} }
+local edgeDefender = { level = 100, attack = 1, defense = 1, spAttack = 1, spDefense = 1, statStages = {} }
+local edgeMove = { power = 1, type = Data.TYPE_NORMAL }
+check("real minimum-1 clamp still fires after Reflect halves a pre-clamp-1 hit to 0",
+  BattleFormulas.calculateBaseDamage(edgeAttacker, edgeDefender, edgeMove, false, { reflect = true }) == 3,
+  BattleFormulas.calculateBaseDamage(edgeAttacker, edgeDefender, edgeMove, false, { reflect = true }))
+check("that same hit without Reflect is the identical real 3 (never needed the clamp)",
+  BattleFormulas.calculateBaseDamage(edgeAttacker, edgeDefender, edgeMove, false, nil) == 3)
+
+-- Real special-branch minimum-1 clamp does not exist at all, with or
+-- without Light Screen -- confirmed still true after this task's change.
+-- TYPE_MYSTERY forces 0 damage before the special branch even runs, so a
+-- 0-power-equivalent special hit legitimately returns 0 + 2 = 2 (not
+-- clamped to 1) whether or not Light Screen is active.
+local mysteryMove = { power = 40, type = BattleFormulas.TYPE_MYSTERY }
+check("the real special branch has no minimum-1 clamp, screened or not",
+  BattleFormulas.calculateBaseDamage(edgeAttacker, edgeDefender, mysteryMove, false, { lightScreen = true }) == 2)
+
+-- End-of-turn decay (BattleEngine:decaySideTimers, the first "end of turn"
+-- phase this engine has): real ENDTURN_REFLECT ticks the timer down once
+-- per completed turn, even a turn where the screen itself wasn't the move
+-- used. Turn 1 sets Reflect (timer 5); real DoFieldEndTurnEffects
+-- decrements it the SAME turn it was set (Cmd_setreflect runs mid-turn,
+-- before the real end-of-turn phase), so it's already 4 right after turn
+-- 1. Assert it's still active after 4 completed turns (timer counted down
+-- to 1) and gone after the 5th (timer hits 0, real "wore off" -- ported as
+-- {type="screenExpired"}).
+battle = makeBattle(
+  { 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+  { { move = Data.MOVE_REFLECT, pp = 20 }, { move = Data.MOVE_GROWL, pp = 40 } },
+  { { move = Data.MOVE_GROWL, pp = 40 } }
+)
+battle:runTurn({ action = "move", moveSlot = 1 }, { action = "move", moveSlot = 1 })
+check("Reflect is active with the real timer already decayed to 4 after its own setting turn",
+  battle.sideStatus.player.reflect == true and battle.sideStatus.player.reflectTimer == 4,
+  battle.sideStatus.player.reflectTimer)
+battle:runTurn({ action = "move", moveSlot = 2 }, { action = "move", moveSlot = 1 })
+battle:runTurn({ action = "move", moveSlot = 2 }, { action = "move", moveSlot = 1 })
+local turn4Events = battle:runTurn({ action = "move", moveSlot = 2 }, { action = "move", moveSlot = 1 })
+check("Reflect is still active after 4 completed turns (real timer at 1)",
+  battle.sideStatus.player.reflect == true and battle.sideStatus.player.reflectTimer == 1,
+  battle.sideStatus.player.reflectTimer)
+check("no screenExpired event fires before the real timer actually reaches 0", (function()
+  for _, e in ipairs(turn4Events) do
+    if e.type == "screenExpired" then return false end
+  end
+  return true
+end)())
+local turn5Events = battle:runTurn({ action = "move", moveSlot = 2 }, { action = "move", moveSlot = 1 })
+check("Reflect is gone after the real 5th turn (timer hit 0)",
+  battle.sideStatus.player.reflect == false and battle.sideStatus.player.reflectTimer == 0,
+  battle.sideStatus.player.reflectTimer)
+local expiredEvent
+for _, e in ipairs(turn5Events) do
+  if e.type == "screenExpired" then expiredEvent = e end
+end
+check("the real 5th-turn expiry emits a screenExpired event for the player's reflect",
+  expiredEvent ~= nil and expiredEvent.side == "player" and expiredEvent.screen == "reflect", expiredEvent)
+
 -- Optional ROM check: exact real parser output equals the no-ROM fixture.
 local romPath = os.getenv("POKEPORT_ROM")
 if romPath then
