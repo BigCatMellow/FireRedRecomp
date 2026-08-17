@@ -95,6 +95,8 @@ local Battle = {
   MartMenu = require("src.core.PokemonMartMenu"),
   StartMenu = require("src.core.StartMenu"),
   PartyScreen = require("src.core.PartyScreen"),
+  BagScreen = require("src.core.BagScreen"),
+  Bag = require("src.core.Bag"),
   PartyBridge = require("src.core.BattlePartyBridge"),
   Engine = require("src.core.BattleEngine"),
   Controller = require("src.core.BattleSceneController"),
@@ -1591,13 +1593,22 @@ world.closeStartMenu = function()
   world.startMenuActive = false
   world.partyScreen = nil
   world.partyScreenActive = false
+  if world.bagScreen and newGame.session then
+    Battle.SessionBagBridge.toSaveBlock1(world.bagScreen.bag, newGame.session.state.saveBlock1)
+  end
+  world.bagScreen = nil
+  world.bagScreenActive = false
 end
 
 -- Real StartMenuPokemonCallback (src/start_menu.c) -> CB2_PartyMenuFromStartMenu
 -- (src/party_menu.c ~5428): opens the real Party Screen against the live
--- session party. Every other real item this project doesn't have a live
--- system for yet (BAG's own start-menu entry point -- distinct from the
--- BAG button already wired inside battle --, PLAYER's Trainer Card,
+-- session party. BAG opens the real field-context Bag screen
+-- (StartMenuBagCallback -> Task_BagMenu_HandleInput) against the same
+-- real session bag the Mart/battle BAG action already share
+-- (SessionBagBridge, matching startWildBattle/beginMart's own pattern) --
+-- view/select only for now, no item-use context menu yet (see
+-- BagScreen.lua's header for that boundary). Every other real item this
+-- project doesn't have a live system for yet (PLAYER's Trainer Card,
 -- OPTION) shows a bounded, honest "not available yet" line instead of
 -- pretending to open something. SAVE reuses the real, already-live
 -- saveGame() (bound to the dev K key too) -- StartMenuSaveCallback's real
@@ -1605,7 +1616,16 @@ end
 -- project's saveGame() already does end to end.
 world.handleStartMenuSelection = function()
   local itemId = world.startMenu.selectedItemId
-  if itemId == Battle.StartMenu.POKEMON then
+  if itemId == Battle.StartMenu.BAG then
+    if newGame.session and world.battleCatalog and world.battleCatalog.items then
+      local sb1 = newGame.session.state.saveBlock1
+      local bag = Battle.SessionBagBridge.fromSaveBlock1(sb1, world.battleCatalog.items)
+      world.bagScreen = Battle.BagScreen.new(bag)
+      world.bagScreenActive = true
+    else
+      addLine("Bag could not open: no active session or ROM item table unavailable.")
+    end
+  elseif itemId == Battle.StartMenu.POKEMON then
     if newGame.session and (newGame.session.state.saveBlock1.playerPartyCount or 0) > 0 then
       local sb1 = newGame.session.state.saveBlock1
       -- PartyScreen.new only needs a read-only {:size(), :get(slot)}
@@ -2451,6 +2471,29 @@ world.partyScreenLines = function()
   return lines
 end
 
+world.bagScreenLines = function()
+  local b = world.bagScreen
+  local pocketNames = {
+    [Battle.Bag.POCKET_ITEMS] = "ITEMS", [Battle.Bag.POCKET_KEY_ITEMS] = "KEY ITEMS", [Battle.Bag.POCKET_POKE_BALLS] = "POKE BALLS",
+  }
+  local function itemName(itemId)
+    local entry = world.battleCatalog and world.battleCatalog.items and world.battleCatalog.items[itemId]
+    if not entry then return "ITEM " .. tostring(itemId) end
+    local ok, name = pcall(Charmap.decode, entry.rawName, true)
+    return ok and name or ("ITEM " .. tostring(itemId))
+  end
+  local lines = { ("BAG -- %s  (Left/Right: pocket, A: select, B: back)"):format(pocketNames[b:pocket()] or "?") }
+  for row, isCancel, itemId, quantity in b:iterateRows() do
+    local cursor = (row == b:cursorRow()) and "> " or "  "
+    if isCancel then
+      lines[#lines + 1] = cursor .. "CLOSE BAG"
+    else
+      lines[#lines + 1] = ("%s%s x%d"):format(cursor, itemName(itemId), quantity)
+    end
+  end
+  return lines
+end
+
 local function viewerStep(delta)
   local category = viewerCategory()
   if category == "maps" then
@@ -2921,6 +2964,21 @@ function love.update(dt)
         world.partyScreen = nil
         world.partyScreenActive = false
       end
+    elseif world.bagScreenActive and world.bagScreen then
+      world.bagScreen:processInput(inputState)
+      if world.bagScreen:isDone() then
+        -- Same real-B/CONFIRMED-both-return-to-Start-menu shape as
+        -- PartyScreen above -- BagScreen.lua's header explains why a real
+        -- per-item USE/TOSS context menu isn't built yet.
+        if world.bagScreen.state == Battle.BagScreen.CONFIRMED then
+          addLine(("Selected item %d (no USE/TOSS menu yet)."):format(world.bagScreen.confirmedItemId))
+        end
+        if newGame.session then
+          Battle.SessionBagBridge.toSaveBlock1(world.bagScreen.bag, newGame.session.state.saveBlock1)
+        end
+        world.bagScreen = nil
+        world.bagScreenActive = false
+      end
     elseif world.startMenuActive and world.startMenu then
       world.startMenu:processInput(inputState)
       if world.startMenu.state == Battle.StartMenu.CLOSED then
@@ -3146,6 +3204,12 @@ function love.draw()
   elseif world.partyScreenActive and world.partyScreen then
     y = y + 10
     for _, line in ipairs(world.partyScreenLines()) do
+      love.graphics.print(line, 20, y)
+      y = y + 20
+    end
+  elseif world.bagScreenActive and world.bagScreen then
+    y = y + 10
+    for _, line in ipairs(world.bagScreenLines()) do
       love.graphics.print(line, 20, y)
       y = y + 20
     end
