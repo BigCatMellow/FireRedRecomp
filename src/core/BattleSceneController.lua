@@ -38,6 +38,19 @@ local function possessive(name)
   return name .. "'s"
 end
 
+local function otherSide(side)
+  if side == "player" then return "foe" end
+  return "player"
+end
+
+-- Real gStatNamesTable (src/battle_message.c), for the stat keys
+-- BattleEngine.lua's statStages table already uses.
+local STAT_DISPLAY_NAMES = {
+  attack = "ATTACK", defense = "DEFENSE", speed = "SPEED",
+  spAttack = "SP. ATK", spDefense = "SP. DEF",
+  accuracy = "ACCURACY", evasion = "EVASIVENESS",
+}
+
 function BattleSceneController.new(opts)
   assert(opts and opts.engine, "BattleSceneController needs a BattleEngine")
   local self = setmetatable({
@@ -162,12 +175,57 @@ function BattleSceneController:_eventMessages(events)
     elseif event.type == "noPP" then
       add("There's no PP left for this move!")
     elseif event.type == "statChange" then
-      local stat = event.stat == "attack" and "ATTACK" or "DEFENSE"
+      -- Real gStatNamesTable (src/battle_message.c): Attack/Defense/
+      -- Speed/Sp. Atk/Sp. Def/Accuracy/Evasiveness. Real message shape
+      -- (sText_AttackersStatRose/sText_DefendersStatFell) is "<name>'s
+      -- <STAT> <verb>!"; the verb depends on real stage magnitude:
+      -- rose/sharply rose for +1/+2, fell/harshly fell for -1/-2
+      -- (sText_StatSharply="sharply "/sText_StatHarshly="harshly "
+      -- prefixed onto the base "rose!"/"fell!"). Boundary case uses the
+      -- real "won't go higher!"/"won't go lower!" pair
+      -- (sText_StatsWontIncrease/sText_StatsWontDecrease) rather than
+      -- the rose/fell verb.
+      local statName = STAT_DISPLAY_NAMES[event.stat] or event.stat
       if event.prevented then
-        add(possessive(name(event.side)) .. " " .. stat .. " won't go lower!")
+        local verb = (event.stages and event.stages > 0) and "won't go higher!" or "won't go lower!"
+        add(possessive(name(event.side)) .. " " .. statName .. "\n" .. verb)
       else
-        add(possessive(name(event.side)) .. " " .. stat .. " fell!")
+        local magnitude = math.abs(event.stages or 1)
+        local verb
+        if event.stages and event.stages > 0 then
+          verb = magnitude >= 2 and "sharply rose!" or "rose!"
+        else
+          verb = magnitude >= 2 and "harshly fell!" or "fell!"
+        end
+        add(possessive(name(event.side)) .. " " .. statName .. "\n" .. verb)
       end
+    elseif event.type == "switch" then
+      -- Bounded, single-message result: this event doesn't carry the
+      -- outgoing/incoming species names (BattleEngine stays fully
+      -- party-agnostic -- see its header), so this can't yet reproduce
+      -- real FireRed's two-message "<mon>, come back! Go! <mon>!" pair
+      -- without deeper plumbing this controller doesn't have. A compact
+      -- placeholder covers it instead, same choice already made for
+      -- "capture"'s shake-by-shake real message variants above.
+      add(name(event.side) .. " switched Pokemon!")
+    elseif event.type == "recoil" then
+      -- Real sText_PkmnHitWithRecoil (src/battle_message.c): "<mon> is
+      -- hit with recoil!" -- the attacker, since recoil damages the
+      -- move's own user.
+      add(name(event.side) .. " is hit\nwith recoil!")
+    elseif event.type == "drain" then
+      -- Real sText_PkmnEnergyDrained: "<mon> had its energy drained!" --
+      -- real FireRed names the DEFENDER here (the mon the HP was drained
+      -- FROM), even though it's the attacker's own side that heals.
+      add(name(otherSide(event.side)) .. " had its\nenergy drained!")
+    elseif event.type == "multiHit" then
+      -- Real sText_HitXTimes: "Hit N time(s)!" -- only emitted when the
+      -- sequence completes without an early stop (matching real
+      -- BattleScript_MultiHitPrintStrings, which this event's own
+      -- BattleEngine.lua doc already notes is skipped on a no-effect
+      -- stop; a mid-sequence faint also skips it there since the
+      -- faint/battleEnd events already say enough).
+      add(("Hit %d time(s)!"):format(event.hits))
     elseif event.type == "tutorialTip" then
       if event.kind == "damage" then
         add("OAK: Inflicting damage on the foe\nis the key to any battle.")

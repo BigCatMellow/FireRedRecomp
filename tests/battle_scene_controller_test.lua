@@ -145,5 +145,56 @@ do
     bagController:message() == "BULBASAUR threw a POKé BALL!", bagController:message())
 end
 
+-- Real gStatNamesTable/message shapes (src/battle_message.c) for the
+-- full stat-move family BattleEngine.lua generalized beyond Growl/Tail
+-- Whip: sharply-rose/harshly-fell for +-2, plain rose/fell for +-1, and
+-- the real "won't go higher/lower" boundary pair -- this presentation
+-- layer had not been updated when that engine work landed, so it was
+-- still hardcoding "ATTACK"/"DEFENSE fell!" only.
+do
+  local c = controller()
+  local messages = c:_eventMessages({
+    { type = "statChange", side = "player", stat = "speed", stages = 2 },
+    { type = "statChange", side = "foe", stat = "spDefense", stages = -2 },
+    { type = "statChange", side = "player", stat = "accuracy", stages = -1 },
+    { type = "statChange", side = "foe", stat = "evasion", stages = 0, prevented = true },
+  })
+  check("a +2 stat change uses the real \"sharply rose!\" verb",
+    messages[1].text == "BULBASAUR's SPEED\nsharply rose!", messages[1].text)
+  check("a -2 stat change uses the real \"harshly fell!\" verb",
+    messages[2].text == "CHARMANDER's SP. DEF\nharshly fell!", messages[2].text)
+  check("a -1 stat change uses the plain real \"fell!\" verb",
+    messages[3].text == "BULBASAUR's ACCURACY\nfell!", messages[3].text)
+  check("a prevented -1 change (stages=0) reports \"won't go lower!\", not \"higher\"",
+    messages[4].text == "CHARMANDER's EVASIVENESS\nwon't go lower!", messages[4].text)
+end
+
+do
+  local c = controller()
+  local messages = c:_eventMessages({ { type = "recoil", side = "foe", amount = 5, hpRemaining = 10 } })
+  check("recoil names the attacker, matching real sText_PkmnHitWithRecoil",
+    messages[1].text == "CHARMANDER is hit\nwith recoil!", messages[1].text)
+end
+
+do
+  local c = controller()
+  local messages = c:_eventMessages({ { type = "drain", side = "player", amount = 5, hpRemaining = 20 } })
+  check("drain names the DEFENDER (whose energy was drained), matching real sText_PkmnEnergyDrained",
+    messages[1].text == "CHARMANDER had its\nenergy drained!", messages[1].text)
+end
+
+do
+  local c = controller()
+  local messages = c:_eventMessages({ { type = "multiHit", side = "player", hits = 4 } })
+  check("multiHit reports the real hit count, matching sText_HitXTimes",
+    messages[1].text == "Hit 4 time(s)!", messages[1].text)
+end
+
+do
+  local c = controller()
+  local messages = c:_eventMessages({ { type = "switch", side = "player" } })
+  check("switch produces a real, non-empty status message", messages[1] and #messages[1].text > 0)
+end
+
 print(("%d passed, %d failed"):format(passed, failed))
 os.exit(failed == 0 and 0 or 1)
