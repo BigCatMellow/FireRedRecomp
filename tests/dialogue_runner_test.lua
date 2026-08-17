@@ -175,5 +175,46 @@ mart:tick(false)
 check("mart script reaches its real `end` and goes inactive", not mart:isActive())
 check("no error was recorded on a clean pokemart run", mart.error == nil, mart.error)
 
+--------------------------------------------------- removeobject/removeobjectat
+
+do
+  local removed, removedAt = {}, {}
+  local instructions = {
+    { op = "removeobject", localIdVarId = 8, addr = 0x08170000, size = 3 },
+    { op = "removeobjectat", localIdVarId = 4, mapGroup = 3, mapNum = 39, addr = 0x08170003, size = 5 },
+    { op = "end", addr = 0x08170008, size = 1 },
+  }
+  local addrToIndex = { [0x08170000] = 1, [0x08170003] = 2, [0x08170008] = 3 }
+  local runner = DialogueRunner.new(instructions, addrToIndex, {
+    tokenize = tokensFor,
+    ticksPerChar = 1,
+    onRemoveObject = function(localId) removed[#removed + 1] = localId end,
+    onRemoveObjectAt = function(localId, mapGroup, mapNum) removedAt[#removedAt + 1] = { localId, mapGroup, mapNum } end,
+  })
+  runner:tick(false)
+  check("onRemoveObject fires with the real localId", removed[1] == 8, removed[1])
+  check("onRemoveObjectAt fires with localId + real map pair",
+    removedAt[1] and removedAt[1][1] == 4 and removedAt[1][2] == 3 and removedAt[1][3] == 39)
+  check("the script reaches its real end afterward", not runner:isActive())
+  check("no error was recorded", runner.error == nil, runner.error)
+end
+
+do
+  -- Omitting onRemoveObject/onRemoveObjectAt entirely must stay a safe
+  -- no-op (every DialogueRunner hook is optional, matching
+  -- ScriptInterpreter's own "absent hook is simply skipped" convention) --
+  -- a real script containing removeobject must not crash a runner that
+  -- doesn't care about it.
+  local instructions = {
+    { op = "removeobject", localIdVarId = 1, addr = 0x08171000, size = 3 },
+    { op = "end", addr = 0x08171003, size = 1 },
+  }
+  local addrToIndex = { [0x08171000] = 1, [0x08171003] = 2 }
+  local runner = DialogueRunner.new(instructions, addrToIndex, { tokenize = tokensFor, ticksPerChar = 1 })
+  runner:tick(false)
+  check("a runner with no onRemoveObject hook still runs to completion without erroring",
+    not runner:isActive() and runner.error == nil, runner.error)
+end
+
 print(("%d passed, %d failed"):format(passed, failed))
 os.exit(failed == 0 and 0 or 1)

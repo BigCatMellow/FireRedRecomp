@@ -69,6 +69,7 @@
 --   onGiveItem(itemId,qty) onRemoveItem(itemId,qty)
 --   onGivePokemon({species,level,item,unk1,unk2,unk3}) onGiveEgg(species)
 --   onApplyMovement(localId,movementScriptPtr) onWaitMovement(localId)
+--   onRemoveObject(localId) onRemoveObjectAt(localId,mapGroup,mapNum)
 --   onTrainerBattle(instr) onTrainerBattleStart()
 --   onFadeScreen(mode,speed) onSpecial(specialId) -> result|nil
 --   onSpecialVar(varId,specialId) -> result|nil onNative(funcPtr)
@@ -313,6 +314,18 @@ function ScriptInterpreter:step()
     -- DialogueRunner today (see its header: every opcode outside the
     -- message family stays unhooked there), matching real trainerbattle.
     callHook(world, "onPokemart", instr.itemListPtr)
+    self.pc = self:resolveAddr(nextAddr)
+  elseif op == "removeobject" then
+    -- Real ScrCmd_removeobject (src/scrcmd.c): RemoveObjectEventByLocalId
+    -- AndMap(VarGet(localId), currentMapNum, currentMapGroup) -- real
+    -- current-map lookup comes from gSaveBlock1Ptr->location, which this
+    -- VM has no session access to; the caller's onRemoveObject hook is
+    -- expected to already know "the current map" the same way every other
+    -- current-map-implicit hook here does (e.g. onApplyMovement).
+    callHook(world, "onRemoveObject", self:getVar(instr.localIdVarId))
+    self.pc = self:resolveAddr(nextAddr)
+  elseif op == "removeobjectat" then
+    callHook(world, "onRemoveObjectAt", self:getVar(instr.localIdVarId), instr.mapGroup, instr.mapNum)
     self.pc = self:resolveAddr(nextAddr)
   elseif op == "applymovement" then
     callHook(world, "onApplyMovement", self:getVar(instr.localIdVarId), instr.movementScriptPtr)

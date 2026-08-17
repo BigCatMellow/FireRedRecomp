@@ -1380,6 +1380,32 @@ local function loadMapObjectEvents(data, events, mapId)
   end
 end
 
+-- Real RemoveObjectEventByLocalIdAndMap (src/event_object_movement.c): sets
+-- the object's own real hide flag (so it stays gone on a future map
+-- reload, same FLAG_HIDE_* mechanism loadMapObjectEvents already checks
+-- via template.flagId) AND despawns its live sprite immediately, without
+-- waiting for a reload. The general primitive the real `removeobject`
+-- script opcode drives (see ScriptInterpreter.lua/DialogueRunner.lua) --
+-- EarlyStory.lua's own removedLabObjects/isObjectRemoved predates this and
+-- is intentionally left alone (it's a bespoke abbreviated-cutscene
+-- controller that doesn't run through the real script VM at all, so it
+-- can't call this hook directly), but any future story content driven by
+-- a real script can now use the real opcode instead of a one-off table.
+world.removeNpcLive = function(localId)
+  local kept, removedFlagId = {}, nil
+  for _, npc in ipairs(world.npcs) do
+    if npc.localId == localId then
+      removedFlagId = npc.flagId
+    else
+      kept[#kept + 1] = npc
+    end
+  end
+  world.npcs = kept
+  if removedFlagId and removedFlagId ~= 0 and newGame.session then
+    newGame.session:setFlag(removedFlagId)
+  end
+end
+
 -- Called once at boot: places the player and starts the movement task.
 -- Later map loads (via a real warp, see loadMap/tryWarpAt) just
 -- reposition the existing playerMovement instead of recreating it.
@@ -2023,6 +2049,21 @@ local function startScript(scriptPtr, facingNpc)
     onFacePlayer = function()
       if facingNpc then
         facingNpc.facingDirection = OPPOSITE_DIRECTION[playerMovement.facingDirection] or facingNpc.facingDirection
+      end
+    end,
+    onRemoveObject = function(localId) world.removeNpcLive(localId) end,
+    onRemoveObjectAt = function(localId, mapGroup, mapNum)
+      -- Real ScrCmd_removeobjectat can target ANY map, not just the
+      -- current one -- this project has no live NPC state for a map
+      -- that isn't currently loaded, so only the current-map case removes
+      -- a live sprite; a cross-map target is flagged rather than silently
+      -- dropped (that map's own real FLAG_HIDE_* would need setting too,
+      -- which requires knowing its template's flagId -- not resolvable
+      -- without loading that map's events, out of scope here).
+      if mapGroup * 256 + mapNum == walkMapId then
+        world.removeNpcLive(localId)
+      else
+        addLine(("removeobjectat targeted a different map (%d,%d) -- not live-removed (out of scope)."):format(mapGroup, mapNum))
       end
     end,
   })

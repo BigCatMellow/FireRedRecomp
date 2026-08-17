@@ -235,6 +235,36 @@ do
     messagesAfter == 1)
 end
 
+-- 7b) removeobject/removeobjectat: real ScrCmd_removeobject/
+--     ScrCmd_removeobjectat (src/scrcmd.c), both VarGet-resolving localId
+--     (getVar with no hook falls back to the real "unresolved id reads
+--     back as itself" convention, so a raw literal below round-trips
+--     through getVar unchanged). removeobjectat additionally carries a
+--     real explicit mapGroup/mapNum pair the interpreter passes straight
+--     through, unresolved (real source doesn't VarGet those two bytes).
+do
+  local bytes = u8(0x53) .. u16le(7)              -- removeobject 7 (current map)
+    .. u8(0x54) .. u16le(3) .. u8(4) .. u8(19)     -- removeobjectat 3, map(4,19)
+    .. u8(0x02)                                    -- end
+  local data, entry = image(bytes)
+  local instrs, addrToIndex = ScriptBytecode.decode(data, entry)
+  check("removeobject/removeobjectat decode in order",
+    #instrs == 3 and instrs[1].op == "removeobject" and instrs[1].localIdVarId == 7
+      and instrs[2].op == "removeobjectat" and instrs[2].localIdVarId == 3
+      and instrs[2].mapGroup == 4 and instrs[2].mapNum == 19
+      and instrs[3].op == "end")
+
+  local removed, removedAt = {}, {}
+  local vm = ScriptInterpreter.new(instrs, addrToIndex, {
+    onRemoveObject = function(localId) removed[#removed + 1] = localId end,
+    onRemoveObjectAt = function(localId, mapGroup, mapNum) removedAt[#removedAt + 1] = { localId, mapGroup, mapNum } end,
+  })
+  check("script runs to completion", vm:run(10))
+  check("onRemoveObject receives the real (VarGet-resolved) localId", removed[1] == 7, removed[1])
+  check("onRemoveObjectAt receives localId + the real explicit map pair",
+    removedAt[1][1] == 3 and removedAt[1][2] == 4 and removedAt[1][3] == 19)
+end
+
 -- 8) An unimplemented opcode byte must decode to a stub and make the
 --    interpreter fail loudly (not silently no-op), per the handoff doc.
 do

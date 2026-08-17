@@ -33,7 +33,7 @@
 --     header for how MSGBOX_* std indices are still handled faithfully
 --     (their real bodies transcribed there, cited to these same files).
 --
--- Implemented opcodes (35, opcode byte -> gScriptCmdTable name):
+-- Implemented opcodes (37, opcode byte -> gScriptCmdTable name):
 --   0x00 nop, 0x02 end, 0x03 return, 0x04 call, 0x05 goto,
 --   0x06 goto_if, 0x07 call_if, 0x08 gotostd, 0x09 callstd,
 --   0x0f loadword (msgbox macro's `loadword 0, text` -- feeds ctx->data[0],
@@ -46,6 +46,7 @@
 --   0x39 warp, 0x3a warpsilent, 0x3b warpdoor, 0x3d warpteleport, 0x3e setwarp,
 --   0x44 additem, 0x45 removeitem,
 --   0x4f applymovement, 0x51 waitmovement,
+--   0x53 removeobject, 0x54 removeobjectat,
 --   0x5a faceplayer, 0x5c trainerbattle, 0x5d dotrainerbattle,
 --   0x5e gotopostbattlescript, 0x5f gotobeatenscript,
 --   0x60 checktrainerflag, 0x61 settrainerflag, 0x62 cleartrainerflag,
@@ -278,6 +279,21 @@ end, "seq")
 op(0x45, "removeitem", function(cur)
   local itemVarId = readU16(cur)
   return { itemVarId = itemVarId, quantityVarId = readU16(cur) }
+end, "seq")
+
+-- Real ScrCmd_removeobject/ScrCmd_removeobjectat (src/scrcmd.c):
+-- RemoveObjectEventByLocalIdAndMap(localId, mapNum, mapGroup) -- sets the
+-- object's own real FLAG_HIDE-equivalent flag (FlagSet(GetObjectEventFlag
+-- IdByObjectEventId(...))) AND despawns its live sprite immediately,
+-- without waiting for a map reload. localId is VarGet-resolved (same
+-- convention as applymovement's localIdVarId); removeobjectat additionally
+-- reads an explicit mapGroup/mapNum pair (real read order: mapGroup byte
+-- then mapNum byte) instead of assuming the current map.
+op(0x53, "removeobject", function(cur) return { localIdVarId = readU16(cur) } end, "seq")
+op(0x54, "removeobjectat", function(cur)
+  local localIdVarId = readU16(cur)
+  local mapGroup = readU8(cur)
+  return { localIdVarId = localIdVarId, mapGroup = mapGroup, mapNum = readU8(cur) }
 end, "seq")
 
 op(0x4f, "applymovement", function(cur)

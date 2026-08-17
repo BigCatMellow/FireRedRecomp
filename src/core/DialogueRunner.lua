@@ -71,12 +71,20 @@ local MAX_STEPS_PER_TICK = 256
 --   FONT_REVEAL_TICKS_PER_CHAR sets for the other text views).
 -- opts.onFacePlayer(): called for the real `faceplayer` opcode -- main.lua
 --   turns the interacted NPC's ObjectEventState facing toward the player.
+-- opts.onRemoveObject(localId)/opts.onRemoveObjectAt(localId,mapGroup,mapNum):
+--   called for the real `removeobject`/`removeobjectat` opcodes -- forwarded
+--   straight through, same shape as onFacePlayer. Real ScrCmd_removeobject*
+--   (src/scrcmd.c) both set the object's own real hide flag AND despawn its
+--   live sprite immediately, without waiting for a map reload; main.lua's
+--   hook is expected to do both (see world.removeNpcLive).
 function DialogueRunner.new(instructions, addrToIndex, opts)
   opts = opts or {}
   local self = setmetatable({
     tokenize = opts.tokenize,
     ticksPerChar = opts.ticksPerChar,
     onFacePlayer = opts.onFacePlayer,
+    onRemoveObject = opts.onRemoveObject,
+    onRemoveObjectAt = opts.onRemoveObjectAt,
     printer = nil,          -- TextPrinterState for the currently-displayed message, or nil when no box is up
     messageTextPtr = nil,
     waitingForButton = false,
@@ -114,6 +122,12 @@ function DialogueRunner:buildWorld()
     onReleaseAll = function() self_.locked = false end,
     onFacePlayer = function()
       if self_.onFacePlayer then self_.onFacePlayer() end
+    end,
+    onRemoveObject = function(localId)
+      if self_.onRemoveObject then self_.onRemoveObject(localId) end
+    end,
+    onRemoveObjectAt = function(localId, mapGroup, mapNum)
+      if self_.onRemoveObjectAt then self_.onRemoveObjectAt(localId, mapGroup, mapNum) end
     end,
     onPokemart = function(itemListPtr)
       self_.pendingMartItemListPtr = itemListPtr
