@@ -678,6 +678,21 @@ local function dialogueTask(taskId)
   local runner = world.dialogue
   if not runner then return end
   runner:tick(inputState:isNewlyPressed(InputState.A_BUTTON))
+  -- Real ScrCmd_pokemart: the script paused itself (DialogueRunner's
+  -- pendingMartItemListPtr) waiting for the real mart menu to open and
+  -- close. Open it once, the same real BUY flow the M dev key already
+  -- drives, just with the real script-provided stock list resolved from
+  -- ROM instead of the M key's hardcoded Viridian fallback list.
+  if runner.pendingMartItemListPtr and not world.martActive then
+    world.beginMart(world.resolveMartItemList(runner.pendingMartItemListPtr))
+    world.martActive = world.martMenu ~= nil
+    if not world.martActive then
+      -- beginMart() already logged why (no session/no item table) --
+      -- don't leave the script permanently stuck waiting for a menu
+      -- that will never appear.
+      runner:notifyMartClosed()
+    end
+  end
   if runner.error then
     addLine("Script stopped: " .. tostring(runner.error))
     world.dialogue = nil
@@ -1425,25 +1440,47 @@ local function beginNewGameFlow()
   newGame.builtRevision = -1
 end
 
--- Opens the real Viridian Mart's BUY flow against the active session's
--- real bag/money -- SessionBagBridge.fromSaveBlock1, same as
--- startWildBattle already builds one.
-world.beginMart = function()
+-- Real ViridianCity_Mart_Items array shape: consecutive real u16 item ids
+-- at `ptr`, terminated by ITEM_NONE(0) (data/maps/ViridianCity_Mart/
+-- scripts.inc). Used to turn a real `pokemart` script instruction's raw
+-- ROM pointer (ScriptBytecode.lua's decoded itemListPtr) into an actual
+-- item id list -- the same real table shape tests/script_interpreter_
+-- test.lua already verified end-to-end against the ROM.
+-- world.resolveMartItemList (not a top-level local): dialogueTask, which
+-- calls this, is defined earlier in the file than this assignment runs,
+-- so a plain `local function` here would be an invisible forward
+-- reference from dialogueTask's point of view (Lua locals aren't visible
+-- to code lexically before their declaration) -- a table field read is
+-- resolved at call time instead, so this works the same way world.
+-- beginMart/closeMart/martLines already had to for the same reason (see
+-- the file-wide 200-local-variable note near VIRIDIAN_MART_ITEMS' old
+-- declaration above).
+world.resolveMartItemList = function(ptr)
+  local items = {}
+  local base = ptr - ScriptBytecode.romBase
+  for i = 0, 63 do -- generous real bound; every real mart stocks well under this
+    local off = base + i * 2
+    local id = romData:byte(off + 1) + romData:byte(off + 2) * 256
+    if id == 0 then break end
+    items[#items + 1] = id
+  end
+  return items
+end
+
+-- Opens the real Poke Mart BUY flow against the active session's real
+-- bag/money -- SessionBagBridge.fromSaveBlock1, same as startWildBattle
+-- already builds one. `itemIds` is the real stock list to sell (the
+-- caller resolves it -- either the M dev key's hardcoded Viridian list,
+-- or a live `pokemart` script trigger's real resolved pointer).
+world.beginMart = function(itemIds)
   if not newGame.session or not world.battleCatalog or not world.battleCatalog.items then
     addLine("Mart could not open: no active session or ROM item table unavailable.")
     return
   end
   local sb1 = newGame.session.state.saveBlock1
   local bag = Battle.SessionBagBridge.fromSaveBlock1(sb1, world.battleCatalog.items)
-  -- Real ViridianCity_Mart_Items (data/maps/ViridianCity_Mart/scripts.inc):
-  -- POKE_BALL(4), POTION(13), ANTIDOTE(14), PARALYZE_HEAL(18). Real map/
-  -- NPC/script interaction to actually walk in and trigger this (the
-  -- real `pokemart` command) isn't wired yet -- pressing M below opens
-  -- it directly, from any session location, as a dev-reachable trigger
-  -- for the otherwise-fully-real PokemonMartMenu/PokemonMart/Bag/
-  -- SessionBagBridge pipeline.
   world.martMenu = Battle.MartMenu.new({
-    itemIds = { 4, 13, 14, 18 }, itemLookup = world.battleCatalog.items,
+    itemIds = itemIds, itemLookup = world.battleCatalog.items,
     bag = bag, money = sb1.money or 0,
   })
 end
@@ -1459,6 +1496,14 @@ world.closeMart = function()
   end
   world.martMenu = nil
   world.martActive = false
+  -- Real ScrCmd_pokemart's ScriptContext_Stop() resumes once the real
+  -- mart menu closes -- if this mart was opened by a live script
+  -- (DialogueRunner's pendingMartItemListPtr), tell it to resume past
+  -- pokemart into whatever real instructions follow (a real trailing
+  -- "Please come again"/release/end, per the Viridian Mart clerk script).
+  if world.dialogue and world.dialogue.pendingMartItemListPtr then
+    world.dialogue:notifyMartClosed()
+  end
 end
 
 local NEW_GAME_PROMPT_SYMBOL = {
@@ -3117,7 +3162,13 @@ function love.keypressed(key)
     local was = world.martActive
     clearViews()
     if not was then
-      world.beginMart()
+      -- Real ViridianCity_Mart_Items (data/maps/ViridianCity_Mart/
+      -- scripts.inc): POKE_BALL(4)/POTION(13)/ANTIDOTE(14)/PARALYZE_
+      -- HEAL(18). Dev-reachable trigger, from any session location --
+      -- the real walk-in-and-talk-to-the-clerk path now also works (see
+      -- dialogueTask's pendingMartItemListPtr handling below), but only
+      -- once the player has actually walked into Viridian City Mart.
+      world.beginMart({ 4, 13, 14, 18 })
       world.martActive = world.martMenu ~= nil
     end
   elseif key == "k" and walkActive and newGame.session and not world.dialogue then
