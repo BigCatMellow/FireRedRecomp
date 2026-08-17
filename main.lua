@@ -93,6 +93,8 @@ local Battle = {
   SessionBagBridge = require("src.core.SessionBagBridge"),
   PokemonMart = require("src.core.PokemonMart"),
   MartMenu = require("src.core.PokemonMartMenu"),
+  StartMenu = require("src.core.StartMenu"),
+  PartyScreen = require("src.core.PartyScreen"),
   PartyBridge = require("src.core.BattlePartyBridge"),
   Engine = require("src.core.BattleEngine"),
   Controller = require("src.core.BattleSceneController"),
@@ -1544,6 +1546,75 @@ world.closeMart = function()
   end
 end
 
+-- Opens the real overworld START menu (src/start_menu.c's
+-- SetUpStartMenu_NormalField -- see StartMenu.lua's own header for the
+-- exact real item gating). Real FLAG_SYS_POKEMON_GET/FLAG_SYS_POKEDEX_GET
+-- values already live on EarlyStory (Battle.EarlyStory.FLAG_SYS_POKEMON_GET
+-- = 0x828); FLAG_SYS_POKEDEX_GET = 0x829 is the same SYS_FLAGS+0x29 real id
+-- (include/constants/flags.h) -- this project has no Pokedex-acquisition
+-- flow yet, so that flag is always unset today, correctly hiding POKéDEX.
+world.openStartMenu = function()
+  local hasPokemon = newGame.session and newGame.session:getFlag(Battle.EarlyStory.FLAG_SYS_POKEMON_GET) or false
+  local hasPokedex = newGame.session and newGame.session:getFlag(0x829) or false
+  world.startMenu = Battle.StartMenu.new({ hasPokemon = hasPokemon, hasPokedex = hasPokedex })
+  world.startMenuActive = true
+end
+
+world.closeStartMenu = function()
+  world.startMenu = nil
+  world.startMenuActive = false
+  world.partyScreen = nil
+  world.partyScreenActive = false
+end
+
+-- Real StartMenuPokemonCallback (src/start_menu.c) -> CB2_PartyMenuFromStartMenu
+-- (src/party_menu.c ~5428): opens the real Party Screen against the live
+-- session party. Every other real item this project doesn't have a live
+-- system for yet (BAG's own start-menu entry point -- distinct from the
+-- BAG button already wired inside battle --, PLAYER's Trainer Card,
+-- OPTION) shows a bounded, honest "not available yet" line instead of
+-- pretending to open something. SAVE reuses the real, already-live
+-- saveGame() (bound to the dev K key too) -- StartMenuSaveCallback's real
+-- job (src/start_menu.c) is exactly "run the save flow", which this
+-- project's saveGame() already does end to end.
+world.handleStartMenuSelection = function()
+  local itemId = world.startMenu.selectedItemId
+  if itemId == Battle.StartMenu.POKEMON then
+    if newGame.session and (newGame.session.state.saveBlock1.playerPartyCount or 0) > 0 then
+      local sb1 = newGame.session.state.saveBlock1
+      -- PartyScreen.new only needs a read-only {:size(), :get(slot)}
+      -- shape (see its own assert) -- a thin adapter over the session's
+      -- real save-format playerParty array/count, not a PartyModel (that
+      -- module is a separate, mutable add/remove container this screen
+      -- has no need to build or copy into).
+      local partyView = {
+        size = function() return sb1.playerPartyCount or 0 end,
+        get = function(_, slot) return sb1.playerParty[slot] end,
+      }
+      world.partyScreen = Battle.PartyScreen.new(partyView)
+      world.partyScreenActive = true
+    else
+      addLine("No active session party to show.")
+    end
+  elseif itemId == Battle.StartMenu.SAVE then
+    if newGame.session then saveGame() else addLine("Nothing to save yet -- no active session.") end
+  elseif itemId == Battle.StartMenu.EXIT then
+    -- Real StartMenuExitCallback: closes straight back to the overworld,
+    -- unlike every other item which returns to the (still open) Start
+    -- menu -- so this is the one branch that must NOT fall through to the
+    -- reopen-the-menu step below.
+    world.closeStartMenu()
+    return
+  else
+    addLine(("%s is not available yet."):format(tostring(itemId)))
+  end
+  -- Real CB2_ReturnToFieldWithOpenMenu-adjacent behavior: after handling an
+  -- item, control returns to the (still open) Start menu -- reopen it
+  -- rather than leaving it stuck in the SELECTED state.
+  world.startMenu.state = Battle.StartMenu.OPEN
+  world.startMenu.selectedItemId = nil
+end
+
 local NEW_GAME_PROMPT_SYMBOL = {
   [NewGameFlow.GENDER] = "gOakSpeech_Text_AskPlayerGender",
   [NewGameFlow.PLAYER_CONFIRM] = "gOakSpeech_Text_SoYourNameIsPlayer",
@@ -2308,6 +2379,37 @@ world.martLines = function()
   return lines
 end
 
+local START_MENU_LABELS = {
+  [Battle.StartMenu.POKEDEX] = "POKEDEX", [Battle.StartMenu.POKEMON] = "POKEMON",
+  [Battle.StartMenu.BAG] = "BAG", [Battle.StartMenu.PLAYER] = "PLAYER",
+  [Battle.StartMenu.SAVE] = "SAVE", [Battle.StartMenu.OPTION] = "OPTION",
+  [Battle.StartMenu.EXIT] = "EXIT",
+}
+
+world.startMenuLines = function()
+  local m = world.startMenu
+  local lines = { "START MENU  (Up/Down, A: select, B/Start: close)" }
+  for i, itemId in ipairs(m.items) do
+    local cursor = (i - 1 == m.cursor.cursorPos) and "> " or "  "
+    lines[#lines + 1] = cursor .. (START_MENU_LABELS[itemId] or tostring(itemId))
+  end
+  return lines
+end
+
+world.partyScreenLines = function()
+  local p = world.partyScreen
+  local lines = { "PARTY  (Up/Down, A: select, B: back)" }
+  for row, isCancel, data in p:iterateRows() do
+    local cursor = (row == p:cursorRow()) and "> " or "  "
+    if isCancel then
+      lines[#lines + 1] = cursor .. "CANCEL"
+    else
+      lines[#lines + 1] = ("%s%s Lv%d  HP %d/%d"):format(cursor, data.nickname, data.level, data.hp, data.maxHp)
+    end
+  end
+  return lines
+end
+
 local function viewerStep(delta)
   local category = viewerCategory()
   if category == "maps" then
@@ -2764,6 +2866,27 @@ function love.update(dt)
     elseif world.martActive and world.martMenu then
       world.martMenu:processInput(inputState)
       if world.martMenu:isDone() then world.closeMart() end
+    elseif world.partyScreenActive and world.partyScreen then
+      world.partyScreen:processInput(inputState)
+      if world.partyScreen:isDone() then
+        -- Real B/CANCEL and a real confirmed-slot selection both return to
+        -- the (still open) Start menu -- see PartyScreen.lua's header:
+        -- selecting a living mon would real-open the SUMMARY/SWITCH/ITEM
+        -- submenu, out of scope here, so a confirmed slot just reports
+        -- which one and falls back to the Start menu like CANCEL does.
+        if world.partyScreen.state == Battle.PartyScreen.CONFIRMED then
+          addLine(("Selected party slot %d (no SUMMARY/SWITCH/ITEM menu yet)."):format(world.partyScreen.confirmedSlot))
+        end
+        world.partyScreen = nil
+        world.partyScreenActive = false
+      end
+    elseif world.startMenuActive and world.startMenu then
+      world.startMenu:processInput(inputState)
+      if world.startMenu.state == Battle.StartMenu.CLOSED then
+        world.closeStartMenu()
+      elseif world.startMenu.state == Battle.StartMenu.SELECTED then
+        world.handleStartMenuSelection()
+      end
     elseif newGame.active and newGame.flow then
       newGame.flow:processInput(inputState)
       if newGame.flow:isComplete() then bootstrapFreshSession() end
@@ -2786,6 +2909,7 @@ function love.update(dt)
       -- open) blocks field input entirely -- the A press is consumed by
       -- the dialogue's own advance, handled in dialogueTask.
     elseif walkActive and playerMovement then
+      if inputState:isNewlyPressed(InputState.START_BUTTON) then world.openStartMenu() end
       if inputState:isNewlyPressed(InputState.A_BUTTON) then tryStartInteraction() end
       -- Real continuous walking-while-held uses a plain held-key check
       -- every frame (not the menu-style repeat-with-delay system --
@@ -2975,6 +3099,18 @@ function love.draw()
   elseif world.martActive and world.martMenu then
     y = y + 10
     for _, line in ipairs(world.martLines()) do
+      love.graphics.print(line, 20, y)
+      y = y + 20
+    end
+  elseif world.partyScreenActive and world.partyScreen then
+    y = y + 10
+    for _, line in ipairs(world.partyScreenLines()) do
+      love.graphics.print(line, 20, y)
+      y = y + 20
+    end
+  elseif world.startMenuActive and world.startMenu then
+    y = y + 10
+    for _, line in ipairs(world.startMenuLines()) do
       love.graphics.print(line, 20, y)
       y = y + 20
     end
