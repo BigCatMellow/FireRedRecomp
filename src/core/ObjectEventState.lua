@@ -156,6 +156,14 @@ function ObjectEventState.new(objectEvents, opts)
         movementType = template.movementType,
         scriptPtr = template.scriptPtr,
         flagId = template.flagId,
+        -- Real struct ObjectEvent's `trainerType`/`trainerRange_berryTreeId`
+        -- (src/event_object_movement.c's struct, decoded off-ROM by
+        -- import/MapEvents.lua's `trainerType`/`trainerRangeOrBerryTreeId`
+        -- template fields) -- only meaningful when trainerType != 0, but
+        -- carried through unconditionally same as every other field here.
+        -- Consumed by src/core/TrainerSightline.lua.
+        trainerType = template.trainerType,
+        trainerRange = template.trainerRangeOrBerryTreeId,
         rangeX = template.movementRangeX,
         rangeY = template.movementRangeY,
         x = template.x, y = template.y,
@@ -235,6 +243,33 @@ local function tickWalk(npc)
     return true
   end
   return false
+end
+
+-- Unconditionally begins a 1-tile walk in `direction`, bypassing the
+-- movement-range fence and isBlocked hook that :tick()'s own wander
+-- behavior (tryStep, above) applies. Matches real
+-- ObjectEventSetHeldMovement(trainerObj, GetWalkNormalMovementAction(dir))
+-- inside TrainerSeeFunc_TrainerApproach (src/trainer_see.c line 330) -- a
+-- scripted/forced movement, which real source never runs through the
+-- normal collision-gated movement-type step functions. Only sets the
+-- NPC's own facing + walk-animation fields, same shape :tick() already
+-- animates (pixelX/pixelY interpolate identically) -- exported for
+-- src/core/TrainerApproach.lua, which owns the approach state machine
+-- itself.
+function ObjectEventState.beginForcedStep(npc, direction)
+  npc.facingDirection = direction
+  local delta = DIRECTION_DELTA[direction]
+  npc.moving = true
+  npc.stepFrame = 0
+  npc.moveDx, npc.moveDy = delta.dx * TILE_SIZE / WALK_FRAMES_PER_TILE, delta.dy * TILE_SIZE / WALK_FRAMES_PER_TILE
+  npc.destX, npc.destY = npc.x + delta.dx, npc.y + delta.dy
+end
+
+-- Advances a :beginForcedStep walk by one frame. Returns true once the
+-- tile completes. Exported alias of the same tick logic :tick()'s wander
+-- behavior uses internally.
+function ObjectEventState.advanceStep(npc)
+  return tickWalk(npc)
 end
 
 -- Real MovementType_WanderAround (and its WANDER_UP_AND_DOWN/DOWN_AND_UP/
