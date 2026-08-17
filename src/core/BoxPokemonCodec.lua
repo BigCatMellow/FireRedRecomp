@@ -102,6 +102,25 @@ local function u32le(data, offset)
     + byte(data, offset + 3) * 65536 + byte(data, offset + 4) * 16777216
 end
 
+local function packU16le(value)
+  value = value or 0
+  return char(value % 256, math.floor(value / 256) % 256)
+end
+
+local function packU32le(value)
+  value = value or 0
+  return char(
+    value % 256,
+    math.floor(value / 256) % 256,
+    math.floor(value / 65536) % 256,
+    math.floor(value / 16777216) % 256)
+end
+
+local function fixedBytes(value, size)
+  value = value or ""
+  return (value .. string.rep("\0", size)):sub(1, size)
+end
+
 -- Applies EncryptBoxMon/DecryptBoxMon's XOR (both directions, identical
 -- operation -- see header comment). secureBytes: exactly SECURE_SIZE (48)
 -- raw bytes. personality/otId: u32 values. Returns 48 transformed bytes.
@@ -140,6 +159,7 @@ function BoxPokemonCodec.parseSubstruct0(bytes)
     experience = u32le(bytes, 4),
     ppBonuses = byte(bytes, 9),
     friendship = byte(bytes, 10),
+    filler = byte(bytes, 11) + byte(bytes, 12) * 256,
   }
 end
 
@@ -197,7 +217,99 @@ function BoxPokemonCodec.parseSubstruct3(bytes)
     },
     isEgg = math.floor(ivWord / 1073741824) % 2 == 1,
     abilityNum = math.floor(ivWord / 2147483648) % 2,
+    -- The ribbon/fateful-encounter bitfield is not interpreted by this
+    -- project yet, but retaining the four raw bytes lets encode(decode(x))
+    -- preserve it exactly instead of silently destroying save data.
+    ribbonBytes = bytes:sub(9, 12),
   }
+end
+
+-- Encodes a logical BoxPokemon table into the real encrypted 80-byte
+-- representation. The accepted shape is the same one decode() returns:
+-- top-level identity/flag fields plus substructs[0..3]. This is the write
+-- counterpart to decode(), using the same real personality%24 shuffle,
+-- checksum, and personality/OT-ID XOR described above.
+--
+-- Fields this project does not interpret (the misc ribbon bitfield) are
+-- accepted as substructs[3].ribbonBytes and preserved byte-for-byte. New
+-- records may omit it, in which case CreateBoxMon's zeroed value is used.
+function BoxPokemonCodec.encode(mon)
+  assert(type(mon) == "table", "BoxPokemonCodec.encode expects a table")
+  local personality = assert(mon.personality, "BoxPokemon personality is required")
+  local otId = assert(mon.otId, "BoxPokemon otId is required")
+  local sub = assert(mon.substructs, "BoxPokemon substructs are required")
+  local growth = sub[0] or {}
+  local attacks = sub[1] or {}
+  local condition = sub[2] or {}
+  local misc = sub[3] or {}
+  local ivs = misc.ivs or {}
+  local moves = attacks.moves or {}
+  local pp = attacks.pp or {}
+
+  local type0 = packU16le(growth.species)
+    .. packU16le(growth.heldItem)
+    .. packU32le(growth.experience)
+    .. char((growth.ppBonuses or 0) % 256, (growth.friendship or 0) % 256)
+    .. packU16le(growth.filler)
+
+  local type1Parts = {}
+  for i = 1, 4 do type1Parts[#type1Parts + 1] = packU16le(moves[i]) end
+  for i = 1, 4 do type1Parts[#type1Parts + 1] = char((pp[i] or 0) % 256) end
+  local type1 = table.concat(type1Parts)
+
+  local type2 = char(
+    (condition.hpEV or 0) % 256,
+    (condition.attackEV or 0) % 256,
+    (condition.defenseEV or 0) % 256,
+    (condition.speedEV or 0) % 256,
+    (condition.spAttackEV or 0) % 256,
+    (condition.spDefenseEV or 0) % 256,
+    (condition.cool or 0) % 256,
+    (condition.beauty or 0) % 256,
+    (condition.cute or 0) % 256,
+    (condition.smart or 0) % 256,
+    (condition.tough or 0) % 256,
+    (condition.sheen or 0) % 256)
+
+  local metWord = (misc.metLevel or 0) % 128
+    + ((misc.metGame or 0) % 16) * 128
+    + ((misc.pokeball or 0) % 16) * 2048
+    + ((misc.otGender or 0) % 2) * 32768
+  local ivWord = (ivs.hp or 0) % 32
+    + ((ivs.attack or 0) % 32) * 32
+    + ((ivs.defense or 0) % 32) * 1024
+    + ((ivs.speed or 0) % 32) * 32768
+    + ((ivs.spAttack or 0) % 32) * 1048576
+    + ((ivs.spDefense or 0) % 32) * 33554432
+    + (misc.isEgg and 1 or 0) * 1073741824
+    + ((misc.abilityNum or 0) % 2) * 2147483648
+  local type3 = char((misc.pokerus or 0) % 256, (misc.metLocation or 0) % 256)
+    .. packU16le(metWord) .. packU32le(ivWord)
+    .. fixedBytes(misc.ribbonBytes, 4)
+
+  local logical = { [0] = type0, [1] = type1, [2] = type2, [3] = type3 }
+  local order = BoxPokemonCodec.getSubstructOrder(personality)
+  local physical = {}
+  for logicalType = 0, 3 do
+    physical[order[logicalType + 1]] = logical[logicalType]
+  end
+  local securePlain = physical[0] .. physical[1] .. physical[2] .. physical[3]
+  local secureEncrypted = BoxPokemonCodec.xorSecureBlock(securePlain, personality, otId)
+
+  local flags = (mon.isBadEgg and 1 or 0)
+    + (mon.hasSpecies and 2 or 0)
+    + (mon.isEgg and 4 or 0)
+    + (mon.blockBoxRS and 8 or 0)
+    + ((mon.unusedFlags or 0) % 16) * 16
+  local checksum = BoxPokemonCodec.checksum(logical)
+  return packU32le(personality) .. packU32le(otId)
+    .. fixedBytes(mon.nickname, 10)
+    .. char((mon.language or 0) % 256, flags)
+    .. fixedBytes(mon.otName, 7)
+    .. char((mon.markings or 0) % 256)
+    .. packU16le(checksum)
+    .. packU16le(mon.unknown)
+    .. secureEncrypted
 end
 
 -- Real CalculateBoxMonChecksum: sum of every u16 word across all 4
@@ -234,6 +346,7 @@ function BoxPokemonCodec.decode(blob)
   local otName = blob:sub(21, 27) -- 0x14, 7 bytes
   local markings = byte(blob, 28) -- 0x1B
   local storedChecksum = byte(blob, 29) + byte(blob, 30) * 256 -- 0x1C
+  local unknown = byte(blob, 31) + byte(blob, 32) * 256 -- 0x1E
 
   local secureEncrypted = blob:sub(33, 80) -- 0x20, 48 bytes
   local securePlain = BoxPokemonCodec.xorSecureBlock(secureEncrypted, personality, otId)
@@ -260,8 +373,11 @@ function BoxPokemonCodec.decode(blob)
     isBadEgg = flags % 2 == 1,
     hasSpecies = math.floor(flags / 2) % 2 == 1,
     isEgg = math.floor(flags / 4) % 2 == 1,
+    blockBoxRS = math.floor(flags / 8) % 2 == 1,
+    unusedFlags = math.floor(flags / 16) % 16,
     otName = otName,
     markings = markings,
+    unknown = unknown,
     checksum = storedChecksum,
     checksumValid = storedChecksum == BoxPokemonCodec.checksum(slots),
     substructs = substructs,
