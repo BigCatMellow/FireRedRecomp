@@ -380,6 +380,7 @@ RomAddresses.COUNTS = {
   MOVES_COUNT = 355,      -- include/constants/moves.h
   NUM_TRAINERS = 743,     -- gTrainers is 0x7418 bytes / 40-byte record
   NUM_NATURES = 25,
+  ITEMS_COUNT = 375,      -- ITEMS_COUNT, include/constants/items.h
 }
 
 return RomAddresses

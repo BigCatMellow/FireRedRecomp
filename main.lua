@@ -89,6 +89,9 @@ local Battle = {
   WhiteoutRules = require("src.core.WhiteoutRules"),
   EarlyStory = require("src.core.EarlyStory"),
   PokedexOrder = require("import.PokedexOrder"),
+  Item = require("import.Item"),
+  SessionBagBridge = require("src.core.SessionBagBridge"),
+  PokemonMart = require("src.core.PokemonMart"),
   PartyBridge = require("src.core.BattlePartyBridge"),
   Engine = require("src.core.BattleEngine"),
   Controller = require("src.core.BattleSceneController"),
@@ -942,6 +945,7 @@ local function loadBattleSceneAssets(data, addrs, dbg)
       typeChart = Battle.TypeChart.parseTable(data, addrs.gTypeEffectiveness),
       natures = Battle.Nature.parseTable(data, addrs.sNatureStatTable),
       trainers = Battle.Trainer.parseTable(data, addrs.gTrainers, RomAddresses.COUNTS.NUM_TRAINERS),
+      items = Battle.Item.parseTable(data, addrs.gItems, RomAddresses.COUNTS.ITEMS_COUNT),
     }
     catalog.backgroundImage = buildImage(Battle.Assets.compositeGrassBackground(data, addrs))
     catalog.backgroundImage:setFilter("nearest", "nearest")
@@ -1081,9 +1085,16 @@ startWildBattle = function(encounter)
 
   local foeName = speciesName(encounter.species)
   local playerName = Charmap.decode(playerDecoded.nickname)
+  -- Real bag: BattleSceneController only offers a live BAG throw when it
+  -- actually has one. A developer/temporary-party battle (no newGame.
+  -- session) has no save-compatible saveBlock1 to bridge, so it still
+  -- gets the bounded "no balls" message rather than a fabricated bag.
+  local bag = newGame.session
+    and Battle.SessionBagBridge.fromSaveBlock1(newGame.session.state.saveBlock1, catalog.items)
+    or nil
   local controller = Battle.Controller.new({
     engine=engine, playerName=playerName, foeName=foeName,
-    foeMoveSlot=foeDirectSlot,
+    foeMoveSlot=foeDirectSlot, bag=bag,
     moveName=function(move) return Charmap.decodeAt(romData, romAddrs.gMoveNames, 13, move) end,
   })
 
@@ -2425,6 +2436,13 @@ function love.update(dt)
       if world.battle.controller:isComplete() then
         local battle = world.battle
         local outcome = battle.controller.engine.outcome
+        -- Whatever BAG did during the battle (a real ball thrown/consumed)
+        -- must land back in the session's save-compatible state, win or
+        -- lose -- a real ball is spent the moment it's thrown, not only
+        -- on a successful catch.
+        if battle.controller.bag and newGame.session then
+          Battle.SessionBagBridge.toSaveBlock1(battle.controller.bag, newGame.session.state.saveBlock1)
+        end
         if battle.kind == "oakLabRival" then
           world.finishOakLabRivalBattle(battle)
         elseif outcome == "playerLost" then
