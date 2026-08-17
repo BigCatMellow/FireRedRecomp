@@ -361,7 +361,7 @@ end
 
 -- tokens: Charmap.tokenize() output for the message to show, or nil to
 -- draw the empty box. Returns a transparent-based layer.
-function OakSpeechScene.compositeTextbox(data, addrs, tokens)
+function OakSpeechScene.compositeTextbox(data, addrs, tokens, substitutions)
   local frame = OakSpeechScene.decodeDialogueFrame(data, addrs)
   local win = OakSpeechScene.TEXTBOX
   local TS = OakSpeechScene.TILE_SIZE
@@ -407,7 +407,7 @@ function OakSpeechScene.compositeTextbox(data, addrs, tokens)
     printerPalette[TextRenderer.DEFAULT_FG] = frame.palette[OakSpeechScene.TEXT_FG_COLOR]
     printerPalette[TextRenderer.DEFAULT_SHADOW] = frame.palette[OakSpeechScene.TEXT_SHADOW_COLOR]
 
-    local text = TextRenderer.renderTokens(data, addrs, tokens, printerPalette)
+    local text = TextRenderer.renderTokens(data, addrs, tokens, printerPalette, substitutions)
     local originX = win.left * TS + OakSpeechScene.TEXT_ORIGIN_X
     local originY = win.top * TS + OakSpeechScene.TEXT_ORIGIN_Y
     for y = 0, text.height - 1 do
@@ -437,8 +437,13 @@ end
 -- opts.withText (default true): false gives the frame the player sees
 -- during Task_OakSpeech_Init's real 80-tick hold after the fade-in, when
 -- Oak is on screen but no message has been printed yet.
+-- opts.withOak (default true): false reproduces the gender-prompt state
+-- after Task_OakSpeech_FadeOutOak has cleared BG2, while retaining the
+-- real banded backdrop and BG0 message box.
 -- opts.tokens: override the message shown (defaults to the real opening
 -- narration).
+-- opts.substitutions: optional TextRenderer placeholder values, used by
+-- the post-naming confirmation prompts for {PLAYER}/{RIVAL}.
 --
 -- Composited back-to-front in real BG priority order: bg1 (priority 2)
 -- then bg2 (priority 1) then bg0 (priority 0).
@@ -447,10 +452,12 @@ function OakSpeechScene.composite(data, addrs, opts)
   local withText = opts.withText
   if withText == nil then withText = true end
 
-  local layers = { OakSpeechScene.compositeBackground(data, addrs), OakSpeechScene.compositeOakPic(data, addrs) }
+  local layers = { OakSpeechScene.compositeBackground(data, addrs) }
+  if opts.withOak ~= false then layers[#layers + 1] = OakSpeechScene.compositeOakPic(data, addrs) end
   if withText ~= false or opts.showTextbox then
     layers[#layers + 1] = OakSpeechScene.compositeTextbox(
-      data, addrs, withText ~= false and (opts.tokens or OakSpeechScene.narrationTokens(data, addrs)) or nil)
+      data, addrs, withText ~= false and (opts.tokens or OakSpeechScene.narrationTokens(data, addrs)) or nil,
+      opts.substitutions)
   end
 
   local pixels = {}

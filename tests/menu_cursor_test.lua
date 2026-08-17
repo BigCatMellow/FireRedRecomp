@@ -78,5 +78,18 @@ do
   check("no input returns nil and doesn't move the cursor", result == nil and c.cursorPos == 0)
 end
 
+-- Oak's gender menu calls Menu_ProcessInputNoWrapAround: it clamps at the
+-- ends and uses newly-pressed D-pad input, not held repeat.
+do
+  local c = MenuCursor.new(2, 0)
+  c:processInputNoWrap(fakeInput({ [InputState.DPAD_UP] = "new" }))
+  check("no-wrap Up clamps at first item", c.cursorPos == 0)
+  c:processInputNoWrap(fakeInput({ [InputState.DPAD_DOWN] = "new" }))
+  c:processInputNoWrap(fakeInput({ [InputState.DPAD_DOWN] = "new" }))
+  check("no-wrap Down clamps at last item", c.cursorPos == 1)
+  c:processInputNoWrap(fakeInput({ [InputState.DPAD_UP] = "repeat" }))
+  check("no-wrap menu ignores held repeat", c.cursorPos == 1)
+end
+
 print(("%d passed, %d failed"):format(passed, failed))
 os.exit(failed == 0 and 0 or 1)

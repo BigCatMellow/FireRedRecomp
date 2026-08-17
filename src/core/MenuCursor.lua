@@ -12,6 +12,10 @@
 -- current cursor position), B cancels, Up/Down move the cursor one step
 -- -- using the real newAndRepeatedKeys (auto-repeat while held), not
 -- just a fresh press, matching InputState.lua's isPressedOrRepeated.
+-- Also exposes the real no-wrap variant used by Oak's BOY/GIRL picker:
+-- Menu_MoveCursorNoWrapAround clamps at the ends and
+-- Menu_ProcessInputNoWrapAround reads newly-pressed D-pad keys (not held
+-- repeat), exactly as src/menu.c does.
 
 local InputState = require("src.core.InputState")
 
@@ -39,6 +43,17 @@ function MenuCursor:moveCursor(delta)
   end
 end
 
+function MenuCursor:moveCursorNoWrap(delta)
+  local newPos = self.cursorPos + delta
+  if newPos < self.minCursorPos then
+    self.cursorPos = self.minCursorPos
+  elseif newPos > self.maxCursorPos then
+    self.cursorPos = self.maxCursorPos
+  else
+    self.cursorPos = newPos
+  end
+end
+
 -- inputState: an InputState.lua instance already ticked this frame.
 -- Returns "confirm", "cancel", or nil (nothing chosen this tick) --
 -- MENU_NOTHING_CHOSEN/MENU_B_PRESSED/cursorPos in the real code's terms,
@@ -56,6 +71,17 @@ function MenuCursor:processInput(inputState)
     self:moveCursor(-1)
   elseif inputState:isPressedOrRepeated(InputState.DPAD_DOWN) then
     self:moveCursor(1)
+  end
+  return nil
+end
+
+function MenuCursor:processInputNoWrap(inputState)
+  if inputState:isNewlyPressed(InputState.A_BUTTON) then return "confirm" end
+  if inputState:isNewlyPressed(InputState.B_BUTTON) then return "cancel" end
+  if inputState:isNewlyPressed(InputState.DPAD_UP) then
+    self:moveCursorNoWrap(-1)
+  elseif inputState:isNewlyPressed(InputState.DPAD_DOWN) then
+    self:moveCursorNoWrap(1)
   end
   return nil
 end

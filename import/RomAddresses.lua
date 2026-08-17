@@ -18,6 +18,12 @@ RomAddresses["41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc"] = { -- FireRed (US) v1.
   -- gBattleMoves: struct BattleMove[MOVES_COUNT], pokefirered src/data/battle_moves.h
   -- Verified against real Pound (index 1) / Karate Chop (index 2) data.
   gBattleMoves = 0x08250c04 - 0x08000000,
+  -- gLevelUpLearnsets: const u16 *const[NUM_SPECIES],
+  -- src/data/pokemon/level_up_learnset_pointers.h. Each pointer targets
+  -- packed LEVEL_UP_MOVE(level, move) u16s through LEVEL_UP_END (0xFFFF).
+  -- Linker-map address confirmed against the built US v1.0 ROM; consumed
+  -- by LevelUpLearnset.lua/WildPokemonFactory.lua for real wild movesets.
+  gLevelUpLearnsets = 0x0825d7b4 - 0x08000000,
   -- gTypeEffectiveness: flat (atkType,defType,mult) byte triples, pokefirered src/battle_main.c
   gTypeEffectiveness = 0x0824f050 - 0x08000000,
   -- gItems: struct Item[], pokefirered src/data/items.h
@@ -68,6 +74,10 @@ RomAddresses["41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc"] = { -- FireRed (US) v1.
   -- to exactly its declared size (2048 bytes).
   gMonFrontPicTable = 0x082350ac - 0x08000000,
   gMonBackPicTable = 0x0823654c - 0x08000000,
+  -- Normal Pokemon palettes: struct CompressedSpritePalette[NUM_SPECIES],
+  -- same 8-byte pointer/tag/padding stride as the sprite-sheet tables.
+  -- Used by BattleSceneAssets for the live wild-battle front/back pics.
+  gMonPaletteTable = 0x0823730c - 0x08000000,
   gTrainerFrontPicTable = 0x0823957c - 0x08000000,
   -- gCryTable: struct ToneData[], pokefirered include/gba/m4a_internal.h
   gCryTable = 0x0848c914 - 0x08000000,
@@ -164,6 +174,13 @@ RomAddresses["41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc"] = { -- FireRed (US) v1.
   sAffineAnim_BallRotate_Right = 0x082606a0 - 0x08000000,
   sAffineAnim_BallRotate_Left = 0x082606b0 - 0x08000000,
   sAffineAnim_BallRotate_3 = 0x082606c0 - 0x08000000,
+  -- Grass battle terrain (src/battle_bg.c's static sBattleTerrainTable
+  -- entry). Static symbols found via nm; each address was checked against
+  -- the linked ELF and the ROM LZ77 streams (palette -> 96 bytes, tiles ->
+  -- 3136 bytes, screenSize=1 tilemap -> 4096 bytes).
+  sBattleTerrainPalette_Grass = 0x08248400 - 0x08000000,
+  sBattleTerrainTiles_Grass = 0x0824844c - 0x08000000,
+  sBattleTerrainTilemap_Grass = 0x082489a8 - 0x08000000,
   -- Oak intro: the real opening narration text (pokefirered
   -- data/text/new_game_intro.inc, gOakSpeech_Text_WelcomeToTheWorld,
   -- referenced from src/oak_speech.c's Task_OakSpeech_WelcomeToTheWorld/
@@ -251,6 +268,106 @@ RomAddresses["41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc"] = { -- FireRed (US) v1.
   -- gObjectEventPal_Player address (0x0835b968), an independent
   -- cross-check. Terminated by a real {NULL, 0} sentinel entry.
   sObjectEventSpritePalettes = 0x083a5158 - 0x08000000,
+
+  -- ------------------------------------------------------------------
+  -- New-game gender selection + naming screens (Phase 3)
+  -- pokefirered src/oak_speech.c + src/naming_screen.c
+  -- ------------------------------------------------------------------
+  --
+  -- Gender select is NOT its own screen with portraits: the real
+  -- Task_OakSpeech_ShowGenderOptions just opens a small standard window
+  -- over the already-drawn Oak scene and prints gText_Boy / gText_Girl
+  -- with Menu_InitCursor -- exactly the Yes/No menu construct MenuCursor
+  -- already models. These two strings are the whole "asset".
+  -- Real (non-static) symbols. Verified: decode to exactly "BOY"/"GIRL".
+  gText_Boy = 0x08415d93 - 0x08000000,
+  gText_Girl = 0x08415d97 - 0x08000000,
+  -- Oak's real prompts around the gender/naming flow (data/text/
+  -- new_game_intro.inc). Real symbols. All five verified by decoding
+  -- through Charmap: "Now tell me. Are you a boy?/Or are you a girl?",
+  -- "Let's begin with your name./What is it?", "Right…/So your name is
+  -- {PLAYER}.", "Your rival's name, what was it now?", "…Er, was it
+  -- {RIVAL}?" -- including the real {PLAYER}/{RIVAL} placeholder bytes
+  -- (FD 01 / FD 06) TextRenderer already substitutes.
+  gOakSpeech_Text_AskPlayerGender = 0x081c59d5 - 0x08000000,
+  gOakSpeech_Text_YourNameWhatIsIt = 0x081c5dea - 0x08000000,
+  gOakSpeech_Text_SoYourNameIsPlayer = 0x081c5e13 - 0x08000000,
+  gOakSpeech_Text_YourRivalsNameWhatWasIt = 0x081c5e91 - 0x08000000,
+  gOakSpeech_Text_ConfirmRivalName = 0x081c5eb5 - 0x08000000,
+  -- The real preset-name menus (src/oak_speech.c PrintNameChoiceOptions).
+  -- Each is a `const u8 *const[]` pointer array, NOT a flat string table,
+  -- so entries are 4-byte pointers into the gNameChoice_* strings.
+  -- Static/local symbols, found via nm. Entry counts come from the gap to
+  -- the next symbol (0x4C = 19 pointers each for the male/female lists;
+  -- the rival list is the FireRed-only 4-entry one). Verified: male[0]
+  -- decodes to "RED", female[2] to "OMI", rival[0..3] to "GREEN"/"GARY"/
+  -- "KAZ"/"TORU", exactly the real FireRed #if branch (LeafGreen's list
+  -- is a different set and would decode to GREEN/LEAF/... instead).
+  sMaleNameChoices = 0x0846308c - 0x08000000,
+  sFemaleNameChoices = 0x084630d8 - 0x08000000,
+  sRivalNameChoices = 0x08463124 - 0x08000000,
+  -- gOtherText_NewName: the "NEW NAME" first row of that same menu.
+  gOtherText_NewName = 0x081c574f - 0x08000000,
+
+  -- Naming screen (src/naming_screen.c). The keyboard is a real 4-row x
+  -- 8-column character grid; three of these four tables are indexed by
+  -- the real KEYBOARD_* id (0 = LETTERS_LOWER, 1 = LETTERS_UPPER,
+  -- 2 = SYMBOLS), which is deliberately NOT the same order as the
+  -- KBPAGE_* page-cycle order the running screen uses -- the real source
+  -- comments on this ("the constants for the pages are needlessly
+  -- complicated because GF didn't keep the indexing order consistent")
+  -- and converts with sPageToKeyboardId. Static/local symbols, found via
+  -- nm; their sizes agree exactly with the declared array shapes
+  -- (sKeyboardChars is 3*4*8 = 96 bytes and runs exactly up to
+  -- sPageColumnCounts; sPageColumnCounts is 3 bytes and runs exactly up
+  -- to sPageColumnXPos).
+  --
+  -- Verified byte-for-byte against the real source's literals: the three
+  -- pages decode through Charmap to "abcdef .","ghijkl ,","mnopqrs ",
+  -- "tuvwxyz " / the same uppercase / "01234","56789","!?♂♀/-","…“”‘’".
+  sKeyboardChars = 0x083e22d0 - 0x08000000,
+  -- u8[3]: {8, 8, 6} -- the symbols page really is 6 columns wide, not 8.
+  sPageColumnCounts = 0x083e2330 - 0x08000000,
+  -- u8[3][8] pixel x of each column, used by the real SetCursorPos
+  -- (cursorSprite->x = sPageColumnXPos[page][x] + 38). Verified:
+  -- {0,12,24,56,68,80,92,123} for both letter pages, {0,22,44,66,88,110}
+  -- for symbols.
+  sPageColumnXPos = 0x083e2333 - 0x08000000,
+  -- const u8 *const[3][4]: the 12 display strings the real
+  -- PrintKeyboardKeys prints (one per keyboard row). These are NOT the
+  -- same bytes as sKeyboardChars -- they carry the real
+  -- EXT_CTRL_CODE_CLEAR (FC 11 <px>) inter-key spacing that lays the row
+  -- out on screen, which is why the keyboard renders as real text rather
+  -- than needing per-key tile art. Static/local symbol, found via nm.
+  -- Verified: [1][0] (KEYBOARD_LETTERS_UPPER row 0) decodes to
+  -- "{FC:11:0B}A{FC:11:06}B{FC:11:06}C{FC:11:1A}D..." exactly.
+  sNamingScreenKeyboardText = 0x083e264c - 0x08000000,
+  -- Naming screen BG art. gNamingScreenMenu_Gfx is the shared LZ77 tile
+  -- set for all four BGs (real LoadGfx does LZ77UnCompWram once and
+  -- LoadBgTiles it into bg1/bg2/bg3); the tilemaps are LZ77 too
+  -- (DecompressToBgTilemapBuffer). Real (non-static) symbols, present in
+  -- the linker .map. Verified: the tile set decompresses to a whole
+  -- number of 4bpp tiles and each tilemap to exactly 32x20 entries
+  -- (1280 bytes), and the composite is the real naming-screen panel art.
+  gNamingScreenMenu_Gfx = 0x08e980e4 - 0x08000000,
+  gNamingScreenBackground_Tilemap = 0x08e982bc - 0x08000000,
+  -- Per-page keyboard panel tilemaps. Named by the KBPAGE_* page they
+  -- belong to (real MainState_FadeIn loads Upper for the initial
+  -- KBPAGE_LETTERS_UPPER page and Lower for the on-deck page).
+  gNamingScreenKeyboardUpper_Tilemap = 0x08e98398 - 0x08000000,
+  gNamingScreenKeyboardLower_Tilemap = 0x08e98458 - 0x08000000,
+  gNamingScreenKeyboardSymbols_Tilemap = 0x08e98518 - 0x08000000,
+  -- Palettes: gNamingScreenMenu_Pal is 0xC0 bytes = 6 real 16-color banks
+  -- (loaded at BG_PLTT_ID(0)); gNamingScreenKeyboard_Pal is one bank
+  -- (loaded at BG_PLTT_ID(10), which is exactly the paletteNum the real
+  -- WIN_KB_PAGE_1/2 window templates use).
+  gNamingScreenMenu_Pal = 0x08e98024 - 0x08000000,
+  gNamingScreenKeyboard_Pal = 0x08e97fe4 - 0x08000000,
+  -- The real 16x16 selection cursor OBJ (sSpriteTemplate_Cursor, .oam =
+  -- sOam_16x16, 4 tiles / 0x80 bytes per the real sSpriteSheets entry).
+  -- Uncompressed 4bpp, palette PALTAG_CURSOR = gNamingScreenMenu_Pal
+  -- bank 5.
+  gNamingScreenCursor_Gfx = 0x08e98df8 - 0x08000000,
 }
 
 -- Total record counts, confirmed via `arm-none-eabi-nm -S` on the real
