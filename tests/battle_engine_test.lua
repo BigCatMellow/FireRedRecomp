@@ -528,6 +528,144 @@ battle = makeBattle({ 0, 1, 0 }, { { move = Data.MOVE_TACKLE, pp = 0 } }, { { mo
 events = battle:runTurn({ action = "move", moveSlot = 1 }, { action = "move", moveSlot = 1 })
 check("zero PP emits documented noPP event", events[#events].type == "noPP" or events[2].type == "noPP")
 
+-- Real multi-hit family (BattleEngine.MULTI_HIT_MOVES / resolveMultiHit):
+-- accuracy is checked exactly ONCE for the whole move (already covered by
+-- every accuracyCheck test above), then each hit gets its own crit roll
+-- and damage roll, no repeat accuracy. Isolated with resolveMove directly
+-- so each RNG-draw-count assertion below is exact. Per-hit RNG shape is
+-- `crit, damageMultiplier` (values `1, 0` = no crit, 100% damage, same
+-- convention as the rest of this file).
+
+-- EFFECT_DOUBLE_HIT (Double Kick): always exactly 2 hits, ZERO hit-count
+-- RNG (real fixed `setmultihitcounter 2` arg) -- total draws = 1 accuracy +
+-- 2*(crit+damage) = 5.
+battle = makeBattle({ 0, 1, 0, 1, 0 }, { { move = Data.MOVE_DOUBLE_KICK, pp = 30 } }, { { move = Data.MOVE_TACKLE, pp = 1 } })
+statEvents = {}
+battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, statEvents)
+local dmgEvents = {}
+for _, e in ipairs(statEvents) do
+  if e.type == "damage" then dmgEvents[#dmgEvents + 1] = e end
+end
+check("Double Kick (EFFECT_DOUBLE_HIT) lands exactly 2 hits", #dmgEvents == 2, #dmgEvents)
+check("Double Kick's trailing multiHit event reports 2 hits",
+  statEvents[#statEvents].type == "multiHit" and statEvents[#statEvents].hits == 2, statEvents[#statEvents])
+check("Double Kick consumes exactly 5 RNG draws (1 accuracy + 2*(crit+damage), zero hit-count RNG)",
+  battle.rng.draws == 5, battle.rng.draws)
+
+-- Bonemerang: the other real EFFECT_DOUBLE_HIT move, confirming no
+-- per-move special-casing -- same fixed-2 behavior.
+battle = makeBattle({ 0, 1, 0, 1, 0 }, { { move = Data.MOVE_BONEMERANG, pp = 10 } }, { { move = Data.MOVE_TACKLE, pp = 1 } })
+statEvents = {}
+battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, statEvents)
+dmgEvents = {}
+for _, e in ipairs(statEvents) do
+  if e.type == "damage" then dmgEvents[#dmgEvents + 1] = e end
+end
+check("Bonemerang (also EFFECT_DOUBLE_HIT) lands exactly 2 hits with no special-casing", #dmgEvents == 2, #dmgEvents)
+
+-- EFFECT_MULTI_HIT, "1 extra roll" branch: first Random()&3 roll is 0 or 1,
+-- giving a final count of 2 or 3 with exactly ONE hit-count Random() call.
+-- Roll value 1 -> first&3=1 -> count = 1+2 = 3.
+battle = makeBattle(
+  { 0, 1, 1, 0, 1, 0, 1, 0 },
+  { { move = Data.MOVE_DOUBLE_SLAP, pp = 10 } }, { { move = Data.MOVE_TACKLE, pp = 1 } }
+)
+statEvents = {}
+battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, statEvents)
+dmgEvents = {}
+for _, e in ipairs(statEvents) do
+  if e.type == "damage" then dmgEvents[#dmgEvents + 1] = e end
+end
+check("Double Slap's single-roll branch (first roll 1) lands exactly 3 hits", #dmgEvents == 3, #dmgEvents)
+check("single-roll branch consumes exactly 8 draws (1 acc + 1 hitcount + 3*(crit+damage))",
+  battle.rng.draws == 8, battle.rng.draws)
+
+-- EFFECT_MULTI_HIT, "2 extra rolls" branch: first roll is 2 or 3, so a
+-- second roll picks the final count. First=3 (3&3=3>1), second=3
+-- (3&3=3, +2 = 5) -> 5 hits, TWO hit-count Random() calls.
+battle = makeBattle(
+  { 0, 3, 3, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0 },
+  { { move = Data.MOVE_FURY_ATTACK, pp = 20 } }, { { move = Data.MOVE_TACKLE, pp = 1 } }
+)
+statEvents = {}
+battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, statEvents)
+dmgEvents = {}
+for _, e in ipairs(statEvents) do
+  if e.type == "damage" then dmgEvents[#dmgEvents + 1] = e end
+end
+check("Fury Attack's two-roll branch (first=3, second=3) lands exactly 5 hits", #dmgEvents == 5, #dmgEvents)
+check("two-roll branch consumes exactly 13 draws (1 acc + 2 hitcount + 5*(crit+damage))",
+  battle.rng.draws == 13, battle.rng.draws)
+
+-- Same two-roll branch, other end: first=2, second=0 -> (0&3)+2 = 2 hits.
+battle = makeBattle(
+  { 0, 2, 0, 1, 0, 1, 0 },
+  { { move = Data.MOVE_FURY_ATTACK, pp = 20 } }, { { move = Data.MOVE_TACKLE, pp = 1 } }
+)
+statEvents = {}
+battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, statEvents)
+dmgEvents = {}
+for _, e in ipairs(statEvents) do
+  if e.type == "damage" then dmgEvents[#dmgEvents + 1] = e end
+end
+check("Fury Attack's two-roll branch (first=2, second=0) lands exactly 2 hits", #dmgEvents == 2, #dmgEvents)
+check("that two-roll branch consumes exactly 7 draws (1 acc + 2 hitcount + 2*(crit+damage))",
+  battle.rng.draws == 7, battle.rng.draws)
+
+-- Defender faints mid-sequence: the sequence stops the instant HP hits 0,
+-- landing fewer hits than the rolled count. Fury Attack rolled for 3 hits
+-- (single-roll branch, first=1), foe HP set to survive exactly one hit.
+battle = makeBattle(
+  { 0, 1, 1, 0, 1, 0, 1, 0 },
+  { { move = Data.MOVE_FURY_ATTACK, pp = 20 } }, { { move = Data.MOVE_TACKLE, pp = 1 } }
+)
+battle.foe.hp = 1
+statEvents = {}
+battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, statEvents)
+dmgEvents = {}
+for _, e in ipairs(statEvents) do
+  if e.type == "damage" then dmgEvents[#dmgEvents + 1] = e end
+end
+check("a defender that faints mid-sequence lands only 1 hit, not the full rolled 3",
+  #dmgEvents == 1 and dmgEvents[1].hpRemaining == 0, #dmgEvents)
+check("the sequence ends with the defender's faint, no further hits attempted",
+  statEvents[#statEvents - 1].type == "faint" and statEvents[#statEvents - 1].side == BattleEngine.SIDE_FOE
+    and statEvents[#statEvents].type == "battleEnd", statEvents)
+check("a faint-terminated sequence emits no trailing multiHit summary event",
+  statEvents[#statEvents].type ~= "multiHit" and statEvents[#statEvents - 1].type ~= "multiHit")
+check("the mid-sequence faint also ends the battle as playerWon", battle.outcome == "playerWon")
+
+-- Type-immune target: the entire sequence stops at zero hits, not "immune
+-- hits skipped, others land." Confirmed only reachable on the first hit
+-- since type doesn't change mid-sequence.
+local multiHitMoves = {}
+for k, v in pairs(Data.moves) do multiHitMoves[k] = v end
+local groundFoeMulti = BattleEngine.makeBattler({ species = 0, level = 5, stats = charStats, types = { Data.TYPE_GROUND, Data.TYPE_GROUND }, moves = { { move = Data.MOVE_TACKLE, pp = 1 } } })
+local electricPlayerMulti = BattleEngine.makeBattler({ species = 0, level = 5, stats = bulbaStats, types = { Data.TYPE_ELECTRIC, Data.TYPE_ELECTRIC }, moves = { { move = 996, pp = 1 } } })
+multiHitMoves[996] = { effect = 29, power = 40, type = Data.TYPE_ELECTRIC, accuracy = 100, pp = 1,
+                       secondaryEffectChance = 0, target = 0, priority = 0, flags = 0 }
+battle = BattleEngine.new({ player = electricPlayerMulti, foe = groundFoeMulti, moves = multiHitMoves, typeChart = Data.typeChart, rng = scriptedRng({ 0, 1, 1 }) })
+statEvents = {}
+battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, statEvents)
+check("a type-immune multi-hit move emits a single noEffect and zero damage events",
+  statEvents[2].type == "noEffect" and #statEvents == 2, statEvents)
+check("no-effect stops before adjustnormaldamage's Random() call -- only accuracy+hitcount+crit consumed",
+  battle.rng.draws == 3, battle.rng.draws)
+
+-- A miss never reaches setmultihitcounter at all (real script:
+-- accuracycheck -> attackstring -> ppreduce -> setmultihitcounter -- the
+-- accuracycheck branch on a miss jumps straight to
+-- BattleScript_PrintMoveMissed, never falling through to ppreduce's
+-- fallthrough into setmultihitcounter). Zero hits, PP still deducted,
+-- exactly the ordinary single accuracy-roll RNG consumption.
+battle = makeBattle({ 90 }, { { move = Data.MOVE_DOUBLE_SLAP, pp = 10 } }, { { move = Data.MOVE_TACKLE, pp = 1 } })
+statEvents = {}
+battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, statEvents)
+check("an 85-accuracy Double Slap misses on real roll 91", statEvents[2].type == "miss")
+check("a missed multi-hit move deducts PP", battle.player.moves[1].pp == 9)
+check("a missed multi-hit move never reaches setmultihitcounter -- exactly one RNG draw",
+  battle.rng.draws == 1, battle.rng.draws)
+
 -- Optional ROM check: exact real parser output equals the no-ROM fixture.
 local romPath = os.getenv("POKEPORT_ROM")
 if romPath then

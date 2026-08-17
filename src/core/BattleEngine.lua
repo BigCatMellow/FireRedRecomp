@@ -78,9 +78,8 @@
 --   * No party/switching: a faint ends the battle. Real code would run
 --     the switch-in flow.
 --   * No status conditions, abilities, held items, weather, screens,
---     multi-turn/charging moves, trapping, forced switching, multi-hit
---     moves, OHKO moves, double battles, trainer AI, or EXP/level-up on
---     victory.
+--     multi-turn/charging moves, trapping, forced switching, OHKO moves,
+--     double battles, trainer AI, or EXP/level-up on victory.
 --   * Pure single-stat stage-change moves (Growl/Tail Whip's full real
 --     family) ARE supported -- see BattleEngine.STAT_STAGE_MOVES and the
 --     move.power == 0 branch of resolveMove.
@@ -175,6 +174,44 @@
 --     them (checked against src/data/battle_moves.h). STAT_STAGE_MOVES
 --     deliberately omits these eight; supportsMove() correctly rejects
 --     them too.
+--   * The real multi-hit family IS supported -- see BattleEngine.
+--     MULTI_HIT_MOVES and resolveMultiHit. EFFECT_MULTI_HIT=29 (Double
+--     Slap, Comet Punch, Fury Attack, Pin Missile, Spike Cannon, Barrage,
+--     Fury Swipes, Bone Rush, Arm Thrust, Bullet Seed, Icicle Spear, Rock
+--     Blast) hits a real 2-5 times, the count rolled by
+--     BattleFormulas.rollMultiHitCount (Cmd_setmultihitcounter's arg-0
+--     branch: one Random() call if the first roll is 0 or 1, giving count
+--     2 or 3; two Random() calls if the first roll is 2 or 3, a second roll
+--     then giving count 2-5). EFFECT_DOUBLE_HIT=44 (Double Kick, Bonemerang)
+--     is always exactly 2 hits with ZERO hit-count RNG (real script passes
+--     a fixed `setmultihitcounter 2` arg). Both share one real fact this
+--     port depends on: accuracy is checked and PP is deducted exactly ONCE
+--     for the whole move (real BattleScript_EffectMultiHit/EffectDoubleHit:
+--     accuracycheck -> ... -> ppreduce -> setmultihitcounter, all BEFORE
+--     the hit-count is even rolled) -- individual hits get their own crit
+--     roll and damage roll only, never a repeat accuracy roll. Verified
+--     against BattleScript_MultiHitLoop (data/battle_scripts_1.s): a
+--     defender that reaches 0 HP partway through the sequence stops it
+--     immediately (real per-iteration `jumpifhasnohp BS_TARGET`), and a
+--     hit that resolves to MOVE_RESULT_NO_EFFECT (0x type effectiveness)
+--     stops the ENTIRE sequence right there (real `jumpifmovehadnoeffect`)
+--     -- a type-immune target takes zero hits total, not "immune hits
+--     skipped, others land." That noEffect check also fires structurally
+--     before the real per-hit `adjustnormaldamage` step, so (unlike the
+--     ordinary single-hit path above, where the random-multiplier Random()
+--     call always runs even on a no-effect hit) a no-effect hit inside a
+--     multi-hit sequence does NOT consume that Random() call -- ported
+--     exactly, see resolveMultiHit's inline comment. The real
+--     `jumpifhasnohp BS_ATTACKER` check at the very top of the loop is
+--     confirmed dead code for this engine's scope: no real EFFECT_MULTI_HIT
+--     or EFFECT_DOUBLE_HIT move also has a recoil effect in this
+--     generation, so the attacker can never reach 0 HP mid-sequence here;
+--     documented rather than coded as an unreachable branch. Damage
+--     application itself is NOT duplicated -- both this path and the
+--     ordinary single-hit path call the shared BattleEngine:applyDamage
+--     helper (real Cmd_datahpupdate's HP-subtraction-floored-at-0 plus its
+--     damage event and FIRST_BATTLE tip), matching this project's existing
+--     shared-helper pattern.
 --   * Capture is intentionally the first normal Poke Ball/no-status slice.
 --     CaptureRules owns the exact formula/shake RNG. This engine neither
 --     removes inventory nor copies a caught mon to party/PC or updates the
@@ -315,6 +352,27 @@ BattleEngine.RECOIL_MOVES = {
 -- per-move engine.
 BattleEngine.DRAIN_MOVES = {
   [3] = { divisor = 2 }, -- EFFECT_ABSORB (Absorb, Mega Drain, Giga Drain, Leech Life)
+}
+
+-- The real multi-hit family: a single move selection that hits the
+-- defender multiple times in one turn. Real BattleScript_EffectMultiHit /
+-- BattleScript_EffectDoubleHit (data/battle_scripts_1.s): attackcanceler ->
+-- accuracycheck -> attackstring -> ppreduce -> setmultihitcounter ->
+-- initmultihitstring -> [BattleScript_MultiHitLoop]. Accuracy is checked
+-- ONCE for the whole move (already done by the time resolveMove reaches
+-- this dispatch) and PP is deducted ONCE -- neither repeats per hit.
+-- `fixed` mirrors the real `setmultihitcounter` arg: EFFECT_DOUBLE_HIT
+-- passes a literal 2 (Cmd_setmultihitcounter's nonzero-arg branch), so the
+-- count is just 2 with ZERO hit-count Random() calls; EFFECT_MULTI_HIT
+-- passes 0, running the roll branch (BattleFormulas.rollMultiHitCount) for
+-- a real 2-5 hit count. Confirmed against src/data/battle_moves.h: no real
+-- gBattleMoves entry uses EFFECT_DOUBLE_HIT differently (Double Kick and
+-- Bonemerang both just use it plainly, no special-casing needed).
+BattleEngine.MULTI_HIT_MOVES = {
+  [29] = { fixed = nil }, -- EFFECT_MULTI_HIT (Double Slap, Comet Punch, Fury Attack, Pin Missile,
+                          -- Spike Cannon, Barrage, Fury Swipes, Bone Rush, Arm Thrust, Bullet Seed,
+                          -- Icicle Spear, Rock Blast): rolled 2-5 hits.
+  [44] = { fixed = 2 },   -- EFFECT_DOUBLE_HIT (Double Kick, Bonemerang): always exactly 2 hits.
 }
 
 -- Builds a battler table from computed stats. `stats` is a
@@ -505,6 +563,18 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
     return
   end
 
+  -- The real multi-hit family (EFFECT_MULTI_HIT / EFFECT_DOUBLE_HIT): the
+  -- move's single accuracy roll and single PP deduction already happened
+  -- above; everything from here (hit-count roll, per-hit crit/damage/type,
+  -- early-stop rules) is real BattleScript_MultiHitLoop territory, handled
+  -- by resolveMultiHit. See BattleEngine.MULTI_HIT_MOVES for the exact real
+  -- per-effect-id hit-count source.
+  local multiHitEntry = BattleEngine.MULTI_HIT_MOVES[move.effect]
+  if multiHitEntry then
+    self:resolveMultiHit(attackerSide, attacker, defenderSide, defender, move, multiHitEntry, events)
+    return
+  end
+
   -- 3. critcalc (one Random()). Cmd_critcalc evaluates Random before its
   -- FIRST_BATTLE flag check, so the roll is still consumed while criticals
   -- are suppressed. Suppression is global until the first player damage
@@ -551,24 +621,7 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
   end
 
   -- 7. datahpupdate: real HP subtraction, floored at 0.
-  if damage > defender.hp then
-    damage = defender.hp
-  end
-  defender.hp = defender.hp - damage
-  events[#events + 1] = {
-    type = "damage",
-    side = attackerSide,
-    target = defenderSide,
-    amount = damage,
-    hpRemaining = defender.hp,
-    superEffective = flags.superEffective,
-    notVeryEffective = flags.notVeryEffective,
-  }
-  if self.firstBattle and attackerSide == BattleEngine.SIDE_PLAYER
-      and not self.tutorialPlayerDamageDone then
-    self.tutorialPlayerDamageDone = true
-    events[#events + 1] = { type="tutorialTip", kind="damage" }
-  end
+  damage = self:applyDamage(attackerSide, defenderSide, defender, damage, flags, events)
 
   -- 8a. Recoil/drain: a real self-inflicted HP change derived from the
   -- actual, already-clamped `damage` just dealt (real gHpDealt). See
@@ -652,6 +705,130 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
       end
     end
   end
+end
+
+-- Real datahpupdate's HP subtraction (floored at 0), plus the resulting
+-- "damage" event and the FIRST_BATTLE damage-tutorial tip. Shared by the
+-- ordinary single-hit path (resolveMove's step 7) and resolveMultiHit's
+-- per-hit loop below, so the actual damage-application logic is written
+-- once. Returns the real, already-clamped amount actually removed (what
+-- real gHpDealt would hold), since callers like the recoil/drain dispatch
+-- need that exact clamped figure, not the pre-clamp `damage` they passed in.
+function BattleEngine:applyDamage(attackerSide, defenderSide, defender, damage, flags, events)
+  if damage > defender.hp then
+    damage = defender.hp
+  end
+  defender.hp = defender.hp - damage
+  events[#events + 1] = {
+    type = "damage",
+    side = attackerSide,
+    target = defenderSide,
+    amount = damage,
+    hpRemaining = defender.hp,
+    superEffective = flags.superEffective,
+    notVeryEffective = flags.notVeryEffective,
+  }
+  if self.firstBattle and attackerSide == BattleEngine.SIDE_PLAYER
+      and not self.tutorialPlayerDamageDone then
+    self.tutorialPlayerDamageDone = true
+    events[#events + 1] = { type="tutorialTip", kind="damage" }
+  end
+  return damage
+end
+
+-- Runs the real per-hit loop (BattleScript_MultiHitLoop, data/
+-- battle_scripts_1.s) after the caller (resolveMove) has already checked
+-- accuracy exactly once and deducted PP exactly once for the whole move --
+-- neither repeats here. `entry.fixed` is EFFECT_DOUBLE_HIT's real fixed
+-- `setmultihitcounter 2` arg (zero hit-count RNG); otherwise this is
+-- EFFECT_MULTI_HIT and rolls the real 2-5 count via
+-- BattleFormulas.rollMultiHitCount (its own RNG-draw-count doc explains the
+-- variable 1-or-2-draw consumption).
+--
+-- Real per-iteration order: critcalc -> damagecalc -> typecalc ->
+-- jumpifmovehadnoeffect (stop the WHOLE sequence right there, BEFORE
+-- adjustnormaldamage even runs -- unlike the ordinary single-hit path
+-- above, where adjustnormaldamage's random-multiplier Random() call always
+-- runs before the noEffect check; the multi-hit script's noEffect branch
+-- skips that Random() call entirely, since type doesn't change between
+-- hits this is only ever reachable on the first hit, but the real script
+-- structurally rechecks it every iteration and this ports that literally)
+-- -> adjustnormaldamage -> apply damage -> tryfaintmon BS_TARGET. Real
+-- BattleScript_MultiHitLoop also opens with `jumpifhasnohp BS_ATTACKER`
+-- (jumps to MultiHitEnd) before the BS_TARGET check -- confirmed dead code
+-- for every move this engine actually supports: no real EFFECT_MULTI_HIT
+-- or EFFECT_DOUBLE_HIT move also carries a recoil effect in this
+-- generation (checked against src/data/battle_moves.h's real records), so
+-- the attacker can never reach 0 HP mid-sequence here. Not ported as a
+-- branch; documented here instead, matching this file's existing practice
+-- of noting confirmed-unreachable real branches rather than adding dead
+-- code for them.
+--
+-- Event shape: this project's event stream is its own design, not real
+-- FireRed's message system (see the header). Each landed hit reuses the
+-- exact same {type="critical"}/{type="damage"} events the single-hit path
+-- emits, one pair per landed hit, in order -- so a UI layer that already
+-- knows how to animate a single hit needs no new event types to animate a
+-- multi-hit sequence. A trailing {type="multiHit", hits=} event is emitted
+-- only when the loop completes all its rolled/fixed hits without an early
+-- stop (mirroring real STRINGID_HITXTIMES, which real
+-- BattleScript_MultiHitPrintStrings only reaches when the move didn't end
+-- in MOVE_RESULT_NO_EFFECT) -- an early stop from a mid-sequence faint
+-- already ends the battle via checkFaint's own faint/battleEnd events,
+-- which communicate the same "sequence is over" information, so no
+-- separate multiHit summary is emitted in that terminal case.
+function BattleEngine:resolveMultiHit(attackerSide, attacker, defenderSide, defender, move, entry, events)
+  local hitCount
+  if entry.fixed then
+    hitCount = entry.fixed
+  else
+    hitCount = BattleFormulas.rollMultiHitCount(self.rng)
+  end
+
+  for i = 1, hitCount do
+    -- Real jumpifhasnohp BS_TARGET (top of BattleScript_MultiHitLoop): stop
+    -- immediately if an earlier hit in this same sequence already fainted
+    -- the defender. Unreachable on i==1 (runTurn only calls resolveMove for
+    -- a battler with hp > 0), but real for i>1.
+    if defender.hp <= 0 then break end
+
+    local rolledCrit = BattleFormulas.critRoll(self.rng, 0)
+    local isCrit = rolledCrit and not (self.firstBattle and not self.tutorialPlayerDamageDone)
+
+    local damage = BattleFormulas.calculateBaseDamage(attacker, defender, move, isCrit)
+    if isCrit then
+      damage = damage * BattleFormulas.CRIT_MULTIPLIER
+    end
+
+    local flags
+    damage, flags = BattleFormulas.typeCalc(
+      damage, move.type, attacker.types, defender.types, self.typeChart
+    )
+
+    if flags.noEffect then
+      -- Real jumpifmovehadnoeffect: the ENTIRE sequence stops here, not
+      -- just this one hit -- a type-immune target takes zero hits total.
+      events[#events + 1] = { type = "noEffect", side = attackerSide, target = defenderSide }
+      return
+    end
+
+    damage = BattleFormulas.applyRandomDamageMultiplier(damage, self.rng)
+
+    if isCrit then
+      events[#events + 1] = { type = "critical", side = attackerSide }
+    end
+
+    self:applyDamage(attackerSide, defenderSide, defender, damage, flags, events)
+
+    -- Real tryfaintmon BS_TARGET, checked every iteration (not just once
+    -- at the end) so the sequence stops the instant HP hits 0, matching
+    -- the real per-iteration jumpifhasnohp check at the top of the loop.
+    if self:checkFaint(defenderSide, events) then
+      return
+    end
+  end
+
+  events[#events + 1] = { type = "multiHit", side = attackerSide, hits = hitCount }
 end
 
 -- Checks for a faint on `side`, appending events and setting the outcome.

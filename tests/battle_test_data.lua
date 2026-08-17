@@ -53,6 +53,10 @@ M.MOVE_TAKE_DOWN = 36
 M.MOVE_DOUBLE_EDGE = 38
 M.MOVE_SUBMISSION = 66
 M.MOVE_ABSORB = 71
+M.MOVE_DOUBLE_SLAP = 3
+M.MOVE_FURY_ATTACK = 31
+M.MOVE_DOUBLE_KICK = 24
+M.MOVE_BONEMERANG = 155
 
 -- Real MOVE_TARGET_* bits (include/battle.h).
 M.MOVE_TARGET_SELECTED = 0
@@ -118,6 +122,21 @@ M.moves = {
   -- heal); Absorb itself.
   [M.MOVE_ABSORB] = { effect = 3, power = 20, type = M.TYPE_GRASS, accuracy = 100, pp = 20,
                       secondaryEffectChance = 0, target = M.MOVE_TARGET_SELECTED, priority = 0, flags = 0 },
+  -- Multi-hit family (BattleEngine.MULTI_HIT_MOVES): real EFFECT_MULTI_HIT=29
+  -- (Double Slap, Fury Attack -- rolled 2-5 hits) and real
+  -- EFFECT_DOUBLE_HIT=44 (Double Kick, Bonemerang -- always exactly 2 hits,
+  -- zero hit-count RNG). Real flags = FLAG_MAKES_CONTACT(1) |
+  -- FLAG_PROTECT_AFFECTED(2) | FLAG_MIRROR_MOVE_AFFECTED(0x10) |
+  -- FLAG_KINGS_ROCK_AFFECTED(0x20) = 0x33 for the three contact moves;
+  -- Bonemerang doesn't make contact, so 0x32 (no bit 0).
+  [M.MOVE_DOUBLE_SLAP] = { effect = 29, power = 15, type = M.TYPE_NORMAL, accuracy = 85, pp = 10,
+                           secondaryEffectChance = 0, target = M.MOVE_TARGET_SELECTED, priority = 0, flags = 0x33 },
+  [M.MOVE_FURY_ATTACK] = { effect = 29, power = 15, type = M.TYPE_NORMAL, accuracy = 85, pp = 20,
+                           secondaryEffectChance = 0, target = M.MOVE_TARGET_SELECTED, priority = 0, flags = 0x33 },
+  [M.MOVE_DOUBLE_KICK] = { effect = 44, power = 30, type = M.TYPE_FIGHTING, accuracy = 100, pp = 30,
+                           secondaryEffectChance = 0, target = M.MOVE_TARGET_SELECTED, priority = 0, flags = 0x33 },
+  [M.MOVE_BONEMERANG] = { effect = 44, power = 50, type = M.TYPE_GROUND, accuracy = 90, pp = 10,
+                          secondaryEffectChance = 0, target = M.MOVE_TARGET_SELECTED, priority = 0, flags = 0x32 },
 }
 
 -- Real gSpeciesInfo base stats + types.

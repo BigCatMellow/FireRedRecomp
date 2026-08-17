@@ -425,6 +425,30 @@ function BattleFormulas.secondaryEffectRoll(rng, percentChance)
   return (rng:next16() % 100) <= percentChance
 end
 
+-- Real EFFECT_MULTI_HIT hit-count roll, Cmd_setmultihitcounter's arg-0
+-- branch (src/battle_script_commands.c:6857):
+--   gMultiHitCounter = Random() & 3
+--   if gMultiHitCounter > 1: gMultiHitCounter = (Random() & 3) + 2
+--   else: gMultiHitCounter += 2
+-- `Random() & 3` == `Random() % 4` (power-of-two mask), matching this
+-- project's existing `next16() % 4` idiom elsewhere (ObjectEventState.lua).
+-- Consumes exactly ONE Random() call when the first roll is 0 or 1 (final
+-- count 2 or 3), or exactly TWO when the first roll is 2 or 3 (a second
+-- roll of 0-3 plus 2 gives a final count of 2-5) -- this variable RNG
+-- consumption is itself real-observable and must be exact for seeded
+-- replay. Produces the real 3/8, 3/8, 1/8, 1/8 distribution for 2/3/4/5
+-- hits as an emergent property of this exact mechanism, not a lookup
+-- table. EFFECT_DOUBLE_HIT does NOT call this -- its real script passes a
+-- fixed `setmultihitcounter 2` arg, consuming zero Random() calls; callers
+-- must branch on the fixed-count case themselves rather than calling this.
+function BattleFormulas.rollMultiHitCount(rng)
+  local first = rng:next16() % 4
+  if first > 1 then
+    return (rng:next16() % 4) + 2
+  end
+  return first + 2
+end
+
 -- Real speed used for turn order (GetWhoStrikesFirst, src/battle_main.c
 -- :3428). Paralysis/items/abilities/badges deliberately not modeled.
 function BattleFormulas.effectiveSpeed(battler)
