@@ -17,7 +17,13 @@
 --
 -- Every OTHER real opcode's world effect (warp, flag/var writes, special,
 -- applymovement, trainerbattle, giveitem, ...) is INTENTIONALLY left
--- unhooked. ScriptInterpreter's callHook() treats an absent hook as a
+-- unhooked, with one exception: `pokemart`. Real ScrCmd_pokemart's
+-- ScriptContext_Stop() pauses the SCRIPT until the real mart menu closes,
+-- the exact same "pause until an external close signal" shape as
+-- message/waitbuttonpress above -- just gated on the mart UI's own
+-- isDone() instead of a button press. See onPokemart in buildWorld() and
+-- self.pendingMartItemListPtr below. Every other unhooked opcode:
+-- ScriptInterpreter's callHook() treats an absent hook as a
 -- no-op, so those opcodes still execute their real control flow (a
 -- `setvar` still advances the pc, a `goto_if` still branches) but produce
 -- no world side effect. That is the "stubbed handler that returns
@@ -74,6 +80,7 @@ function DialogueRunner.new(instructions, addrToIndex, opts)
     printer = nil,          -- TextPrinterState for the currently-displayed message, or nil when no box is up
     messageTextPtr = nil,
     waitingForButton = false,
+    pendingMartItemListPtr = nil, -- real u32 item-list ROM pointer while a pokemart is open, else nil
     locked = false,
     finished = false,
     error = nil,
@@ -108,6 +115,9 @@ function DialogueRunner:buildWorld()
     onFacePlayer = function()
       if self_.onFacePlayer then self_.onFacePlayer() end
     end,
+    onPokemart = function(itemListPtr)
+      self_.pendingMartItemListPtr = itemListPtr
+    end,
   }
 end
 
@@ -116,7 +126,18 @@ end
 -- player movement input (a real `lock`-alike) and to know whether to draw
 -- the dialogue box.
 function DialogueRunner:isActive()
-  return not self.finished or self.printer ~= nil
+  return not self.finished or self.printer ~= nil or self.pendingMartItemListPtr ~= nil
+end
+
+-- Called by the caller once the real mart menu it opened (driven off
+-- self.pendingMartItemListPtr) has closed -- the external "close signal"
+-- equivalent of a button press clearing waitingForButton above, except
+-- there is no single input edge to poll every tick for a multi-screen
+-- shop flow, so the caller must tell us explicitly. Clears the pending
+-- pointer so the *next* tick() resumes stepping the script past
+-- `pokemart` into whatever real instructions follow it.
+function DialogueRunner:notifyMartClosed()
+  self.pendingMartItemListPtr = nil
 end
 
 -- The tokens currently revealed, for the caller to render -- nil when no
@@ -136,6 +157,16 @@ end
 -- and dismisses it.
 function DialogueRunner:tick(aButtonNewlyPressed)
   if self.error then return end
+
+  if self.pendingMartItemListPtr ~= nil then
+    -- Mirrors the waitingForButton gate below, but there is no per-tick
+    -- input edge to check here -- only notifyMartClosed() (called by the
+    -- caller once the real mart UI it opened reports itself done) clears
+    -- this, so until then every tick() is a safe no-op on the
+    -- script-stepping side, exactly like repeated ticks while
+    -- waitingForButton is set and no press has landed.
+    return
+  end
 
   local revealedBefore = self.printer and self.printer:isFullyRevealed()
   if self.printer then
@@ -173,7 +204,7 @@ function DialogueRunner:tick(aButtonNewlyPressed)
       self.finished = true
       return
     end
-    if self.waitingForButton or self.startedMessageThisTick then return end
+    if self.waitingForButton or self.startedMessageThisTick or self.pendingMartItemListPtr ~= nil then return end
   end
 
   self.error = ("DialogueRunner: script ran %d instructions in one tick without reaching a " ..

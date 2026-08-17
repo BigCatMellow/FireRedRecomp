@@ -120,5 +120,60 @@ mixed:tick(false)
 check("unhooked real opcodes (setvar/special) run through to the message", mixed.printer ~= nil)
 check("unhooked opcodes did not record an error", mixed.error == nil, mixed.error)
 
+---------------------------------------------------------------- pokemart
+
+-- Real Viridian City Mart clerk script shape: `pokemart <ptr>` followed by
+-- more real dialogue (loadword/callstd/end) -- proves both the pause at
+-- pokemart and correct resumption into the trailing script once notified.
+local martInstructions = {
+  { op = "pokemart", itemListPtr = 0x0831F424, addr = 0x08165300, size = 5 },
+  { op = "loadword", index = 0, value = 0x08165838, addr = 0x08165305, size = 6 },
+  { op = "callstd", stdIndex = 2, addr = 0x0816530B, size = 2 },
+  { op = "end", addr = 0x0816530D, size = 1 },
+}
+local martAddrToIndex = {
+  [0x08165300] = 1, [0x08165305] = 2, [0x0816530B] = 3, [0x0816530D] = 4,
+}
+local mart = DialogueRunner.new(martInstructions, martAddrToIndex, { tokenize = tokensFor, ticksPerChar = 1 })
+
+check("mart runner is active before it has run anything", mart:isActive())
+
+mart:tick(false)
+check("first tick reaches pokemart and pauses (pendingMartItemListPtr set)",
+  mart.pendingMartItemListPtr == 0x0831F424, mart.pendingMartItemListPtr)
+check("the resolved itemListPtr is exactly what the instruction carried, unmodified",
+  mart.pendingMartItemListPtr == 0x0831F424, mart.pendingMartItemListPtr)
+check("no trailing script ran yet -- no message box is up", mart.printer == nil)
+check("isActive() is true while the mart is pending", mart:isActive())
+
+-- Repeated ticks without a close notification must be safe no-ops on the
+-- script-stepping side, no matter how many times tick() is called.
+for _ = 1, 5 do mart:tick(false) end
+for _ = 1, 5 do mart:tick(true) end
+check("repeated ticks without notifyMartClosed do not advance past pokemart",
+  mart.pendingMartItemListPtr == 0x0831F424, mart.pendingMartItemListPtr)
+check("repeated ticks without notifyMartClosed never reach the trailing message", mart.printer == nil)
+check("mart runner is still active after repeated no-op ticks", mart:isActive())
+
+mart:notifyMartClosed()
+check("notifyMartClosed clears the pending pointer", mart.pendingMartItemListPtr == nil)
+check("the runner has not stepped past pokemart yet (clearing alone doesn't step)", mart.printer == nil)
+
+mart:tick(false)
+check("the next tick after notifyMartClosed resumes and reaches the trailing message",
+  mart.printer ~= nil)
+check("the trailing message's real text pointer is correct",
+  mart.messageTextPtr == 0x08165838, mart.messageTextPtr)
+
+mart:tick(true) -- speed-up press has no effect at 1 tick/char with a 3-char message
+mart:tick(true)
+mart:tick(true)
+check("mart runner's trailing message fully reveals normally", mart.printer:isFullyRevealed())
+mart:tick(true)
+check("A press dismisses the trailing message box", mart.printer == nil)
+mart:tick(false)
+check("mart script reaches its real `end` and goes inactive", not mart:isActive())
+check("no error was recorded on a clean pokemart run", mart.error == nil, mart.error)
+
 print(("%d passed, %d failed"):format(passed, failed))
 os.exit(failed == 0 and 0 or 1)
