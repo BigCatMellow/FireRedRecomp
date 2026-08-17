@@ -1467,11 +1467,13 @@ world.resolveMartItemList = function(ptr)
   return items
 end
 
--- Opens the real Poke Mart BUY flow against the active session's real
--- bag/money -- SessionBagBridge.fromSaveBlock1, same as startWildBattle
--- already builds one. `itemIds` is the real stock list to sell (the
--- caller resolves it -- either the M dev key's hardcoded Viridian list,
--- or a live `pokemart` script trigger's real resolved pointer).
+-- Opens the real Poke Mart BUY/SELL flow against the active session's
+-- real bag/money -- SessionBagBridge.fromSaveBlock1, same as
+-- startWildBattle already builds one. `itemIds` is the real BUY stock
+-- list (the caller resolves it -- either the M dev key's hardcoded
+-- Viridian list, or a live `pokemart` script trigger's real resolved
+-- pointer); SELL sources its own list from the live bag instead (see
+-- PokemonMartMenu.lua).
 world.beginMart = function(itemIds)
   if not newGame.session or not world.battleCatalog or not world.battleCatalog.items then
     addLine("Mart could not open: no active session or ROM item table unavailable.")
@@ -2191,22 +2193,37 @@ world.martLines = function()
   end
   local m = world.martMenu
   local lines = { ("POKE MART -- Money: $%d  (M: leave)"):format(m.money) }
-  if m.state == Battle.MartMenu.LIST then
-    lines[#lines + 1] = "Up/Down: choose, A: buy, B: leave"
+  local function unitLinePrice(itemId)
+    local price = world.battleCatalog.items[itemId].price
+    return m.transactionType == "sell" and math.floor(price / 2) or price
+  end
+  if m.state == Battle.MartMenu.TOPMENU then
+    lines[#lines + 1] = "Up/Down: choose, A: select, B: leave"
+    local options = { "BUY", "SELL", "QUIT" }
+    for i, label in ipairs(options) do
+      local cursor = (i - 1 == m.topCursor) and "> " or "  "
+      lines[#lines + 1] = cursor .. label
+    end
+  elseif m.state == Battle.MartMenu.LIST then
+    local verb = m.transactionType == "sell" and "sell" or "buy"
+    lines[#lines + 1] = ("Up/Down: choose, A: %s, B: back"):format(verb)
+    if #m.itemIds == 0 then
+      lines[#lines + 1] = "(nothing to sell)"
+    end
     for i, itemId in ipairs(m.itemIds) do
-      local price = world.battleCatalog.items[itemId].price
       local cursor = (i - 1 == m.listCursor) and "> " or "  "
-      lines[#lines + 1] = ("%s%s  $%d"):format(cursor, martItemName(itemId), price)
+      lines[#lines + 1] = ("%s%s  $%d"):format(cursor, martItemName(itemId), unitLinePrice(itemId))
     end
   elseif m.state == Battle.MartMenu.QUANTITY then
     lines[#lines + 1] = ("%s  In bag: %d"):format(martItemName(m.selectedItemId), m.bag:quantityOf(m.selectedItemId))
     lines[#lines + 1] = ("x%02d   $%d  (Up/Down +-1, Left/Right +-10)"):format(
-      m.quantity, world.battleCatalog.items[m.selectedItemId].price * m.quantity)
+      m.quantity, unitLinePrice(m.selectedItemId) * m.quantity)
     lines[#lines + 1] = "A: confirm, B: back"
   elseif m.state == Battle.MartMenu.CONFIRM then
-    lines[#lines + 1] = ("%s x%d -- $%d. Buy it?  (A: yes, B: no)"):format(
+    local verb = m.transactionType == "sell" and "Sell it?" or "Buy it?"
+    lines[#lines + 1] = ("%s x%d -- $%d. %s  (A: yes, B: no)"):format(
       martItemName(m.selectedItemId), m.quantity,
-      world.battleCatalog.items[m.selectedItemId].price * m.quantity)
+      unitLinePrice(m.selectedItemId) * m.quantity, verb)
   elseif m.state == Battle.MartMenu.MESSAGE then
     lines[#lines + 1] = m.message
     lines[#lines + 1] = "(A or B to continue)"
