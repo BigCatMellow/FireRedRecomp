@@ -29,7 +29,7 @@
 --   move(s) with the highest resulting score (initialized to 100 for
 --   every move, ~line 299-300), breaking ties uniformly at random.
 --
--- Two real tiers are ported here, both verified against real source
+-- Three real tiers are ported here, all verified against real source
 -- rather than guessed:
 --
 --   * aiFlags == 0: the `while` loop above never executes a single
@@ -41,6 +41,15 @@
 --     i.e. a real trainer with no AI flags set genuinely does pick
 --     uniformly at random among its PP-remaining moves. This is confirmed
 --     real behavior, not a fabricated fallback heuristic.
+--   * aiFlags == AI_SCRIPT_CHECK_BAD_MOVE (0x1) ALONE: real-confirmed by a
+--     Route 22 ROM smoke test as the common tier ordinary route trainers
+--     actually carry. The while loop above runs exactly one real AI
+--     script (gBattleAI_ScriptsTable[0] == AI_CheckBadMove,
+--     data/battle_ai_scripts.s:52) once per PP-remaining move, then picks
+--     uniformly among whichever move(s) end up tied for the highest
+--     resulting score -- ported below via AICheckBadMove.score (see that
+--     module's own header for the full real AI-script-VM citation) plus
+--     the same real tie-break loop already implemented for aiFlags==0.
 --   * aiFlags == EarlyRivalAI.AI_FLAGS (0x7 ==
 --     AI_SCRIPT_CHECK_BAD_MOVE|AI_SCRIPT_CHECK_VIABILITY|
 --     AI_SCRIPT_TRY_TO_FAINT, include/constants/battle_ai.h lines 37-39):
@@ -50,15 +59,16 @@
 --
 -- Any other real aiFlags value (AI_SCRIPT_SETUP_FIRST_TURN, RISKY,
 -- PREFER_STRONGEST_MOVE, PREFER_BATON_PASS, DOUBLE_BATTLE, HP_AWARE,
--- ROAMING, SAFARI, FIRST_BATTLE, or CHECK_BAD_MOVE/VIABILITY/TRY_TO_FAINT
--- combined with any of those) is real gBattleAI_ScriptsTable behavior this
--- module does not implement -- porting all real AI scripts bit-exactly for
--- every trainer in the game is substantially bigger than this task's
--- scope. Errors loudly instead of approximating, matching this project's
--- "fail loudly on unimplemented" house convention (e.g.
+-- ROAMING, SAFARI, FIRST_BATTLE, CHECK_VIABILITY/TRY_TO_FAINT alone, or any
+-- of those combined with CHECK_BAD_MOVE) is real gBattleAI_ScriptsTable
+-- behavior this module does not implement -- porting all real AI scripts
+-- bit-exactly for every trainer in the game is substantially bigger than
+-- this task's scope. Errors loudly instead of approximating, matching this
+-- project's "fail loudly on unimplemented" house convention (e.g.
 -- ObjectEventState.lua:tick()'s unknown-movementType error).
 
 local EarlyRivalAI = require("src.core.EarlyRivalAI")
+local AICheckBadMove = require("src.core.AICheckBadMove")
 
 local TrainerAI = {}
 
@@ -85,6 +95,41 @@ local function chooseRandomValidMove(engine)
   return candidates[(engine.rng:next16() % #candidates) + 1]
 end
 
+-- aiFlags == AI_SCRIPT_CHECK_BAD_MOVE alone: real BattleAI_ChooseMoveOrAction
+-- (src/battle_ai_script_commands.c:299-390) -- score[i]=100 per PP-remaining
+-- move (0 for empty/0-PP slots), add AICheckBadMove.score's real delta, then
+-- uniformly pick among whichever move(s) tie for the highest score. Errors
+-- loudly under the same real Struggle gap as chooseRandomValidMove above if
+-- every move is out of PP.
+local function chooseCheckBadMove(engine)
+  local scores = {}
+  local best, anyCandidate = -math.huge, false
+  for i = 1, 4 do
+    local slot = engine.foe.moves[i]
+    if slot and slot.pp > 0 then
+      anyCandidate = true
+      local move = assert(engine.moves[slot.move], "trainer move missing from battle table")
+      local delta = AICheckBadMove.score(engine.foe, engine.player, move, slot.move,
+        engine.typeChart, engine.sideStatus)
+      -- Real Cmd_score flattens a move's score at 0 if it goes negative
+      -- (src/battle_ai_script_commands.c:525-530); base is always 100 and
+      -- every ported delta here is <= 12 in magnitude, so this floor is
+      -- unreachable in practice but ported for correctness anyway.
+      scores[i] = math.max(0, 100 + delta)
+      if scores[i] > best then best = scores[i] end
+    else
+      scores[i] = 0
+    end
+  end
+  assert(anyCandidate,
+    "TrainerAI: foe has no move with PP remaining (real Struggle substitution not ported)")
+  local choices = {}
+  for i = 1, 4 do
+    if scores[i] == best then choices[#choices + 1] = i end
+  end
+  return choices[(engine.rng:next16() % #choices) + 1]
+end
+
 -- Returns the 1-based move slot chosen for this turn, matching
 -- BattleSceneController's chooseFoeMove(engine) shape (see
 -- BattleSceneController.lua:305 / main.lua's EarlyRivalAI wiring at
@@ -93,13 +138,16 @@ function TrainerAI.choose(engine, aiFlags)
   aiFlags = aiFlags or 0
   if aiFlags == 0 then
     return chooseRandomValidMove(engine)
+  elseif aiFlags == TrainerAI.AI_SCRIPT_CHECK_BAD_MOVE then
+    return chooseCheckBadMove(engine)
   elseif aiFlags == EarlyRivalAI.AI_FLAGS then
     return (EarlyRivalAI.choose(engine, aiFlags))
   end
-  error(("TrainerAI: aiFlags 0x%X not ported -- only 0 (real no-flags random pick) and " ..
-    "EarlyRivalAI.AI_FLAGS (0x%X, CHECK_BAD_MOVE|CHECK_VIABILITY|TRY_TO_FAINT) are implemented; " ..
-    "see this module's header for the real gBattleAI_ScriptsTable scope boundary"):format(
-    aiFlags, EarlyRivalAI.AI_FLAGS))
+  error(("TrainerAI: aiFlags 0x%X not ported -- only 0 (real no-flags random pick), " ..
+    "AI_SCRIPT_CHECK_BAD_MOVE (0x%X) alone, and EarlyRivalAI.AI_FLAGS (0x%X, " ..
+    "CHECK_BAD_MOVE|CHECK_VIABILITY|TRY_TO_FAINT) are implemented; see this module's header " ..
+    "for the real gBattleAI_ScriptsTable scope boundary"):format(
+    aiFlags, TrainerAI.AI_SCRIPT_CHECK_BAD_MOVE, EarlyRivalAI.AI_FLAGS))
 end
 
 return TrainerAI

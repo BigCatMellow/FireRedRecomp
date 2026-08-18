@@ -85,6 +85,37 @@ do
     not ok and tostring(err):find("Struggle") ~= nil, err)
 end
 
+-- aiFlags == AI_SCRIPT_CHECK_BAD_MOVE (0x1) alone: real
+-- BattleAI_ChooseMoveOrAction running exactly AI_CheckBadMove per
+-- PP-remaining move (AICheckBadMove.lua has its own dedicated, more
+-- thorough test -- tests/ai_check_bad_move_test.lua -- this just checks
+-- TrainerAI's own aggregate/tie-break wiring). Move 39 (Tail Whip,
+-- EFFECT_DEFENSE_DOWN) scores a real -10 against a target already at
+-- defense stage 0; move 10 (EFFECT_HIT, absent from the real dispatch
+-- chain) always scores a confirmed 0 -- so move 10 should always win.
+do
+  local rng = sequenceRng({ 0 })
+  local engine = newEngine(rng, {
+    { move = 10, pp = 35 }, { move = 39, pp = 30 }, nil, nil,
+  })
+  engine.player.statStages.defense = 0
+  local slot = TrainerAI.choose(engine, TrainerAI.AI_SCRIPT_CHECK_BAD_MOVE)
+  check("aiFlags==CHECK_BAD_MOVE picks the move without a real bad-move penalty",
+    slot == 1, slot)
+end
+
+-- Two moves tied (both 0-penalty, both PP>0) still uniformly tie-breaks via
+-- Random() % numOfBestMoves, exactly like the aiFlags==0 tier above.
+do
+  local rng = sequenceRng({ 1 })
+  local engine = newEngine(rng, {
+    { move = 10, pp = 35 }, { move = 33, pp = 35 }, nil, nil,
+  })
+  local slot = TrainerAI.choose(engine, TrainerAI.AI_SCRIPT_CHECK_BAD_MOVE)
+  check("aiFlags==CHECK_BAD_MOVE tie-breaks uniformly among equal-score moves",
+    slot == 2, slot)
+end
+
 -- aiFlags == EarlyRivalAI.AI_FLAGS delegates to EarlyRivalAI.choose exactly
 -- (same fixture shape as tests/early_rival_battle_test.lua's tutorial
 -- battle, using only the two moves that module supports).
