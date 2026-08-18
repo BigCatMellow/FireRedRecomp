@@ -3012,18 +3012,46 @@ end
 -- rebattlable. A loss still applies the same real whiteout
 -- (WhiteoutRules) an ordinary wild-battle loss does -- trainer-battle
 -- losses are not special-cased for that in real FireRed either.
--- NOT yet ported: real trainer-battle EXP (a genuine 1.5x bonus over the
--- wild formula, Cmd_getexp) -- applying the wild EXP formula here would
--- be actively wrong, not just incomplete, so no EXP is awarded yet
--- rather than silently using the wrong number.
+-- A win grants real EXP too, via the same EarlyRivalRewards.applyVictory
+-- the Oak-lab rival already uses -- that function already defaults to
+-- the real BATTLE_TYPE_TRAINER 150% bonus (Cmd_getexp), so no separate
+-- trainer-specific formula is needed here; allowLevelUpMoveGap=true since
+-- an arbitrary trainer's foe (unlike the rival's fixed lvl-5 fixture)
+-- can legitimately cross a level-up-move threshold this project has no
+-- move-learn UI for yet (same real gap applyWildVictory already
+-- documents for ordinary wild wins).
 world.finishTrainerBattle = function(battle)
   local outcome = battle.controller.engine.outcome
   if outcome == "playerWon" then
     if newGame.session then
       newGame.session:setFlag(Battle.EarlyStory.TRAINER_FLAGS_START + battle.trainerId)
     end
-    addLine(("Defeated %s! (No trainer-battle EXP yet -- see startTrainerBattle's header.)")
-      :format(battle.trainerName))
+    if battle.partyRecord and battle.foeInstance then
+      -- Real Cmd_getexp's BATTLE_TYPE_TRAINER 150% bonus -- EarlyRivalRewards.
+      -- applyVictory already defaults to it (opts.expMultiplierPercent==150),
+      -- this project's own wild-battle path is the one that opts OUT via
+      -- applyWildVictory's 100% override, not the other way around.
+      local ok, reward = pcall(Battle.RivalRewards.applyVictory,
+        battle.partyRecord, battle.foeInstance, world.battleCatalog.species,
+        world.battleCatalog.natures,
+        Battle.Learnset.resolve(romData, romAddrs.gLevelUpLearnsets,
+          battle.controller.engine.player.species),
+        world.regionMapSectionId, { allowLevelUpMoveGap = true })
+      if ok then
+        local levelMsg = ""
+        if reward.newLevel > reward.oldLevel then
+          levelMsg = (" Grew to Lv. %d!"):format(reward.newLevel)
+        end
+        addLine(("Defeated %s! Gained %d EXP.%s"):format(battle.trainerName, reward.exp, levelMsg))
+        if reward.skippedLevelUpMoves then
+          addLine("(A level-up move was reached but not learned -- no move-learn UI yet.)")
+        end
+      else
+        addLine(("Defeated %s, but reward application failed: %s"):format(battle.trainerName, tostring(reward)))
+      end
+    else
+      addLine(("Defeated %s! (No session party to reward.)"):format(battle.trainerName))
+    end
   elseif outcome == "playerLost" then
     local sb1 = newGame.session.state.saveBlock1
     local topLevel = Battle.WhiteoutRules.highestPartyLevel(sb1.playerParty, sb1.playerPartyCount)
