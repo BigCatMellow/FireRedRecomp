@@ -97,6 +97,9 @@ local Battle = {
   PartyScreen = require("src.core.PartyScreen"),
   BagScreen = require("src.core.BagScreen"),
   Bag = require("src.core.Bag"),
+  TrainerSightline = require("src.core.TrainerSightline"),
+  TrainerApproach = require("src.core.TrainerApproach"),
+  TrainerAI = require("src.core.TrainerAI"),
   PartyBridge = require("src.core.BattlePartyBridge"),
   Engine = require("src.core.BattleEngine"),
   Controller = require("src.core.BattleSceneController"),
@@ -672,11 +675,50 @@ local function rollWildEncounterAt(x, y)
   startWildBattle(encounter)
 end
 
+-- Real ScrCmd_trainerbattle's own trainerId argument
+-- (gTrainerBattleOpponent_A, TrainerBattleLoadArg16 -- a plain literal in
+-- the compiled script, never VarGet-resolved, src/battle_setup.c) is only
+-- reachable by decoding the trainer's own object-event script and reading
+-- its trainerbattle instruction, matching real CheckTrainer's `script[1]`
+-- inspection (src/trainer_see.c:117 area) -- this project has no separate
+-- "trainer roster" table, the trainerId genuinely only lives inside the
+-- compiled script bytecode.
+world.resolveTrainerId = function(scriptPtr)
+  local ok, instrs = pcall(ScriptBytecode.decode, romData, scriptPtr)
+  if not ok then return nil end
+  for _, instr in ipairs(instrs) do
+    if instr.op == "trainerbattle" then return instr.opponentOrSecond end
+  end
+  return nil
+end
+
+-- Real CheckForTrainersWantingBattle, called after each completed player
+-- step (see TrainerSightline.lua's own real citations). Starts the real
+-- exclamation+approach sequence rather than the battle directly -- the
+-- battle itself only begins once TrainerApproach reports done (see
+-- trainerApproachTask below).
+world.tryTrainerSightlineAt = function(x, y)
+  if not newGame.session then return false end
+  local trainer, distance, direction = Battle.TrainerSightline.findTrainerWantingBattle(
+    world.npcs, x, y, {
+      isBlocked = isWalkTileBlocked,
+      alreadyBattled = function(npc)
+        local trainerId = world.resolveTrainerId(npc.scriptPtr)
+        return trainerId ~= nil and newGame.session:getFlag(Battle.EarlyStory.TRAINER_FLAGS_START + trainerId)
+      end,
+    })
+  if not trainer then return false end
+  world.trainerApproach = Battle.TrainerApproach.new(trainer, direction, distance)
+  return true
+end
+
 local function playerMovementTask(taskId)
   -- A real `lock`/`lockall` (and just having a message box up at all)
   -- freezes the player -- mirrored by not ticking movement at all while a
-  -- dialogue script owns the screen.
-  if not walkActive or world.battle or world.starterChoice
+  -- dialogue script owns the screen. A pending trainer approach sequence
+  -- freezes it the same real way (the real game locks field input the
+  -- instant CheckForTrainersWantingBattle succeeds).
+  if not walkActive or world.battle or world.starterChoice or world.trainerApproach
       or (world.dialogue and world.dialogue:isActive()) then return end
   local wasMoving = playerMovement.moving
   playerMovement:tick()
@@ -687,9 +729,31 @@ local function playerMovementTask(taskId)
     -- tile's encounter table during that same step.
     if not tryEarlyStoryTriggerAt(playerMovement.tileX, playerMovement.tileY)
         and not world.tryConnectionAt(playerMovement.tileX, playerMovement.tileY)
-        and not tryWarpAt(playerMovement.tileX, playerMovement.tileY) then
+        and not tryWarpAt(playerMovement.tileX, playerMovement.tileY)
+        and not world.tryTrainerSightlineAt(playerMovement.tileX, playerMovement.tileY) then
       rollWildEncounterAt(playerMovement.tileX, playerMovement.tileY)
     end
+  end
+end
+
+-- Ticks a pending TrainerApproach every real frame (independent of the
+-- player's own completed-step cadence -- the exclamation/walk-up
+-- sequence must keep animating even while playerMovementTask itself is
+-- frozen above). Once done, starts the real trainer battle. A world.*
+-- field, not a local -- same real 200-local-per-chunk limit noted
+-- elsewhere in this file.
+world.trainerApproachTask = function(taskId)
+  if not world.trainerApproach then return end
+  world.trainerApproach:tick()
+  if world.trainerApproach:isDone() then
+    local trainer = world.trainerApproach.trainer
+    world.trainerApproach = nil
+    local trainerId = world.resolveTrainerId(trainer.scriptPtr)
+    if not trainerId then
+      addLine("Trainer battle could not start: this NPC's script has no real trainerbattle instruction.")
+      return
+    end
+    world.startTrainerBattle(trainerId)
   end
 end
 
@@ -701,7 +765,7 @@ end
 -- per-NPC so one such NPC disables ITSELF with a visible note instead of
 -- taking the whole game down.
 local function npcMovementTask(taskId)
-  if not walkActive or world.battle or world.starterChoice
+  if not walkActive or world.battle or world.starterChoice or world.trainerApproach
       or (world.dialogue and world.dialogue:isActive()) then return end
   for _, npc in ipairs(world.npcs) do
     if not npc.tickDisabled then
@@ -1288,6 +1352,111 @@ world.startRivalBattle = function(action)
   return true
 end
 
+-- General live trainer battle (any real trainer reached via
+-- TrainerSightline/TrainerApproach, not just the Oak-lab rival). Bounded
+-- to a single-mon party for now: TrainerPokemonFactory.generate itself
+-- asserts real partyFlags==0 (no held item/no custom moveset) and
+-- !doubleBattle (see that module's header) -- a trainer outside that
+-- shape, or with more than one party mon, fails loudly here rather than
+-- silently mis-building a battle. Multi-mon trainer parties are a real,
+-- separate follow-up: BattleEngine's forced-switch-after-faint primitive
+-- (opts.hasReplacement/resolveForcedSwitch) already exists and would be
+-- the right mechanism, but wiring a live foe-side party-of-N through it
+-- (auto-advancing to the trainer's next mon, updating the displayed foe
+-- sprite/name) is deliberately deferred rather than rushed into this
+-- same pass.
+world.startTrainerBattle = function(trainerId)
+  local catalog, session = world.battleCatalog, newGame.session
+  if not catalog or not session then
+    addLine("Trainer battle could not start: ROM catalog/session is unavailable.")
+    return false
+  end
+  ensureRngStreams()
+
+  local partyRecord, partySlot, reason, playerDecoded = session:usableBattleLead()
+  if not partyRecord then
+    addLine("Trainer battle refused: " .. tostring(reason))
+    return false
+  end
+  local ok, built = pcall(function()
+    local trainer = assert(catalog.trainers[trainerId], "trainer record is missing")
+    assert(trainer.partySize == 1,
+      "multi-mon trainer parties are not wired into the live scene yet (see startTrainerBattle's header)")
+    -- Fail before the battle starts, not mid-battle when TrainerAI.choose
+    -- is first called -- see TrainerAI.lua's own header for exactly which
+    -- two real aiFlags tiers are ported.
+    assert(trainer.aiFlags == 0 or trainer.aiFlags == Battle.RivalAI.AI_FLAGS,
+      ("trainer aiFlags 0x%X is not one of TrainerAI.lua's two ported real tiers"):format(trainer.aiFlags))
+    local partyMon = assert(Battle.TrainerParty.resolve(trainer, romData)[0], "trainer party is empty")
+    local foeInfo = assert(catalog.species[partyMon.species], "trainer foe species record is missing")
+    local foe = Battle.TrainerFactory.generate({
+      trainer=trainer, partyMon=partyMon, speciesInfo=foeInfo,
+      speciesName=romData:sub(romAddrs.gSpeciesNames + partyMon.species * 11 + 1,
+        romAddrs.gSpeciesNames + partyMon.species * 11 + 10),
+      learnset=Battle.Learnset.resolve(romData, romAddrs.gLevelUpLearnsets, partyMon.species),
+      battleMoves=catalog.moves, natures=catalog.natures, rng=world.globalRng,
+    })
+    local player = Battle.PartyBridge.battlerFromParty(partyRecord, catalog.species)
+    local engine = Battle.Engine.new({
+      player=player, foe=Battle.PartyBridge.battlerFromGenerated(foe),
+      moves=catalog.moves, typeChart=catalog.typeChart, rng=world.globalRng,
+    })
+    local trainerName = Charmap.decode(trainer.rawName)
+    local playerName = Charmap.decode(playerDecoded.nickname)
+    local foeName = speciesName(foe.species)
+    -- Real trainer battles have no gTrainerClassNames decode in this
+    -- project yet (no import/*.lua module for it) -- the trainer's own
+    -- real decoded name is shown alone rather than guessing a class
+    -- prefix like "YOUNGSTER BEN".
+    local controller = Battle.Controller.new({
+      engine=engine, playerName=playerName, foeName=foeName,
+      chooseFoeMove=function(e) return Battle.TrainerAI.choose(e, trainer.aiFlags) end,
+      runDisabledMessage="No! There's no running\nfrom a TRAINER battle!",
+      introMessages={
+        trainerName .. " would like to battle!",
+        trainerName .. " sent out " .. foeName .. "!",
+        "Go! " .. playerName .. "!",
+      },
+      moveName=function(move) return Charmap.decodeAt(romData, romAddrs.gMoveNames, 13, move) end,
+    })
+    return {
+      trainer=trainer, foe=foe, player=player, controller=controller,
+      playerDecoded=playerDecoded, partyRecord=partyRecord, partySlot=partySlot,
+      playerName=playerName, trainerName=trainerName, foeName=foeName,
+    }
+  end)
+  if not ok then
+    addLine("Trainer battle failed to start: " .. tostring(built))
+    return false
+  end
+
+  local images = {}
+  for _, imageSpec in ipairs({ {"foeImage", built.foe.species, false},
+      {"playerImage", built.player.species, true} }) do
+    local imageOk, composite = pcall(Battle.Assets.decodeMon,
+      romData, romAddrs, imageSpec[2], imageSpec[3])
+    if imageOk then
+      images[imageSpec[1]] = buildImage(composite)
+      images[imageSpec[1]]:setFilter("nearest", "nearest")
+    else
+      addLine("Trainer-battle Pokemon sprite failed: " .. tostring(composite))
+    end
+  end
+  world.battle = {
+    kind="trainer", controller=built.controller, trainerId=trainerId,
+    trainer=built.trainer, foeInstance=built.foe,
+    foeImage=images.foeImage, playerImage=images.playerImage,
+    partyRecord=built.partyRecord, partySlot=built.partySlot, persistedTurn=0,
+    playerName=built.playerName, trainerName=built.trainerName,
+    textImages={},
+  }
+  newGame.story:registerSeen(Battle.PokedexOrder.speciesToNationalDexNum(
+    romData, romAddrs.sSpeciesToNationalPokedexNum, built.foe.species))
+  addLine(("Trainer battle started: %s (trainer %d, Lv %d %s)."):format(
+    built.trainerName, trainerId, built.foe.level, built.foeName))
+  return true
+end
+
 -- Scans the loaded map's real collision grid for the first walkable tile:
 -- a developer-map-view and malformed-warp fallback. Fresh sessions use the
 -- canonical WarpToPlayersRoom destination below, never this heuristic.
@@ -1422,6 +1591,7 @@ local function loadWalkAssets(dbg)
   scheduler:createTask(playerMovementTask, 0)
   scheduler:createTask(npcMovementTask, 0)
   scheduler:createTask(dialogueTask, 0)
+  scheduler:createTask(world.trainerApproachTask, 0)
   dbg(("player movement started at first walkable tile %d,%d"):format(x, y))
 end
 
@@ -2813,6 +2983,54 @@ world.finishOakLabRivalBattle = function(battle)
   world.battle = nil
 end
 
+-- General live trainer battle completion (any trainer reached via
+-- TrainerSightline, not the Oak-lab rival's own bespoke path). Real
+-- battle_setup.c sets the trainer's own FightTrainerFlag
+-- (TRAINER_FLAGS_START + trainerId, same real base EarlyStory.lua
+-- already uses) only on a real win -- a loss or run leaves the trainer
+-- rebattlable. A loss still applies the same real whiteout
+-- (WhiteoutRules) an ordinary wild-battle loss does -- trainer-battle
+-- losses are not special-cased for that in real FireRed either.
+-- NOT yet ported: real trainer-battle EXP (a genuine 1.5x bonus over the
+-- wild formula, Cmd_getexp) -- applying the wild EXP formula here would
+-- be actively wrong, not just incomplete, so no EXP is awarded yet
+-- rather than silently using the wrong number.
+world.finishTrainerBattle = function(battle)
+  local outcome = battle.controller.engine.outcome
+  if outcome == "playerWon" then
+    if newGame.session then
+      newGame.session:setFlag(Battle.EarlyStory.TRAINER_FLAGS_START + battle.trainerId)
+    end
+    addLine(("Defeated %s! (No trainer-battle EXP yet -- see startTrainerBattle's header.)")
+      :format(battle.trainerName))
+  elseif outcome == "playerLost" then
+    local sb1 = newGame.session.state.saveBlock1
+    local topLevel = Battle.WhiteoutRules.highestPartyLevel(sb1.playerParty, sb1.playerPartyCount)
+    local badgeCount = Battle.WhiteoutRules.countBadges(function(id) return newGame.session:getFlag(id) end)
+    local loss = Battle.WhiteoutRules.computeMoneyLoss(topLevel, badgeCount, sb1.money or 0)
+    sb1.money = (sb1.money or 0) - loss
+    Battle.RivalRewards.healParty(sb1, world.battleCatalog.moves)
+    local start = NewGameDefaults.startingWarp
+    local respawn = Battle.WhiteoutRules.respawnLocation(sb1.lastHealLocation,
+      { mapGroup=4, mapNum=1, warpId=start.warpId, x=start.x, y=start.y })
+    loadMap(romData, romAddrs, respawn.mapGroup * 256 + respawn.mapNum, function() end)
+    if playerMovement then
+      playerMovement.tileX, playerMovement.tileY = respawn.x, respawn.y
+      playerMovement.facingDirection = PlayerMovement.DOWN
+      playerMovement.moving, playerMovement.stepFrame = false, 0
+    end
+    syncSessionLocation()
+    addLine(("Lost to %s. Whiteout: lost $%d, party healed, respawned at %d,%d (%d,%d)."):format(
+      battle.trainerName, loss, respawn.mapGroup, respawn.mapNum, respawn.x, respawn.y))
+  else
+    -- Real trainer battles block running (runDisabledMessage) -- this
+    -- branch should be unreachable, but fails safely rather than leaving
+    -- world.battle stuck if some other outcome ever reaches here.
+    addLine(("Trainer battle against %s ended (%s)."):format(battle.trainerName, tostring(outcome)))
+  end
+  world.battle = nil
+end
+
 function love.update(dt)
   tickAccumulator = tickAccumulator + dt
   while tickAccumulator >= FIXED_TICK do
@@ -2860,6 +3078,8 @@ function love.update(dt)
         end
         if battle.kind == "oakLabRival" then
           world.finishOakLabRivalBattle(battle)
+        elseif battle.kind == "trainer" then
+          world.finishTrainerBattle(battle)
         elseif outcome == "playerLost" then
           local sb1 = newGame.session.state.saveBlock1
           local topLevel = Battle.WhiteoutRules.highestPartyLevel(sb1.playerParty, sb1.playerPartyCount)
@@ -3003,10 +3223,13 @@ function love.update(dt)
       -- The S view is the real Oak narration frame; A continues into the
       -- real next task family, starting gender selection.
       beginNewGameFlow()
-    elseif walkActive and playerMovement and world.dialogue and world.dialogue:isActive() then
+    elseif walkActive and playerMovement
+        and (world.trainerApproach or (world.dialogue and world.dialogue:isActive())) then
       -- A real script's `lock`/`lockall` (and just having a message box
       -- open) blocks field input entirely -- the A press is consumed by
-      -- the dialogue's own advance, handled in dialogueTask.
+      -- the dialogue's own advance, handled in dialogueTask. A pending
+      -- trainer approach sequence blocks field input the same real way
+      -- (see trainerApproachTask/tryTrainerSightlineAt).
     elseif walkActive and playerMovement then
       if inputState:isNewlyPressed(InputState.START_BUTTON) then world.openStartMenu() end
       if inputState:isNewlyPressed(InputState.A_BUTTON) then tryStartInteraction() end
