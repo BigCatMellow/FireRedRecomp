@@ -2652,6 +2652,24 @@ world.bagScreenLines = function()
     local ok, name = pcall(Charmap.decode, entry.rawName, true)
     return ok and name or ("ITEM " .. tostring(itemId))
   end
+  if b.state == Battle.BagScreen.CONTEXT_MENU then
+    local lines = { ("%s  (Up/Down, A: select, B: back)"):format(itemName(b.selectedItemId)) }
+    for i, action in ipairs(b:contextActions()) do
+      local cursor = (i - 1 == b.contextCursor.cursorPos) and "> " or "  "
+      lines[#lines + 1] = cursor .. action
+    end
+    return lines
+  elseif b.state == Battle.BagScreen.TOSS_QUANTITY then
+    return {
+      ("Toss %s  In bag: %d"):format(itemName(b.selectedItemId), b.tossMaxQuantity),
+      ("x%02d  (Up/Down +-1, Left/Right +-10)"):format(b.tossQuantity),
+      "A: confirm, B: back",
+    }
+  elseif b.state == Battle.BagScreen.TOSS_CONFIRM then
+    return { ("Throw away %s x%d?  (A: yes, B: no)"):format(itemName(b.selectedItemId), b.tossQuantity) }
+  elseif b.state == Battle.BagScreen.MESSAGE then
+    return { b.message, "(A or B to continue)" }
+  end
   local lines = { ("BAG -- %s  (Left/Right: pocket, A: select, B: back)"):format(pocketNames[b:pocket()] or "?") }
   for row, isCancel, itemId, quantity in b:iterateRows() do
     local cursor = (row == b:cursorRow()) and "> " or "  "
@@ -3187,12 +3205,10 @@ function love.update(dt)
     elseif world.bagScreenActive and world.bagScreen then
       world.bagScreen:processInput(inputState)
       if world.bagScreen:isDone() then
-        -- Same real-B/CONFIRMED-both-return-to-Start-menu shape as
-        -- PartyScreen above -- BagScreen.lua's header explains why a real
-        -- per-item USE/TOSS context menu isn't built yet.
-        if world.bagScreen.state == Battle.BagScreen.CONFIRMED then
-          addLine(("Selected item %d (no USE/TOSS menu yet)."):format(world.bagScreen.confirmedItemId))
-        end
+        -- BagScreen now owns its own real per-item context menu (USE/GIVE
+        -- stubs, a real working TOSS) internally -- isDone() only fires
+        -- once the whole Bag screen actually closes back to the Start
+        -- menu, so there's nothing left to report here.
         if newGame.session then
           Battle.SessionBagBridge.toSaveBlock1(world.bagScreen.bag, newGame.session.state.saveBlock1)
         end

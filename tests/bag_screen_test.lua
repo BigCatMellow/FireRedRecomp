@@ -81,37 +81,125 @@ do
   check("switching pockets resets the cursor to row 0", screen:cursorRow() == 0)
 end
 
--- 4. A on an item confirms it (real per-item context menu is out of
--- scope -- see header).
+-- 4. A on an item opens the real per-pocket context menu.
 do
   local screen = BagScreen.new(newBag())
   tap(screen, InputState.buildMask({ DPAD_DOWN = true })) -- row 0 -> row 1 (Antidote)
   tap(screen, InputState.buildMask({ A_BUTTON = true }))
-  check("A on an item confirms it", screen.state == BagScreen.CONFIRMED
-    and screen.confirmedItemId == 14 and screen.confirmedPocket == Bag.POCKET_ITEMS)
-  check("isDone true once confirmed", screen:isDone())
+  check("A on an item opens the context menu", screen.state == BagScreen.CONTEXT_MENU
+    and screen.selectedItemId == 14)
+  check("Items pocket offers the real USE/GIVE/TOSS/CANCEL action list",
+    #screen:contextActions() == 4 and screen:contextActions()[3] == "TOSS")
+  check("not done while the context menu is open", not screen:isDone())
 end
 
--- 5. A on the CLOSE row closes with no confirmed item.
+-- 5. Poke Balls pocket omits USE (real sContextMenuItems_Field[2]).
 do
   local screen = BagScreen.new(newBag())
-  tap(screen, InputState.buildMask({ DPAD_UP = true })) -- wraps to CLOSE row
-  check("Up from row 0 wraps to CLOSE", screen:isCancelRow(screen:cursorRow()))
+  tap(screen, InputState.buildMask({ DPAD_RIGHT = true }))
+  tap(screen, InputState.buildMask({ DPAD_RIGHT = true })) -- Poke Balls pocket
   tap(screen, InputState.buildMask({ A_BUTTON = true }))
-  check("A on CLOSE closes with no confirmed item", screen.state == BagScreen.CLOSED
-    and screen.confirmedItemId == nil)
+  local actions = screen:contextActions()
+  local hasUse = false
+  for _, a in ipairs(actions) do if a == "USE" then hasUse = true end end
+  check("Poke Balls pocket context menu has no USE action", not hasUse)
 end
 
--- 6. B anywhere closes with no confirmed item.
+-- 6. USE/GIVE are bounded stubs: a message, then back to browsing.
+do
+  local screen = BagScreen.new(newBag())
+  tap(screen, InputState.buildMask({ A_BUTTON = true })) -- select Potion
+  tap(screen, InputState.buildMask({ A_BUTTON = true })) -- USE (first action)
+  check("USE shows a bounded not-available message", screen.state == BagScreen.MESSAGE
+    and screen.message:find("not available", 1, true) ~= nil, screen.message)
+  tap(screen, InputState.buildMask({ A_BUTTON = true }))
+  check("acknowledging returns to browsing", screen.state == BagScreen.BROWSING)
+end
+
+-- 7. B at the context menu returns to browsing (not closed).
+do
+  local screen = BagScreen.new(newBag())
+  tap(screen, InputState.buildMask({ A_BUTTON = true }))
+  tap(screen, InputState.buildMask({ B_BUTTON = true }))
+  check("B at the context menu returns to browsing", screen.state == BagScreen.BROWSING)
+  check("not done", not screen:isDone())
+end
+
+-- 8. Full real TOSS flow: quantity dialog -> confirm -> message ->
+-- RemoveBagItem only happens once the message is dismissed.
+do
+  local screen = BagScreen.new(newBag()) -- Potion x5
+  tap(screen, InputState.buildMask({ A_BUTTON = true })) -- select Potion, opens context menu
+  tap(screen, InputState.buildMask({ DPAD_DOWN = true })) -- USE -> GIVE
+  tap(screen, InputState.buildMask({ DPAD_DOWN = true })) -- GIVE -> TOSS
+  tap(screen, InputState.buildMask({ A_BUTTON = true })) -- confirm TOSS
+  check("TOSS on a >1 stack opens the quantity dialog",
+    screen.state == BagScreen.TOSS_QUANTITY and screen.tossMaxQuantity == 5, screen.state)
+  tap(screen, InputState.buildMask({ DPAD_UP = true })) -- quantity = 2
+  tap(screen, InputState.buildMask({ A_BUTTON = true })) -- -> confirm
+  check("A in the toss quantity dialog opens the real Yes/No confirm",
+    screen.state == BagScreen.TOSS_CONFIRM and screen.tossQuantity == 2)
+  tap(screen, InputState.buildMask({ A_BUTTON = true })) -- yes
+  check("confirming shows the real 'Threw away' message, without removing yet",
+    screen.state == BagScreen.MESSAGE and screen.bag:quantityOf(13) == 5, screen.bag:quantityOf(13))
+  tap(screen, InputState.buildMask({ A_BUTTON = true })) -- acknowledge
+  check("RemoveBagItem only runs once the message is dismissed (real Task_WaitAB_RedrawAndReturnToBag)",
+    screen.bag:quantityOf(13) == 3, screen.bag:quantityOf(13))
+  check("returns to browsing afterward", screen.state == BagScreen.BROWSING)
+end
+
+-- 9. Owning exactly 1 of an item skips the quantity dialog (real
+-- data[2] == 1 branch).
+do
+  local screen = BagScreen.new(newBag()) -- Antidote x1
+  tap(screen, InputState.buildMask({ DPAD_DOWN = true })) -- row 0 -> Antidote
+  tap(screen, InputState.buildMask({ A_BUTTON = true })) -- context menu
+  tap(screen, InputState.buildMask({ DPAD_DOWN = true })) -- USE -> GIVE
+  tap(screen, InputState.buildMask({ DPAD_DOWN = true })) -- GIVE -> TOSS
+  tap(screen, InputState.buildMask({ A_BUTTON = true })) -- confirm TOSS
+  check("a single-copy item skips straight to the Yes/No confirm",
+    screen.state == BagScreen.TOSS_CONFIRM and screen.tossQuantity == 1, screen.state)
+  tap(screen, InputState.buildMask({ A_BUTTON = true }))
+  tap(screen, InputState.buildMask({ A_BUTTON = true }))
+  check("tossing the last copy removes it from the bag entirely", screen.bag:quantityOf(14) == 0)
+  check("the item disappears from the rebuilt list", #screen.items == 1 and screen.items[1].itemId == 13)
+end
+
+-- 10. B at the toss quantity dialog returns straight to browsing (real
+-- Task_SelectQuantityToToss's B -- not back to the context menu).
+do
+  local screen = BagScreen.new(newBag())
+  tap(screen, InputState.buildMask({ A_BUTTON = true }))
+  tap(screen, InputState.buildMask({ DPAD_DOWN = true }))
+  tap(screen, InputState.buildMask({ DPAD_DOWN = true }))
+  tap(screen, InputState.buildMask({ A_BUTTON = true })) -- TOSS -> quantity dialog
+  tap(screen, InputState.buildMask({ B_BUTTON = true }))
+  check("B at the quantity dialog returns to browsing", screen.state == BagScreen.BROWSING)
+  check("nothing was removed", screen.bag:quantityOf(13) == 5)
+end
+
+-- 11. B at the Yes/No confirm cancels the toss, nothing removed.
+do
+  local screen = BagScreen.new(newBag())
+  tap(screen, InputState.buildMask({ DPAD_DOWN = true }))
+  tap(screen, InputState.buildMask({ A_BUTTON = true })) -- select Antidote (qty 1)
+  tap(screen, InputState.buildMask({ DPAD_DOWN = true }))
+  tap(screen, InputState.buildMask({ DPAD_DOWN = true }))
+  tap(screen, InputState.buildMask({ A_BUTTON = true })) -- TOSS -> straight to confirm
+  tap(screen, InputState.buildMask({ B_BUTTON = true })) -- no
+  check("B at the toss confirm cancels back to browsing", screen.state == BagScreen.BROWSING)
+  check("nothing was removed", screen.bag:quantityOf(14) == 1)
+end
+
+-- 12. B on the item list closes the whole Bag screen.
 do
   local screen = BagScreen.new(newBag())
   tap(screen, InputState.buildMask({ DPAD_DOWN = true }))
   tap(screen, InputState.buildMask({ B_BUTTON = true }))
-  check("B closes with no confirmed item", screen.state == BagScreen.CLOSED
-    and screen.confirmedItemId == nil)
+  check("B closes the Bag screen", screen.state == BagScreen.CLOSED and screen:isDone())
 end
 
--- 7. Once done, further input is inert.
+-- 13. Once done, further input is inert.
 do
   local screen = BagScreen.new(newBag())
   tap(screen, InputState.buildMask({ B_BUTTON = true }))
