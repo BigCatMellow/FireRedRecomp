@@ -1384,9 +1384,12 @@ world.startTrainerBattle = function(trainerId)
       "multi-mon trainer parties are not wired into the live scene yet (see startTrainerBattle's header)")
     -- Fail before the battle starts, not mid-battle when TrainerAI.choose
     -- is first called -- see TrainerAI.lua's own header for exactly which
-    -- two real aiFlags tiers are ported.
-    assert(trainer.aiFlags == 0 or trainer.aiFlags == Battle.RivalAI.AI_FLAGS,
-      ("trainer aiFlags 0x%X is not one of TrainerAI.lua's two ported real tiers"):format(trainer.aiFlags))
+    -- real aiFlags tiers are ported (0, AI_SCRIPT_CHECK_BAD_MOVE alone --
+    -- real-ROM-confirmed as the common tier ordinary route trainers carry
+    -- -- and the rival's own AI_FLAGS combo).
+    assert(trainer.aiFlags == 0 or trainer.aiFlags == Battle.TrainerAI.AI_SCRIPT_CHECK_BAD_MOVE
+      or trainer.aiFlags == Battle.RivalAI.AI_FLAGS,
+      ("trainer aiFlags 0x%X is not one of TrainerAI.lua's ported real tiers"):format(trainer.aiFlags))
     local partyMon = assert(Battle.TrainerParty.resolve(trainer, romData)[0], "trainer party is empty")
     local foeInfo = assert(catalog.species[partyMon.species], "trainer foe species record is missing")
     local foe = Battle.TrainerFactory.generate({
