@@ -109,6 +109,14 @@ field/battle replay can be run explicitly:
 POKEPORT_ROM=/path/to/pokefirered.gba POKEPORT_RUNTIME_REPLAY_CASE=route1_wild_defeat bash scripts/runtime_replay_smoke.sh
 ```
 
+The isolated persistence gate runs two fresh LÖVE processes in a temporary
+XDG sandbox, saves through the normal **K** callback, and loads through the
+normal **L** callback:
+
+```
+POKEPORT_ROM=/path/to/pokefirered.gba bash scripts/runtime_save_restart_replay.sh
+```
+
 The evidence-backed project status is in
 [`work/roadmaps/CAPABILITY_CHECKLIST.md`](work/roadmaps/CAPABILITY_CHECKLIST.md).
 

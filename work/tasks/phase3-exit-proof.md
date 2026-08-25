@@ -29,14 +29,20 @@ The ROM-gated component replay in `tests/phase3_exit_path_rom_test.lua` proves
 the bounded session, starter, Route 1 encounter, capture/defeat, and codec
 seams. `scripts/runtime_replay_smoke.sh` separately proves a real LÖVE boot,
 fixed-tick input path, and the Player's House 2F → 1F → Pallet warp chain.
-Neither proof completes this task: the remaining gate is Oak/title entry, a
-player-win/catch route, and disk-save/restart/load replay.
+Neither proof completes this task: the remaining gate is Oak/title entry and
+a player-win/catch route.
 
 `route1_wild_defeat` now supplies the bounded Route 1 runtime-loss replay:
 it reaches the starter, tutorial battle, Route 1, a real grass encounter, and
 whiteout through live LÖVE input/update paths. It drives the post-Oak
 BOY/RED/GREEN identity flow with normal input masks, but does not prove the
-preceding Oak/title entry, a player-win/catch path, or cross-process save/load.
+preceding Oak/title entry or a player-win/catch path.
+
+`scripts/runtime_save_restart_replay.sh` now proves the cross-process save
+boundary separately: it runs the bounded loss replay in a fresh XDG sandbox,
+saves through the normal **K** callback, verifies the sandbox save file, then
+starts a fresh LÖVE process and loads through normal **L** handling. This is
+nominal persistence evidence, not retail-save compatibility or crash safety.
 
 ## Stop conditions
 

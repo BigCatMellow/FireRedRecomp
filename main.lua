@@ -2094,7 +2094,7 @@ function loadGameFile()
     playerMovement.facingDirection = PlayerMovement.DOWN
     playerMovement.moving, playerMovement.stepFrame = false, 0
   end
-  clearViews()
+  world.clearViews()
   walkActive = true
   addLine(("Loaded save (slot generation %d): map %d,%d at %d,%d."):format(
     info.saveCounter, newGame.session.location.mapGroup, newGame.session.location.mapNum,
@@ -2903,7 +2903,26 @@ function love.load()
   -- keyboard-input path used in normal play. They are opt-in, terminate
   -- after emitting one machine-readable result, and are not a scripting API.
   local runtimeReplay = os.getenv("POKEPORT_RUNTIME_REPLAY")
-  if runtimeReplay == "house_to_pallet" or runtimeReplay == "route1_wild_defeat" then
+  local replayRoute1 = runtimeReplay == "route1_wild_defeat"
+    or runtimeReplay == "route1_wild_defeat_save"
+  if runtimeReplay == "restart_load" then
+    -- This is intentionally a separate process from the save replay.  L is
+    -- the normal hotkey callback, and the outer script supplies a fresh,
+    -- isolated XDG/LÖVE sandbox containing only the prior process's save.
+    love.keypressed("l")
+    local session = newGame.session
+    local loaded = session and session.mapId == GameSession.MAP_PALLET_TOWN_PLAYERS_HOUSE_2F
+      and session.location.x == 6 and session.location.y == 6
+      and session.state.saveBlock1.playerPartyCount == 1
+    print(("RUNTIME_REPLAY restart_load %s map=%s pos=%s,%s party=%s identity=%s/%s/%s"):format(
+      loaded and "PASS" or "FAIL", tostring(session and session.mapId),
+      tostring(session and session.location.x), tostring(session and session.location.y),
+      tostring(session and session.state.saveBlock1.playerPartyCount),
+      tostring(session and Charmap.decode(session.identity.playerName)),
+      tostring(session and Charmap.decode(session.identity.rivalName)),
+      tostring(session and session.identity.playerGender)))
+    if loaded then love.event.quit() else love.event.quit(1) end
+  elseif runtimeReplay == "house_to_pallet" or replayRoute1 then
     beginNewGameFlow()
 
     local function tick(mask, count)
@@ -2965,7 +2984,7 @@ function love.load()
       -- door warp at (5,8) is the next real map transition into Pallet.
       for _ = 1, 5 do move(InputState.DPAD_LEFT) end
       for _ = 1, 6 do move(InputState.DPAD_DOWN) end
-      if runtimeReplay == "route1_wild_defeat" then
+      if replayRoute1 then
         -- The only north exit tiles are Oak's real (12,1)/(13,1) story
         -- gate, so traverse to it rather than bypassing field progression.
         move(InputState.DPAD_DOWN)
@@ -3018,10 +3037,17 @@ function love.load()
     world.replayInputMask = nil
     local passed = started and (runtimeReplay == "house_to_pallet" and walkMapId == MAP_PALLET_TOWN)
       and newGame.session and newGame.session.mapId == MAP_PALLET_TOWN
-    if runtimeReplay == "route1_wild_defeat" then
+    if replayRoute1 then
       local result = world.runtimeReplayResult or {}
       passed = started and result.reachedRoute1 and result.rivalOutcome == "playerLost"
         and result.wildOutcome == "playerLost"
+    end
+    if passed and runtimeReplay == "route1_wild_defeat_save" then
+      -- K reaches saveGame only through the normal public hotkey callback.
+      -- The save-restart shell gate owns the isolated filesystem boundary.
+      love.keypressed("k")
+      world.runtimeReplaySaved = love.filesystem.getInfo(SAVE_FILENAME) ~= nil
+      passed = world.runtimeReplaySaved
     end
     local replayDetail = world.runtimeReplayResult
       and (" route1=" .. tostring(world.runtimeReplayResult.reachedRoute1)
@@ -3036,6 +3062,9 @@ function love.load()
         .. Charmap.decode(world.runtimeReplayIdentity.playerName) .. "/"
         .. Charmap.decode(world.runtimeReplayIdentity.rivalName)
         .. "/" .. tostring(world.runtimeReplayIdentity.playerGender))
+    end
+    if runtimeReplay == "route1_wild_defeat_save" then
+      replayDetail = replayDetail .. " saved=" .. tostring(world.runtimeReplaySaved)
     end
     print(("RUNTIME_REPLAY %s %s map=%s pos=%s,%s%s"):format(runtimeReplay,
       passed and "PASS" or "FAIL", tostring(walkMapId),
@@ -3843,7 +3872,7 @@ end
 -- grew, and which meant adding the S view would have required editing all
 -- nine existing branches): a view key clears everything, then toggles its
 -- own flag back on if it wasn't already the active view.
-local function clearViews()
+world.clearViews = function()
   viewerActive, titleActive, spriteActive, itemBallActive = false, false, false, false
   fontActive, oakSpeechActive, oakSceneActive = false, false, false
   flameActive, yesNoActive, walkActive = false, false, false
@@ -3865,43 +3894,43 @@ function love.keypressed(key)
     return
   elseif key == "v" then
     local was = viewerActive
-    clearViews()
+    world.clearViews()
     viewerActive = not was
   elseif key == "t" then
     local was = titleActive
-    clearViews()
+    world.clearViews()
     titleActive = not was
   elseif key == "p" then
     local was = spriteActive
-    clearViews()
+    world.clearViews()
     spriteActive = not was
   elseif key == "i" then
     local was = itemBallActive
-    clearViews()
+    world.clearViews()
     itemBallActive = not was
   elseif key == "f" then
     local was = fontActive
-    clearViews()
+    world.clearViews()
     fontActive = not was
   elseif key == "o" then
     local was = oakSpeechActive
-    clearViews()
+    world.clearViews()
     oakSpeechActive = not was
   elseif key == "s" then
     local was = oakSceneActive
-    clearViews()
+    world.clearViews()
     oakSceneActive = not was
   elseif key == "n" then
     local was = newGame.active
-    clearViews()
+    world.clearViews()
     if not was then beginNewGameFlow() end
   elseif key == "a" then
     local was = flameActive
-    clearViews()
+    world.clearViews()
     flameActive = not was
   elseif key == "y" then
     local was = yesNoActive
-    clearViews()
+    world.clearViews()
     yesNoActive = not was
     if yesNoActive and yesNoCursor then
       yesNoCursor.cursorPos = 0
@@ -3909,11 +3938,11 @@ function love.keypressed(key)
     end
   elseif key == "w" then
     local was = walkActive
-    clearViews()
+    world.clearViews()
     walkActive = not was
   elseif key == "m" then
     local was = world.martActive
-    clearViews()
+    world.clearViews()
     if not was then
       -- Real ViridianCity_Mart_Items (data/maps/ViridianCity_Mart/
       -- scripts.inc): POKE_BALL(4)/POTION(13)/ANTIDOTE(14)/PARALYZE_
