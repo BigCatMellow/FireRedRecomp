@@ -77,6 +77,24 @@ itself.
 love .
 ```
 
+## Verification and project status
+
+Run every checked-in test without a ROM:
+
+```
+bash scripts/test_all.sh
+```
+
+With a legally obtained, verified FireRed US v1.0 ROM, run the ROM-backed
+checks as well:
+
+```
+POKEPORT_ROM=/path/to/pokefirered.gba bash scripts/test_all.sh
+```
+
+The evidence-backed project status is in
+[`work/roadmaps/CAPABILITY_CHECKLIST.md`](work/roadmaps/CAPABILITY_CHECKLIST.md).
+
 Launches a window. If `POKEPORT_ROM` (env var) points at a verified `.gba`
 file, it composites and draws Pallet Town — press **V** to switch to the
 data viewer (Tab: cycle species/moves/trainers/maps, Up/Down: ±1 record,

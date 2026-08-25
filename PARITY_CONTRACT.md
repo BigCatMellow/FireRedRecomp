@@ -23,10 +23,10 @@ specification to port, not a CPU to emulate. See the roadmap's "What this is
 
 ## Behavior ledger
 
-Not started. Will link each runtime subsystem (importer, renderer, script
-VM, battle engine, map runtime, save system) to the FireRed source
-files/data it's derived from and the automated check that guards it. Starts
-in Phase 1 alongside the first schemas.
+The maintained ledger is [`docs/behavior-ledger.md`](docs/behavior-ledger.md).
+It links each player-visible subsystem to its FireRed source/data basis,
+automated evidence, and live-wiring status. New parity claims must add or
+update a row in that ledger.
 
 ## Save format versioning
 
