@@ -8,7 +8,7 @@ cd "$repo_root"
 : "${POKEPORT_ROM:?error: set POKEPORT_ROM to a verified FireRed US v1.0 ROM}"
 replay_case=${POKEPORT_RUNTIME_REPLAY_CASE:-house_to_pallet}
 case "$replay_case" in
-  house_to_pallet|route1_wild_defeat) ;;
+  house_to_pallet|route1_wild_defeat|route1_wild_win) ;;
   *) echo "error: unsupported replay case: ${replay_case}" >&2; exit 2 ;;
 esac
 for command in love xvfb-run timeout; do

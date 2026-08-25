@@ -30,13 +30,19 @@ the bounded session, starter, Route 1 encounter, capture/defeat, and codec
 seams. `scripts/runtime_replay_smoke.sh` separately proves a real LÖVE boot,
 fixed-tick input path, and the Player's House 2F → 1F → Pallet warp chain.
 Neither proof completes this task: the remaining gate is Oak/title entry and
-a player-win/catch route.
+a natural-capture route.
 
 `route1_wild_defeat` now supplies the bounded Route 1 runtime-loss replay:
 it reaches the starter, tutorial battle, Route 1, a real grass encounter, and
 whiteout through live LÖVE input/update paths. It drives the post-Oak
 BOY/RED/GREEN identity flow with normal input masks, but does not prove the
 preceding Oak/title entry or a player-win/catch path.
+
+`route1_wild_win` now proves the corresponding seeded Route 1 wild victory
+through normal FIGHT/default-move input without injecting combat state or an
+outcome. Capture remains separate: a fresh natural route has no Poké Ball, so
+it needs an independently evidenced normal purchase path rather than test
+inventory injection.
 
 `scripts/runtime_save_restart_replay.sh` now proves the cross-process save
 boundary separately: it runs the bounded loss replay in a fresh XDG sandbox,

@@ -2905,6 +2905,7 @@ function love.load()
   local runtimeReplay = os.getenv("POKEPORT_RUNTIME_REPLAY")
   local replayRoute1 = runtimeReplay == "route1_wild_defeat"
     or runtimeReplay == "route1_wild_defeat_save"
+    or runtimeReplay == "route1_wild_win"
   if runtimeReplay == "restart_load" then
     -- This is intentionally a separate process from the save replay.  L is
     -- the normal hotkey callback, and the outer script supplies a fresh,
@@ -2953,6 +2954,24 @@ function love.load()
           press(InputState.A_BUTTON)
         elseif battle.controller.state == Battle.Controller.MOVE then
           press(InputState.DPAD_RIGHT)
+          press(InputState.A_BUTTON)
+        else
+          tick(0, 1)
+        end
+        if battle.controller.engine.outcome then outcome = battle.controller.engine.outcome end
+      end
+      return outcome
+    end
+    local function winBattle()
+      local outcome
+      -- The first real move slot is selected through the normal FIGHT
+      -- menu. No foe HP, engine outcome, or RNG state is injected here.
+      for _ = 1, 240 do
+        local battle = world.battle
+        if not battle then break end
+        if battle.controller.state == Battle.Controller.MESSAGES
+            or battle.controller.state == Battle.Controller.ACTION
+            or battle.controller.state == Battle.Controller.MOVE then
           press(InputState.A_BUTTON)
         else
           tick(0, 1)
@@ -3028,7 +3047,7 @@ function love.load()
             move(InputState.DPAD_DOWN)
           end
         end
-        local wildOutcome = loseBattle()
+        local wildOutcome = runtimeReplay == "route1_wild_win" and winBattle() or loseBattle()
         world.runtimeReplayResult = {
           reachedRoute1=reachedRoute1, rivalOutcome=rivalOutcome, wildOutcome=wildOutcome,
         }
@@ -3040,7 +3059,7 @@ function love.load()
     if replayRoute1 then
       local result = world.runtimeReplayResult or {}
       passed = started and result.reachedRoute1 and result.rivalOutcome == "playerLost"
-        and result.wildOutcome == "playerLost"
+        and result.wildOutcome == (runtimeReplay == "route1_wild_win" and "playerWon" or "playerLost")
     end
     if passed and runtimeReplay == "route1_wild_defeat_save" then
       -- K reaches saveGame only through the normal public hotkey callback.
