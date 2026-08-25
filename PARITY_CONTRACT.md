@@ -30,10 +30,11 @@ update a row in that ledger.
 
 ## Save format versioning
 
-Not started — no save format exists yet. When Phase 3 introduces one: every
-save is tagged with a schema version from the first save this project ever
-writes, and migrations between versions are explicit functions, not
-best-effort field patching.
+`SaveFileCodec` already writes and reads the current bounded session state;
+its incomplete-sector limitations are documented in the Phase 3 checklist.
+It does not yet carry an explicit project schema version. Before the first
+save-layout change, add a version field and an explicit migration function;
+never use best-effort field patching.
 
 ## Contribution rules
 

@@ -17,7 +17,9 @@ Source crosswalk: [`docs/reference/source-inventory.md`](docs/reference/source-i
 
 ## Status
 
-**Phase 0 and Phase 1 are complete; Phases 2-4 have playable bounded slices.** The full ROM importer/canonical
+**Phase 1 is complete; every other phase remains evidence-gated.** Phase 0,
+2–8 each contain implementation work, but none should be treated as complete
+until its stated exit criterion passes. The full ROM importer/canonical
 data model (species, moves, types, items, abilities, natures, trainers +
 parties, full text/charmap decoding including control codes, the complete
 map pipeline — header/layout/events/connections/scripts/tilesets/graphics,
@@ -43,15 +45,16 @@ ROM terrain and Pokémon art. A full new-game identity flow (gender/naming),
 starter selection in Oak's Lab, and the mandatory Oak's-lab rival tutorial
 battle (real trainer AI, win/loss rewards and heal) are also live end to
 end, and losing a wild battle now runs a real whiteout (money loss, party
-heal, respawn at the last real heal location). It is not yet a full game
-loop: wild-capture result persistence, full move effects, general trainer
-AI, and battle animation are still open. Every module was checked against bytes from a real, verified ROM —
+heal, respawn at the last real heal location). Wild captures persist to the
+party and Pokédex when the party has room; PC overflow remains open. It is not
+yet a full game loop: full move effects, general trainer AI, and battle
+animation are still open. Every module was checked against bytes from a real, verified ROM —
 several surprises (padded record sizes, byte-offset quirks, the
 640-tile/640-metatile/7-palette primary/secondary tileset split, static
 symbols with no linker-map entry) only showed up that way. See
 `tests/species_integration_test.lua` and `tests/full_sweep_validation_test.lua`
 (both opt-in via `POKEPORT_ROM=...`, skip cleanly with no ROM present) and
-the full test suite (111 test files with a verified ROM present).
+the full test suite (118 test files with a verified ROM present).
 
 ## Supported ROM
 
@@ -120,12 +123,11 @@ interaction to walk in and talk to the clerk isn't wired yet.
 specific viewer record. Set `POKEPORT_SCREENSHOT=1` to save a screenshot
 (`screenshot.png` in LÖVE's save directory, e.g.
 `~/.local/share/love/firered-recomp/` on Linux) and quit automatically —
-useful for headless verification. No save-game cache is written yet.
+useful for headless verification. Save files are separate from the ROM-derived
+cache and are written only when the player saves.
 
-No system `love` binary is required for development: this session used the
-LÖVE runtime bundled inside the existing `gen1recomp-x86_64.AppImage`,
-extracted with `--appimage-extract` (see project memory for the exact
-unprivileged toolchain setup).
+A LÖVE 11.x runtime is required to launch the desktop app. The Lua test suite
+uses `lua5.1` and does not require a display.
 
 ## Directory layout
 

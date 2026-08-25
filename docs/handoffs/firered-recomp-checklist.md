@@ -85,12 +85,10 @@ ambiguity.
 - [x] Create a standalone repository (`firered-recomp/`, git-initialized)
 - [x] Record supported ROM SHA-1 and revision policy (`PARITY_CONTRACT.md`, `README.md`)
 - [x] Define what "parity" means (`PARITY_CONTRACT.md`)
-- [ ] Establish a behavior ledger linking runtime subsystems to source/data/checks
-  - [x] Started informally via code comments (e.g. `RomAddresses.lua` cites its `.map` source and validation)
-  - [ ] Formalize as an actual ledger doc/table once more than 1-2 subsystems exist
-- [ ] Define save migration/versioning (deferred — no save format yet, Phase 3)
+- [x] Establish a behavior ledger linking runtime subsystems to source/data/checks (`docs/behavior-ledger.md`)
+- [ ] Define save migration/versioning (the bounded save codec exists; add a schema version before the first layout change)
 - [x] Set contribution rules: no ROMs, generated caches excluded, no-ROM `.gitignore`
-- [ ] CI pipeline (deferred — single-developer local work so far)
+- [x] CI pipeline (`.github/workflows/test.yml` runs the no-ROM Lua suite)
 
 ## Phase 1 — ROM importer and canonical data model
 
