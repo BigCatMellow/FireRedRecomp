@@ -2905,11 +2905,6 @@ function love.load()
   local runtimeReplay = os.getenv("POKEPORT_RUNTIME_REPLAY")
   if runtimeReplay == "house_to_pallet" or runtimeReplay == "route1_wild_defeat" then
     beginNewGameFlow()
-    newGame.flow.playerGender = NewGameFlow.MALE
-    newGame.flow.playerName = NewGameFlow.encodeName("RED")
-    newGame.flow.rivalName = NewGameFlow.encodeName("GREEN")
-    newGame.flow.state = NewGameFlow.COMPLETE
-    newGame.flow:_touch()
 
     local function tick(mask, count)
       world.replayInputMask = mask
@@ -2948,6 +2943,18 @@ function love.load()
       return outcome
     end
 
+    -- Exercise the real post-Oak keyboard state machine: accept its
+    -- default BOY cursor, accept the deterministic generated player-name
+    -- fallback, select the visible GREEN rival preset, then confirm both.
+    -- This intentionally does not claim to automate Oak's preceding scene.
+    press(InputState.A_BUTTON) -- gender -> player naming
+    press(InputState.START_BUTTON) -- naming cursor -> OK
+    press(InputState.A_BUTTON) -- accept player fallback -> confirm
+    press(InputState.A_BUTTON) -- player YES -> rival menu
+    press(InputState.DPAD_DOWN) -- NEW NAME -> GREEN preset
+    press(InputState.A_BUTTON) -- GREEN -> rival confirm
+    press(InputState.A_BUTTON) -- rival YES -> complete
+    world.runtimeReplayIdentity = newGame.flow:result()
     tick(0, 1) -- completed identity flow bootstraps the fresh session
     local started = newGame.session and walkMapId == GameSession.MAP_PALLET_TOWN_PLAYERS_HOUSE_2F
       and playerMovement and playerMovement.tileX == 6 and playerMovement.tileY == 6
@@ -3023,6 +3030,12 @@ function love.load()
     if world.runtimeReplayAfterLab then
       replayDetail = replayDetail .. (" afterLab=" .. tostring(world.runtimeReplayAfterLab.map)
         .. "@" .. tostring(world.runtimeReplayAfterLab.x) .. "," .. tostring(world.runtimeReplayAfterLab.y))
+    end
+    if world.runtimeReplayIdentity then
+      replayDetail = replayDetail .. (" identity="
+        .. Charmap.decode(world.runtimeReplayIdentity.playerName) .. "/"
+        .. Charmap.decode(world.runtimeReplayIdentity.rivalName)
+        .. "/" .. tostring(world.runtimeReplayIdentity.playerGender))
     end
     print(("RUNTIME_REPLAY %s %s map=%s pos=%s,%s%s"):format(runtimeReplay,
       passed and "PASS" or "FAIL", tostring(walkMapId),
