@@ -20,7 +20,7 @@
 -- list: N post-Oak gender/naming flow, V data viewer, T title screen,
 -- P player sprite, I item ball, F font sample, O Oak narration text,
 -- S full Oak intro scene (Enter continues to N), A flame sprite,
--- Y Yes/No menu, W walk. See ../firered-recomp-roadmap.md.
+-- Y Yes/No menu, W walk. See docs/roadmap.md.
 
 local Version = require("src.core.Version")
 local RomImporter = require("import.RomImporter")

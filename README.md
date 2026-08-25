@@ -12,8 +12,8 @@ system, and Gen 3 battle system. Gen1Recomp's product/engine patterns (app
 shell, mod loader, settings, input, save tooling) are worth reusing
 conceptually; its Gen 1 gameplay code is not.
 
-Full plan: [`../firered-recomp-roadmap.md`](../firered-recomp-roadmap.md).
-Source crosswalk: [`../firered-recomp-reference/source-inventory.md`](../firered-recomp-reference/source-inventory.md).
+Full plan: [`docs/roadmap.md`](docs/roadmap.md).
+Source crosswalk: [`docs/reference/source-inventory.md`](docs/reference/source-inventory.md).
 
 ## Status
 
@@ -24,7 +24,7 @@ map pipeline — header/layout/events/connections/scripts/tilesets/graphics,
 a correctly-colored real map renderer, wild encounters, Pokédex order, and
 sprite/cry/song pointer tables) is built, and every module is verified
 against real ROM bytes, not just struct definitions — see
-[`../FireRed/handoffs/firered-recomp-checklist.md`](../FireRed/handoffs/firered-recomp-checklist.md)
+[`docs/handoffs/firered-recomp-checklist.md`](docs/handoffs/firered-recomp-checklist.md)
 for the complete, itemized breakdown (kept current as work lands; treat it
 as the source of truth over this section).
 

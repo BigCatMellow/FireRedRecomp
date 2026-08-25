@@ -1,6 +1,6 @@
 -- Verifies a candidate ROM's identity before any decode work touches it.
 -- Phase 0/1: identity check only. Decoding (graphics, maps, text, scripts,
--- audio) is later importer work — see ../../firered-recomp-roadmap.md Phase 1.
+-- audio) is later importer work — see docs/roadmap.md Phase 1.
 
 local RomImporter = {}
 
