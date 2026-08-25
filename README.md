@@ -102,6 +102,13 @@ input, and real house-to-Pallet warps), install LÖVE 11.x and Xvfb, then run:
 POKEPORT_ROM=/path/to/pokefirered.gba POKEPORT_RUNTIME_REPLAY=1 bash scripts/test_all.sh
 ```
 
+The default replay is the house-to-Pallet smoke path. The stronger bounded
+field/battle replay can be run explicitly:
+
+```
+POKEPORT_ROM=/path/to/pokefirered.gba POKEPORT_RUNTIME_REPLAY_CASE=route1_wild_defeat bash scripts/runtime_replay_smoke.sh
+```
+
 The evidence-backed project status is in
 [`work/roadmaps/CAPABILITY_CHECKLIST.md`](work/roadmaps/CAPABILITY_CHECKLIST.md).
 

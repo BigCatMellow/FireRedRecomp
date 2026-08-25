@@ -2898,11 +2898,12 @@ function love.load()
     end
   end
 
-  -- A deliberately tiny runtime smoke replay. Unlike POKEPORT_WALK_MOVES,
-  -- this reaches movement through the same love.update keyboard-input path
-  -- used in normal play, then proves the Player's House 2F staircase warp
-  -- arrives in Pallet Town. It is opt-in and not a general scripting API.
-  if os.getenv("POKEPORT_RUNTIME_REPLAY") == "house_to_pallet" then
+  -- Deliberately tiny runtime smoke replays. Unlike POKEPORT_WALK_MOVES,
+  -- these reach movement and battle menus through the same love.update
+  -- keyboard-input path used in normal play. They are opt-in, terminate
+  -- after emitting one machine-readable result, and are not a scripting API.
+  local runtimeReplay = os.getenv("POKEPORT_RUNTIME_REPLAY")
+  if runtimeReplay == "house_to_pallet" or runtimeReplay == "route1_wild_defeat" then
     beginNewGameFlow()
     newGame.flow.playerGender = NewGameFlow.MALE
     newGame.flow.playerName = NewGameFlow.encodeName("RED")
@@ -2920,6 +2921,32 @@ function love.load()
       tick(button, 1)
       tick(0, 16)
     end
+    local function press(button)
+      tick(button, 1)
+      tick(0, 1)
+    end
+    local function loseBattle()
+      local outcome
+      -- Advance real battle text/menu input. Selecting the second move
+      -- (Growl) every turn intentionally avoids a fabricated quick win;
+      -- the retail foe's normal attacks then produce the real loss path.
+      for _ = 1, 240 do
+        local battle = world.battle
+        if not battle then break end
+        if battle.controller.state == Battle.Controller.MESSAGES then
+          press(InputState.A_BUTTON)
+        elseif battle.controller.state == Battle.Controller.ACTION then
+          press(InputState.A_BUTTON)
+        elseif battle.controller.state == Battle.Controller.MOVE then
+          press(InputState.DPAD_RIGHT)
+          press(InputState.A_BUTTON)
+        else
+          tick(0, 1)
+        end
+        if battle.controller.engine.outcome then outcome = battle.controller.engine.outcome end
+      end
+      return outcome
+    end
 
     tick(0, 1) -- completed identity flow bootstraps the fresh session
     local started = newGame.session and walkMapId == GameSession.MAP_PALLET_TOWN_PLAYERS_HOUSE_2F
@@ -2931,14 +2958,76 @@ function love.load()
       -- door warp at (5,8) is the next real map transition into Pallet.
       for _ = 1, 5 do move(InputState.DPAD_LEFT) end
       for _ = 1, 6 do move(InputState.DPAD_DOWN) end
+      if runtimeReplay == "route1_wild_defeat" then
+        -- The only north exit tiles are Oak's real (12,1)/(13,1) story
+        -- gate, so traverse to it rather than bypassing field progression.
+        move(InputState.DPAD_DOWN)
+        for _ = 1, 4 do move(InputState.DPAD_RIGHT) end
+        for _ = 1, 6 do move(InputState.DPAD_UP) end
+        for _ = 1, 2 do move(InputState.DPAD_RIGHT) end
+        move(InputState.DPAD_UP) -- Oak trigger: real runtime loads the lab
+
+        -- At the source-derived lab landing (6,4), face Bulbasaur's ball
+        -- at (8,4), accept it through the live interaction/menu code, then
+        -- take the real y=8 rival gate and deliberately lose the tutorial.
+        move(InputState.DPAD_RIGHT)
+        press(InputState.A_BUTTON)
+        press(InputState.A_BUTTON)
+        for _ = 1, 4 do move(InputState.DPAD_DOWN) end
+        local rivalOutcome = loseBattle()
+
+        -- The common rival-loss script leaves scene 4 and the player at
+        -- (7,8). Walk through the actual lab door, then Pallet's now-open
+        -- north connection into Route 1.
+        if rivalOutcome == "playerLost" then
+          for _ = 1, 4 do move(InputState.DPAD_DOWN) end
+          world.runtimeReplayAfterLab = { map=walkMapId, x=playerMovement.tileX, y=playerMovement.tileY }
+          -- Lab warp 2 lands at Pallet (16,13). The source path to the
+          -- north connection is south once, west four, then north to y=0.
+          move(InputState.DPAD_DOWN)
+          for _ = 1, 4 do move(InputState.DPAD_LEFT) end
+          for _ = 1, 15 do move(InputState.DPAD_UP) end
+        end
+
+        -- Route 1's arrival tile is grass. With the existing deterministic
+        -- POKEPORT_RNG_SEED=0 hook, these normal field steps start a retail
+        -- wild encounter within two grass steps; keep retrying defensively
+        -- before taking its real whiteout/loss path.
+        local reachedRoute1 = walkMapId == 3 * 256 + 19
+        if reachedRoute1 then
+          for _ = 1, 24 do
+            if world.battle then break end
+            move(InputState.DPAD_UP)
+            if world.battle then break end
+            move(InputState.DPAD_DOWN)
+          end
+        end
+        local wildOutcome = loseBattle()
+        world.runtimeReplayResult = {
+          reachedRoute1=reachedRoute1, rivalOutcome=rivalOutcome, wildOutcome=wildOutcome,
+        }
+      end
     end
     world.replayInputMask = nil
-    local passed = started and walkMapId == MAP_PALLET_TOWN
+    local passed = started and (runtimeReplay == "house_to_pallet" and walkMapId == MAP_PALLET_TOWN)
       and newGame.session and newGame.session.mapId == MAP_PALLET_TOWN
-    print(("RUNTIME_REPLAY house_to_pallet %s map=%s pos=%s,%s"):format(
+    if runtimeReplay == "route1_wild_defeat" then
+      local result = world.runtimeReplayResult or {}
+      passed = started and result.reachedRoute1 and result.rivalOutcome == "playerLost"
+        and result.wildOutcome == "playerLost"
+    end
+    local replayDetail = world.runtimeReplayResult
+      and (" route1=" .. tostring(world.runtimeReplayResult.reachedRoute1)
+        .. " rival=" .. tostring(world.runtimeReplayResult.rivalOutcome)
+        .. " wild=" .. tostring(world.runtimeReplayResult.wildOutcome)) or ""
+    if world.runtimeReplayAfterLab then
+      replayDetail = replayDetail .. (" afterLab=" .. tostring(world.runtimeReplayAfterLab.map)
+        .. "@" .. tostring(world.runtimeReplayAfterLab.x) .. "," .. tostring(world.runtimeReplayAfterLab.y))
+    end
+    print(("RUNTIME_REPLAY %s %s map=%s pos=%s,%s%s"):format(runtimeReplay,
       passed and "PASS" or "FAIL", tostring(walkMapId),
-      tostring(playerMovement and playerMovement.tileX), tostring(playerMovement and playerMovement.tileY)))
-    love.event.quit(passed and 0 or 1)
+      tostring(playerMovement and playerMovement.tileX), tostring(playerMovement and playerMovement.tileY), replayDetail))
+    if passed then love.event.quit() else love.event.quit(1) end
   end
 
   -- love.filesystem is sandboxed to the save directory (see conf.lua's
