@@ -95,6 +95,13 @@ checks as well:
 POKEPORT_ROM=/path/to/pokefirered.gba bash scripts/test_all.sh
 ```
 
+To include the opt-in headless LÖVE runtime smoke check (boot, fixed-tick
+input, and real house-to-Pallet warps), install LÖVE 11.x and Xvfb, then run:
+
+```
+POKEPORT_ROM=/path/to/pokefirered.gba POKEPORT_RUNTIME_REPLAY=1 bash scripts/test_all.sh
+```
+
 The evidence-backed project status is in
 [`work/roadmaps/CAPABILITY_CHECKLIST.md`](work/roadmaps/CAPABILITY_CHECKLIST.md).
 

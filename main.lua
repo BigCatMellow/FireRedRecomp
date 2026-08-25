@@ -620,6 +620,9 @@ local scheduler = TaskScheduler.new()
 -- ticks, instead of only stepping once per physical keypress -- the
 -- Phase 2 "input repeat" checklist item.
 local inputState = InputState.new()
+-- Test-only override consumed by love.update's otherwise normal keyboard
+-- polling. Stored on world to stay within Lua 5.1's main-chunk local cap.
+world.replayInputMask = nil
 
 -- FONT_REVEAL_TICKS_PER_CHAR: reveals 1 character every N scheduler ticks
 -- (60 ticks = 1 real second), i.e. a fixed text speed. The real game has 3
@@ -2895,6 +2898,49 @@ function love.load()
     end
   end
 
+  -- A deliberately tiny runtime smoke replay. Unlike POKEPORT_WALK_MOVES,
+  -- this reaches movement through the same love.update keyboard-input path
+  -- used in normal play, then proves the Player's House 2F staircase warp
+  -- arrives in Pallet Town. It is opt-in and not a general scripting API.
+  if os.getenv("POKEPORT_RUNTIME_REPLAY") == "house_to_pallet" then
+    beginNewGameFlow()
+    newGame.flow.playerGender = NewGameFlow.MALE
+    newGame.flow.playerName = NewGameFlow.encodeName("RED")
+    newGame.flow.rivalName = NewGameFlow.encodeName("GREEN")
+    newGame.flow.state = NewGameFlow.COMPLETE
+    newGame.flow:_touch()
+
+    local function tick(mask, count)
+      world.replayInputMask = mask
+      for _ = 1, count do love.update(1 / 60) end
+    end
+    local function move(button)
+      -- One press starts a single grid step; release ticks let its task
+      -- finish without beginning a second step.
+      tick(button, 1)
+      tick(0, 16)
+    end
+
+    tick(0, 1) -- completed identity flow bootstraps the fresh session
+    local started = newGame.session and walkMapId == GameSession.MAP_PALLET_TOWN_PLAYERS_HOUSE_2F
+      and playerMovement and playerMovement.tileX == 6 and playerMovement.tileY == 6
+    if started then
+      for _ = 1, 4 do move(InputState.DPAD_RIGHT) end
+      for _ = 1, 4 do move(InputState.DPAD_UP) end
+      -- The stair lands on Player's House 1F at (10,2); its south-west
+      -- door warp at (5,8) is the next real map transition into Pallet.
+      for _ = 1, 5 do move(InputState.DPAD_LEFT) end
+      for _ = 1, 6 do move(InputState.DPAD_DOWN) end
+    end
+    world.replayInputMask = nil
+    local passed = started and walkMapId == MAP_PALLET_TOWN
+      and newGame.session and newGame.session.mapId == MAP_PALLET_TOWN
+    print(("RUNTIME_REPLAY house_to_pallet %s map=%s pos=%s,%s"):format(
+      passed and "PASS" or "FAIL", tostring(walkMapId),
+      tostring(playerMovement and playerMovement.tileX), tostring(playerMovement and playerMovement.tileY)))
+    love.event.quit(passed and 0 or 1)
+  end
+
   -- love.filesystem is sandboxed to the save directory (see conf.lua's
   -- identity="firered-recomp"), so this always writes there under a fixed
   -- name rather than to an arbitrary POKEPORT_SCREENSHOT path.
@@ -3086,7 +3132,7 @@ function love.update(dt)
     tickAccumulator = tickAccumulator - FIXED_TICK
     scheduler:runTasks()
 
-    inputState:update(InputState.buildMask({
+    inputState:update(world.replayInputMask or InputState.buildMask({
       DPAD_UP = love.keyboard.isDown("up"),
       DPAD_DOWN = love.keyboard.isDown("down"),
       DPAD_LEFT = love.keyboard.isDown("left"),

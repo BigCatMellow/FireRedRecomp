@@ -23,6 +23,15 @@ Pallet → Route 1 → wild battle → catch or defeat → save → reload.
 4. The Phase 3 exit criterion and capability checklist change status only when
    all parts of the path are evidenced.
 
+## Progress
+
+The ROM-gated component replay in `tests/phase3_exit_path_rom_test.lua` proves
+the bounded session, starter, Route 1 encounter, capture/defeat, and codec
+seams. `scripts/runtime_replay_smoke.sh` separately proves a real LÖVE boot,
+fixed-tick input path, and the Player's House 2F → 1F → Pallet warp chain.
+Neither proof completes this task: the remaining gate is a normal-input,
+end-to-end Route 1 defeat and disk-save/restart/load replay.
+
 ## Stop conditions
 
 Stop and re-scope if the path requires a missing script opcode, a general

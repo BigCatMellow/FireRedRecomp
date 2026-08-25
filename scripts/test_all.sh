@@ -21,3 +21,7 @@ if [[ -n "${POKEPORT_ROM:-}" ]]; then
 else
   echo "PASS: ${count} test files (no-ROM mode; ROM-dependent checks skip cleanly)"
 fi
+
+if [[ "${POKEPORT_RUNTIME_REPLAY:-}" == "1" ]]; then
+  bash scripts/runtime_replay_smoke.sh
+fi
