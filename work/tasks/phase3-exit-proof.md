@@ -57,6 +57,15 @@ separately that generic first-visit map-script parity remains open.
 The concrete continuation contract is
 [`work/tasks/natural-capture-runtime-replay.md`](natural-capture-runtime-replay.md).
 
+The current natural-capture replay is runnable evidence for this runtime, not
+canonical retail progression. It bypasses the first-Mart on-frame scene
+transition (`VAR_MAP_SCENE_VIRIDIAN_CITY_MART` `0 -> 1`), the Lab scene `5`
+Parcel return, and the Parcel -> Pokédex -> Mart scene `2` sequence. Those
+source-derived gates are tracked separately in
+[`work/tasks/viridian-parcel-dex-progression.md`](viridian-parcel-dex-progression.md);
+do not mark this Phase 3 proof complete until they are independently
+evidenced.
+
 `scripts/runtime_save_restart_replay.sh` now proves the cross-process save
 boundary separately: it runs the bounded loss replay in a fresh XDG sandbox,
 saves through the normal **K** callback, verifies the sandbox save file, then

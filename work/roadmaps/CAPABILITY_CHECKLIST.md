@@ -1,6 +1,6 @@
 # FireRed ReComp capability checklist
 
-Last verified: 2026-08-24 against `main` at `10b43a25`.
+Last verified: 2026-08-26 against the documented Phase 3 handoff change.
 
 Status vocabulary is intentionally narrow:
 
@@ -16,7 +16,7 @@ This is the project-wide status surface. Detailed history and checkboxes live in
 | Phase 0 — charter and reproducibility | IN PROGRESS | `PARITY_CONTRACT.md`, `docs/behavior-ledger.md`, `scripts/test_all.sh`, CI workflow | Save-version contract and first CI run must be verified; behavior ledger needs rows as subsystems grow |
 | Phase 1 — ROM importer and canonical model | DONE | 117-test suite; `tests/full_sweep_validation_test.lua`; data viewer | All supported data-viewer records are reachable and decoded |
 | Phase 2 — rendering, input, scene runtime | IN PROGRESS | Rendering, sprite, title, palette, and viewport tests | True 240×160 camera parity and Oak-intro/reference screenshot gate |
-| Phase 3 — playable vertical slice | IN PROGRESS | New game, movement, wild battle, capture, save/load tests; runtime replays prove post-Oak identity input, Route 1 loss/victory, and `scripts/runtime_natural_capture_replay.sh` proves current-runtime Mart purchase → capture → K-save → fresh-process L-load persistence | Oak/title entry and canonical first-Mart map-script parity |
+| Phase 3 — playable vertical slice | IN PROGRESS | New game, movement, wild battle, capture, save/load tests; runtime replays prove post-Oak identity input, Route 1 loss/victory, and `scripts/runtime_natural_capture_replay.sh` proves a runnable **current-runtime** Mart purchase → capture → K-save → fresh-process L-load path | Oak/title entry; canonical Mart scene `0 -> 1`; Lab scene `5` Parcel return; and Parcel -> Dex -> Mart scene `2` progression — see `work/tasks/viridian-parcel-dex-progression.md` |
 | Phase 4 — full Gen 3 battle engine | IN PROGRESS | `BattleEngine`, trainer AI, capture, EXP, and battle-scene tests | General trainer battles, switching, full move/effect and stress matrix |
 | Phase 5 — overworld and field systems | IN PROGRESS | map, warp, object-event, movement, and script tests | Scripted Pallet-to-Elite-Four traversal without blocked or invalid paths |
 | Phase 6 — menus, inventory, progression UI | IN PROGRESS | bag, party, mart, PC, and menu tests | Complete player-facing UI; no dev-key fallbacks |
