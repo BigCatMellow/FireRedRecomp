@@ -44,6 +44,16 @@ outcome. Capture remains separate: a fresh natural route has no Poké Ball, so
 it needs an independently evidenced normal purchase path rather than test
 inventory injection.
 
+Natural purchase was blocked by a scoped field-interaction gap:
+the real Viridian Mart clerk sits behind a collision counter, but the runtime
+only targets the immediately adjacent tile. See
+[`work/tasks/mart-counter-interaction.md`](mart-counter-interaction.md);
+do not bypass this with a synthetic Mart trigger or inventory fixture.
+
+The counter rule is now implemented and unit-tested. The next capture probe
+must use it through the real Viridian Mart map/NPC/script route and report
+separately that generic first-visit map-script parity remains open.
+
 `scripts/runtime_save_restart_replay.sh` now proves the cross-process save
 boundary separately: it runs the bounded loss replay in a fresh XDG sandbox,
 saves through the normal **K** callback, verifies the sandbox save file, then

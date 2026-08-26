@@ -26,6 +26,11 @@ local PlayerMovement = require("src.core.PlayerMovement")
 
 local ObjectEventInteraction = {}
 
+-- include/constants/metatile_behaviors.h: MB_COUNTER. The real
+-- GetInteractedObjectEventScript probes exactly one additional tile beyond
+-- this behavior, and only when the counter tile itself has no object event.
+ObjectEventInteraction.MB_COUNTER = 0x80
+
 local DIRECTION_DELTA = {
   [PlayerMovement.DOWN] = { dx = 0, dy = 1 },
   [PlayerMovement.UP] = { dx = 0, dy = -1 },
@@ -41,8 +46,10 @@ local DIRECTION_DELTA = {
 -- same as the real game ignoring interact input during a queued movement).
 -- playerFacingDirection: one of PlayerMovement.DOWN/UP/LEFT/RIGHT.
 -- npcs: a list of ObjectEventState NPC states (this map's `.new()` result).
+-- opts.behaviorAt(x,y): optional metatile behavior lookup. When the faced
+-- tile is a real counter, FireRed checks exactly one tile beyond it.
 -- Returns the NPC standing on the faced tile, or nil if none.
-function ObjectEventInteraction.findInteractionTarget(playerX, playerY, playerFacingDirection, npcs)
+function ObjectEventInteraction.findInteractionTarget(playerX, playerY, playerFacingDirection, npcs, opts)
   local delta = DIRECTION_DELTA[playerFacingDirection]
   if not delta then
     error("ObjectEventInteraction: unknown facing direction " .. tostring(playerFacingDirection))
@@ -52,6 +59,13 @@ function ObjectEventInteraction.findInteractionTarget(playerX, playerY, playerFa
   for _, npc in ipairs(npcs) do
     if npc.x == targetX and npc.y == targetY then
       return npc
+    end
+  end
+
+  if opts and opts.behaviorAt and opts.behaviorAt(targetX, targetY) == ObjectEventInteraction.MB_COUNTER then
+    local beyondX, beyondY = targetX + delta.dx, targetY + delta.dy
+    for _, npc in ipairs(npcs) do
+      if npc.x == beyondX and npc.y == beyondY then return npc end
     end
   end
   return nil

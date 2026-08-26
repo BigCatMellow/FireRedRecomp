@@ -2279,7 +2279,8 @@ local function tryStartInteraction()
   if world.dialogue and world.dialogue:isActive() then return end
 
   local npc = ObjectEventInteraction.findInteractionTarget(
-    playerMovement.tileX, playerMovement.tileY, playerMovement.facingDirection, world.npcs)
+    playerMovement.tileX, playerMovement.tileY, playerMovement.facingDirection, world.npcs,
+    { behaviorAt = getMetatileBehaviorAt })
   if npc then
     if newGame.story and walkMapId == Battle.EarlyStory.MAP_OAKS_LAB
         and Battle.EarlyStory.STARTERS[npc.localId] then

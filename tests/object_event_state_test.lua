@@ -130,6 +130,24 @@ do
   -- Player facing an empty tile finds nothing.
   local target3 = ObjectEventInteraction.findInteractionTarget(0, 0, ObjectEventState.DOWN, npcs)
   check("facing an empty tile finds no NPC", target3 == nil)
+
+  -- FireRed's GetInteractedObjectEventScript probes exactly one tile beyond
+  -- an empty MB_COUNTER tile. This allows shop-clerk interaction without
+  -- allowing arbitrary interaction through walls.
+  local clerk = { x = 2, y = 3, localId = 1 }
+  local counterBehavior = function(x, y)
+    return x == 3 and y == 3 and ObjectEventInteraction.MB_COUNTER or 0
+  end
+  local counterTarget = ObjectEventInteraction.findInteractionTarget(4, 3, ObjectEventState.LEFT,
+    { clerk }, { behaviorAt = counterBehavior })
+  check("MB_COUNTER probes one tile beyond to find a clerk", counterTarget == clerk)
+  local wallTarget = ObjectEventInteraction.findInteractionTarget(4, 3, ObjectEventState.LEFT,
+    { clerk }, { behaviorAt = function() return 0 end })
+  check("non-counter faced tile does not permit through-wall interaction", wallTarget == nil)
+  local adjacentCounterNpc = { x = 3, y = 3, localId = 2 }
+  local precedence = ObjectEventInteraction.findInteractionTarget(4, 3, ObjectEventState.LEFT,
+    { adjacentCounterNpc, clerk }, { behaviorAt = counterBehavior })
+  check("adjacent object wins over counter fallback", precedence == adjacentCounterNpc)
 end
 
 print(("%d passed, %d failed"):format(passed, failed))
