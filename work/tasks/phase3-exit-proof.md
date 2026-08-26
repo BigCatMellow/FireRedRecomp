@@ -54,6 +54,9 @@ The counter rule is now implemented and unit-tested. The next capture probe
 must use it through the real Viridian Mart map/NPC/script route and report
 separately that generic first-visit map-script parity remains open.
 
+The concrete continuation contract is
+[`work/tasks/natural-capture-runtime-replay.md`](natural-capture-runtime-replay.md).
+
 `scripts/runtime_save_restart_replay.sh` now proves the cross-process save
 boundary separately: it runs the bounded loss replay in a fresh XDG sandbox,
 saves through the normal **K** callback, verifies the sandbox save file, then
