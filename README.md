@@ -120,6 +120,14 @@ normal **L** callback:
 POKEPORT_ROM=/path/to/pokefirered.gba bash scripts/runtime_save_restart_replay.sh
 ```
 
+The current-runtime natural-capture gate similarly exercises the Viridian Mart
+clerk, purchase UI, Route 1 capture, and a fresh-process reload in an isolated
+sandbox:
+
+```
+POKEPORT_ROM=/path/to/pokefirered.gba bash scripts/runtime_natural_capture_replay.sh
+```
+
 The evidence-backed project status is in
 [`work/roadmaps/CAPABILITY_CHECKLIST.md`](work/roadmaps/CAPABILITY_CHECKLIST.md).
 

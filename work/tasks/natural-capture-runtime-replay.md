@@ -30,6 +30,20 @@ is therefore not yet parity-complete. A successful replay here must be called
 **current-runtime purchase/capture evidence**, not proof of canonical retail
 story progression. The task must stop if that distinction cannot remain clear.
 
+## Progress
+
+The live `natural_capture` replay now reaches Viridian, opens the real counter
+clerk's `pokemart` script, buys five Poké Balls through the Mart UI, returns
+to Route 1, and catches through the battle BAG action with no injected
+inventory, position, or capture result. Its marker records `mart=true`,
+`bought=5`, `capture=caught`, and party count `2`.
+
+`scripts/runtime_natural_capture_replay.sh` now supplies the separate
+two-process save/restart check in a temporary XDG sandbox. The fresh process
+loads the caught party, Route 1 location, reduced ball stack, and owned Dex
+state through normal **L** handling. This remains current-runtime evidence
+only: generic first-visit Mart map-script/Parcel parity is still open.
+
 ## Verification
 
 - `POKEPORT_ROM=/path/to/pokefirered.gba bash scripts/test_all.sh`

@@ -2907,6 +2907,10 @@ function love.load()
   local replayRoute1 = runtimeReplay == "route1_wild_defeat"
     or runtimeReplay == "route1_wild_defeat_save"
     or runtimeReplay == "route1_wild_win"
+    or runtimeReplay == "natural_capture"
+    or runtimeReplay == "natural_capture_save"
+  local replayNaturalCapture = runtimeReplay == "natural_capture"
+    or runtimeReplay == "natural_capture_save"
   if runtimeReplay == "restart_load" then
     -- This is intentionally a separate process from the save replay.  L is
     -- the normal hotkey callback, and the outer script supplies a fresh,
@@ -2923,6 +2927,36 @@ function love.load()
       tostring(session and Charmap.decode(session.identity.playerName)),
       tostring(session and Charmap.decode(session.identity.rivalName)),
       tostring(session and session.identity.playerGender)))
+    if loaded then love.event.quit() else love.event.quit(1) end
+  elseif runtimeReplay == "natural_capture_restart" then
+    -- Counterpart to natural_capture_save. The outer script supplies a
+    -- fresh process with only this replay's temporary LÖVE save sandbox;
+    -- L is the normal public load callback.
+    love.keypressed("l")
+    local session = newGame.session
+    local sb1, sb2 = session and session.state.saveBlock1, session and session.state.saveBlock2
+    local caught = sb1 and sb1.playerParty and sb1.playerParty[2]
+    local caughtDecoded = caught and caught.box and require("src.core.BoxPokemonCodec").decode(caught.box)
+    local caughtSpecies = caughtDecoded and caughtDecoded.substructs[0].species
+    local ballCount = sb1 and world.battleCatalog
+      and Battle.SessionBagBridge.fromSaveBlock1(sb1, world.battleCatalog.items)
+        :quantityOf(Battle.CaptureRules.ITEM_POKE_BALL) or 0
+    local national = caughtSpecies and Battle.PokedexOrder.speciesToNationalDexNum(
+      romData, romAddrs.sSpeciesToNationalPokedexNum, caughtSpecies)
+    local owned = national and sb2 and sb2.pokedex and sb2.pokedex.owned
+    local byteIndex = national and math.floor((national - 1) / 8) + 1
+    local bit = national and 2 ^ ((national - 1) % 8)
+    local dexOwned = owned and byteIndex and (string.byte(owned, byteIndex) % (bit * 2)) >= bit
+    local loaded = session and session.mapId == 3 * 256 + 19
+      and sb1.playerPartyCount == 2 and caughtSpecies
+      -- The actual Pidgey/Rattata catch consumes however many of the five
+      -- normally purchased balls the real RNG requires; persistence must
+      -- retain a positive, reduced stack rather than a fabricated count.
+      and ballCount > 0 and ballCount < 5 and dexOwned
+    print(("RUNTIME_REPLAY natural_capture_restart %s map=%s party=%s species=%s balls=%s dex=%s"):format(
+      loaded and "PASS" or "FAIL", tostring(session and session.mapId),
+      tostring(sb1 and sb1.playerPartyCount), tostring(caughtSpecies),
+      tostring(ballCount), tostring(dexOwned)))
     if loaded then love.event.quit() else love.event.quit(1) end
   elseif runtimeReplay == "house_to_pallet" or replayRoute1 then
     beginNewGameFlow()
@@ -2980,6 +3014,56 @@ function love.load()
         if battle.controller.engine.outcome then outcome = battle.controller.engine.outcome end
       end
       return outcome
+    end
+    local function catchBattle()
+      local outcome
+      -- Move the visible ACTION cursor from FIGHT to BAG, then select it.
+      -- The controller itself consumes a real ball, calls the real capture
+      -- rules, and leaves the ordinary completion path to persist the catch.
+      for _ = 1, 240 do
+        local battle = world.battle
+        if not battle then break end
+        if battle.controller.state == Battle.Controller.MESSAGES then
+          press(InputState.A_BUTTON)
+        elseif battle.controller.state == Battle.Controller.ACTION then
+          press(InputState.DPAD_RIGHT)
+          press(InputState.A_BUTTON)
+        else
+          tick(0, 1)
+        end
+        if battle.controller.engine.outcome then outcome = battle.controller.engine.outcome end
+      end
+      return outcome
+    end
+    local function runBattle()
+      local outcome
+      -- RUN is selected from the same visible 2x2 ACTION menu as BAG.
+      -- A failed run remains a normal turn, so keep driving messages and
+      -- retrying until the real engine reports the ordinary "ran" outcome.
+      for _ = 1, 240 do
+        local battle = world.battle
+        if not battle then break end
+        if battle.controller.state == Battle.Controller.MESSAGES then
+          press(InputState.A_BUTTON)
+        elseif battle.controller.state == Battle.Controller.ACTION then
+          press(InputState.DPAD_RIGHT)
+          press(InputState.DPAD_DOWN)
+          press(InputState.A_BUTTON)
+        else
+          tick(0, 1)
+        end
+        if battle.controller.engine.outcome then outcome = battle.controller.engine.outcome end
+      end
+      return outcome
+    end
+    local function movePath(path)
+      for direction in path:gmatch(".") do
+        local button = direction == "U" and InputState.DPAD_UP
+          or direction == "D" and InputState.DPAD_DOWN
+          or direction == "L" and InputState.DPAD_LEFT
+          or InputState.DPAD_RIGHT
+        move(button)
+      end
     end
 
     -- Exercise the real post-Oak keyboard state machine: accept its
@@ -3040,7 +3124,101 @@ function love.load()
         -- wild encounter within two grass steps; keep retrying defensively
         -- before taking its real whiteout/loss path.
         local reachedRoute1 = walkMapId == 3 * 256 + 19
-        if reachedRoute1 then
+        if reachedRoute1 and replayNaturalCapture then
+          -- Continue north through the real Route 1 -> Viridian City map
+          -- connection. Any naturally-triggered Route 1 encounter on the
+          -- walk is resolved via the ordinary FIGHT menu, never suppressed
+          -- or edited, before continuing the field path.
+          -- Route 1 is not a straight north corridor. This is the shortest
+          -- route through its real collision grid from (12,39) to its north
+          -- edge (13,0), followed by the connection-crossing step.
+          for direction in ("UUUUUUULLLLUUUUURRRRUUUUUULLUUUURRRRRRUUUUUUUUUUUUUUULLLUU"):gmatch(".") do
+            if world.battle then runBattle() end
+            move(direction == "U" and InputState.DPAD_UP
+              or direction == "D" and InputState.DPAD_DOWN
+              or direction == "L" and InputState.DPAD_LEFT or InputState.DPAD_RIGHT)
+            if world.battle then runBattle() end
+          end
+          if not world.battle and walkMapId == 3 * 256 + 19 then
+            move(InputState.DPAD_UP)
+          end
+          local reachedViridian = walkMapId == 3 * 256 + 1
+          if reachedViridian then
+            -- ROM-collision-derived city path: connection landing (25,39)
+            -- to the real Mart door warp at (36,19).
+            movePath("UUUUUUUULLLUUUUUUUUUUURRRRRRRRRRRRRRU")
+          end
+          local reachedMart = walkMapId == 5 * 256 + 3
+            and playerMovement.tileX == 4 and playerMovement.tileY == 7
+          if reachedMart then
+            -- Enter (4,3), face left into the real MB_COUNTER (3,3), and
+            -- let the normal A-button/script path open the real shop UI.
+            for _ = 1, 4 do move(InputState.DPAD_UP) end
+            move(InputState.DPAD_LEFT)
+            press(InputState.A_BUTTON)
+            for _ = 1, 240 do
+              if world.martActive then break end
+              press(InputState.A_BUTTON)
+            end
+          end
+          local purchased = false
+          if world.martActive and world.martMenu then
+            -- BUY -> Poké Ball -> quantity 5 -> confirm -> acknowledge.
+            -- Inspecting the live menu state only chooses the next ordinary
+            -- keyboard action; it neither changes stock, money, nor bag.
+            for _ = 1, 80 do
+              local menu = world.martMenu
+              if not menu then break end
+              local balls = menu.bag:quantityOf(Battle.CaptureRules.ITEM_POKE_BALL)
+              if menu.state == Battle.MartMenu.TOPMENU then
+                if purchased then press(InputState.B_BUTTON) else press(InputState.A_BUTTON) end
+              elseif menu.state == Battle.MartMenu.LIST then
+                if balls == 5 then
+                  purchased = true
+                  press(InputState.B_BUTTON)
+                else
+                  press(InputState.A_BUTTON)
+                end
+              elseif menu.state == Battle.MartMenu.QUANTITY then
+                if menu.quantity < 5 then press(InputState.DPAD_UP) else press(InputState.A_BUTTON) end
+              elseif menu.state == Battle.MartMenu.CONFIRM or menu.state == Battle.MartMenu.MESSAGE then
+                press(InputState.A_BUTTON)
+              else
+                tick(0, 1)
+              end
+            end
+          end
+          local sb1 = newGame.session and newGame.session.state.saveBlock1
+          local boughtBalls = sb1 and Battle.SessionBagBridge.fromSaveBlock1(sb1, world.battleCatalog.items)
+            :quantityOf(Battle.CaptureRules.ITEM_POKE_BALL) or 0
+          if reachedMart and purchased and boughtBalls == 5 and walkMapId == 5 * 256 + 3 then
+            -- Closing `pokemart` resumes the clerk's real trailing message;
+            -- dismiss it through the normal dialogue A path before trying
+            -- to walk away from the counter.
+            for _ = 1, 240 do
+              if not world.dialogue then break end
+              press(InputState.A_BUTTON)
+            end
+            -- Return only through the same real door warp and city/Route 1
+            -- connection, then use BAG in the first natural grass battle.
+            for _ = 1, 4 do move(InputState.DPAD_DOWN) end
+            if walkMapId == 3 * 256 + 1 then
+              movePath("DDDDDDDDDDLLLLLLLLLLLLLLDDDDDDDDDDRRR")
+              move(InputState.DPAD_DOWN)
+            end
+            if walkMapId == 3 * 256 + 19 then
+              for _ = 1, 24 do
+                if world.battle then break end
+                move(InputState.DPAD_DOWN)
+              end
+            end
+          end
+          local captureOutcome = catchBattle()
+          world.runtimeReplayNaturalCapture = {
+            reachedViridian=reachedViridian, reachedMart=reachedMart,
+            purchased=purchased, boughtBalls=boughtBalls, captureOutcome=captureOutcome,
+          }
+        elseif reachedRoute1 then
           for _ = 1, 24 do
             if world.battle then break end
             move(InputState.DPAD_UP)
@@ -3048,7 +3226,8 @@ function love.load()
             move(InputState.DPAD_DOWN)
           end
         end
-        local wildOutcome = runtimeReplay == "route1_wild_win" and winBattle() or loseBattle()
+        local wildOutcome = replayNaturalCapture and nil
+          or (runtimeReplay == "route1_wild_win" and winBattle() or loseBattle())
         world.runtimeReplayResult = {
           reachedRoute1=reachedRoute1, rivalOutcome=rivalOutcome, wildOutcome=wildOutcome,
         }
@@ -3060,11 +3239,26 @@ function love.load()
     if replayRoute1 then
       local result = world.runtimeReplayResult or {}
       passed = started and result.reachedRoute1 and result.rivalOutcome == "playerLost"
-        and result.wildOutcome == (runtimeReplay == "route1_wild_win" and "playerWon" or "playerLost")
+      if replayNaturalCapture then
+        local capture = world.runtimeReplayNaturalCapture or {}
+        local sb1 = newGame.session and newGame.session.state.saveBlock1
+        passed = passed and capture.reachedViridian and capture.reachedMart and capture.purchased
+          and capture.boughtBalls == 5 and capture.captureOutcome == "caught"
+          and sb1 and sb1.playerPartyCount == 2
+      else
+        passed = passed and result.wildOutcome == (runtimeReplay == "route1_wild_win" and "playerWon" or "playerLost")
+      end
     end
     if passed and runtimeReplay == "route1_wild_defeat_save" then
       -- K reaches saveGame only through the normal public hotkey callback.
       -- The save-restart shell gate owns the isolated filesystem boundary.
+      love.keypressed("k")
+      world.runtimeReplaySaved = love.filesystem.getInfo(SAVE_FILENAME) ~= nil
+      passed = world.runtimeReplaySaved
+    end
+    if passed and runtimeReplay == "natural_capture_save" then
+      -- K invokes the same save callback as normal play; the separate
+      -- restart replay owns the isolated filesystem boundary and reload.
       love.keypressed("k")
       world.runtimeReplaySaved = love.filesystem.getInfo(SAVE_FILENAME) ~= nil
       passed = world.runtimeReplaySaved
@@ -3083,7 +3277,17 @@ function love.load()
         .. Charmap.decode(world.runtimeReplayIdentity.rivalName)
         .. "/" .. tostring(world.runtimeReplayIdentity.playerGender))
     end
-    if runtimeReplay == "route1_wild_defeat_save" then
+    if world.runtimeReplayNaturalCapture then
+      local capture = world.runtimeReplayNaturalCapture
+      replayDetail = replayDetail .. (" viridian=" .. tostring(capture.reachedViridian)
+        .. " mart=" .. tostring(capture.reachedMart)
+        .. " bought=" .. tostring(capture.boughtBalls)
+        .. " martActive=" .. tostring(world.martActive)
+        .. " martState=" .. tostring(world.martMenu and world.martMenu.state)
+        .. " capture=" .. tostring(capture.captureOutcome)
+        .. " party=" .. tostring(newGame.session and newGame.session.state.saveBlock1.playerPartyCount))
+    end
+    if runtimeReplay == "route1_wild_defeat_save" or runtimeReplay == "natural_capture_save" then
       replayDetail = replayDetail .. " saved=" .. tostring(world.runtimeReplaySaved)
     end
     print(("RUNTIME_REPLAY %s %s map=%s pos=%s,%s%s"):format(runtimeReplay,
