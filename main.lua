@@ -88,6 +88,7 @@ local Battle = {
   RivalRewards = require("src.core.EarlyRivalRewards"),
   WhiteoutRules = require("src.core.WhiteoutRules"),
   EarlyStory = require("src.core.EarlyStory"),
+  ViridianParcelStory = require("src.core.ViridianParcelStory"),
   PokedexOrder = require("import.PokedexOrder"),
   Item = require("import.Item"),
   SessionBagBridge = require("src.core.SessionBagBridge"),
@@ -454,6 +455,7 @@ local walkMapPrimaryAttrsPtr, walkMapSecondaryAttrsPtr -- current map's real Til
 --   battle        -- active BattleSceneController + derived image caches
 --   battleCatalog -- ROM species/moves/type chart and static battle art
 --   encounterLine -- last rolled encounter/outcome diagnostic
+--   viridianParcelStory -- bounded persistent Mart -> Oak Parcel/Dex controller
 local world = {
   npcs = {},
   npcImages = {},
@@ -1678,6 +1680,7 @@ local function beginNewGameFlow()
   newGame.active = true
   newGame.session = nil
   newGame.story = nil
+  world.viridianParcelStory = nil
   world.starterChoice = nil
   newGame.builtRevision = -1
 end
@@ -1748,6 +1751,64 @@ world.closeMart = function()
   if world.dialogue and world.dialogue.pendingMartItemListPtr then
     world.dialogue:notifyMartClosed()
   end
+end
+
+-- The Mart Parcel / Oak Dex scripts are a deliberately bounded story
+-- controller, not a claim that DialogueRunner can execute all map scripts.
+-- Build each inventory operation from the live save block so battles, the
+-- Mart UI, and the Bag screen cannot leave a stale in-memory Bag behind.
+world.createViridianParcelStory = function()
+  if not newGame.session or not world.battleCatalog or not world.battleCatalog.items then
+    world.viridianParcelStory = nil
+    return nil
+  end
+  local function currentBag()
+    return Battle.SessionBagBridge.fromSaveBlock1(newGame.session.state.saveBlock1,
+      world.battleCatalog.items)
+  end
+  local inventory = {
+    quantityOf = function(_, itemId) return currentBag():quantityOf(itemId) end,
+    canAddItem = function(_, itemId, quantity)
+      local bag = currentBag()
+      local pocket, slots = bag:pocketFor(itemId), bag.pockets[bag:pocketFor(itemId)]
+      for i = 1, #slots do
+        local slot = slots[i]
+        if slot and slot.itemId == itemId then
+          return slot.quantity + quantity <= Battle.Bag.MAX_STACK
+        end
+      end
+      for i = 1, #slots do if not slots[i] then return true end end
+      return false
+    end,
+    addItem = function(_, itemId, quantity)
+      local bag = currentBag()
+      local ok = bag:addItem(itemId, quantity)
+      if ok then Battle.SessionBagBridge.toSaveBlock1(bag, newGame.session.state.saveBlock1) end
+      return ok
+    end,
+    removeItem = function(_, itemId, quantity)
+      local bag = currentBag()
+      local ok = bag:removeItem(itemId, quantity)
+      if ok then Battle.SessionBagBridge.toSaveBlock1(bag, newGame.session.state.saveBlock1) end
+      return ok
+    end,
+  }
+  world.viridianParcelStory = Battle.ViridianParcelStory.new(newGame.session, inventory)
+  return world.viridianParcelStory
+end
+
+-- Models the real Mart ON_FRAME_TABLE's scene-zero selection at map entry.
+-- Its movement, fanfare, and text are presentation-deferred, but the state
+-- transition and Parcel grant are persistent and use the normal bag bridge.
+world.runViridianMartOnLoad = function(mapId)
+  local story = world.viridianParcelStory
+  if not story then return false end
+  local action = story:beginMartParcelScene(mapId)
+  if action then
+    addLine("Viridian Mart clerk gave Oak's Parcel. Movement/dialogue timing is abbreviated; Mart scene is now 1. Return it to Oak.")
+    return true
+  end
+  return false
 end
 
 -- Opens the real overworld START menu (src/start_menu.c's
@@ -1909,6 +1970,7 @@ function loadMap(data, addrs, mapId, dbg)
   dbg("composited " .. composited.width .. "x" .. composited.height)
 
   loadMapObjectEvents(data, events, mapId)
+  world.runViridianMartOnLoad(mapId)
 
   addLine(("Composited map %d,%d: %dx%d metatiles, %dx%d px"):format(math.floor(mapId / 256), mapId % 256, layout.width, layout.height, composited.width, composited.height))
   mapImage = buildImage(composited)
@@ -2020,6 +2082,7 @@ bootstrapFreshSession = function()
     generatedTrainerIdLower=lower,
   })
   newGame.story = Battle.EarlyStory.new(newGame.session)
+  world.createViridianParcelStory()
 
   -- WarpToPlayersRoom() in src/new_game.c: Map group 4, map 1, (6,6),
   -- WARP_ID_NONE.  The player begins facing north in this presentation's
@@ -2086,6 +2149,7 @@ function loadGameFile()
 
   newGame.session = GameSession.fromSavedState(state)
   newGame.story = Battle.EarlyStory.new(newGame.session)
+  world.createViridianParcelStory()
   world.saveCounter, world.saveBytes = info.saveCounter, contents
 
   loadMap(romData, romAddrs, newGame.session.mapId, function() end)
@@ -2282,6 +2346,26 @@ local function tryStartInteraction()
     playerMovement.tileX, playerMovement.tileY, playerMovement.facingDirection, world.npcs,
     { behaviorAt = getMetatileBehaviorAt })
   if npc then
+    if world.viridianParcelStory and walkMapId == Battle.ViridianParcelStory.MAP_VIRIDIAN_MART
+        and npc.localId == 1
+        and newGame.session:getVar(Battle.ViridianParcelStory.VAR_MART_SCENE) == 1 then
+      -- The retail clerk branches to SayHiToOak at scene 1, before its
+      -- `pokemart` command. DialogueRunner deliberately cannot safely
+      -- execute this larger story script, so preserve the authoritative
+      -- branch here rather than leaking through to its later shop opcode.
+      addLine("Okay, thanks! Please say hi to PROFESSOR OAK for me.")
+      return
+    end
+    if world.viridianParcelStory and walkMapId == Battle.ViridianParcelStory.MAP_OAKS_LAB
+        -- LOCALID_OAKS_LAB_PROF_OAK is object-event local id 4: the first
+        -- three Lab templates use implicit ids 1..3 in map.json.
+        and npc.localId == 4 then
+      local action = world.viridianParcelStory:completeLabParcelReturn(walkMapId)
+      if action then
+        addLine("Oak received the Parcel and gave you a Pokédex and five Poké Balls. Cutscene movement/dialogue timing is abbreviated; Viridian Mart is now open.")
+        return
+      end
+    end
     if newGame.story and walkMapId == Battle.EarlyStory.MAP_OAKS_LAB
         and Battle.EarlyStory.STARTERS[npc.localId] then
       local action = newGame.story:beginStarterChoice(walkMapId, npc.localId)
@@ -2941,6 +3025,9 @@ function love.load()
     local ballCount = sb1 and world.battleCatalog
       and Battle.SessionBagBridge.fromSaveBlock1(sb1, world.battleCatalog.items)
         :quantityOf(Battle.CaptureRules.ITEM_POKE_BALL) or 0
+    local parcelCount = sb1 and world.battleCatalog
+      and Battle.SessionBagBridge.fromSaveBlock1(sb1, world.battleCatalog.items)
+        :quantityOf(Battle.ViridianParcelStory.ITEM_OAKS_PARCEL) or 0
     local national = caughtSpecies and Battle.PokedexOrder.speciesToNationalDexNum(
       romData, romAddrs.sSpeciesToNationalPokedexNum, caughtSpecies)
     local owned = national and sb2 and sb2.pokedex and sb2.pokedex.owned
@@ -2953,10 +3040,16 @@ function love.load()
       -- normally purchased balls the real RNG requires; persistence must
       -- retain a positive, reduced stack rather than a fabricated count.
       and ballCount > 0 and ballCount < 5 and dexOwned
-    print(("RUNTIME_REPLAY natural_capture_restart %s map=%s party=%s species=%s balls=%s dex=%s"):format(
+      and parcelCount == 0
+      and session:getFlag(Battle.ViridianParcelStory.FLAG_SYS_POKEDEX_GET)
+      and session:getVar(Battle.ViridianParcelStory.VAR_LAB_SCENE) == 6
+      and session:getVar(Battle.ViridianParcelStory.VAR_MART_SCENE) == 2
+    print(("RUNTIME_REPLAY natural_capture_restart %s map=%s party=%s species=%s balls=%s parcel=%s dex=%s labScene=%s martScene=%s"):format(
       loaded and "PASS" or "FAIL", tostring(session and session.mapId),
       tostring(sb1 and sb1.playerPartyCount), tostring(caughtSpecies),
-      tostring(ballCount), tostring(dexOwned)))
+      tostring(ballCount), tostring(parcelCount), tostring(dexOwned),
+      tostring(session and session:getVar(Battle.ViridianParcelStory.VAR_LAB_SCENE)),
+      tostring(session and session:getVar(Battle.ViridianParcelStory.VAR_MART_SCENE))))
     if loaded then love.event.quit() else love.event.quit(1) end
   elseif runtimeReplay == "house_to_pallet" or replayRoute1 then
     beginNewGameFlow()
@@ -2966,10 +3059,15 @@ function love.load()
       for _ = 1, count do love.update(1 / 60) end
     end
     local function move(button)
-      -- One press starts a single grid step; release ticks let its task
-      -- finish without beginning a second step.
+      -- One press starts a single grid step.  Settle through its actual
+      -- completion instead of assuming exactly 16 scheduler frames: an edge
+      -- connection is evaluated by playerMovementTask only after that step
+      -- finishes, and a bounded wait also leaves a useful failure boundary.
       tick(button, 1)
-      tick(0, 16)
+      for _ = 1, 32 do
+        tick(0, 1)
+        if not playerMovement or not playerMovement.moving then break end
+      end
     end
     local function press(button)
       tick(button, 1)
@@ -3150,12 +3248,82 @@ function love.load()
           end
           local reachedMart = walkMapId == 5 * 256 + 3
             and playerMovement.tileX == 4 and playerMovement.tileY == 7
+          local martSceneOnEntry = newGame.session
+            and newGame.session:getVar(Battle.ViridianParcelStory.VAR_MART_SCENE)
+          local dexDelivered = false
+          local labReturn
+          local routeSouthStart
           if reachedMart then
             -- Enter (4,3), face left into the real MB_COUNTER (3,3), and
-            -- let the normal A-button/script path open the real shop UI.
+            -- take the real A-button path. Scene 1 correctly tells the
+            -- player to return to Oak instead of opening the shop.
             for _ = 1, 4 do move(InputState.DPAD_UP) end
             move(InputState.DPAD_LEFT)
             press(InputState.A_BUTTON)
+            if newGame.session:getVar(Battle.ViridianParcelStory.VAR_MART_SCENE) == 1 then
+              -- Return through the real door/connection chain to Pallet,
+              -- then enter Oak's Lab and interact with Oak at (6,3).
+              for _ = 1, 4 do move(InputState.DPAD_DOWN) end
+              if walkMapId == 3 * 256 + 1 then
+                movePath("DDDDDDDDDDLLLLLLLLLLLLLLDDDDDDDDDDRRR")
+                move(InputState.DPAD_DOWN)
+              end
+              if walkMapId == 3 * 256 + 19 then
+                routeSouthStart = { x=playerMovement.tileX, y=playerMovement.tileY }
+                -- Separately collision-derived southbound Route 1 path
+                -- from Viridian (13,0) to the Pallet connection (12,39).
+                -- It is not the inverse northbound path because real
+                -- south-only ledges make that reverse route impossible.
+                for direction in ("DDDDDDDDDDDDDLLLLDDDDRRDDDDRDDDDDDDDDDDDDD"):gmatch(".") do
+                  if world.battle then runBattle() end
+                  if walkMapId ~= 3 * 256 + 19 then break end
+                  move(direction == "D" and InputState.DPAD_DOWN
+                    or direction == "L" and InputState.DPAD_LEFT or InputState.DPAD_RIGHT)
+                end
+                if walkMapId == 3 * 256 + 19 then move(InputState.DPAD_DOWN) end
+              end
+              if walkMapId == MAP_PALLET_TOWN then
+                -- The Route 1 south connection lands at Pallet (12,0).
+                -- Follow the real reverse field path to the Lab door.
+                for _ = 1, 14 do move(InputState.DPAD_DOWN) end
+                for _ = 1, 4 do move(InputState.DPAD_RIGHT) end
+                move(InputState.DPAD_UP) -- Pallet -> Lab door at (16,13)
+              end
+              if walkMapId == Battle.ViridianParcelStory.MAP_OAKS_LAB then
+                for _ = 1, 8 do move(InputState.DPAD_UP) end
+                move(InputState.DPAD_LEFT)
+                -- The Lab door lands at (6,12); this abbreviated return
+                -- stages at (5,4), so step right and face Oak at (6,3).
+                move(InputState.DPAD_RIGHT)
+                move(InputState.DPAD_UP)
+                labReturn = { map=walkMapId, x=playerMovement.tileX, y=playerMovement.tileY,
+                  labScene=newGame.session:getVar(Battle.ViridianParcelStory.VAR_LAB_SCENE) }
+                press(InputState.A_BUTTON) -- bounded Oak Parcel/Dex controller
+                dexDelivered = newGame.session:getVar(Battle.ViridianParcelStory.VAR_MART_SCENE) == 2
+              end
+              -- Take the same real field route north again; the shop is
+              -- reached only after Oak has persisted scene 2.
+              if dexDelivered then
+                for _ = 1, 8 do move(InputState.DPAD_DOWN) end
+                move(InputState.DPAD_DOWN)
+                for _ = 1, 4 do move(InputState.DPAD_LEFT) end
+                for _ = 1, 15 do move(InputState.DPAD_UP) end
+                for direction in ("UUUUUUULLLLUUUUURRRRUUUUUULLUUUURRRRRRUUUUUUUUUUUUUUULLLUU"):gmatch(".") do
+                  if world.battle then runBattle() end
+                  move(direction == "U" and InputState.DPAD_UP or direction == "L" and InputState.DPAD_LEFT or InputState.DPAD_RIGHT)
+                  if world.battle then runBattle() end
+                end
+                if walkMapId == 3 * 256 + 19 then move(InputState.DPAD_UP) end
+                if walkMapId == 3 * 256 + 1 then
+                  movePath("UUUUUUUULLLUUUUUUUUUUURRRRRRRRRRRRRRU")
+                end
+                if walkMapId == 5 * 256 + 3 then
+                  for _ = 1, 4 do move(InputState.DPAD_UP) end
+                  move(InputState.DPAD_LEFT)
+                  press(InputState.A_BUTTON)
+                end
+              end
+            end
             for _ = 1, 240 do
               if world.martActive then break end
               press(InputState.A_BUTTON)
@@ -3216,6 +3384,10 @@ function love.load()
           local captureOutcome = catchBattle()
           world.runtimeReplayNaturalCapture = {
             reachedViridian=reachedViridian, reachedMart=reachedMart,
+            martSceneOnEntry=martSceneOnEntry,
+            dexDelivered=dexDelivered,
+            labReturn=labReturn,
+            routeSouthStart=routeSouthStart,
             purchased=purchased, boughtBalls=boughtBalls, captureOutcome=captureOutcome,
           }
         elseif reachedRoute1 then
@@ -3281,6 +3453,14 @@ function love.load()
       local capture = world.runtimeReplayNaturalCapture
       replayDetail = replayDetail .. (" viridian=" .. tostring(capture.reachedViridian)
         .. " mart=" .. tostring(capture.reachedMart)
+        .. " martScene=" .. tostring(capture.martSceneOnEntry)
+        .. " dex=" .. tostring(capture.dexDelivered)
+        .. " routeSouth=" .. tostring(capture.routeSouthStart and capture.routeSouthStart.x)
+        .. "," .. tostring(capture.routeSouthStart and capture.routeSouthStart.y)
+        .. " lab=" .. tostring(capture.labReturn and capture.labReturn.map)
+        .. "@" .. tostring(capture.labReturn and capture.labReturn.x)
+        .. "," .. tostring(capture.labReturn and capture.labReturn.y)
+        .. "/" .. tostring(capture.labReturn and capture.labReturn.labScene)
         .. " bought=" .. tostring(capture.boughtBalls)
         .. " martActive=" .. tostring(world.martActive)
         .. " martState=" .. tostring(world.martMenu and world.martMenu.state)
