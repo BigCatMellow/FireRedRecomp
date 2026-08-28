@@ -89,6 +89,7 @@ local Battle = {
   WhiteoutRules = require("src.core.WhiteoutRules"),
   EarlyStory = require("src.core.EarlyStory"),
   ViridianParcelStory = require("src.core.ViridianParcelStory"),
+  ViridianMartParcelPresentation = require("src.core.ViridianMartParcelPresentation"),
   PokedexOrder = require("import.PokedexOrder"),
   Item = require("import.Item"),
   SessionBagBridge = require("src.core.SessionBagBridge"),
@@ -724,7 +725,8 @@ local function playerMovementTask(taskId)
   -- freezes it the same real way (the real game locks field input the
   -- instant CheckForTrainersWantingBattle succeeds).
   if not walkActive or world.battle or world.starterChoice or world.trainerApproach
-      or (world.dialogue and world.dialogue:isActive()) then return end
+      or (world.dialogue and world.dialogue:isActive())
+      or (world.martParcelPresentation and world.martParcelPresentation:isInputLocked()) then return end
   local wasMoving = playerMovement.moving
   playerMovement:tick()
   if wasMoving and not playerMovement.moving then
@@ -771,7 +773,8 @@ end
 -- taking the whole game down.
 local function npcMovementTask(taskId)
   if not walkActive or world.battle or world.starterChoice or world.trainerApproach
-      or (world.dialogue and world.dialogue:isActive()) then return end
+      or (world.dialogue and world.dialogue:isActive())
+      or (world.martParcelPresentation and world.martParcelPresentation:isInputLocked()) then return end
   for _, npc in ipairs(world.npcs) do
     if not npc.tickDisabled then
       local ok, err = pcall(npc.tick, npc)
@@ -1509,6 +1512,10 @@ local function loadMapObjectEvents(data, events, mapId)
   world.coordEvents = events.coordEvents or {}
   world.dialogue = nil
   world.dialogueBuiltTokenIndex = -1
+  world.martParcelPresentation = nil
+  world.martParcelPrinter = nil
+  world.martParcelMotion = nil
+  world.martParcelClerk = nil
 
   -- SpawnObjectEventsOnMapEntry skips templates whose FLAG_HIDE_* bit is
   -- set. Before a real session exists the map remains a data/demo view and
@@ -1599,6 +1606,7 @@ local function loadWalkAssets(dbg)
   scheduler:createTask(playerMovementTask, 0)
   scheduler:createTask(npcMovementTask, 0)
   scheduler:createTask(dialogueTask, 0)
+  scheduler:createTask(world.martParcelPresentationTask, 0)
   scheduler:createTask(world.trainerApproachTask, 0)
   dbg(("player movement started at first walkable tile %d,%d"):format(x, y))
 end
@@ -1797,18 +1805,39 @@ world.createViridianParcelStory = function()
   return world.viridianParcelStory
 end
 
--- Models the real Mart ON_FRAME_TABLE's scene-zero selection at map entry.
--- Its movement, fanfare, and text are presentation-deferred, but the state
--- transition and Parcel grant are persistent and use the normal bag bridge.
-world.runViridianMartOnLoad = function(mapId)
+-- Starts the one verified MAP_SCRIPT_ON_FRAME_TABLE scene only after the
+-- destination warp has positioned the player at the real Mart doorway.  It
+-- deliberately is NOT called by loadMap: that would incorrectly fire before
+-- a warp destination exists (and would also make ordinary map loads look like
+-- a completed field entry).
+world.tryViridianMartParcelPresentationAtDestination = function()
   local story = world.viridianParcelStory
-  if not story then return false end
-  local action = story:beginMartParcelScene(mapId)
-  if action then
-    addLine("Viridian Mart clerk gave Oak's Parcel. Movement/dialogue timing is abbreviated; Mart scene is now 1. Return it to Oak.")
-    return true
+  if not story or not playerMovement or walkMapId ~= Battle.ViridianMartParcelPresentation.MAP_VIRIDIAN_MART then return false end
+  local clerk
+  for _, npc in ipairs(world.npcs) do
+    if npc.localId == Battle.ViridianMartParcelPresentation.CLERK_LOCAL_ID then clerk = npc; break end
   end
-  return false
+  local presenter = Battle.ViridianMartParcelPresentation.new({
+    canBegin = function()
+      if story.session:getVar(Battle.ViridianParcelStory.VAR_MART_SCENE) ~= 0 then return false, "mart_scene_not_zero" end
+      if not story.inventory:canAddItem(Battle.ViridianParcelStory.ITEM_OAKS_PARCEL, 1) then return false, "parcel_bag_full" end
+      return true
+    end,
+    commit = function()
+      return story:beginMartParcelScene(walkMapId)
+    end,
+  })
+  local command, reason = presenter:begin({
+    mapId=walkMapId, playerX=playerMovement.tileX, playerY=playerMovement.tileY,
+    clerkPresent=clerk ~= nil,
+  })
+  if not command then
+    return false, reason
+  end
+  world.martParcelPresentation = presenter
+  world.martParcelClerk = clerk
+  world.handleMartParcelPresentationCommand(command)
+  return true
 end
 
 -- Opens the real overworld START menu (src/start_menu.c's
@@ -1970,7 +1999,6 @@ function loadMap(data, addrs, mapId, dbg)
   dbg("composited " .. composited.width .. "x" .. composited.height)
 
   loadMapObjectEvents(data, events, mapId)
-  world.runViridianMartOnLoad(mapId)
 
   addLine(("Composited map %d,%d: %dx%d metatiles, %dx%d px"):format(math.floor(mapId / 256), mapId % 256, layout.width, layout.height, composited.width, composited.height))
   mapImage = buildImage(composited)
@@ -2006,6 +2034,9 @@ function tryWarpAt(x, y)
         playerMovement.moving = false
         playerMovement.stepFrame = 0
         syncSessionLocation()
+        -- MAP_SCRIPT_ON_FRAME_TABLE is evaluated only after the completed
+        -- warp has supplied this destination tile, never during loadMap.
+        world.tryViridianMartParcelPresentationAtDestination()
       end
       return true
     end
@@ -2289,6 +2320,95 @@ local function tokenizeTextAt(textPtr)
   return Charmap.tokenize(romData:sub(offset + 1, offset + 300))
 end
 
+-- Command bridge for the bounded presenter.  This is intentionally separate
+-- from DialogueRunner: no generic script opcode gains new behavior here.
+world.handleMartParcelPresentationCommand = function(command)
+  if not command then return end
+  if command.kind == "show_text" then
+    world.martParcelPrinter = TextPrinterState.new(tokenizeTextAt(command.textPointer), FONT_REVEAL_TICKS_PER_CHAR)
+    world.dialogueBuiltTokenIndex = -1
+  elseif command.kind == "reveal_text" and world.martParcelPrinter then
+    world.martParcelPrinter:revealAll()
+    world.dialogueBuiltTokenIndex = -1
+  elseif command.kind == "lock" then
+    local clerk = world.martParcelClerk
+    if clerk then clerk.facingDirection = PlayerMovement.DOWN end
+    -- Common_Movement_WalkInPlaceFasterDown is a fixed scripted movement;
+    -- this bounded renderer preserves its input lock and fixed-tick wait.
+    world.martParcelMotion = { kind="clerk_attention", ticks=16 }
+  elseif command.kind == "move" then
+    -- The source runs the clerk's four delay_16 actions concurrently with
+    -- the player's four walk_up actions, then waitmovement 0 joins both.
+    world.martParcelMotion = { kind="approach_counter", playerSteps=0, clerkTicks=64 }
+  elseif command.kind == "unlock" then
+    world.martParcelPrinter = nil
+    world.martParcelMotion = nil
+    world.dialogueBuiltTokenIndex = -1
+    if command.done then
+      addLine("Viridian Mart Parcel scene complete. Return Oak's Parcel to PROFESSOR OAK.")
+    else
+      addLine("Viridian Mart Parcel scene stopped: " .. tostring(command.reason))
+    end
+  end
+end
+
+-- Runs at the project's existing fixed 60 Hz scheduler cadence.  Only this
+-- one source-derived cutscene owns movement while it is active; generic NPC
+-- wandering and player input stay frozen in their normal tasks.
+world.martParcelPresentationTask = function(taskId)
+  local presenter = world.martParcelPresentation
+  if not presenter or not presenter:isActive() then return end
+  local motion = world.martParcelMotion
+  if motion then
+    if motion.kind == "clerk_attention" then
+      motion.ticks = motion.ticks - 1
+      if motion.ticks <= 0 then
+        world.martParcelMotion = nil
+        world.handleMartParcelPresentationCommand(presenter:movementComplete("clerk_attention"))
+      end
+      return
+    end
+    if motion.kind == "approach_counter" then
+      local clerk = world.martParcelClerk
+      if motion.clerkTicks > 0 then
+        motion.clerkTicks = motion.clerkTicks - 1
+        if motion.clerkTicks == 0 and clerk then clerk.facingDirection = PlayerMovement.RIGHT end
+      end
+      if playerMovement and not playerMovement.moving and motion.playerSteps < 4 then
+        playerMovement:tryMove(PlayerMovement.UP, world.isPlayerWalkTileBlocked, getLedgeJumpDirection)
+        if not playerMovement.moving then
+          world.handleMartParcelPresentationCommand({ kind="unlock", failed=true, reason="approach_blocked" })
+          presenter.state = presenter.FAILED
+          return
+        end
+      end
+      if playerMovement and playerMovement.moving then
+        local wasMoving = playerMovement.moving
+        playerMovement:tick()
+        if wasMoving and not playerMovement.moving then
+          motion.playerSteps = motion.playerSteps + 1
+          syncSessionLocation()
+        end
+      end
+      if motion.playerSteps == 4 and motion.clerkTicks == 0 then
+        playerMovement.facingDirection = PlayerMovement.LEFT
+        world.martParcelMotion = nil
+        world.handleMartParcelPresentationCommand(presenter:movementComplete("approach_counter"))
+      end
+      return
+    end
+  end
+
+  local printer = world.martParcelPrinter
+  if not printer then return end
+  local aPressed = inputState:isNewlyPressed(InputState.A_BUTTON)
+  if aPressed then
+    world.handleMartParcelPresentationCommand(presenter:onA(true, printer:isFullyRevealed()))
+  else
+    printer:tick(false)
+  end
+end
+
 -- Starts a real decoded script (an NPC's scriptPtr or a bg event's sign
 -- script) running through DialogueRunner. facingNpc, when given, is the
 -- ObjectEventState the real `faceplayer` opcode should turn toward the
@@ -2513,7 +2633,8 @@ local function ensureDialogueImagesCurrent()
   end
 
   local runner = world.dialogue
-  local tokenIndex = (runner and runner.printer) and runner.printer.tokenIndex or -1
+  local printer = (runner and runner.printer) or world.martParcelPrinter
+  local tokenIndex = printer and printer.tokenIndex or -1
   if tokenIndex == world.dialogueBuiltTokenIndex then return end
   world.dialogueBuiltTokenIndex = tokenIndex
   if tokenIndex <= 0 then
@@ -2526,7 +2647,7 @@ local function ensureDialogueImagesCurrent()
   -- byte would produce, since TextRenderer's own default is the
   -- white-on-transparent pair the F view wants instead.
   local tokens = { { type = "color", fg = 2, shadow = 3 } }
-  for _, token in ipairs(runner:revealedTokens()) do tokens[#tokens + 1] = token end
+  for _, token in ipairs(printer:revealedTokens()) do tokens[#tokens + 1] = token end
   local ok, composited = pcall(TextRenderer.renderTokens, fontData, fontAddrs, tokens, fontPalette)
   if ok then
     world.dialogueTextImage = buildImage(composited)
@@ -3037,9 +3158,9 @@ function love.load()
     local loaded = session and session.mapId == 3 * 256 + 19
       and sb1.playerPartyCount == 2 and caughtSpecies
       -- The actual Pidgey/Rattata catch consumes however many of the five
-      -- normally purchased balls the real RNG requires; persistence must
+      -- normally purchased balls (in addition to Oak's five) the real RNG requires; persistence must
       -- retain a positive, reduced stack rather than a fabricated count.
-      and ballCount > 0 and ballCount < 5 and dexOwned
+      and ballCount > 0 and ballCount < 10 and dexOwned
       and parcelCount == 0
       and session:getFlag(Battle.ViridianParcelStory.FLAG_SYS_POKEDEX_GET)
       and session:getVar(Battle.ViridianParcelStory.VAR_LAB_SCENE) == 6
@@ -3072,6 +3193,24 @@ function love.load()
     local function press(button)
       tick(button, 1)
       tick(0, 1)
+    end
+    local function finishMartParcelPresentation()
+      -- Drive only the same A/reveal path available to a player.  The
+      -- presenter itself owns when each real scripted movement completes
+      -- and when the persistent controller is allowed to commit.
+      for _ = 1, 2400 do
+        local presenter = world.martParcelPresentation
+        if not presenter then return false end
+        if presenter.state == presenter.DONE then return true end
+        if presenter.state == presenter.FAILED then return false end
+        local printer = world.martParcelPrinter
+        if printer and printer:isFullyRevealed() then
+          press(InputState.A_BUTTON)
+        else
+          tick(0, 1)
+        end
+      end
+      return false
     end
     local function loseBattle()
       local outcome
@@ -3132,6 +3271,27 @@ function love.load()
         if battle.controller.engine.outcome then outcome = battle.controller.engine.outcome end
       end
       return outcome
+    end
+    local function weakenWildOnce()
+      -- A single ordinary FIGHT/Growl turn lowers the foe's Attack before
+      -- the normal BAG retry loop; no battle state or RNG is edited.
+      for _ = 1, 80 do
+        local battle = world.battle
+        if not battle then return end
+        if battle.controller.state == Battle.Controller.MESSAGES then
+          press(InputState.A_BUTTON)
+        elseif battle.controller.state == Battle.Controller.ACTION then
+          press(InputState.A_BUTTON)
+        elseif battle.controller.state == Battle.Controller.MOVE then
+          -- Bulbasaur's ordinary second starter move is Growl; reduce the
+          -- foe's attack before throwing the purchased balls.
+          press(InputState.DPAD_RIGHT)
+          press(InputState.A_BUTTON)
+        else
+          tick(0, 1)
+        end
+        if battle.controller.state == Battle.Controller.ACTION then return end
+      end
     end
     local function runBattle()
       local outcome
@@ -3250,14 +3410,17 @@ function love.load()
             and playerMovement.tileX == 4 and playerMovement.tileY == 7
           local martSceneOnEntry = newGame.session
             and newGame.session:getVar(Battle.ViridianParcelStory.VAR_MART_SCENE)
+          local martSceneAfterPresentation
           local dexDelivered = false
           local labReturn
           local routeSouthStart
+          local martPresentationDone = false
           if reachedMart then
-            -- Enter (4,3), face left into the real MB_COUNTER (3,3), and
-            -- take the real A-button path. Scene 1 correctly tells the
-            -- player to return to Oak instead of opening the shop.
-            for _ = 1, 4 do move(InputState.DPAD_UP) end
+            martPresentationDone = finishMartParcelPresentation()
+            martSceneAfterPresentation = newGame.session:getVar(Battle.ViridianParcelStory.VAR_MART_SCENE)
+            -- The source movement has now placed the player at (4,3),
+            -- facing the real MB_COUNTER (3,3).  Scene 1 correctly tells
+            -- the player to return to Oak instead of opening the shop.
             move(InputState.DPAD_LEFT)
             press(InputState.A_BUTTON)
             if newGame.session:getVar(Battle.ViridianParcelStory.VAR_MART_SCENE) == 1 then
@@ -3280,6 +3443,10 @@ function love.load()
                   move(direction == "D" and InputState.DPAD_DOWN
                     or direction == "L" and InputState.DPAD_LEFT or InputState.DPAD_RIGHT)
                 end
+                -- The final source-derived tile is grass. Resolve any
+                -- encounter it started before giving the real south-edge
+                -- connection input; otherwise that input belongs to battle.
+                if world.battle then runBattle() end
                 if walkMapId == 3 * 256 + 19 then move(InputState.DPAD_DOWN) end
               end
               if walkMapId == MAP_PALLET_TOWN then
@@ -3331,6 +3498,8 @@ function love.load()
           end
           local purchased = false
           if world.martActive and world.martMenu then
+            local ballsBeforeMart = world.martMenu.bag:quantityOf(Battle.CaptureRules.ITEM_POKE_BALL)
+            local targetBalls = ballsBeforeMart + 5
             -- BUY -> Poké Ball -> quantity 5 -> confirm -> acknowledge.
             -- Inspecting the live menu state only chooses the next ordinary
             -- keyboard action; it neither changes stock, money, nor bag.
@@ -3341,7 +3510,7 @@ function love.load()
               if menu.state == Battle.MartMenu.TOPMENU then
                 if purchased then press(InputState.B_BUTTON) else press(InputState.A_BUTTON) end
               elseif menu.state == Battle.MartMenu.LIST then
-                if balls == 5 then
+                if balls == targetBalls then
                   purchased = true
                   press(InputState.B_BUTTON)
                 else
@@ -3359,7 +3528,7 @@ function love.load()
           local sb1 = newGame.session and newGame.session.state.saveBlock1
           local boughtBalls = sb1 and Battle.SessionBagBridge.fromSaveBlock1(sb1, world.battleCatalog.items)
             :quantityOf(Battle.CaptureRules.ITEM_POKE_BALL) or 0
-          if reachedMart and purchased and boughtBalls == 5 and walkMapId == 5 * 256 + 3 then
+          if reachedMart and purchased and boughtBalls == 10 and walkMapId == 5 * 256 + 3 then
             -- Closing `pokemart` resumes the clerk's real trailing message;
             -- dismiss it through the normal dialogue A path before trying
             -- to walk away from the counter.
@@ -3381,13 +3550,16 @@ function love.load()
               end
             end
           end
+          if world.battle then weakenWildOnce() end
           local captureOutcome = catchBattle()
           world.runtimeReplayNaturalCapture = {
             reachedViridian=reachedViridian, reachedMart=reachedMart,
             martSceneOnEntry=martSceneOnEntry,
+            martSceneAfterPresentation=martSceneAfterPresentation,
             dexDelivered=dexDelivered,
             labReturn=labReturn,
             routeSouthStart=routeSouthStart,
+            martPresentationDone=martPresentationDone,
             purchased=purchased, boughtBalls=boughtBalls, captureOutcome=captureOutcome,
           }
         elseif reachedRoute1 then
@@ -3415,7 +3587,7 @@ function love.load()
         local capture = world.runtimeReplayNaturalCapture or {}
         local sb1 = newGame.session and newGame.session.state.saveBlock1
         passed = passed and capture.reachedViridian and capture.reachedMart and capture.purchased
-          and capture.boughtBalls == 5 and capture.captureOutcome == "caught"
+          and capture.boughtBalls == 10 and capture.captureOutcome == "caught"
           and sb1 and sb1.playerPartyCount == 2
       else
         passed = passed and result.wildOutcome == (runtimeReplay == "route1_wild_win" and "playerWon" or "playerLost")
@@ -3453,7 +3625,10 @@ function love.load()
       local capture = world.runtimeReplayNaturalCapture
       replayDetail = replayDetail .. (" viridian=" .. tostring(capture.reachedViridian)
         .. " mart=" .. tostring(capture.reachedMart)
-        .. " martScene=" .. tostring(capture.martSceneOnEntry)
+        .. " martSceneEntry=" .. tostring(capture.martSceneOnEntry)
+        .. " martScenePresented=" .. tostring(capture.martSceneAfterPresentation)
+        .. " presentation=" .. tostring(capture.martPresentationDone)
+        .. " presenterState=" .. tostring(world.martParcelPresentation and world.martParcelPresentation.state)
         .. " dex=" .. tostring(capture.dexDelivered)
         .. " routeSouth=" .. tostring(capture.routeSouthStart and capture.routeSouthStart.x)
         .. "," .. tostring(capture.routeSouthStart and capture.routeSouthStart.y)
@@ -3852,7 +4027,8 @@ function love.update(dt)
       -- real next task family, starting gender selection.
       beginNewGameFlow()
     elseif walkActive and playerMovement
-        and (world.trainerApproach or (world.dialogue and world.dialogue:isActive())) then
+        and (world.trainerApproach or (world.dialogue and world.dialogue:isActive())
+          or (world.martParcelPresentation and world.martParcelPresentation:isInputLocked())) then
       -- A real script's `lock`/`lockall` (and just having a message box
       -- open) blocks field input entirely -- the A press is consumed by
       -- the dialogue's own advance, handled in dialogueTask. A pending
@@ -4168,7 +4344,7 @@ function love.draw()
 
     -- Real message box (DialogueRunner), drawn over the field like the
     -- real bg0 dialogue window sitting in front of the map/OBJ layers.
-    if world.dialogue and world.dialogue.printer and world.dialogueWindowImage then
+    if ((world.dialogue and world.dialogue.printer) or world.martParcelPrinter) and world.dialogueWindowImage then
       local boxX = baseX + 8 * viewport.scale
       local boxY = baseY + (WALK_CAMERA_HEIGHT - world.dialogueWindowImage:getHeight() - 8) * viewport.scale
       if world.dialogueFillColor then

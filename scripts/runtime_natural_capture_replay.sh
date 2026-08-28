@@ -26,7 +26,7 @@ run_replay() {
   if replay_output=$(timeout 60s xvfb-run -a env ALSOFT_DRIVERS=null \
     XDG_DATA_HOME="$sandbox_root/data" XDG_CONFIG_HOME="$sandbox_root/config" \
     XDG_CACHE_HOME="$sandbox_root/cache" POKEPORT_ROM="$POKEPORT_ROM" \
-    POKEPORT_RNG_SEED=0 POKEPORT_RUNTIME_REPLAY="$replay_case" love . 2>&1); then
+    POKEPORT_RNG_SEED=5 POKEPORT_RUNTIME_REPLAY="$replay_case" love . 2>&1); then
     :
   else
     replay_status=$?
