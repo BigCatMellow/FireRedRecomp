@@ -4,7 +4,7 @@
 - Primary information class: `AUTHORITY / INVARIANT`
 - Status: `ACTIVE`
 - Lifecycle: `ACTIVE`
-- Authority: repository-wide operating contract; subordinate to explicit human direction and narrower task/review contracts
+- Authority: repository-wide operating contract; subordinate to explicit human direction and narrower task/review contracts except where a newer explicit human authorization supersedes an older narrower publication gate
 - Accountable owner: human project owner
 - Canonical owner for repository-wide agent rules: this file
 
@@ -45,15 +45,28 @@ Current intended sequence:
 
 ```text
 ORCHESTRATOR shapes/dispatches one bounded package
-→ WORKER implements + verifies
+→ WORKER implements + verifies + may publish task-bounded commits
 → REVIEWER independently verifies against existing criteria
 → ORCHESTRATOR reconciles status and either closes, routes smallest fix, or dispatches next bounded task
 ```
 
 Role contracts live in `work/coordination/roles/`.
 
-## Publication / write authority
+## Standing Worker publication authority — human authorized 2026-09-10
 
-Repository agents may create commits needed to execute an explicitly active task or coordination package when the narrower task permits publication. If the active task explicitly requires operator approval for publication/push and no newer explicit human authorization supersedes that clause, implementation may be prepared and reviewed but must stop before publication requiring that approval.
+The human project owner explicitly authorized the following standing envelope:
 
-This operating contract itself does not grant permission to widen game scope, alter supported-ROM policy, ship releases, distribute copyrighted content, or declare phase completion without evidence.
+> Worker may publish bounded changes that remain inside an active task contract, provided they undergo independent Reviewer verification before broader status/phase advancement.
+
+This newer explicit human authorization supersedes older task clauses that require operator approval **only for publication/push of changes that stay entirely inside the currently active task contract**.
+
+Therefore Worker may commit/push/publish implementation and test/documentation changes when all of the following are true:
+
+- a live active task contract exists;
+- every changed file and behavior remains within that task's explicit MAY CHANGE / output boundary;
+- all MUST NOT CHANGE and stop/escalation conditions are respected;
+- no ROM, BIOS, generated cache, extracted game asset/content, or other prohibited material is committed;
+- Worker records exact tests/evidence and routes the exact revision to independent Reviewer;
+- broader capability/phase status does **not** advance until independent Reviewer has verified the relevant evidence and Orchestrator reconciles it.
+
+This standing envelope does **not** authorize Worker to create its own broader scope, ignore a task stop condition, alter supported-ROM policy, publish releases, distribute copyrighted content, merge unrelated refactors, self-review, or mark a phase complete. If a task requires a genuinely new human product/scope decision rather than merely an old publication gate, stop and escalate.
