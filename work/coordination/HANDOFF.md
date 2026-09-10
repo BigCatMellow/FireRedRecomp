@@ -2,46 +2,51 @@
 
 - Record role: `HANDOFF`
 - Primary information class: `TASK CONTEXT`
-- Status: `BLOCKED_WORKER_ENVIRONMENT`
+- Status: `READY_FOR_WORKER`
 - Lifecycle: `ACTIVE`
 - Authority: coordination state only; root `AGENTS.md` owns publication authority
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
 - Active task: [`../tasks/oak-parcel-dex-presentation-north.md`](../tasks/oak-parcel-dex-presentation-north.md)
 - Machine state: [`STATE.json`](STATE.json)
+- Local execution bridge: [`LOCAL_RUNNER_BRIDGE.md`](LOCAL_RUNNER_BRIDGE.md)
 
 ## Current state
 
-Orchestrator reconciled the latest live state. There is no Reviewer result and no implementation revision to review. Phase 3 remains `IN PROGRESS`; the north-facing Oak Parcel/Dex presentation remains the smallest current critical-path task.
+Phase 3 remains `IN PROGRESS`. The north-facing Oak Parcel/Dex presentation remains the smallest current critical-path task. No Reviewer result exists and no gameplay implementation has been published since the prior blocker.
 
-The blocker is execution infrastructure, not task definition. The prior Worker recovered the exact runtime insertion point, confirmed the presenter and focused test already exist, and published no gameplay change because the scheduled environment lacked a safe writable checkout or bounded edit path for the large existing `main.lua`.
+The prior Worker environment blocker is now cleared. A guarded local-runner bridge exists at `.github/workflows/local-worker-bridge.yml` and is documented in `LOCAL_RUNNER_BRIDGE.md`.
 
-## Decision
+Probe commit `8c0ed45123c1cb3e34f8d9f7398308c0deec2985` produced Local Worker Bridge run `34543172371` on self-hosted runner `firered-mint` with labels `self-hosted`, `linux`, `x64`, `firered-local`.
 
-Preserve the current Oak task. Do not dispatch unrelated work merely to keep the loop active. Do not advance capability or phase status.
+The probe passed:
 
-## Required unblock
+- trusted `main` checkout;
+- local Lua toolchain detection;
+- private ROM discovery;
+- exact FireRed US v1.0 SHA-1 gate `41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc`.
 
-Provide Worker with either:
+The probe did not apply gameplay changes and does not count as task acceptance evidence.
 
-1. a writable repository checkout, or
-2. a safe bounded patch/edit capability for existing files.
+## Exact next Worker package
 
-Final acceptance also requires the project's private verified-ROM evidence environment. No ROM, extracted assets, generated caches, or other prohibited game content may be committed.
+Resume the existing Oak task without redoing source investigation.
 
-## Resume sequence
+If the scheduler still cannot safely edit the large existing `main.lua` directly:
 
-Once the edit path is repaired:
+1. inspect the exact current code regions needed for the already-scoped wiring;
+2. construct one minimal unified diff request under `work/local-runner/requests/<task-or-timestamp>.patch`;
+3. keep every patch target within both the task MAY CHANGE boundary and the current bridge allowlist;
+4. let the Local Worker Bridge apply the patch on `firered-mint`;
+5. recover the bridge run and exact published implementation revision;
+6. claim only evidence actually reported by the run;
+7. on success, set `READY_FOR_REVIEWER` and update this handoff last;
+8. on failure, record the exact failed step/log evidence and stop rather than widening scope.
 
-```text
-WORKER
-→ resume the same Oak presenter task
-→ apply only the already-scoped main.lua integration
-→ run available focused/no-ROM evidence
-→ run required private verified-ROM evidence where available
-→ record exact revision/evidence
-→ REVIEWER independently verifies exact revision
-→ ORCHESTRATOR reconciles parent Phase 3 gate
-```
+The runtime wiring remains bounded to the recorded plan: require/wire `OakParcelDexPresentation`, intercept only the exact north-facing canonical guard, preserve all non-matching Oak interactions, use existing Lab object templates and movement/text machinery, keep input locked while the presenter owns the scene, and delegate durable state exactly once through the existing `ViridianParcelStory` terminal commit path.
+
+## Bridge security boundary
+
+The repository is public. The local workflow therefore runs only for trusted `push` events to `main` under the dedicated bridge request/probe paths; it does not run for `pull_request`. Patch targets are allowlisted. The ROM remains local and is hash-verified before ROM-backed execution. Never commit or upload the ROM, generated cache, extracted assets, or other prohibited content.
 
 ## Do not redo
 
@@ -51,7 +56,16 @@ WORKER
 - Do not bypass the canonical Mart/Parcel/Dex path with synthetic state injection.
 - Do not mark Phase 3 complete from this leaf task alone.
 - Do not ask again for task-bounded publication authority; root `AGENTS.md` already grants it.
+- Do not treat the successful runner probe as gameplay acceptance evidence.
 
-## Latest Orchestrator result
+## Next role
 
-At `2026-09-10T16:00:00Z`, Orchestrator preserved `BLOCKED_WORKER_ENVIRONMENT`, made no status advancement, dispatched no unrelated package, and left the exact Oak task ready to resume after the execution substrate is repaired.
+`WORKER`
+
+Result chain after a successful bridge run:
+
+```text
+WORKER publishes bounded tested implementation
+→ REVIEWER independently verifies exact revision
+→ ORCHESTRATOR reconciles parent Phase 3 gate
+```
