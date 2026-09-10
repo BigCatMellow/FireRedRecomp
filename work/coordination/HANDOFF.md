@@ -13,7 +13,7 @@
 
 ## Compressed state
 
-Phase 3 remains `IN PROGRESS`. The next bounded implementation is already defined: wire the existing north-facing Oak Parcel/Pokedex presenter into `main.lua`, verify source-lock/runtime behavior, run required suites/replay, then send the exact revision to independent review.
+Phase 3 remains `IN PROGRESS`. Live reconciliation on 2026-09-10 found no newer Reviewer result or task evidence superseding the current package. The sole next bounded implementation remains: wire the existing north-facing Oak Parcel/Pokedex presenter into `main.lua`, verify source-lock/runtime behavior, run required suites/replay, then send the exact revision to independent review.
 
 The former publication blocker is resolved. On 2026-09-10 the human project owner explicitly authorized Worker to publish bounded changes that remain inside an active task contract, provided they undergo independent Reviewer verification before broader status/phase advancement. Root `AGENTS.md` is the durable owner of that standing authority.
 
@@ -24,8 +24,9 @@ The former publication blocker is resolved. On 2026-09-10 the human project owne
 3. Read [`README.md`](README.md) and your role contract under `roles/`.
 4. Read current [`STATE.json`](STATE.json).
 5. Read the canonical [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md).
-6. Read the active task [`../tasks/oak-parcel-dex-presentation-north.md`](../tasks/oak-parcel-dex-presentation-north.md).
-7. Do not rely on this handoff if newer task/review/state evidence supersedes it.
+6. Read [`../roadmaps/EXECUTION_MAP.md`](../roadmaps/EXECUTION_MAP.md).
+7. Read the active task [`../tasks/oak-parcel-dex-presentation-north.md`](../tasks/oak-parcel-dex-presentation-north.md).
+8. Do not rely on this handoff if newer task/review/state evidence supersedes it.
 
 ## What is already established
 
@@ -34,15 +35,16 @@ The former publication blocker is resolved. On 2026-09-10 the human project owne
 - Current progression work has already proven bounded Mart/Parcel/Dex state flow and added presenter pieces.
 - The active north-facing Oak task records source-derived text/movement ordering, exact guard, allowed files, stop conditions, and acceptance.
 - Its completion section says the isolated presenter and focused test already exist; remaining work is runtime wiring, source-lock integration evidence, both suites, replay, and final independent review.
-- Worker now has standing authority to publish task-bounded implementation/test/documentation commits without returning to the human merely for push approval.
+- Worker has standing authority to publish task-bounded implementation/test/documentation commits without returning to the human merely for push approval.
 - Publication does not equal approval: independent Reviewer verification is mandatory before broader status/phase advancement.
+- Latest Orchestrator reconciliation found no Reviewer verdict to consume, no blocker, and no reason to alter the active critical-path leaf.
 
 ## Exact next package
 
 WORKER:
 
 - recover live state;
-- confirm the active task remains current;
+- confirm the active task remains current and `STATE.json` is still `READY_FOR_WORKER`;
 - baseline-test where available;
 - apply only the recorded bounded `main.lua` wiring plan and any task-permitted focused support required for correctness;
 - do not generalize the script interpreter, addobject/map hooks, Oak orientations, Mart UI, save codec, or battle rules;
@@ -76,3 +78,7 @@ Stop rather than improvise if:
 - Do not mark Phase 3 complete merely because this Oak presenter passes.
 - Do not ask the human again merely for publication/push approval when the proposed change stays entirely inside an active task contract; the standing authorization in root `AGENTS.md` already covers that case.
 - Do not add a heavier Pilot/MAPS coordination stack unless this minimal three-role loop demonstrates a concrete need.
+
+## Latest orchestration reconciliation
+
+At `2026-09-10T15:00:16Z`, Orchestrator recovered the canonical capability checklist, execution map, active task, coordination state, and handoff. No newer Reviewer result was present. The existing `READY_FOR_WORKER` Oak Parcel/Dex presentation package remains the smallest current critical-path task, so it was preserved unchanged in scope and authority for Worker pickup.
