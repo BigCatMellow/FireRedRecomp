@@ -20,6 +20,10 @@
 10. Record exact revision and evidence, then route that revision to independent Reviewer. Publication does not equal approval or completion.
 11. Update `STATE.json` to `READY_FOR_REVIEWER` or `BLOCKED`, then update `HANDOFF.md` last.
 
+## Local runner bridge
+
+If the scheduler environment cannot safely patch an existing large file, use `work/coordination/LOCAL_RUNNER_BRIDGE.md` rather than whole-file replacement or scope widening. The bridge accepts a task-bounded unified diff request under `work/local-runner/requests/`, applies it on the guarded `firered-local` self-hosted runner, verifies the private supported ROM by SHA-1, runs the configured evidence commands, and publishes only after they pass. Recover and inspect the resulting workflow run before claiming evidence.
+
 ## Prohibited
 
 - self-approving completion;
