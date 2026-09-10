@@ -2,9 +2,9 @@
 
 - Record role: `HANDOFF`
 - Primary information class: `TASK CONTEXT`
-- Status: `BLOCKED_ON_PUBLICATION_AUTHORITY`
+- Status: `READY_FOR_WORKER`
 - Lifecycle: `ACTIVE`
-- Authority: coordination state only; does not widen the active task
+- Authority: coordination state only; publication authority is owned by root `AGENTS.md`; this handoff does not widen the active task
 - Accountable owner: human project owner
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
 - Active task: [`../tasks/oak-parcel-dex-presentation-north.md`](../tasks/oak-parcel-dex-presentation-north.md)
@@ -15,7 +15,7 @@
 
 Phase 3 remains `IN PROGRESS`. The next bounded implementation is already defined: wire the existing north-facing Oak Parcel/Pokedex presenter into `main.lua`, verify source-lock/runtime behavior, run required suites/replay, then send the exact revision to independent review.
 
-The implementation package is ready **except** for one explicit task-level gate: the active task says publication/push requires operator approval. The 2026-09-10 human instruction authorized creation of this automation scaffold; it is not recorded here as blanket gameplay-publication authority.
+The former publication blocker is resolved. On 2026-09-10 the human project owner explicitly authorized Worker to publish bounded changes that remain inside an active task contract, provided they undergo independent Reviewer verification before broader status/phase advancement. Root `AGENTS.md` is the durable owner of that standing authority.
 
 ## Fresh-agent entry
 
@@ -34,9 +34,10 @@ The implementation package is ready **except** for one explicit task-level gate:
 - Current progression work has already proven bounded Mart/Parcel/Dex state flow and added presenter pieces.
 - The active north-facing Oak task records source-derived text/movement ordering, exact guard, allowed files, stop conditions, and acceptance.
 - Its completion section says the isolated presenter and focused test already exist; remaining work is runtime wiring, source-lock integration evidence, both suites, replay, and final independent review.
-- No open PR was present when the scaffold was initialized.
+- Worker now has standing authority to publish task-bounded implementation/test/documentation commits without returning to the human merely for push approval.
+- Publication does not equal approval: independent Reviewer verification is mandatory before broader status/phase advancement.
 
-## Exact next package after authority is unblocked
+## Exact next package
 
 WORKER:
 
@@ -48,6 +49,7 @@ WORKER:
 - run focused tests and no-ROM suite;
 - run required verified-ROM/source-lock/runtime replay evidence only in an environment that already has a legally obtained verified FireRed US v1.0 ROM;
 - commit no ROM-derived assets/caches/screenshots;
+- publish only changes inside the active task contract;
 - update coordination state to `READY_FOR_REVIEWER` with exact revision and evidence, or `BLOCKED` with exact missing evidence.
 
 REVIEWER then independently judges only the existing task criteria and returns `PASS`, `NEEDS_FIX`, or `BLOCK`.
@@ -58,13 +60,13 @@ ORCHESTRATOR then reconciles that result. A PASS closes only this bounded task u
 
 Stop rather than improvise if:
 
-- publication/push authority remains unresolved;
 - verified source contradicts the recorded descriptor;
 - completion requires generic script/addobject semantics;
 - another player-facing Oak orientation is required;
 - preflight cannot preserve current atomic failure behavior;
 - a required ROM-backed result cannot actually be run;
-- the change would require ROM/extracted game content in git.
+- the change would require ROM/extracted game content in git;
+- work would leave the active task contract or require a genuinely new human product/scope decision.
 
 ## Do not redo
 
@@ -72,13 +74,5 @@ Stop rather than improvise if:
 - Do not replace the current Phase 3 task graph with a new roadmap.
 - Do not bypass the real Mart/Parcel/Dex path using synthetic inventory/state injection.
 - Do not mark Phase 3 complete merely because this Oak presenter passes.
+- Do not ask the human again merely for publication/push approval when the proposed change stays entirely inside an active task contract; the standing authorization in root `AGENTS.md` already covers that case.
 - Do not add a heavier Pilot/MAPS coordination stack unless this minimal three-role loop demonstrates a concrete need.
-
-## Human decision that can unblock autonomous implementation
-
-A future explicit human instruction can either:
-
-1. authorize publication/push for **only** the current bounded Oak task; or
-2. establish a standing publication envelope for Worker-reviewed changes that stay inside active task contracts and pass independent review.
-
-Until one of those is explicit, the loop should remain successor-ready but must not publish gameplay implementation.
