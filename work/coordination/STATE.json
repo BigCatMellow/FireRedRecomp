@@ -1,24 +1,33 @@
 {
   "schema_version": 1,
-  "updated_utc": "2026-09-10T16:00:00Z",
+  "updated_utc": "2026-09-10T23:42:00Z",
   "role": "ORCHESTRATOR",
-  "status": "BLOCKED_WORKER_ENVIRONMENT",
+  "status": "READY_FOR_WORKER",
   "current_phase": "Phase 3 — playable vertical slice",
   "canonical_status_owner": "work/roadmaps/CAPABILITY_CHECKLIST.md",
   "active_task": "work/tasks/oak-parcel-dex-presentation-north.md",
   "objective": "Complete the already-scoped north-facing Oak Parcel/Pokedex presenter without widening scope.",
-  "next_role": "WORKER_AFTER_EXECUTION_UNBLOCK",
+  "next_role": "WORKER",
   "orchestrator_reconciliation": {
-    "result": "BLOCKER_PRESERVED",
+    "result": "EXECUTION_BLOCKER_CLEARED",
     "latest_reviewer_result": "NONE",
     "canonical_status_change": "NONE",
     "task_change": "NONE",
-    "reason": "No implementation revision was published. The current Oak presentation task remains the smallest Phase 3 critical-path package, so unrelated work was not dispatched."
+    "reason": "The guarded local Worker bridge was installed and probe run 34543172371 completed successfully on firered-mint. Repository checkout, Lua toolchain, and private FireRed US v1.0 SHA-1 verification all passed. No gameplay implementation was performed by the probe."
   },
-  "blocker": "The Worker environment does not currently provide a safe writable repository checkout or bounded patch/edit path for the large existing main.lua file. No implementation revision exists for review.",
-  "required_unblock": "Provide the Worker with a safe writable checkout or bounded patch/edit capability. Final task acceptance also needs the existing private verified-ROM evidence environment; no ROM content belongs in the repository.",
-  "next_action": "After the execution path is repaired, resume WORKER on this same Oak presenter task, record exact evidence and revision, then route to independent REVIEWER.",
+  "execution_bridge": {
+    "procedure": "work/coordination/LOCAL_RUNNER_BRIDGE.md",
+    "workflow": ".github/workflows/local-worker-bridge.yml",
+    "runner": "firered-mint",
+    "runner_label": "firered-local",
+    "probe_commit": "8c0ed45123c1cb3e34f8d9f7398308c0deec2985",
+    "probe_run_id": 34543172371,
+    "probe_result": "PASS",
+    "rom_sha1_gate": "41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc"
+  },
+  "blocker": null,
+  "next_action": "WORKER resumes the same Oak presenter task. If a safe whole-file edit is unavailable, construct one minimal unified diff request under work/local-runner/requests/, let the guarded local bridge apply and test it, recover the exact implementation revision and workflow evidence, then route to independent REVIEWER.",
   "legal_content_boundary": "Never commit ROMs, BIOS dumps, generated caches, extracted game assets, or other prohibited content.",
   "phase_completion_rule": "Do not mark Phase 3 DONE until its canonical exit criterion is fully evidenced and independently reviewed.",
-  "continuous_improvement": "Fix the execution substrate; do not add process layers or widen scope to work around the blocker."
+  "continuous_improvement": "Use the verified local bridge for bounded large-file edits; do not widen task scope or weaken evidence gates."
 }
