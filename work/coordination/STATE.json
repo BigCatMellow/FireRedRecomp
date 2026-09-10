@@ -1,16 +1,16 @@
 {
   "schema_version": 1,
-  "updated_utc": "2026-09-10T15:00:16Z",
-  "role": "ORCHESTRATOR",
-  "status": "READY_FOR_WORKER",
+  "updated_utc": "2026-09-10T15:21:00Z",
+  "role": "WORKER",
+  "status": "BLOCKED_WORKER_ENVIRONMENT",
   "current_phase": "Phase 3 — playable vertical slice",
   "canonical_status_owner": "work/roadmaps/CAPABILITY_CHECKLIST.md",
   "active_task": "work/tasks/oak-parcel-dex-presentation-north.md",
   "objective": "Complete the already-scoped north-facing Oak Parcel/Pokedex presenter by applying the bounded main.lua wiring plan and producing the task-required deterministic evidence without expanding into generic script/addobject behavior or other orientations.",
-  "next_role": "WORKER",
+  "next_role": "ORCHESTRATOR",
   "worker_package": {
-    "state": "READY_FOR_WORKER",
-    "publication_authority": "Standing human authorization recorded in root AGENTS.md: Worker may publish bounded changes that remain inside an active task contract, provided the exact revision undergoes independent Reviewer verification before broader status/phase advancement.",
+    "state": "BLOCKED",
+    "publication_authority": "Standing human authorization recorded in root AGENTS.md remains valid for task-bounded publication.",
     "may_change": [
       "src/core/OakParcelDexPresentation.lua",
       "main.lua",
@@ -32,10 +32,18 @@
       "Focused tests, no-ROM suite, required verified-ROM/source-lock/runtime replay evidence, and independent review pass."
     ]
   },
-  "latest_reconciliation": "2026-09-10T15:00:16Z ORCHESTRATOR recovered live GitHub state. No newer Reviewer result or task evidence supersedes the active package. Capability checklist remains Phase 3 IN PROGRESS; execution map still routes the current critical path through the Oak Parcel/Dex presentation leaf. Existing READY_FOR_WORKER dispatch preserved without widening scope.",
-  "blocker": null,
-  "next_action": "WORKER recovers live state, performs only the active bounded Oak presenter package, records exact test/evidence results and exact revision, publishes only within the standing task-bounded authority, then routes the revision to independent REVIEWER.",
+  "worker_inspection": {
+    "result": "NO_IMPLEMENTATION_PUBLISHED",
+    "main_blob_sha": "8221ba50e337f9f8eb30758d3dccb6b566a756ae",
+    "presenter_blob_sha": "6e240039cc2fd6d2441e1619988173210db78b5d",
+    "focused_test_blob_sha": "52a02b78ec0468412dee01add130641bb80d904a",
+    "finding": "The current Oak A-button path still calls ViridianParcelStory:completeLabParcelReturn directly, so the bounded presenter is not runtime-wired. The required insertion point and existing presenter/test were independently recovered before any write.",
+    "tests": "NOT RUN. The automation runtime could not clone the repository because its container has no GitHub network resolution. No ROM-backed or no-ROM result is claimed."
+  },
+  "blocker": "This automation runtime has no usable local checkout: git clone fails with 'Could not resolve host: github.com'. The GitHub connector can read/write files, but its file update operation replaces an entire UTF-8 file rather than applying a bounded patch. main.lua is approximately 224 KB. Safely reconstructing and replacing that whole file from connector excerpts would create an unacceptable risk of deleting or corrupting unrelated runtime code. No implementation was published.",
+  "required_unblock": "Provide this Worker execution path with a writable repository checkout or a safe partial-file/patch editing capability. A local runner with the legally obtained verified ROM is additionally required for the task's ROM-backed replay evidence. Once a safe checkout/patch path exists, resume the same active task; do not rescope it.",
+  "next_action": "ORCHESTRATOR should preserve the active Oak task and this blocker rather than dispatching unrelated work. Resume WORKER only when a safe code-edit execution path exists; then apply the already-recovered bounded main.lua integration and route the exact revision to independent REVIEWER.",
   "legal_content_boundary": "Never commit ROMs, BIOS dumps, generated caches, extracted game graphics/audio/text/maps, or other game assets. Player-supplied verified ROM remains local evidence only.",
   "phase_completion_rule": "No role may mark Phase 3 DONE unless the canonical Phase 3 exit criterion is fully evidenced, independently reviewed, and reconciled by Orchestrator.",
-  "continuous_improvement": "No concrete coordination failure was observed in this reconciliation. Keep the scaffold minimal; do not add queues, registries, multi-worker parallelism, or extra process layers without demonstrated need."
+  "continuous_improvement": "Concrete coordination/execution failure observed: scheduler-level agents need a safe repository code-edit path for large existing files; read/write connector access alone is insufficient when writes require whole-file replacement. Do not add more process layers; fix the execution substrate."
 }
