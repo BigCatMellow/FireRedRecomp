@@ -1,0 +1,172 @@
+name: Local Worker Bridge
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'work/local-runner/requests/**.patch'
+      - 'work/local-runner/probes/**.probe'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: firered-local-worker-bridge
+  cancel-in-progress: false
+
+jobs:
+  local-worker:
+    # Repository-level self-hosted runner. This workflow never runs for pull_request.
+    runs-on: [self-hosted, linux, x64, firered-local]
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out trusted main push
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Identify bridge request
+        id: request
+        shell: bash
+        run: |
+          set -euo pipefail
+          changed="$(git diff --name-only HEAD^ HEAD -- 'work/local-runner/requests/*.patch' 'work/local-runner/probes/*.probe' || true)"
+          count="$(printf '%s\n' "$changed" | sed '/^$/d' | wc -l)"
+          if [ "$count" -ne 1 ]; then
+            echo "Expected exactly one bridge request/probe in the triggering commit; found $count" >&2
+            printf '%s\n' "$changed" >&2
+            exit 1
+          fi
+          file="$(printf '%s\n' "$changed" | sed '/^$/d')"
+          case "$file" in
+            work/local-runner/probes/*.probe) mode=probe ;;
+            work/local-runner/requests/*.patch) mode=patch ;;
+            *) echo "Unexpected bridge path: $file" >&2; exit 1 ;;
+          esac
+          echo "file=$file" >> "$GITHUB_OUTPUT"
+          echo "mode=$mode" >> "$GITHUB_OUTPUT"
+
+      - name: Verify local toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          command -v git >/dev/null
+          if command -v lua5.1 >/dev/null; then
+            lua5.1 -v
+          elif command -v lua >/dev/null; then
+            lua -v
+          else
+            echo "Lua is not installed on the self-hosted runner." >&2
+            exit 1
+          fi
+
+      - name: Locate and verify private FireRed ROM
+        id: rom
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected='41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc'
+          rom="${POKEPORT_ROM:-}"
+          if [ -z "$rom" ]; then
+            rom="$(find "$HOME/Documents/Projects/Pokemon_ReComp_FireRed" -type f -name 'pokefirered.gba' -print -quit 2>/dev/null || true)"
+          fi
+          if [ -z "$rom" ] || [ ! -f "$rom" ]; then
+            echo "Verified ROM not found. Set POKEPORT_ROM for the runner or keep pokefirered.gba under the configured private project tree." >&2
+            exit 1
+          fi
+          actual="$(sha1sum "$rom" | awk '{print $1}')"
+          if [ "$actual" != "$expected" ]; then
+            echo "ROM SHA-1 mismatch. Expected $expected, got $actual. Refusing ROM-backed execution." >&2
+            exit 1
+          fi
+          echo "ROM SHA-1 verified for FireRed US v1.0."
+          echo "path=$rom" >> "$GITHUB_OUTPUT"
+
+      - name: Probe complete
+        if: steps.request.outputs.mode == 'probe'
+        shell: bash
+        run: |
+          echo "Self-hosted runner, Lua toolchain, repository checkout, and private ROM hash gate are ready."
+
+      - name: Validate bounded patch targets
+        if: steps.request.outputs.mode == 'patch'
+        shell: bash
+        env:
+          PATCH_FILE: ${{ steps.request.outputs.file }}
+        run: |
+          set -euo pipefail
+          test -s "$PATCH_FILE"
+          targets="$(grep -E '^(--- a/|\+\+\+ b/)' "$PATCH_FILE" | sed -E 's#^(--- a/|\+\+\+ b/)##' | grep -v '^/dev/null$' | sort -u)"
+          test -n "$targets"
+          while IFS= read -r target; do
+            case "$target" in
+              main.lua|src/core/OakParcelDexPresentation.lua|tests/oak_parcel_dex_presentation_test.lua|scripts/runtime_natural_capture_replay.sh|work/tasks/oak-parcel-dex-presentation-north.md)
+                ;;
+              *)
+                echo "Patch target is outside the active Oak task allowlist: $target" >&2
+                exit 1
+                ;;
+            esac
+          done <<< "$targets"
+          git apply --check "$PATCH_FILE"
+
+      - name: Apply bounded patch
+        if: steps.request.outputs.mode == 'patch'
+        shell: bash
+        env:
+          PATCH_FILE: ${{ steps.request.outputs.file }}
+        run: |
+          set -euo pipefail
+          git apply "$PATCH_FILE"
+          git diff --check
+
+      - name: Run focused presenter test
+        if: steps.request.outputs.mode == 'patch'
+        shell: bash
+        run: |
+          set -euo pipefail
+          if command -v lua5.1 >/dev/null; then LUA=lua5.1; else LUA=lua; fi
+          "$LUA" tests/oak_parcel_dex_presentation_test.lua
+
+      - name: Run no-ROM suite
+        if: steps.request.outputs.mode == 'patch'
+        shell: bash
+        run: |
+          set -euo pipefail
+          env -u POKEPORT_ROM bash scripts/test_all.sh
+
+      - name: Run verified-ROM suite
+        if: steps.request.outputs.mode == 'patch'
+        shell: bash
+        env:
+          POKEPORT_ROM: ${{ steps.rom.outputs.path }}
+        run: |
+          set -euo pipefail
+          bash scripts/test_all.sh
+
+      - name: Run natural-capture runtime replay
+        if: steps.request.outputs.mode == 'patch'
+        shell: bash
+        env:
+          POKEPORT_ROM: ${{ steps.rom.outputs.path }}
+        run: |
+          set -euo pipefail
+          bash scripts/runtime_natural_capture_replay.sh
+
+      - name: Publish verified bounded implementation
+        if: steps.request.outputs.mode == 'patch'
+        shell: bash
+        env:
+          PATCH_FILE: ${{ steps.request.outputs.file }}
+        run: |
+          set -euo pipefail
+          git add main.lua src/core/OakParcelDexPresentation.lua tests/oak_parcel_dex_presentation_test.lua scripts/runtime_natural_capture_replay.sh work/tasks/oak-parcel-dex-presentation-north.md 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "Patch produced no implementation changes." >&2
+            exit 1
+          fi
+          git config user.name 'FireRed Local Worker Bridge'
+          git config user.email 'actions@users.noreply.github.com'
+          git commit -m "Apply verified local Worker patch ($(basename "$PATCH_FILE"))"
+          git push origin HEAD:main
