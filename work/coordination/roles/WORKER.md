@@ -4,7 +4,7 @@
 - Primary information class: `SKILL / PROCEDURE`
 - Status: `ACTIVE`
 - Lifecycle: `ACTIVE`
-- Authority: execute only the currently dispatched bounded package
+- Authority: execute only the currently dispatched bounded package; standing publication authority is defined by root `AGENTS.md`
 
 ## Procedure
 
@@ -16,8 +16,9 @@
 6. Run focused tests, full no-ROM suite, and required ROM-backed/replay checks when available and required.
 7. Do not weaken tests or acceptance to make the change pass.
 8. If blocked by missing ROM/runtime/environment evidence, record the blocker exactly; do not invent results or widen scope.
-9. Write durable evidence into the active task/review-support surface as appropriate.
-10. Update `STATE.json` to `READY_FOR_REVIEWER` or `BLOCKED`, then update `HANDOFF.md` last.
+9. Worker may commit/push/publish bounded changes that remain entirely inside the active task contract under the standing human authorization recorded in root `AGENTS.md`; an older task-local publication-approval clause is superseded only to that bounded extent.
+10. Record exact revision and evidence, then route that revision to independent Reviewer. Publication does not equal approval or completion.
+11. Update `STATE.json` to `READY_FOR_REVIEWER` or `BLOCKED`, then update `HANDOFF.md` last.
 
 ## Prohibited
 
@@ -26,7 +27,8 @@
 - committing ROMs/extracted assets/generated caches;
 - unrelated refactors;
 - generic engine expansion when a bounded seam is sufficient;
-- crossing an explicit operator-approval boundary without newer human authorization.
+- crossing task scope, MUST NOT CHANGE, stop/escalation, supported-ROM, release, legal-content, or other genuine human-decision boundaries;
+- treating standing publication authority as permission to widen scope.
 
 ## Output
 
