@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "updated_utc": "2026-09-10T13:24:00Z",
+  "role": "ORCHESTRATOR",
+  "status": "BLOCKED_ON_PUBLICATION_AUTHORITY",
+  "current_phase": "Phase 3 — playable vertical slice",
+  "canonical_status_owner": "work/roadmaps/CAPABILITY_CHECKLIST.md",
+  "active_task": "work/tasks/oak-parcel-dex-presentation-north.md",
+  "objective": "Complete the already-scoped north-facing Oak Parcel/Pokedex presenter by applying the bounded main.lua wiring plan and producing the task-required deterministic evidence without expanding into generic script/addobject behavior or other orientations.",
+  "next_role": "WORKER",
+  "worker_package": {
+    "state": "READY_EXCEPT_PUBLICATION_AUTHORITY",
+    "may_change": [
+      "src/core/OakParcelDexPresentation.lua",
+      "main.lua",
+      "focused tests",
+      "runtime replay/script",
+      "task/review documentation"
+    ],
+    "must_not_change": [
+      "generic script interpreter/map hook/addobject systems",
+      "Oak orientation variants",
+      "Mart presenter/UI",
+      "save codec",
+      "battle rules"
+    ],
+    "acceptance": [
+      "Exact guard starts the bounded ROM-text/movement north presenter while all other Oak interactions retain existing behavior.",
+      "Presenter locks input and preserves the source-derived north-facing text/motion, temporary rival lifecycle, and Dex prop behavior.",
+      "Existing ViridianParcelStory durable writes occur exactly once after successful preflight, with no early mutation or duplicate reward.",
+      "Focused tests, no-ROM suite, required verified-ROM/source-lock/runtime replay evidence, and independent review pass."
+    ]
+  },
+  "blocker": "The active task explicitly requires operator approval for publication/push. The 2026-09-10 instruction to bootstrap the autonomous three-role system is treated as authority to create coordination infrastructure, not as blanket authority to publish gameplay implementation. A future explicit human instruction may supersede this blocker for this bounded task or define a broader standing publication envelope.",
+  "next_after_unblock": "WORKER recovers live state, performs only the active bounded Oak presenter package, records exact test/evidence results, and routes the exact implementation revision to independent REVIEWER.",
+  "legal_content_boundary": "Never commit ROMs, BIOS dumps, generated caches, extracted game graphics/audio/text/maps, or other game assets. Player-supplied verified ROM remains local evidence only.",
+  "phase_completion_rule": "No role may mark Phase 3 DONE unless the canonical Phase 3 exit criterion is fully evidenced and independently reviewed.",
+  "continuous_improvement": "Initial minimal scaffold only. Do not add queues, registries, multi-worker parallelism, or extra process layers unless a concrete coordination failure demonstrates need."
+}
