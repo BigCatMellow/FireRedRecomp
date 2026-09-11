@@ -1,57 +1,55 @@
 {
   "schema_version": 1,
-  "updated_utc": "2026-09-11T13:00:00Z",
-  "role": "ORCHESTRATOR",
-  "status": "READY_FOR_WORKER",
+  "updated_utc": "2026-09-11T13:29:00Z",
+  "role": "WORKER",
+  "status": "READY_FOR_REVIEWER",
   "current_phase": "Phase 3 — playable vertical slice",
   "canonical_status_owner": "work/roadmaps/CAPABILITY_CHECKLIST.md",
   "active_task": "work/tasks/phase3-title-oak-entry-proof.md",
-  "objective": "Close the remaining Phase 3 entry boundary by wiring the already-characterized normal title/new-game input path into the existing Oak intro only if required, then prove boot -> title/new game -> Oak/identity -> fresh Player's House 2F using deterministic runtime evidence.",
-  "next_role": "WORKER",
-  "reconciliation": {
-    "result": "BRIDGE_PREREQUISITE_CLOSED_AND_GAMEPLAY_TASK_RESTORED",
-    "closed_task": "work/tasks/local-worker-bridge-task-routing.md",
-    "closed_task_reviewed_revision": "0f0dc2f028f204dce4fcaee4e0fff0d9d0afb61e",
-    "closed_task_review": "work/reviews/2026-09-11-local-worker-bridge-task-routing-review.md",
-    "closed_task_verdict": "PASS",
-    "canonical_status_change": false,
-    "phase3_status": "IN PROGRESS"
-  },
-  "characterized_gap": {
-    "title_view_exists": true,
-    "oak_intro_view_exists": true,
-    "oak_intro_a_enters_existing_new_game_flow": true,
-    "missing_runtime_seam": "normal title/new-game input -> existing Oak intro",
-    "gameplay_change_already_published": false
-  },
-  "active_task_acceptance_summary": [
-    "Deterministic runtime replay starts from normal application boot and reaches the normal title/new-game path without constructing a post-Oak fixture.",
-    "Replay advances through existing Oak/identity flow and reaches a freshly initialized Player's House 2F session through normal runtime input/event seams.",
-    "Evidence verifies identity/gender/player name, rival name, initial location/coordinates, and initial party/bag/money/Dex-relevant state with no synthetic state injection.",
-    "Replay hands off cleanly to the already-proven bedroom -> Pallet path or continues through that boundary without widening scope.",
-    "Focused tests, no-ROM suite, verified-ROM suite, and route-specific runtime replay pass.",
-    "Independent Reviewer PASS is required on the exact gameplay/evidence revision before this leaf closes."
-  ],
-  "boundaries": {
-    "may_change": [
+  "objective": "Close the remaining Phase 3 entry boundary by wiring normal title/new-game input into the existing Oak intro and proving boot -> title/new game -> Oak/identity -> fresh Player's House 2F using deterministic runtime evidence.",
+  "next_role": "REVIEWER",
+  "worker_result": {
+    "result": "IMPLEMENTED_AND_EVIDENCED",
+    "implementation_revision": "8bdbda903fb0574cb169968976d4b40ce96d3563",
+    "bridge_request_revision": "6e54f06ff72fc3732256d471d7d722b95767e29b",
+    "bridge_run_id": 34604493910,
+    "changed_files": [
+      "main.lua",
       "tests/phase3_title_oak_entry_test.lua",
-      "scripts/runtime_title_oak_entry_replay.sh",
-      "main.lua only for the already-characterized narrow title-to-Oak seam",
-      "existing title/new-game/Oak/fresh-session core modules only if direct evidence shows a bounded defect",
-      "work/tasks/phase3-title-oak-entry-proof.md",
-      "work/tasks/phase3-exit-proof.md",
-      "coordination/review documentation"
+      "scripts/runtime_title_oak_entry_replay.sh"
     ],
-    "must_not_change": [
-      "Phase 2 Oak visual-parity animation work",
-      "generic scene-stack architecture",
-      "general script-interpreter expansion",
-      "Phase 4 trainer battle/move-effect work",
-      "already-passed Mart/Parcel/Dex presenter behavior",
-      "save format/layout expansion",
-      "supported-ROM policy",
-      "ROM/cache/BIOS/extracted content"
-    ]
+    "runtime_change": "Normal title A/START input now enters the existing Oak intro; Oak A continues into the existing NewGameFlow. No broader scene architecture or gameplay system was added.",
+    "runtime_replay": "RUNTIME_REPLAY title_oak_entry PASS title=true oak=true identity=true map=1025 pos=6,6 party=0 money=3000 bagEmpty=true pcPotion=true dexZero=true names=RED/GREEN gender=0",
+    "focused_test": "PASS: Phase 3 title -> Oak entry seam contract",
+    "no_rom_suite": "PASS: 122 test files (no-ROM mode; ROM-dependent checks skip cleanly)",
+    "verified_rom_suite": "PASS: 122 test files with verified FireRed US v1.0 ROM",
+    "verified_rom_sha1": "41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc",
+    "publish_step": "PASS — bridge committed and pushed the exact implementation revision after all required gates passed"
+  },
+  "acceptance_evidence": {
+    "normal_title_entry": true,
+    "oak_intro_reached_by_normal_input": true,
+    "identity_flow_reached_by_normal_input": true,
+    "post_oak_fixture_injected": false,
+    "fresh_session_map_id": 1025,
+    "fresh_session_map_group": 4,
+    "fresh_session_map_num": 1,
+    "fresh_session_x": 6,
+    "fresh_session_y": 6,
+    "player_party_count": 0,
+    "starting_money": 3000,
+    "bag_empty": true,
+    "pc_potion_present": true,
+    "dex_owned_seen_zeroed": true,
+    "player_name": "RED",
+    "rival_name": "GREEN",
+    "player_gender": 0,
+    "bedroom_to_pallet_handoff": "The replay ends at the exact existing fresh-session Player's House 2F boundary (map 4,1 at 6,6) used by the already-proven bedroom -> Pallet runtime path."
+  },
+  "boundaries": {
+    "observed": true,
+    "out_of_scope_changes": false,
+    "prohibited_content_published": false
   },
   "dependencies": {
     "local_worker_bridge": "REVIEWED_PASS",
@@ -59,7 +57,8 @@
     "bridge_route": "phase3-title-oak-entry-proof"
   },
   "blocker": null,
-  "next_after_success": "Route the exact title/Oak gameplay/evidence revision to independent Reviewer. After PASS, Orchestrator must re-evaluate the full work/tasks/phase3-exit-proof.md acceptance before changing canonical Phase 3 status.",
+  "review_request": "Independently verify exact implementation revision 8bdbda903fb0574cb169968976d4b40ce96d3563 against work/tasks/phase3-title-oak-entry-proof.md acceptance and boundaries. Return PASS, NEEDS_FIX, or BLOCK. Do not widen into Phase 3 completion; Orchestrator owns parent-gate reconciliation after Reviewer PASS.",
+  "next_after_success": "After independent Reviewer PASS on the exact revision, Orchestrator must re-evaluate the full work/tasks/phase3-exit-proof.md acceptance before changing canonical Phase 3 status.",
   "legal_content_boundary": "Never commit ROMs, BIOS dumps, generated caches, extracted game assets, or other prohibited content.",
   "phase_completion_rule": "Do not mark Phase 3 DONE until the complete canonical exit path is fully evidenced and independently reviewed."
 }
