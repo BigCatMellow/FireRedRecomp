@@ -1,31 +1,65 @@
 {
   "schema_version": 1,
-  "updated_utc": "2026-09-11T12:40:00Z",
-  "role": "REVIEWER",
-  "status": "REVIEWED_PASS",
+  "updated_utc": "2026-09-11T13:00:00Z",
+  "role": "ORCHESTRATOR",
+  "status": "READY_FOR_WORKER",
   "current_phase": "Phase 3 — playable vertical slice",
   "canonical_status_owner": "work/roadmaps/CAPABILITY_CHECKLIST.md",
-  "active_task": "work/tasks/local-worker-bridge-task-routing.md",
-  "objective": "Retarget the Local Worker Bridge so it safely supports the already-authorized Phase 3 title/Oak entry task without weakening trusted-main, explicit-target, verified-ROM, test-before-publish, or no-public-PR invariants.",
-  "next_role": "ORCHESTRATOR",
-  "review_result": {
-    "verdict": "PASS",
-    "reviewed_revision": "0f0dc2f028f204dce4fcaee4e0fff0d9d0afb61e",
-    "review_record": "work/reviews/2026-09-11-local-worker-bridge-task-routing-review.md",
-    "gameplay_change_reviewed": false,
+  "active_task": "work/tasks/phase3-title-oak-entry-proof.md",
+  "objective": "Close the remaining Phase 3 entry boundary by wiring the already-characterized normal title/new-game input path into the existing Oak intro only if required, then prove boot -> title/new game -> Oak/identity -> fresh Player's House 2F using deterministic runtime evidence.",
+  "next_role": "WORKER",
+  "reconciliation": {
+    "result": "BRIDGE_PREREQUISITE_CLOSED_AND_GAMEPLAY_TASK_RESTORED",
+    "closed_task": "work/tasks/local-worker-bridge-task-routing.md",
+    "closed_task_reviewed_revision": "0f0dc2f028f204dce4fcaee4e0fff0d9d0afb61e",
+    "closed_task_review": "work/reviews/2026-09-11-local-worker-bridge-task-routing-review.md",
+    "closed_task_verdict": "PASS",
     "canonical_status_change": false,
     "phase3_status": "IN PROGRESS"
   },
-  "material_findings": [
-    "phase3-title-oak-entry-proof is an explicit hard-coded route with bounded target, focused-test, runtime-replay, and publish surfaces.",
-    "Unknown route identifiers and unauthorized patch targets fail closed before patch application.",
-    "Trusted push-to-main only, no pull_request/pull_request_target self-hosted execution, exact FireRed v1.0 ROM SHA verification, and test-before-publish ordering remain intact.",
-    "Local Worker Bridge run 34598648805 passed on firered-mint, selected exactly phase3-title-oak-entry-proof, passed Lua 5.1.5 and the exact ROM SHA gate, and made no gameplay modification.",
-    "Repository Lua tests run 34598648798 passed on the same probe commit.",
-    "GitHub compare confirms previously reviewed Oak revision 2d8c3221775044a54668683e500055307fe4d20b remains an ancestor of the reviewed bridge revision; no reviewed Oak work was lost."
+  "characterized_gap": {
+    "title_view_exists": true,
+    "oak_intro_view_exists": true,
+    "oak_intro_a_enters_existing_new_game_flow": true,
+    "missing_runtime_seam": "normal title/new-game input -> existing Oak intro",
+    "gameplay_change_already_published": false
+  },
+  "active_task_acceptance_summary": [
+    "Deterministic runtime replay starts from normal application boot and reaches the normal title/new-game path without constructing a post-Oak fixture.",
+    "Replay advances through existing Oak/identity flow and reaches a freshly initialized Player's House 2F session through normal runtime input/event seams.",
+    "Evidence verifies identity/gender/player name, rival name, initial location/coordinates, and initial party/bag/money/Dex-relevant state with no synthetic state injection.",
+    "Replay hands off cleanly to the already-proven bedroom -> Pallet path or continues through that boundary without widening scope.",
+    "Focused tests, no-ROM suite, verified-ROM suite, and route-specific runtime replay pass.",
+    "Independent Reviewer PASS is required on the exact gameplay/evidence revision before this leaf closes."
   ],
+  "boundaries": {
+    "may_change": [
+      "tests/phase3_title_oak_entry_test.lua",
+      "scripts/runtime_title_oak_entry_replay.sh",
+      "main.lua only for the already-characterized narrow title-to-Oak seam",
+      "existing title/new-game/Oak/fresh-session core modules only if direct evidence shows a bounded defect",
+      "work/tasks/phase3-title-oak-entry-proof.md",
+      "work/tasks/phase3-exit-proof.md",
+      "coordination/review documentation"
+    ],
+    "must_not_change": [
+      "Phase 2 Oak visual-parity animation work",
+      "generic scene-stack architecture",
+      "general script-interpreter expansion",
+      "Phase 4 trainer battle/move-effect work",
+      "already-passed Mart/Parcel/Dex presenter behavior",
+      "save format/layout expansion",
+      "supported-ROM policy",
+      "ROM/cache/BIOS/extracted content"
+    ]
+  },
+  "dependencies": {
+    "local_worker_bridge": "REVIEWED_PASS",
+    "bridge_revision": "0f0dc2f028f204dce4fcaee4e0fff0d9d0afb61e",
+    "bridge_route": "phase3-title-oak-entry-proof"
+  },
   "blocker": null,
-  "next_allowance": "Orchestrator may close only this bridge-maintenance prerequisite and restore work/tasks/phase3-title-oak-entry-proof.md as READY_FOR_WORKER for the already-characterized narrow title-to-Oak seam and deterministic entry evidence.",
+  "next_after_success": "Route the exact title/Oak gameplay/evidence revision to independent Reviewer. After PASS, Orchestrator must re-evaluate the full work/tasks/phase3-exit-proof.md acceptance before changing canonical Phase 3 status.",
   "legal_content_boundary": "Never commit ROMs, BIOS dumps, generated caches, extracted game assets, or other prohibited content.",
   "phase_completion_rule": "Do not mark Phase 3 DONE until the complete canonical exit path is fully evidenced and independently reviewed."
 }
