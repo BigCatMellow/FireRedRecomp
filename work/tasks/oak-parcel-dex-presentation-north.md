@@ -1,6 +1,6 @@
 # Task: present north-facing Oak Parcel/Dex scene
 
-- Status: `ACTIVE`
+- Status: `DONE`
 - AGI status: `AGI READY`
 - Type: `IMPLEMENTATION`
 - Owner: `/root`
@@ -29,7 +29,8 @@
   tests, runtime replay/script, and task/review documentation.
 - MUST NOT CHANGE: generic script interpreter/map hook/addobject systems,
   Oak orientation variants, Mart presenter/UI, save codec, or battle rules.
-- OPERATOR APPROVAL REQUIRED: publication/push.
+- OPERATOR APPROVAL REQUIRED: publication/push. Superseded for task-bounded
+  publication by the standing human authorization recorded in `AGENTS.md`.
 
 ## Verified north-facing descriptor
 
@@ -55,20 +56,27 @@
 
 ## Acceptance criteria
 
-- [ ] Exact guard starts a ROM-text/movement bounded presenter; all other Oak
+- [x] Exact guard starts a ROM-text/movement bounded presenter; all other Oak
   interactions follow existing behavior.
-- [ ] Presenter locks input, uses source-derived north-facing motion/text,
+- [x] Presenter locks input, uses source-derived north-facing motion/text,
   temporary rival lifecycle, and Dex prop removal without generic spawning.
-- [ ] It delegates all existing `ViridianParcelStory` durable writes exactly
+- [x] It delegates all existing `ViridianParcelStory` durable writes exactly
   once after a successful preflight; no early mutation or duplicate reward.
-- [ ] Verified-ROM replay proves terminal presentation plus persistent result;
+- [x] Verified-ROM replay proves terminal presentation plus persistent result;
   focused tests, both suites, and independent review pass.
 
 ## Verification and evidence
 
-- Verification: source-lock fixture, pure FSM tests, no-ROM and verified-ROM
-  suites, and verified-ROM runtime replay.
-- Review required: `INDEPENDENT_REVIEW`
+- Reviewed implementation revision: `2d8c3221775044a54668683e500055307fe4d20b`.
+- Independent review: `work/reviews/oak-parcel-dex-presentation-north-final-review.md` — `PASS`.
+- Local Worker Bridge run `34547647645` verified FireRed US v1.0 SHA-1
+  `41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc`.
+- Focused presenter test: 24 passed, 0 failed.
+- Full no-ROM suite: 121 test files passed.
+- Full verified-ROM suite: 121 test files passed, including
+  `phase3_exit_path_rom_test`: 12 passed, 0 failed.
+- Verified-ROM natural-capture replay passed the Oak presentation and
+  fresh-process persistence with Dex/Lab/Mart/Parcel/capture state intact.
 
 ## Stop / escalate
 
@@ -90,10 +98,11 @@ or preflight cannot preserve the current bounded atomic failure behavior.
 
 ## Completion / handoff
 
-- Completed: scoped and independently ROM/source validated; isolated
-  north-only presenter and focused test added. Independent review corrected
-  the first-four-texts-before-rival source ordering.
-- Not completed: runtime wiring, source-lock integration evidence, both suites,
-  replay, and final independent review.
-- Next action: apply the recorded bounded main.lua wiring plan, then verify it
-  in the runtime without expanding into a generic script interpreter.
+Independent Reviewer `PASS` closes this bounded leaf only. The north-facing
+Oak Parcel/Dex presentation is wired, source-locked, regression-tested, and
+verified in the ROM-backed runtime replay. The explicit omissions remain out
+of scope and are not claims of parity.
+
+Phase 3 remains `IN PROGRESS`. Orchestrator must return to
+`work/tasks/phase3-exit-proof.md` and dispatch the smallest remaining unproven
+parent acceptance item rather than widening this completed task.
