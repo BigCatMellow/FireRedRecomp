@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
-  "updated_utc": "2026-09-11T13:57:00Z",
-  "role": "ORCHESTRATOR",
-  "status": "READY_FOR_WORKER",
+  "updated_utc": "2026-09-11T14:17:00Z",
+  "role": "WORKER",
+  "status": "BLOCKED",
   "current_phase": "Phase 3 — playable vertical slice",
   "canonical_status_owner": "work/roadmaps/CAPABILITY_CHECKLIST.md",
   "active_task": "work/tasks/phase3-complete-runtime-exit-replay.md",
   "objective": "Produce one deterministic automated runtime artifact proving the complete Phase 3 path from normal boot through title/Oak/identity, bedroom/Pallet, Route 1 wild battle, save, and fresh-process reload without synthetic fixture jumps or normal-gameplay changes.",
-  "next_role": "WORKER",
+  "next_role": "ORCHESTRATOR",
   "reconciliation": {
     "reviewed_leaf": "work/tasks/phase3-title-oak-entry-proof.md",
     "review_verdict": "PASS",
@@ -45,7 +45,16 @@
       "ROM/cache/BIOS/extracted content"
     ]
   },
-  "blocker": null,
+  "blocker": {
+    "result": "EXECUTION_SUBSTRATE_ROUTE_MISSING",
+    "first_blocked_step": "publish and execute the required main.lua replay-driver patch through the guarded Local Worker Bridge",
+    "evidence": "work/coordination/LOCAL_RUNNER_BRIDGE.md and .github/workflows/local-worker-bridge.yml expose only oak-parcel-dex-presentation-north, phase3-title-oak-entry-proof, and runner-readiness routes; phase3-complete-runtime-exit-replay is unknown and therefore fails closed",
+    "why_worker_cannot_fix_here": "The active evidence task authorizes replay/test support and bounded main.lua replay-driver plumbing, but it does not authorize changing .github/workflows/local-worker-bridge.yml or widening the bridge allowlist. Whole-file replacement of large main.lua from the scheduler is explicitly disfavored by the Worker contract when the guarded bridge is required.",
+    "gameplay_defect_found": false,
+    "implementation_published": false,
+    "tests_run": false,
+    "required_next_action": "Orchestrator must scope/authorize the smallest explicit bridge-maintenance route for phase3-complete-runtime-exit-replay, preserving fail-closed target allowlists, focused/no-ROM/verified-ROM/replay gates, and explicit publish staging; after independent PASS, restore this same evidence task to READY_FOR_WORKER."
+  },
   "stop_condition": "If continuous execution exposes a real gameplay defect rather than replay-driver plumbing, stop and record the exact first failing seam instead of modifying gameplay under this evidence-only task.",
   "next_after_success": "Independent Reviewer verifies the exact complete-runtime replay revision. On PASS, Orchestrator re-evaluates work/tasks/phase3-exit-proof.md and the canonical Phase 3 checklist row for DONE eligibility before selecting Phase 2 parity work.",
   "legal_content_boundary": "Never commit ROMs, BIOS dumps, generated caches, extracted game assets, or other prohibited content.",
