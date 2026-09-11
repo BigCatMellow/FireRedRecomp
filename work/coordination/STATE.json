@@ -1,54 +1,58 @@
 {
   "schema_version": 1,
-  "updated_utc": "2026-09-11T03:05:00Z",
-  "role": "ORCHESTRATOR",
-  "status": "READY_FOR_WORKER",
+  "updated_utc": "2026-09-11T12:24:00Z",
+  "role": "WORKER",
+  "status": "READY_FOR_REVIEWER",
   "current_phase": "Phase 3 — playable vertical slice",
   "canonical_status_owner": "work/roadmaps/CAPABILITY_CHECKLIST.md",
   "active_task": "work/tasks/local-worker-bridge-task-routing.md",
   "objective": "Retarget the Local Worker Bridge so it safely supports the already-authorized Phase 3 title/Oak entry task without weakening trusted-main, explicit-target, verified-ROM, test-before-publish, or no-public-PR invariants.",
-  "next_role": "WORKER",
-  "reconciliation": {
-    "result": "EXECUTION_SUBSTRATE_MAINTENANCE_DISPATCHED",
-    "gameplay_task": "work/tasks/phase3-title-oak-entry-proof.md",
-    "gameplay_characterization": "Normal title runtime input does not transition into the existing Oak intro; Oak intro A input already transitions into beginNewGameFlow(). A narrow title-to-Oak seam plus deterministic entry evidence remains the smallest gameplay correction.",
-    "reason_for_infrastructure_leaf": "The verified Local Worker Bridge is hard-coded to the completed Oak Parcel/Dex task and cannot safely accept the current title-entry task's authorized files/tests. Altering the bridge was outside the gameplay Worker's task boundary, so the blocker is isolated as a separate bounded infrastructure package.",
+  "next_role": "REVIEWER",
+  "worker_result": {
+    "result": "IMPLEMENTED_AND_PROBED",
+    "substantive_revision": "0f0dc2f028f204dce4fcaee4e0fff0d9d0afb61e",
+    "task_record_revision": "858bc97b7fac07caa80979e917101f2faf564cc3",
+    "gameplay_change_published": false,
     "canonical_status_change": false,
     "phase3_status": "IN PROGRESS"
   },
-  "active_task_acceptance_summary": [
-    "Bridge explicitly supports the phase3-title-oak-entry-proof route and its bounded target/test/staging surface.",
-    "Unknown tasks or unauthorized targets fail closed before patch application.",
-    "Trusted push-to-main only; no pull_request or pull_request_target self-hosted execution.",
-    "Exact FireRed v1.0 SHA-1 verification and test-before-publish behavior remain intact.",
-    "A non-gameplay validation/probe or equivalent deterministic evidence proves the new route before gameplay resumes.",
-    "Independent Reviewer PASS is required on the exact bridge-maintenance revision."
+  "implementation_summary": [
+    "Bridge request/probe filenames select explicit hard-coded task routes and unknown route identifiers fail closed.",
+    "phase3-title-oak-entry-proof has an exact target allowlist plus route-specific focused test, runtime replay, and publish staging.",
+    "The prior Oak Parcel/Dex route remains explicit and is no longer an unconditional fallback for every patch.",
+    "Trusted push-to-main only, no pull_request/pull_request_target self-hosted execution, exact FireRed v1.0 ROM SHA gate, and test-before-publish sequencing remain intact."
   ],
-  "boundaries": {
-    "may_change": [
-      ".github/workflows/local-worker-bridge.yml",
-      "work/coordination/LOCAL_RUNNER_BRIDGE.md if needed",
-      "focused bridge validation support if required",
-      "task/coordination/review documentation"
+  "evidence": {
+    "probe_commit": "0f0dc2f028f204dce4fcaee4e0fff0d9d0afb61e",
+    "local_worker_bridge_run_id": 34598648805,
+    "local_worker_bridge_result": "PASS",
+    "runner": "firered-mint",
+    "selected_route": "phase3-title-oak-entry-proof",
+    "lua_toolchain": "PASS — Lua 5.1.5",
+    "verified_rom_sha_gate": "PASS — FireRed US v1.0 exact SHA-1",
+    "probe_complete": "PASS",
+    "gameplay_patch_steps": "SKIPPED BY DESIGN — probe only",
+    "repository_lua_tests_run_id": 34598648798,
+    "repository_lua_tests_result": "PASS"
+  },
+  "review_scope": {
+    "must_verify": [
+      "Exact substantive revision 0f0dc2f028f204dce4fcaee4e0fff0d9d0afb61e and its workflow/procedure changes.",
+      "Explicit title/Oak route target allowlist, focused test command, runtime replay command, and publish staging remain bounded to the authorized gameplay task.",
+      "Unknown routes and unauthorized targets fail closed before patch application.",
+      "Workflow remains trusted push-to-main only with no pull_request or pull_request_target self-hosted execution.",
+      "Exact supported-ROM SHA verification and test-before-publish ordering remain intact.",
+      "Probe run 34598648805 proves route recognition without gameplay modification."
     ],
-    "must_not_change": [
-      "main.lua or gameplay/runtime code",
-      "public-PR execution policy",
-      "supported-ROM policy or exact ROM SHA gate",
-      "ROM/cache/BIOS/extracted content",
-      "broader repository permissions",
-      "independent-review requirement"
+    "must_not_do": [
+      "Do not implement title/Oak gameplay in this review.",
+      "Do not advance Phase 3.",
+      "Do not redesign the bridge beyond the existing task acceptance."
     ]
   },
-  "previous_worker_result": {
-    "result": "BLOCKED_AFTER_CHARACTERIZATION",
-    "task": "work/tasks/phase3-title-oak-entry-proof.md",
-    "first_missing_runtime_seam": "title input -> Oak intro transition",
-    "gameplay_change_published": false,
-    "tests_run": false
-  },
   "blocker": null,
-  "next_after_success": "After independent PASS on the bridge-maintenance task, Orchestrator must restore work/tasks/phase3-title-oak-entry-proof.md as READY_FOR_WORKER so Worker can implement/prove the already-characterized narrow title-to-Oak seam. Do not advance Phase 3 or substitute broader work.",
+  "next_after_pass": "Orchestrator restores work/tasks/phase3-title-oak-entry-proof.md as READY_FOR_WORKER for the already-characterized narrow title-to-Oak seam and deterministic entry evidence.",
+  "next_after_needs_fix": "Route only the smallest correction required by the existing local-worker-bridge-task-routing acceptance criteria back to Worker.",
   "legal_content_boundary": "Never commit ROMs, BIOS dumps, generated caches, extracted game assets, or other prohibited content.",
   "phase_completion_rule": "Do not mark Phase 3 DONE until the complete canonical exit path is fully evidenced and independently reviewed."
 }
