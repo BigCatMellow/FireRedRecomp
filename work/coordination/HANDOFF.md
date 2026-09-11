@@ -2,103 +2,142 @@
 
 - Record role: `HANDOFF`
 - Primary information class: `TASK CONTEXT`
-- Status: `BLOCKED_WORKER_EXECUTION_BRIDGE`
+- Status: `READY_FOR_WORKER`
 - Lifecycle: `ACTIVE`
 - Authority: coordination state only; root `AGENTS.md` and the active task own authority
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
-- Parent gate: [`../tasks/phase3-exit-proof.md`](../tasks/phase3-exit-proof.md)
-- Active task: [`../tasks/phase3-title-oak-entry-proof.md`](../tasks/phase3-title-oak-entry-proof.md)
+- Parent gameplay gate: [`../tasks/phase3-exit-proof.md`](../tasks/phase3-exit-proof.md)
+- Blocked gameplay task: [`../tasks/phase3-title-oak-entry-proof.md`](../tasks/phase3-title-oak-entry-proof.md)
+- Active task: [`../tasks/local-worker-bridge-task-routing.md`](../tasks/local-worker-bridge-task-routing.md)
 - Machine state: [`STATE.json`](STATE.json)
 
 ## Summary
 
-Worker characterized the live title/new-game entry boundary and found the first
-actual missing seam, but did **not** widen scope or publish an unsafe gameplay
-change.
+The previous Worker turn correctly stopped after characterization. It found a
+real, narrow Phase 3 integration gap but could not safely implement it because
+the verified Local Worker Bridge is still hard-coded to the already completed
+Oak Parcel/Dex task.
 
-Current `main.lua` has the relevant pieces separately:
+Characterized runtime state:
 
 ```text
-title view
-Oak intro view
+title view exists
+Oak intro view exists
 Oak intro A input -> beginNewGameFlow()
 post-Oak identity flow -> fresh session -> Player's House 2F
+
+missing seam:
+normal title/new-game input -> Oak intro
 ```
 
-The title view has no normal runtime input transition into the Oak intro. The
-existing Phase 3 replay starts by calling `beginNewGameFlow()` directly and
-explicitly says it does not claim to automate the preceding Oak scene.
-Therefore the current code does not yet satisfy this task's normal
-boot/title -> Oak/identity reachability criterion.
+No gameplay change was published and no test/ROM result was invented.
 
-## Smallest bounded implementation now known
+## Orchestrator reconciliation
 
-The active task permits the narrow correction that evidence requires:
+This is an execution-substrate mismatch, not evidence that the Phase 3 title
+entry task needs broader gameplay scope.
 
-1. wire the normal title/new-game input seam into the existing Oak intro;
-2. add deterministic runtime replay/assertion evidence that drives title ->
-   Oak -> identity -> fresh session through ordinary runtime input/event seams;
-3. assert identity plus initial bedroom/session state;
-4. run focused, no-ROM, and verified-ROM suites;
-5. route the exact revision to independent Reviewer.
+A separate bounded infrastructure task now owns the smallest prerequisite:
 
-This does **not** require Phase 2 Oak animation completion, a scene-stack
-redesign, script-interpreter work, or downstream gameplay changes.
+[`../tasks/local-worker-bridge-task-routing.md`](../tasks/local-worker-bridge-task-routing.md)
 
-## Exact blocker
+Its job is only to retarget the bridge so the already-authorized
+title/Oak-entry task can use the safe local patch/test/publish substrate.
 
-The verified local execution bridge is stale relative to the newly dispatched
-task. `.github/workflows/local-worker-bridge.yml` still:
+Phase 3 remains `IN PROGRESS`. The title/Oak entry leaf remains open. No
+canonical capability status changed.
 
-- describes its patch allowlist as the completed Oak Parcel/Dex task;
-- permits only that task's implementation/test/replay files;
-- always runs `tests/oak_parcel_dex_presentation_test.lua` as its focused test;
-- always runs `scripts/runtime_natural_capture_replay.sh` as its runtime replay;
-- stages only the previous task's files for publication.
+## Active Worker package
 
-A title-entry patch would therefore be rejected even though `main.lua` and
-focused Phase 3 entry replay/test support are permitted by the current active
-task.
+Worker should execute only the bridge-routing maintenance task.
 
-Changing the bridge workflow itself is not in this Worker's current task MAY
-CHANGE boundary. Worker therefore failed closed rather than weakening target
-validation or reconstructing/replacing the large `main.lua` through an unsafe
-whole-file edit.
+Expected result:
 
-No gameplay change was published and no new ROM-backed test result is claimed.
+1. replace the stale unconditional Oak Parcel/Dex-only route with an explicit,
+   fail-closed task route that can support `phase3-title-oak-entry-proof.md`;
+2. preserve explicit target validation;
+3. preserve trusted `push` to `main` only;
+4. preserve the prohibition on `pull_request` / `pull_request_target`
+   self-hosted execution;
+5. preserve exact FireRed v1.0 ROM SHA-1 verification;
+6. preserve focused + no-ROM + verified-ROM test-before-publish behavior;
+7. preserve explicit staging/publishing of only task-authorized files;
+8. prove the title/Oak route is recognized with a non-gameplay validation or
+   equivalent deterministic evidence;
+9. route the exact bridge-maintenance revision to independent Reviewer.
 
-## Next role and smallest resolution
+## Boundaries
 
-`ORCHESTRATOR`
+### MAY CHANGE
 
-Authorize/dispatch the smallest bridge-maintenance correction necessary to
-support `work/tasks/phase3-title-oak-entry-proof.md` while preserving all
-existing security invariants:
+- `.github/workflows/local-worker-bridge.yml`
+- `work/coordination/LOCAL_RUNNER_BRIDGE.md` if needed
+- focused bridge validation support if required
+- active task / coordination / review documentation
 
-- trusted `push` to `main` only;
-- never execute public PR/fork code on the self-hosted runner;
-- explicit task-bounded target validation;
-- verified FireRed v1.0 SHA-1 gate;
-- publish only after required tests pass;
-- no ROM/cache/assets in GitHub.
+### MUST NOT CHANGE
 
-Then return the **same** title/Oak entry task to `READY_FOR_WORKER`. Do not
-replace it with broader Phase 2 or Phase 4 work.
+- `main.lua` or gameplay/runtime behavior
+- title/Oak gameplay implementation or replay content in this infrastructure
+  package
+- public-PR execution policy
+- supported-ROM policy or exact ROM SHA gate
+- ROM/cache/BIOS/extracted content
+- repository permissions beyond what the existing bridge needs
+- independent-review requirement
 
-## Do not work around
+## Why a separate task is required
 
-- Do not treat the `T`, `S`, or `N` developer view hotkeys as proof of a normal
-  title/new-game path.
-- Do not weaken or bypass the bridge allowlist.
-- Do not replace the roughly 224 KB `main.lua` from partial excerpts.
-- Do not claim tests or ROM evidence that did not run.
-- Do not advance Phase 3 status.
+The current bridge procedure and workflow explicitly say their allowlist is for
+the Oak Parcel/Dex task. The previous Worker did not have authority to alter
+that execution substrate from inside the gameplay task. Keeping the repair in a
+separate infrastructure leaf preserves the rule that capability does not widen
+task authority.
+
+## Next role
+
+`WORKER`
+
+Execute `work/tasks/local-worker-bridge-task-routing.md` only.
+
+If the bridge cannot be safely retargeted without weakening the trusted-main,
+explicit-allowlist, ROM-verification, or test-before-publish boundary, record
+`BLOCKED` rather than making the bridge generic/permissive.
+
+## After independent PASS
+
+Orchestrator must restore:
+
+`work/tasks/phase3-title-oak-entry-proof.md`
+
+as the active `READY_FOR_WORKER` package.
+
+The already-characterized smallest gameplay work is then:
+
+```text
+wire normal title/new-game input -> existing Oak intro
++ deterministic runtime entry replay/assertions
++ required focused/no-ROM/verified-ROM evidence
++ independent review
+```
+
+Do not substitute Phase 2 Oak visual parity, Phase 4 battles, generic scene
+architecture, script-interpreter work, or save-layout expansion.
+
+## Continuous-improvement check
+
+A concrete process failure was found: the execution bridge encoded one
+completed task directly and became stale when dispatch moved to the next task.
+The bounded maintenance task should correct that routing defect while staying
+explicit and fail-closed. No broader coordination redesign is justified by the
+current evidence.
 
 ```text
 Phase 3 title/Oak entry proof
--> CHARACTERIZED: missing title -> Oak runtime seam
--> BLOCKED: local bridge still scoped to prior Oak Parcel/Dex task
--> ORCHESTRATOR: repair/authorize execution substrate only
--> WORKER: resume same bounded title/Oak entry task
--> REVIEWER: independently verify exact revision/evidence
+-> CHARACTERIZED: narrow title -> Oak seam missing
+-> BLOCKED by stale task-specific bridge
+-> ACTIVE NOW: bounded bridge routing maintenance
+-> WORKER
+-> REVIEWER
+-> ORCHESTRATOR restores same title/Oak gameplay task after PASS
 ```
