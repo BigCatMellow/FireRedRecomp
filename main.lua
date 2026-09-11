@@ -3359,6 +3359,71 @@ function love.load()
       tostring(session and session:getVar(Battle.ViridianParcelStory.VAR_LAB_SCENE)),
       tostring(session and session:getVar(Battle.ViridianParcelStory.VAR_MART_SCENE))))
     if loaded then love.event.quit() else love.event.quit(1) end
+  elseif runtimeReplay == "title_oak_entry" then
+    -- Start from the runtime title view and use only the same fixed-tick
+    -- A/START input seam used by interactive play. No post-Oak fixture or
+    -- session state is constructed by the replay.
+    local function tick(mask, count)
+      world.replayInputMask = mask
+      for _ = 1, count do love.update(1 / 60) end
+    end
+    local function press(button)
+      tick(button, 1)
+      tick(0, 1)
+    end
+
+    local startedAtTitle = titleActive and not oakSceneActive and not newGame.active
+    press(InputState.START_BUTTON)
+    local reachedOak = oakSceneActive and not titleActive and not newGame.active
+    press(InputState.A_BUTTON)
+    local reachedIdentity = newGame.active and newGame.flow ~= nil
+
+    if reachedIdentity then
+      press(InputState.A_BUTTON) -- gender -> player naming
+      press(InputState.START_BUTTON) -- naming cursor -> OK
+      press(InputState.A_BUTTON) -- accept deterministic player fallback
+      press(InputState.A_BUTTON) -- player YES -> rival menu
+      press(InputState.DPAD_DOWN) -- NEW NAME -> GREEN preset
+      press(InputState.A_BUTTON) -- GREEN -> rival confirm
+      press(InputState.A_BUTTON) -- rival YES -> complete
+    end
+
+    local identity = newGame.flow and newGame.flow:result()
+    tick(0, 1) -- completed identity flow bootstraps the fresh session
+    local session = newGame.session
+    local sb1 = session and session.state.saveBlock1
+    local sb2 = session and session.state.saveBlock2
+    local dexZero = sb2 and sb2.pokedex
+      and sb2.pokedex.owned == string.rep("\0", 52)
+      and sb2.pokedex.seen == string.rep("\0", 52)
+    local bagEmpty = sb1 and #sb1.bagPocket_Items == 0
+      and #sb1.bagPocket_KeyItems == 0 and #sb1.bagPocket_PokeBalls == 0
+      and #sb1.bagPocket_TMHM == 0 and #sb1.bagPocket_Berries == 0
+    local pcPotion = sb1 and sb1.pcItems and sb1.pcItems[1]
+      and sb1.pcItems[1].itemId == GameSession.ITEM_POTION
+      and sb1.pcItems[1].quantity == 1
+    local identityContinuous = session and identity
+      and session.identity.playerGender == identity.playerGender
+      and session.identity.playerName == identity.playerName
+      and session.identity.rivalName == identity.rivalName
+    local passed = startedAtTitle and reachedOak and reachedIdentity and session
+      and identityContinuous
+      and session.mapId == GameSession.MAP_PALLET_TOWN_PLAYERS_HOUSE_2F
+      and session.location.mapGroup == 4 and session.location.mapNum == 1
+      and session.location.x == 6 and session.location.y == 6
+      and playerMovement and playerMovement.tileX == 6 and playerMovement.tileY == 6
+      and sb1.playerPartyCount == 0 and sb1.money == NewGameDefaults.startingMoney
+      and bagEmpty and pcPotion and dexZero
+    print(("RUNTIME_REPLAY title_oak_entry %s title=%s oak=%s identity=%s map=%s pos=%s,%s party=%s money=%s bagEmpty=%s pcPotion=%s dexZero=%s names=%s/%s gender=%s"):format(
+      passed and "PASS" or "FAIL", tostring(startedAtTitle), tostring(reachedOak),
+      tostring(reachedIdentity), tostring(session and session.mapId),
+      tostring(session and session.location.x), tostring(session and session.location.y),
+      tostring(sb1 and sb1.playerPartyCount), tostring(sb1 and sb1.money),
+      tostring(bagEmpty), tostring(pcPotion), tostring(dexZero),
+      tostring(session and Charmap.decode(session.identity.playerName)),
+      tostring(session and Charmap.decode(session.identity.rivalName)),
+      tostring(session and session.identity.playerGender)))
+    if passed then love.event.quit() else love.event.quit(1) end
   elseif runtimeReplay == "house_to_pallet" or replayRoute1 then
     beginNewGameFlow()
 
@@ -4216,6 +4281,12 @@ function love.update(dt)
       elseif world.startMenu.state == Battle.StartMenu.SELECTED then
         world.handleStartMenuSelection()
       end
+    elseif titleActive and (inputState:isNewlyPressed(InputState.A_BUTTON)
+        or inputState:isNewlyPressed(InputState.START_BUTTON)) then
+      -- Normal title confirmation enters the already-existing Oak intro.
+      -- Keep this seam narrow: Oak itself still owns the A -> identity flow.
+      world.clearViews()
+      oakSceneActive = true
     elseif newGame.active and newGame.flow then
       newGame.flow:processInput(inputState)
       if newGame.flow:isComplete() then bootstrapFreshSession() end
