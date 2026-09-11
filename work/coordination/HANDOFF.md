@@ -16,26 +16,38 @@ Phase 3 remains `IN PROGRESS`. Worker completed the bounded runtime integration 
 
 `2d8c3221775044a54668683e500055307fe4d20b`
 
-No task or phase completion is claimed. The exact revision is now awaiting independent Reviewer verification.
+Orchestrator recovered live state after that publication and found **no independent Reviewer verdict yet**. Therefore no task, parent gate, execution-map gate, or canonical phase status is closed or advanced. The same exact implementation remains queued for independent Reviewer verification.
 
-## What changed
+## Orchestrator reconciliation
 
-The published gameplay change is confined to `main.lua`, which is within the active task MAY CHANGE boundary. It:
+Result: `AWAITING_INDEPENDENT_REVIEW`
+
+- implementation revision: `2d8c3221775044a54668683e500055307fe4d20b`
+- reviewed revision: none yet
+- task status change: `NONE`
+- canonical status change: `NONE`
+- dispatch change: `NONE`
+- blocker: none
+
+The correct next action is review, not another Worker package. `CAPABILITY_CHECKLIST.md` still owns Phase 3 status and continues to report the phase `IN PROGRESS` until its full exit criterion is proven and independently reviewed.
+
+## What Worker changed
+
+The published gameplay change is confined to `main.lua`, which is within the active task MAY CHANGE boundary. Worker reports that it:
 
 - wires the existing `OakParcelDexPresentation` FSM into runtime;
-- starts it only through the existing task's strengthened north-facing guard and preflight;
-- keeps ordinary player/NPC field input locked while the presenter owns the scene;
-- uses the real Lab object-event template for the temporary rival rather than adding generic `addobject` semantics;
-- drives the recorded rival/Oak movement groups using the existing forced-step primitive;
-- removes temporary rival/Dex props from the live list without setting persistent hide flags;
+- starts it only through the task's strengthened north-facing guard and preflight;
+- locks ordinary field input while the presenter owns the scene;
+- uses the real Lab rival object template rather than generic `addobject` semantics;
+- drives the recorded rival/Oak movement choreography through existing movement primitives;
+- removes temporary rival/Dex props from the live list without persistent hide flags;
 - presents the existing source-derived ROM text pointers through the field message window;
-- preserves the recorded rival wait/facing choreography and a bounded walk-in-place interval before Dex prop removal;
-- delegates the durable Parcel/Dex/Poke Ball state change to the existing `ViridianParcelStory:completeLabParcelReturn(...)` callback only at the presenter's terminal commit;
-- extends the existing natural-capture runtime replay so the Oak scene is advanced through ordinary input before progression continues.
+- delegates durable Parcel/Dex/Poké Ball mutation to `ViridianParcelStory:completeLabParcelReturn(...)` only at terminal commit;
+- advances the existing natural-capture runtime replay through the Oak scene using ordinary input.
 
-The implementation did not alter generic script interpreter/map-hook/addobject systems, other Oak orientations, Mart UI, save codec, or battle rules.
+These are Worker claims plus bridge evidence until independently checked. Reviewer must reconstruct rather than inherit Worker confidence.
 
-## Evidence from guarded local runner
+## Recorded Worker evidence
 
 Request file:
 `work/local-runner/requests/2026-09-10-oak-parcel-dex-runtime-v6.patch`
@@ -52,7 +64,7 @@ Runner:
 Verified ROM SHA-1:
 `41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc`
 
-Bridge results:
+Recorded bridge results:
 
 - patch target validation: `PASS`
 - patch application / `git diff --check`: `PASS`
@@ -62,34 +74,40 @@ Bridge results:
 - `scripts/runtime_natural_capture_replay.sh`: `PASS`
 - bounded implementation publication: `PASS`
 
-A separate pre-implementation no-ROM baseline also passed on request-only revision `6cfc6da77dae9c2fc17df1f375b993f50405bb7b` in workflow run `34547081873`; `main.lua` was still unchanged at that point.
+A separate pre-implementation no-ROM baseline passed on request-only revision `6cfc6da77dae9c2fc17df1f375b993f50405bb7b` in workflow run `34547081873` while gameplay `main.lua` remained unchanged.
 
 ## Failed request history — no code applied
 
-Several earlier bridge requests were rejected before implementation and are retained as evidence that the bridge failed closed rather than applying uncertain patches:
+Earlier bridge requests were rejected before gameplay implementation:
 
 - `6a7e472b0f45fcafbd927091672f0008d959809e` / run `34546586750`: malformed diff at line 18.
 - `bc4d1519bcfbada02c97b9017273fbb9388e97a6` / run `34546852311`: malformed diff at line 208.
 - `6cfc6da77dae9c2fc17df1f375b993f50405bb7b` / run `34547081926`: input-lock hunk did not match current `main.lua`.
 - `a248b17f9c54369c945a85d34a2f2cf3942c59ae` / run `34547332162`: later replay bookkeeping hunk did not match.
-- `60bf9c6dd14ebfc4cd71ca48d852b24d5c1f91a5` / run `34547517581`: insertion diff count was stale after the bounded walk-in-place interval was added.
+- `60bf9c6dd14ebfc4cd71ca48d852b24d5c1f91a5` / run `34547517581`: insertion diff count stale after the bounded walk-in-place interval addition.
 
-All five stopped at patch validation. None applied or published gameplay code.
+These are not gameplay revisions and must not be reviewed as the implementation.
 
 ## Reviewer assignment
 
-Independently verify exact implementation revision `2d8c3221775044a54668683e500055307fe4d20b` against the existing active task. In particular verify:
+Independently verify exact implementation revision `2d8c3221775044a54668683e500055307fe4d20b` against `work/tasks/oak-parcel-dex-presentation-north.md`.
 
-1. the exact strengthened north-facing guard and preflight;
+Verify, without adding new requirements:
+
+1. the strengthened north-facing guard and preflight;
 2. all non-matching Oak interactions preserve their prior path;
 3. source-derived text ordering and bounded movement choreography;
-4. player/NPC input lock for the complete presentation;
+4. player/NPC input lock throughout the presentation;
 5. real Lab rival template use and temporary rival/prop removal without persistent hide flags;
-6. no early or duplicate durable mutation; `ViridianParcelStory` commits once at terminal completion;
-7. bridge test evidence, including the verified-ROM suite and natural-capture replay;
+6. no early or duplicate durable mutation; `ViridianParcelStory` commits exactly once at terminal completion;
+7. recorded bridge evidence, including the verified-ROM suite and natural-capture replay;
 8. changed-file/task-boundary compliance and regression risk.
 
-Return only the existing review dispositions `PASS`, `NEEDS_FIX`, or `BLOCK`. Do not invent new requirements, implement a correction in the same review turn, or infer broader Phase 3 completion.
+Return exactly one existing disposition: `PASS`, `NEEDS_FIX`, or `BLOCK`.
+
+- `PASS` → Orchestrator closes only this bounded leaf where supported, then re-evaluates the parent Phase 3 gate and dispatches the smallest still-unproven acceptance item.
+- `NEEDS_FIX` → Orchestrator routes only the smallest stated correction within existing task authority.
+- `BLOCK` → Orchestrator preserves the exact blocker and does not widen scope.
 
 ## Do not redo
 
@@ -100,6 +118,7 @@ Return only the existing review dispositions `PASS`, `NEEDS_FIX`, or `BLOCK`. Do
 - Do not mark Phase 3 complete from this leaf task alone.
 - Do not ask again for task-bounded publication authority; root `AGENTS.md` already grants it.
 - Do not treat the earlier failed patch-request commits as gameplay revisions.
+- Do not dispatch another Worker package while this exact implementation is awaiting independent review.
 
 ## Next role
 
