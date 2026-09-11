@@ -1,36 +1,54 @@
 {
   "schema_version": 1,
-  "updated_utc": "2026-09-11T02:22:53Z",
-  "role": "WORKER",
-  "status": "BLOCKED_WORKER_EXECUTION_BRIDGE",
+  "updated_utc": "2026-09-11T03:05:00Z",
+  "role": "ORCHESTRATOR",
+  "status": "READY_FOR_WORKER",
   "current_phase": "Phase 3 — playable vertical slice",
   "canonical_status_owner": "work/roadmaps/CAPABILITY_CHECKLIST.md",
-  "active_task": "work/tasks/phase3-title-oak-entry-proof.md",
-  "objective": "Prove the normal runtime boot/title/new-game through Oak/identity flow into the Player's House 2F bedroom, preferring evidence-only characterization if the existing runtime already works.",
-  "next_role": "ORCHESTRATOR",
-  "worker_result": {
-    "result": "BLOCKED_AFTER_CHARACTERIZATION",
-    "first_missing_runtime_seam": "Current main.lua exposes title, Oak intro, and post-Oak identity as separate runtime views. Title input has no normal transition into Oak intro; Oak intro A input does transition into beginNewGameFlow(). Existing Phase 3 runtime replay calls beginNewGameFlow() directly and explicitly does not claim to automate the preceding Oak scene.",
-    "required_bounded_change": "A narrow main.lua title-to-Oak runtime input transition plus deterministic entry replay/assertion evidence, within work/tasks/phase3-title-oak-entry-proof.md.",
-    "execution_blocker": "The only verified safe large-file patch substrate, .github/workflows/local-worker-bridge.yml, is still explicitly allowlisted and test-wired for the completed Oak Parcel/Dex task. It rejects title-entry replay/test targets and publishes only the previous task's files. Changing that workflow would widen beyond the active task's MAY CHANGE boundary without new authority.",
-    "gameplay_change_published": false,
-    "tests_run": false,
-    "reason_tests_not_run": "No task implementation could be safely applied under the current execution substrate; no ROM-backed result is claimed."
+  "active_task": "work/tasks/local-worker-bridge-task-routing.md",
+  "objective": "Retarget the Local Worker Bridge so it safely supports the already-authorized Phase 3 title/Oak entry task without weakening trusted-main, explicit-target, verified-ROM, test-before-publish, or no-public-PR invariants.",
+  "next_role": "WORKER",
+  "reconciliation": {
+    "result": "EXECUTION_SUBSTRATE_MAINTENANCE_DISPATCHED",
+    "gameplay_task": "work/tasks/phase3-title-oak-entry-proof.md",
+    "gameplay_characterization": "Normal title runtime input does not transition into the existing Oak intro; Oak intro A input already transitions into beginNewGameFlow(). A narrow title-to-Oak seam plus deterministic entry evidence remains the smallest gameplay correction.",
+    "reason_for_infrastructure_leaf": "The verified Local Worker Bridge is hard-coded to the completed Oak Parcel/Dex task and cannot safely accept the current title-entry task's authorized files/tests. Altering the bridge was outside the gameplay Worker's task boundary, so the blocker is isolated as a separate bounded infrastructure package.",
+    "canonical_status_change": false,
+    "phase3_status": "IN PROGRESS"
+  },
+  "active_task_acceptance_summary": [
+    "Bridge explicitly supports the phase3-title-oak-entry-proof route and its bounded target/test/staging surface.",
+    "Unknown tasks or unauthorized targets fail closed before patch application.",
+    "Trusted push-to-main only; no pull_request or pull_request_target self-hosted execution.",
+    "Exact FireRed v1.0 SHA-1 verification and test-before-publish behavior remain intact.",
+    "A non-gameplay validation/probe or equivalent deterministic evidence proves the new route before gameplay resumes.",
+    "Independent Reviewer PASS is required on the exact bridge-maintenance revision."
+  ],
+  "boundaries": {
+    "may_change": [
+      ".github/workflows/local-worker-bridge.yml",
+      "work/coordination/LOCAL_RUNNER_BRIDGE.md if needed",
+      "focused bridge validation support if required",
+      "task/coordination/review documentation"
+    ],
+    "must_not_change": [
+      "main.lua or gameplay/runtime code",
+      "public-PR execution policy",
+      "supported-ROM policy or exact ROM SHA gate",
+      "ROM/cache/BIOS/extracted content",
+      "broader repository permissions",
+      "independent-review requirement"
+    ]
   },
   "previous_worker_result": {
-    "result": "BOUNDED_IMPLEMENTATION_PUBLISHED_AND_VERIFIED",
-    "implementation_revision": "2d8c3221775044a54668683e500055307fe4d20b",
-    "request_revision": "56f954e56cc632d993ecbc6c25f934d8fbfb4726",
-    "request_file": "work/local-runner/requests/2026-09-10-oak-parcel-dex-runtime-v6.patch",
-    "bridge_run_id": 34547647645,
-    "changed_gameplay_files": ["main.lua"]
+    "result": "BLOCKED_AFTER_CHARACTERIZATION",
+    "task": "work/tasks/phase3-title-oak-entry-proof.md",
+    "first_missing_runtime_seam": "title input -> Oak intro transition",
+    "gameplay_change_published": false,
+    "tests_run": false
   },
-  "blocker": {
-    "kind": "EXECUTION_SUBSTRATE_SCOPE_MISMATCH",
-    "detail": "Local Worker Bridge remains hard-coded to the previous Oak Parcel/Dex task allowlist and focused test/replay. The current title/Oak entry task cannot use it without an explicit bridge maintenance update outside this Worker's current task authority.",
-    "smallest_resolution": "Orchestrator/maintainer should authorize and dispatch a bounded bridge-maintenance update that derives or replaces the stale task-specific allowlist/test commands for phase3-title-oak-entry-proof.md, without weakening the public-repo/self-hosted-runner security boundary. Then return this same task to READY_FOR_WORKER.",
-    "do_not_work_around": "Do not replace the ~224 KB main.lua through a whole-file edit from partial excerpts, weaken bridge target validation, or treat T/S/N developer hotkeys as proof of normal title-to-Oak reachability."
-  },
+  "blocker": null,
+  "next_after_success": "After independent PASS on the bridge-maintenance task, Orchestrator must restore work/tasks/phase3-title-oak-entry-proof.md as READY_FOR_WORKER so Worker can implement/prove the already-characterized narrow title-to-Oak seam. Do not advance Phase 3 or substitute broader work.",
   "legal_content_boundary": "Never commit ROMs, BIOS dumps, generated caches, extracted game assets, or other prohibited content.",
   "phase_completion_rule": "Do not mark Phase 3 DONE until the complete canonical exit path is fully evidenced and independently reviewed."
 }
