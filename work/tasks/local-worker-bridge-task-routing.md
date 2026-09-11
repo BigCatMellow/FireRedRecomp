@@ -1,6 +1,6 @@
 # Task: retarget Local Worker Bridge for the active bounded task
 
-- Status: `ACTIVE`
+- Status: `ACTIVE — READY FOR INDEPENDENT REVIEW`
 - AGI status: `AGI READY`
 - Type: `INFRASTRUCTURE / EXECUTION SUBSTRATE`
 - Owner: project maintainer
@@ -90,6 +90,34 @@ Worker should:
 6. route the exact revision to independent Reviewer.
 
 A validation probe must not modify gameplay files.
+
+## Worker result — 2026-09-11
+
+Substantive bridge-maintenance revision under review: `0f0dc2f028f204dce4fcaee4e0fff0d9d0afb61e` (includes the workflow routing change, matching bridge-procedure update, and the non-gameplay route probe in its ancestry).
+
+Implemented:
+
+- request/probe filenames now select an explicit hard-coded route;
+- `phase3-title-oak-entry-proof` has an exact bounded target allowlist for `main.lua`, its focused test/replay, and the two relevant task docs;
+- focused test, runtime replay, and publish staging are selected by route rather than unconditionally using the completed Oak Parcel/Dex commands;
+- unknown route identifiers fail before patch validation/application;
+- unknown targets fail before `git apply`;
+- the existing Oak Parcel/Dex route remains explicit rather than becoming a generic fallback;
+- trusted `push` to `main` path triggering, self-hosted labels, `contents: write`, exact FireRed v1.0 SHA-1 verification, no-ROM-content rule, and test-before-publish sequencing remain in place.
+
+Deterministic evidence:
+
+- probe commit: `0f0dc2f028f204dce4fcaee4e0fff0d9d0afb61e`;
+- Local Worker Bridge run: `34598648805` — `success`;
+- runner: `firered-mint`;
+- `Select explicit task route`: PASS, selected `phase3-title-oak-entry-proof`;
+- Lua toolchain: PASS (`Lua 5.1.5`);
+- exact private ROM SHA-1 gate: PASS for FireRed US v1.0;
+- probe-complete step: PASS and explicitly reported the title/Oak route recognized;
+- patch validation/application, focused tests, no-ROM/ROM suites, runtime replay, and publish steps were intentionally skipped because this was a non-gameplay probe;
+- repository `Lua tests` workflow run `34598648798` on the same probe commit: `success`.
+
+No gameplay/runtime file was modified by this infrastructure package. Phase 3 remains `IN PROGRESS`. This package requires independent Reviewer PASS before the title/Oak gameplay task may resume.
 
 ## Stop / escalate
 
