@@ -1,6 +1,6 @@
 # Task: retarget Local Worker Bridge for the active bounded task
 
-- Status: `ACTIVE — READY FOR INDEPENDENT REVIEW`
+- Status: `CLOSED — REVIEWED PASS`
 - AGI status: `AGI READY`
 - Type: `INFRASTRUCTURE / EXECUTION SUBSTRATE`
 - Owner: project maintainer
@@ -19,16 +19,16 @@ This task changes execution routing only. It does **not** implement the title-to
 - `work/coordination/LOCAL_RUNNER_BRIDGE.md` for bridge invariants and operating procedure.
 - `.github/workflows/local-worker-bridge.yml` for live bridge behavior.
 - `work/tasks/phase3-title-oak-entry-proof.md` for the currently blocked gameplay task's authorized file categories and required evidence.
-- Current `work/coordination/STATE.json` / `HANDOFF.md` for the observed blocker.
+- Current `work/coordination/STATE.json` / `HANDOFF.md` for coordination state.
 
 ## Established facts
 
 Worker characterization established that:
 
 - the normal title screen currently has no runtime input transition into the existing Oak intro;
-- the active Phase 3 task permits a narrow `main.lua` integration correction and focused replay/test support;
-- the Local Worker Bridge still hard-codes the completed Oak Parcel/Dex task's target allowlist, focused test, runtime replay, and publish staging;
-- therefore a valid title-entry patch cannot currently pass through the only verified safe large-file edit substrate.
+- the Phase 3 task permits a narrow `main.lua` integration correction and focused replay/test support;
+- the Local Worker Bridge was hard-coded to the completed Oak Parcel/Dex task's target allowlist, focused test, runtime replay, and publish staging;
+- therefore a valid title-entry patch could not pass through the verified safe large-file edit substrate until this routing task was completed.
 
 ## MAY CHANGE
 
@@ -93,7 +93,7 @@ A validation probe must not modify gameplay files.
 
 ## Worker result — 2026-09-11
 
-Substantive bridge-maintenance revision under review: `0f0dc2f028f204dce4fcaee4e0fff0d9d0afb61e` (includes the workflow routing change, matching bridge-procedure update, and the non-gameplay route probe in its ancestry).
+Substantive bridge-maintenance revision: `0f0dc2f028f204dce4fcaee4e0fff0d9d0afb61e`.
 
 Implemented:
 
@@ -117,7 +117,15 @@ Deterministic evidence:
 - patch validation/application, focused tests, no-ROM/ROM suites, runtime replay, and publish steps were intentionally skipped because this was a non-gameplay probe;
 - repository `Lua tests` workflow run `34598648798` on the same probe commit: `success`.
 
-No gameplay/runtime file was modified by this infrastructure package. Phase 3 remains `IN PROGRESS`. This package requires independent Reviewer PASS before the title/Oak gameplay task may resume.
+No gameplay/runtime file was modified by this infrastructure package.
+
+## Independent review — 2026-09-11
+
+Reviewer returned `PASS` on substantive revision `0f0dc2f028f204dce4fcaee4e0fff0d9d0afb61e` in `work/reviews/2026-09-11-local-worker-bridge-task-routing-review.md`.
+
+The review independently confirmed explicit fail-closed title/Oak routing, target validation before patch application, trusted-main-only execution, no public-PR self-hosted trigger, exact FireRed v1.0 ROM verification, test-before-publish ordering, successful non-gameplay probe evidence, and preservation of the previously reviewed Oak revision.
+
+This closes only the execution-substrate prerequisite. It does not close gameplay or change canonical Phase 3 status.
 
 ## Stop / escalate
 
@@ -133,6 +141,6 @@ Stop rather than weaken security if the change would require:
 
 ## Completion / handoff
 
-Completion means the execution bridge safely supports the active `phase3-title-oak-entry-proof.md` package and has independent `PASS`.
+`CLOSED — REVIEWED PASS`.
 
-After PASS, Orchestrator must reactivate **the same** `work/tasks/phase3-title-oak-entry-proof.md` task as `READY_FOR_WORKER`; this infrastructure leaf does not close any gameplay or Phase 3 capability gate by itself.
+The execution bridge now safely supports `work/tasks/phase3-title-oak-entry-proof.md`. Orchestrator may return that same gameplay task to Worker as `READY_FOR_WORKER` for the already-characterized narrow title-to-Oak seam and deterministic entry evidence.
