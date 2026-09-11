@@ -29,51 +29,59 @@ The ROM-gated component replay in `tests/phase3_exit_path_rom_test.lua` proves
 the bounded session, starter, Route 1 encounter, capture/defeat, and codec
 seams. `scripts/runtime_replay_smoke.sh` separately proves a real LÖVE boot,
 fixed-tick input path, and the Player's House 2F → 1F → Pallet warp chain.
-Neither proof completes this task: the remaining gate is Oak/title entry and
-a natural-capture route.
+Neither proof alone completes this task.
 
-`route1_wild_defeat` now supplies the bounded Route 1 runtime-loss replay:
-it reaches the starter, tutorial battle, Route 1, a real grass encounter, and
+`route1_wild_defeat` supplies the bounded Route 1 runtime-loss replay: it
+reaches the starter, tutorial battle, Route 1, a real grass encounter, and
 whiteout through live LÖVE input/update paths. It drives the post-Oak
 BOY/RED/GREEN identity flow with normal input masks, but does not prove the
-preceding Oak/title entry or a player-win/catch path.
+preceding title/Oak entry.
 
-`route1_wild_win` now proves the corresponding seeded Route 1 wild victory
-through normal FIGHT/default-move input without injecting combat state or an
-outcome. Capture remains separate: a fresh natural route has no Poké Ball, so
-it needs an independently evidenced normal purchase path rather than test
-inventory injection.
+`route1_wild_win` proves the corresponding seeded Route 1 wild victory through
+normal FIGHT/default-move input without injecting combat state or an outcome.
 
-Natural purchase was blocked by a scoped field-interaction gap:
-the real Viridian Mart clerk sits behind a collision counter, but the runtime
-only targets the immediately adjacent tile. See
-[`work/tasks/mart-counter-interaction.md`](mart-counter-interaction.md);
-do not bypass this with a synthetic Mart trigger or inventory fixture.
+The earlier natural-capture gap has now been closed by the bounded canonical
+Viridian work. The verified-ROM natural-capture replay reaches the visible
+first-Mart Parcel progression, the north-facing Oak Parcel/Dex scene, the real
+post-Dex shop, capture, K-save, and fresh-process L-load with persistent
+Dex/Lab/Mart/Parcel/party state. The north-facing Oak leaf was independently
+reviewed `PASS` at implementation revision
+`2d8c3221775044a54668683e500055307fe4d20b`; see
+`work/reviews/oak-parcel-dex-presentation-north-final-review.md`.
 
-The counter rule is now implemented and unit-tested. The next capture probe
-must use it through the real Viridian Mart map/NPC/script route and report
-separately that generic first-visit map-script parity remains open.
+`scripts/runtime_save_restart_replay.sh` separately proves the cross-process
+save boundary: it runs the bounded loss replay in a fresh XDG sandbox, saves
+through the normal **K** callback, verifies the sandbox save file, then starts
+a fresh LÖVE process and loads through normal **L** handling. This is nominal
+persistence evidence, not retail-save compatibility or crash safety.
 
-The concrete continuation contract is
-[`work/tasks/natural-capture-runtime-replay.md`](natural-capture-runtime-replay.md).
+### Smallest remaining parent gap
 
-The current natural-capture replay is runnable evidence for this runtime, not
-canonical retail progression. It bypasses the first-Mart on-frame scene
-transition (`VAR_MAP_SCENE_VIRIDIAN_CITY_MART` `0 -> 1`), the Lab scene `5`
-Parcel return, and the Parcel -> Pokédex -> Mart scene `2` sequence. Those
-source-derived gates are tracked separately in
-[`work/tasks/viridian-parcel-dex-progression.md`](viridian-parcel-dex-progression.md);
-do not mark this Phase 3 proof complete until they are independently
-evidenced.
+The remaining Phase 3 entry gap is now the preceding runtime transition:
 
-`scripts/runtime_save_restart_replay.sh` now proves the cross-process save
-boundary separately: it runs the bounded loss replay in a fresh XDG sandbox,
-saves through the normal **K** callback, verifies the sandbox save file, then
-starts a fresh LÖVE process and loads through normal **L** handling. This is
-nominal persistence evidence, not retail-save compatibility or crash safety.
+```text
+normal boot
+→ title/new-game entry
+→ Oak intro / identity flow
+→ fresh session
+→ Player's House 2F bedroom
+```
+
+Existing title rendering, static Oak speech presentation, gender/player/rival
+naming, fresh-save bootstrap, and the downstream bedroom→Pallet replay are
+implemented, but the parent task does not yet have deterministic evidence that
+a normal runtime boot drives those pieces continuously without constructing a
+post-Oak session fixture.
+
+The bounded continuation contract is
+[`work/tasks/phase3-title-oak-entry-proof.md`](phase3-title-oak-entry-proof.md).
+Prefer an evidence-only replay if current runtime behavior already satisfies
+this boundary; do not rebuild title/Oak systems merely because the proof is
+missing.
 
 ## Stop conditions
 
 Stop and re-scope if the path requires a missing script opcode, a general
-trainer battle, a menu redesign, or a save-sector feature. Each is a separate
-capability with its own tests and acceptance criteria.
+trainer battle, a menu redesign, a save-sector feature, completion of Phase 2
+Oak visual-animation parity, or a new general scene-stack architecture. Each
+is a separate capability with its own tests and acceptance criteria.
