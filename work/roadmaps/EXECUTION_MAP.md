@@ -47,14 +47,14 @@ Phase 2 renderer/runtime [IN PROGRESS]
         ↓
 Phase 3 playable vertical slice [IN PROGRESS]  ← CURRENT DISPATCH FOCUS
         │
-        ├─ natural new-game/runtime path: substantial evidence exists
         ├─ Route 1 battle/capture/save/reload: substantial evidence exists
-        ├─ canonical Viridian Parcel/Dex state progression: bounded evidence exists
-        └─ visible Oak Parcel/Dex presentation: ACTIVE TASK
+        ├─ canonical Viridian Parcel/Dex/capture progression: evidenced
+        ├─ visible north Oak Parcel/Dex presentation: REVIEWED PASS
+        └─ title/new-game → Oak/identity → bedroom runtime entry: ACTIVE TASK
                  ↓
-          finish Phase 3 exit proof
+          reconcile full Phase 3 exit proof
                  ↓
-Phase 2 camera/Oak-intro parity closure
+Phase 2 camera/Oak-intro visual parity closure
                  ↓
 Phase 4 battle generalization
                  ↓
@@ -79,8 +79,9 @@ The ordering above follows the current `CAPABILITY_CHECKLIST.md` dispatch policy
 | Phase 1 — ROM importer/canonical model | `DONE` | importer, schemas, data viewer, full-sweep validation | none | already met; do not redo | renderer/runtime, battle, script, map, save work can consume canonical data |
 | Phase 2 — 240×160 camera + Oak/reference parity | `IN PROGRESS` | renderer, sprite/title/palette/viewport tests | deferred until Phase 3 exit path per dispatch order | true 240×160 camera parity + Oak-intro/reference screenshot assertions | closes Phase 2 presentation/runtime gate |
 | Phase 3A — deterministic vertical-slice proof | `IN PROGRESS` | new game, movement, Route 1 battle, capture, save/load and replay evidence | [`../tasks/phase3-exit-proof.md`](../tasks/phase3-exit-proof.md) | complete boot → new game → Oak intro → bedroom → Pallet → Route 1 → wild battle → catch/defeat → save → reload with required persisted outcomes | Phase 3 exit eligibility |
-| Phase 3B — canonical Viridian Parcel/Dex progression | bounded progression implemented/evidenced, presentation incomplete | real Mart path, Parcel state transitions, Lab state transitions, shop/capture replay | [`../tasks/viridian-parcel-dex-progression.md`](../tasks/viridian-parcel-dex-progression.md) | visible and persistent canonical Mart `0→1`, Lab `5→6`, Dex/Poké Ball grant, Mart `1→2`, save/reload evidence | canonical early-game progression required by Phase 3 proof |
-| Phase 3C — visible north-facing Oak Parcel/Dex scene | `ACTIVE` | presenter/source descriptor and focused test already exist; Mart presentation precedes it | **[`../tasks/oak-parcel-dex-presentation-north.md`](../tasks/oak-parcel-dex-presentation-north.md)** | bounded `main.lua` wiring; source-lock integration; focused + no-ROM + required ROM-backed suites/replay; independent review | reconcile Phase 3B/3A; identify smallest remaining Phase 3 exit gap |
+| Phase 3B — canonical Viridian Parcel/Dex progression | bounded progression evidenced | visible Parcel progression, Lab/Dex transition, post-Dex shop, capture and persistence replay | [`../tasks/viridian-parcel-dex-progression.md`](../tasks/viridian-parcel-dex-progression.md) | evidence already exists for this supporting chain; do not redo | supports Phase 3A capture/progression evidence |
+| Phase 3C — visible north-facing Oak Parcel/Dex scene | `REVIEWED PASS` | source-locked presenter, bounded runtime wiring, focused/no-ROM/verified-ROM suites and runtime replay | [`../tasks/oak-parcel-dex-presentation-north.md`](../tasks/oak-parcel-dex-presentation-north.md) | independently passed at revision `2d8c3221775044a54668683e500055307fe4d20b` | closes this leaf only; supports Phase 3A |
+| Phase 3D — title/new-game through Oak/identity into bedroom | `ACTIVE` | title rendering, static Oak scene, naming flow, fresh-session bootstrap, downstream bedroom→Pallet replay already exist | **[`../tasks/phase3-title-oak-entry-proof.md`](../tasks/phase3-title-oak-entry-proof.md)** | deterministic normal-runtime proof from boot/title/new game through Oak/identity to Player's House 2F, required suites, independent review | re-evaluate full Phase 3A exit criterion |
 | Phase 4 — full Gen 3 battle engine | `IN PROGRESS` | `BattleEngine`, trainer AI, capture, EXP, battle-scene tests | future task(s) after current dispatch gates | general trainer battles, switching, full move/effect matrix, deterministic stress tests | reliable story/trainer progression at scale |
 | Phase 5 — complete overworld/field systems | `IN PROGRESS` | maps, warps, objects, movement, script tests | future bounded traversal/script tasks | scripted Pallet→Elite Four traversal with no missing/invalid path | credits-path world traversal |
 | Phase 6 — menus/inventory/progression UI | `IN PROGRESS` | bag, party, Mart, PC, menu tests | future UI task graph | complete player-facing UI with no developer fallbacks | normal player completion without dev controls |
@@ -110,47 +111,37 @@ boot
 → fresh-process reload
 ```
 
-The parent task explicitly remains open. Existing component/replay evidence is substantial but does not by itself authorize marking Phase 3 `DONE`.
+The parent task remains open. Downstream battle/capture/save evidence and the canonical Viridian Parcel/Dex chain are now substantial enough that the smallest remaining explicit entry gap is the normal runtime transition from title/new-game through Oak/identity into the bedroom.
 
-### Supporting gate: canonical Viridian progression
-
-Canonical task: [`../tasks/viridian-parcel-dex-progression.md`](../tasks/viridian-parcel-dex-progression.md)
-
-Required state chain:
-
-```text
-Viridian Mart scene 0
-→ visible Parcel scene
-→ Mart scene 1 + Oak's Parcel + Lab scene 5
-→ return to Oak
-→ consume Parcel + Pokédex + five Poké Balls
-→ Lab scene 6 + Mart scene 2
-→ ordinary Mart shop becomes reachable
-→ capture path
-→ save/reload persistence
-```
-
-Do not replace this with synthetic inventory or direct state injection.
-
-### Active leaf: north-facing Oak Parcel/Dex presentation
+### Completed supporting leaf: north-facing Oak Parcel/Dex presentation
 
 Canonical task: [`../tasks/oak-parcel-dex-presentation-north.md`](../tasks/oak-parcel-dex-presentation-north.md)
 
-Current recorded completion boundary:
+Independent review returned `PASS` for implementation revision
+`2d8c3221775044a54668683e500055307fe4d20b` after focused, no-ROM,
+verified-ROM, Phase 3 ROM test, and runtime replay evidence. This closes only
+that leaf; it does not close Phase 3.
 
-- isolated north-only presenter exists;
-- focused test exists;
-- source ordering was independently corrected;
-- runtime wiring remains;
-- source-lock integration evidence remains;
-- required suites/replay remain;
-- final independent review remains.
+### Active leaf: title/new-game through Oak/identity into bedroom
 
-**Current Worker package:** apply only the bounded recorded `main.lua` wiring plan and task-permitted focused support, then produce exact evidence. Do not expand into generic script/addobject semantics, other Oak orientations, Mart UI, save codec, or battle rules.
+Canonical task: [`../tasks/phase3-title-oak-entry-proof.md`](../tasks/phase3-title-oak-entry-proof.md)
 
-**Reviewer gate:** exact revision must receive independent `PASS` before Orchestrator treats this leaf as closed.
+**Current Worker package:** characterize the live normal boot/title/new-game
+path first. Prefer an evidence-only deterministic replay if current runtime
+already connects the existing title, Oak/new-game identity, fresh-session, and
+bedroom pieces. Make a gameplay change only if the replay exposes a concrete
+bounded integration defect inside the task contract.
 
-**After PASS:** Orchestrator must re-read the parent Phase 3 proof and current capability checklist, identify the smallest still-unproven Phase 3 exit condition, and dispatch that condition rather than assuming Phase 3 is complete.
+Do not expand into Phase 2 Oak visual-animation parity, a general scene stack,
+generic script work, Phase 4 battle work, or save-layout expansion.
+
+**Reviewer gate:** exact evidence/implementation revision must receive
+independent `PASS` before Orchestrator treats this leaf as closed.
+
+**After PASS:** Orchestrator must re-read the full Phase 3 parent proof and
+canonical checklist. If every parent acceptance item is genuinely evidenced,
+Phase 3 becomes eligible for canonical status reconciliation; otherwise choose
+the smallest remaining unproven item.
 
 ## How Orchestrator chooses the next task
 
