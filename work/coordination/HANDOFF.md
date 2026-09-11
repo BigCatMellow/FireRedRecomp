@@ -2,107 +2,103 @@
 
 - Record role: `HANDOFF`
 - Primary information class: `TASK CONTEXT`
-- Status: `READY_FOR_WORKER`
+- Status: `BLOCKED_WORKER_EXECUTION_BRIDGE`
 - Lifecycle: `ACTIVE`
 - Authority: coordination state only; root `AGENTS.md` and the active task own authority
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
 - Parent gate: [`../tasks/phase3-exit-proof.md`](../tasks/phase3-exit-proof.md)
 - Active task: [`../tasks/phase3-title-oak-entry-proof.md`](../tasks/phase3-title-oak-entry-proof.md)
-- Previous passed leaf: [`../tasks/oak-parcel-dex-presentation-north.md`](../tasks/oak-parcel-dex-presentation-north.md)
-- Previous review: [`../reviews/oak-parcel-dex-presentation-north-final-review.md`](../reviews/oak-parcel-dex-presentation-north-final-review.md)
 - Machine state: [`STATE.json`](STATE.json)
 
-## Current state
+## Summary
 
-The north-facing Oak Parcel/Dex presentation leaf is now closed after
-independent `PASS` on implementation revision:
+Worker characterized the live title/new-game entry boundary and found the first
+actual missing seam, but did **not** widen scope or publish an unsafe gameplay
+change.
 
-`2d8c3221775044a54668683e500055307fe4d20b`
-
-That PASS does **not** close Phase 3. The canonical checklist remains
-`IN PROGRESS`.
-
-Reconciliation of the Phase 3 parent proof shows the smallest explicit
-remaining entry gap is:
+Current `main.lua` has the relevant pieces separately:
 
 ```text
-normal boot
-→ title/new-game entry
-→ Oak intro / identity flow
-→ fresh session initialization
-→ Player's House 2F bedroom
+title view
+Oak intro view
+Oak intro A input -> beginNewGameFlow()
+post-Oak identity flow -> fresh session -> Player's House 2F
 ```
 
-A new bounded task now owns that gap:
+The title view has no normal runtime input transition into the Oak intro. The
+existing Phase 3 replay starts by calling `beginNewGameFlow()` directly and
+explicitly says it does not claim to automate the preceding Oak scene.
+Therefore the current code does not yet satisfy this task's normal
+boot/title -> Oak/identity reachability criterion.
 
-`work/tasks/phase3-title-oak-entry-proof.md`
+## Smallest bounded implementation now known
 
-## Why this is the next package
+The active task permits the narrow correction that evidence requires:
 
-The repository already contains substantial downstream evidence:
+1. wire the normal title/new-game input seam into the existing Oak intro;
+2. add deterministic runtime replay/assertion evidence that drives title ->
+   Oak -> identity -> fresh session through ordinary runtime input/event seams;
+3. assert identity plus initial bedroom/session state;
+4. run focused, no-ROM, and verified-ROM suites;
+5. route the exact revision to independent Reviewer.
 
-- title-screen rendering exists;
-- static Oak speech presentation exists;
-- gender/player/rival naming and `NewGameFlow` exist;
-- fresh-save bootstrap exists;
-- Player's House 2F → 1F → Pallet runtime replay exists;
-- Route 1 win/loss/capture evidence exists;
-- the canonical Viridian Parcel/Dex/shop/capture/save/reload chain has been
-  exercised with the verified ROM;
-- the bounded north-facing Oak Parcel/Dex presenter received independent
-  `PASS`.
+This does **not** require Phase 2 Oak animation completion, a scene-stack
+redesign, script-interpreter work, or downstream gameplay changes.
 
-The Phase 3 parent still lacks deterministic evidence that a **normal runtime
-boot** connects the title/new-game and Oak/identity pieces into the bedroom
-without directly constructing a post-Oak session fixture.
+## Exact blocker
 
-## Exact Worker allowance
+The verified local execution bridge is stale relative to the newly dispatched
+task. `.github/workflows/local-worker-bridge.yml` still:
 
-`WORKER`
+- describes its patch allowlist as the completed Oak Parcel/Dex task;
+- permits only that task's implementation/test/replay files;
+- always runs `tests/oak_parcel_dex_presentation_test.lua` as its focused test;
+- always runs `scripts/runtime_natural_capture_replay.sh` as its runtime replay;
+- stages only the previous task's files for publication.
 
-1. Read `AGENTS.md`, the Worker role contract, this handoff,
-   `work/tasks/phase3-exit-proof.md`, and
-   `work/tasks/phase3-title-oak-entry-proof.md`.
-2. Characterize the live normal boot/title/new-game path first.
-3. Prefer an evidence-only deterministic replay/assertion artifact if the
-   existing runtime already reaches Oak/identity and the bedroom correctly.
-4. If the path fails, identify the first exact missing seam and make only the
-   smallest integration correction permitted by the active task.
-5. Verify player/rival identity plus initial location and fresh-session state;
-   do not skip the entry flow with synthetic post-Oak state injection.
-6. Run focused checks, the no-ROM suite, and the verified-ROM suite where the
-   environment supports them.
-7. Publish only within the standing task-bounded authority and route the exact
-   revision/evidence to independent Reviewer by updating `STATE.json` and
-   `HANDOFF.md` last.
+A title-entry patch would therefore be rejected even though `main.lua` and
+focused Phase 3 entry replay/test support are permitted by the current active
+task.
 
-## Explicit boundaries
+Changing the bridge workflow itself is not in this Worker's current task MAY
+CHANGE boundary. Worker therefore failed closed rather than weakening target
+validation or reconstructing/replacing the large `main.lua` through an unsafe
+whole-file edit.
 
-Do **not** widen this task into:
+No gameplay change was published and no new ROM-backed test result is claimed.
 
-- Phase 2 Oak Nidoran/platform/fade/shrink visual-animation parity;
-- true reference screenshot/camera parity;
-- a new general scene-stack architecture;
-- generic script-interpreter expansion;
-- general trainer battle / Phase 4 work;
-- save-layout/sector expansion;
-- supported-ROM policy changes;
-- any ROM/cache/BIOS/extracted game content in git.
+## Next role and smallest resolution
 
-If one of those becomes required, record `BLOCKED` with the exact boundary
-rather than implementing it under this task.
+`ORCHESTRATOR`
 
-## After Worker success
+Authorize/dispatch the smallest bridge-maintenance correction necessary to
+support `work/tasks/phase3-title-oak-entry-proof.md` while preserving all
+existing security invariants:
 
-Reviewer must independently verify the exact revision and evidence. Only after
-that `PASS` may Orchestrator re-evaluate whether the **entire** Phase 3 parent
-exit criterion is now proven. No canonical phase advancement is authorized by
-this handoff alone.
+- trusted `push` to `main` only;
+- never execute public PR/fork code on the self-hosted runner;
+- explicit task-bounded target validation;
+- verified FireRed v1.0 SHA-1 gate;
+- publish only after required tests pass;
+- no ROM/cache/assets in GitHub.
+
+Then return the **same** title/Oak entry task to `READY_FOR_WORKER`. Do not
+replace it with broader Phase 2 or Phase 4 work.
+
+## Do not work around
+
+- Do not treat the `T`, `S`, or `N` developer view hotkeys as proof of a normal
+  title/new-game path.
+- Do not weaken or bypass the bridge allowlist.
+- Do not replace the roughly 224 KB `main.lua` from partial excerpts.
+- Do not claim tests or ROM evidence that did not run.
+- Do not advance Phase 3 status.
 
 ```text
-Oak Parcel/Dex north leaf: REVIEWED PASS
-→ Phase 3 title/Oak entry proof: READY_FOR_WORKER
-→ WORKER characterizes/proves normal boot → Oak/identity → bedroom
-→ REVIEWER independently verifies exact evidence/revision
-→ ORCHESTRATOR re-evaluates full Phase 3 exit gate
+Phase 3 title/Oak entry proof
+-> CHARACTERIZED: missing title -> Oak runtime seam
+-> BLOCKED: local bridge still scoped to prior Oak Parcel/Dex task
+-> ORCHESTRATOR: repair/authorize execution substrate only
+-> WORKER: resume same bounded title/Oak entry task
+-> REVIEWER: independently verify exact revision/evidence
 ```
