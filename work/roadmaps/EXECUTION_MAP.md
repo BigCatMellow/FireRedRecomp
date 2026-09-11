@@ -42,11 +42,11 @@ Phase 3 playable vertical slice [IN PROGRESS]  ← CURRENT DISPATCH FOCUS
         ├─ Route 1 battle/capture/save/reload: substantial evidence exists
         ├─ canonical Viridian Parcel/Dex/capture progression: evidenced
         ├─ visible north Oak Parcel/Dex presentation: REVIEWED PASS
-        └─ title/new-game → Oak/identity → bedroom runtime entry: CHARACTERIZED
+        └─ title/new-game → Oak/identity → bedroom runtime entry: READY FOR WORKER
                  │
-                 └─ temporary prerequisite: Local Worker Bridge retargeting [ACTIVE]
-                          ↓ independent PASS
-                    resume title/Oak entry task
+                 └─ Local Worker Bridge retargeting: REVIEWED PASS
+                          ↓
+                    implement/prove narrow title → Oak seam
                           ↓ independent PASS
                     reconcile full Phase 3 exit proof
                           ↓
@@ -73,8 +73,8 @@ Phase 10 mod/release engineering
 | Phase 3A — deterministic vertical-slice proof | `IN PROGRESS` | [`../tasks/phase3-exit-proof.md`](../tasks/phase3-exit-proof.md) | boot → new game → Oak intro → bedroom → Pallet → Route 1 → wild battle → catch/defeat → save → reload | Phase 3 exit eligibility |
 | Phase 3B — canonical Viridian Parcel/Dex progression | evidenced | [`../tasks/viridian-parcel-dex-progression.md`](../tasks/viridian-parcel-dex-progression.md) | already evidenced; do not redo | supports Phase 3A |
 | Phase 3C — north-facing Oak Parcel/Dex scene | `REVIEWED PASS` | [`../tasks/oak-parcel-dex-presentation-north.md`](../tasks/oak-parcel-dex-presentation-north.md) | PASS at `2d8c3221775044a54668683e500055307fe4d20b` | supports Phase 3A |
-| Phase 3D — title/new-game through Oak/identity into bedroom | `BLOCKED ON EXECUTION SUBSTRATE` | [`../tasks/phase3-title-oak-entry-proof.md`](../tasks/phase3-title-oak-entry-proof.md) | normal runtime proof, required suites, independent review | re-evaluate Phase 3A |
-| Phase 3D-pre — Local Worker Bridge retargeting | `ACTIVE` | **[`../tasks/local-worker-bridge-task-routing.md`](../tasks/local-worker-bridge-task-routing.md)** | explicit fail-closed title/Oak route support, preserved runner/ROM security invariants, deterministic validation, independent review | return same Phase 3D task to Worker |
+| Phase 3D — title/new-game through Oak/identity into bedroom | `READY FOR WORKER` | **[`../tasks/phase3-title-oak-entry-proof.md`](../tasks/phase3-title-oak-entry-proof.md)** | normal runtime proof, required suites, independent review | re-evaluate Phase 3A |
+| Phase 3D-pre — Local Worker Bridge retargeting | `REVIEWED PASS` | [`../tasks/local-worker-bridge-task-routing.md`](../tasks/local-worker-bridge-task-routing.md) | PASS at `0f0dc2f028f204dce4fcaee4e0fff0d9d0afb61e`; do not redo | Phase 3D unblocked |
 | Phase 4 — full Gen 3 battle engine | `IN PROGRESS` | future | general trainer battles, switching, move/effect and stress matrices | reliable trainer/story progression |
 | Phase 5 — overworld/field systems | `IN PROGRESS` | future | Pallet→Elite Four traversal without invalid paths | credits traversal |
 | Phase 6 — menus/inventory/progression UI | `IN PROGRESS` | future | complete player UI, no dev-key fallbacks | normal completion |
@@ -104,7 +104,7 @@ boot
 
 The parent remains open. Downstream battle/capture/save evidence and the Viridian Parcel/Dex chain are substantial. The smallest remaining explicit entry gap is the normal runtime transition from title/new-game through Oak/identity into the bedroom.
 
-### Characterized gameplay leaf: title/Oak entry
+### Active gameplay leaf: title/Oak entry
 
 Worker characterization found:
 
@@ -116,13 +116,13 @@ Worker characterization found:
 
 The smallest gameplay correction is a narrow title-to-Oak runtime seam plus deterministic entry replay/assertion evidence. No gameplay change was published during characterization.
 
-### Active temporary prerequisite: Local Worker Bridge retargeting
+The execution-substrate prerequisite is now closed by independent PASS. Worker may execute only [`../tasks/phase3-title-oak-entry-proof.md`](../tasks/phase3-title-oak-entry-proof.md), preserving its MAY CHANGE / MUST NOT CHANGE boundaries and required focused, no-ROM, verified-ROM, runtime-replay, and independent-review evidence.
 
-The verified self-hosted bridge is still hard-coded to the completed Oak Parcel/Dex task's allowlist, focused test, replay, and publish staging. That prevents the already-authorized title/Oak patch from using the safe large-file execution substrate.
+### Completed prerequisite: Local Worker Bridge retargeting
 
-Active task: [`../tasks/local-worker-bridge-task-routing.md`](../tasks/local-worker-bridge-task-routing.md)
+[`../tasks/local-worker-bridge-task-routing.md`](../tasks/local-worker-bridge-task-routing.md) is `CLOSED — REVIEWED PASS` at substantive revision `0f0dc2f028f204dce4fcaee4e0fff0d9d0afb61e`.
 
-This infrastructure package may change the bridge workflow/procedure only. It must preserve:
+Reviewer confirmed the bridge explicitly supports the title/Oak task route while preserving:
 
 - trusted pushes to `main` only;
 - no `pull_request` / `pull_request_target` self-hosted execution;
@@ -132,7 +132,7 @@ This infrastructure package may change the bridge workflow/procedure only. It mu
 - no ROM/cache/assets in GitHub;
 - fail-closed behavior for unknown task routes.
 
-After independent PASS, Orchestrator must reactivate the same `phase3-title-oak-entry-proof.md` task. This infrastructure leaf does not close any gameplay or capability gate.
+Do not redo this prerequisite unless new evidence shows regression.
 
 ## Status transition rules
 
