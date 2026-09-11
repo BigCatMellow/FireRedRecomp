@@ -47,6 +47,32 @@ jobs:
           echo "file=$file" >> "$GITHUB_OUTPUT"
           echo "mode=$mode" >> "$GITHUB_OUTPUT"
 
+      - name: Select explicit task route
+        id: route
+        shell: bash
+        env:
+          REQUEST_FILE: ${{ steps.request.outputs.file }}
+        run: |
+          set -euo pipefail
+          base="$(basename "$REQUEST_FILE")"
+          case "$base" in
+            phase3-title-oak-entry-proof*.patch|phase3-title-oak-entry-proof*.probe)
+              route='phase3-title-oak-entry-proof'
+              ;;
+            oak-parcel-dex-presentation-north*.patch|oak-parcel-dex-presentation-north*.probe)
+              route='oak-parcel-dex-presentation-north'
+              ;;
+            runner-online*.probe)
+              route='runner-readiness'
+              ;;
+            *)
+              echo "Unknown Local Worker Bridge task route for request: $base" >&2
+              exit 1
+              ;;
+          esac
+          echo "route=$route" >> "$GITHUB_OUTPUT"
+          echo "Selected explicit bridge route: $route"
+
       - name: Verify local toolchain
         shell: bash
         run: |
@@ -86,7 +112,11 @@ jobs:
       - name: Probe complete
         if: steps.request.outputs.mode == 'probe'
         shell: bash
+        env:
+          ROUTE: ${{ steps.route.outputs.route }}
         run: |
+          set -euo pipefail
+          echo "Explicit task route '$ROUTE' recognized."
           echo "Self-hosted runner, Lua toolchain, repository checkout, and private ROM hash gate are ready."
 
       - name: Validate bounded patch targets
@@ -94,17 +124,20 @@ jobs:
         shell: bash
         env:
           PATCH_FILE: ${{ steps.request.outputs.file }}
+          ROUTE: ${{ steps.route.outputs.route }}
         run: |
           set -euo pipefail
           test -s "$PATCH_FILE"
           targets="$(grep -E '^(--- a/|\+\+\+ b/)' "$PATCH_FILE" | sed -E 's#^(--- a/|\+\+\+ b/)##' | grep -v '^/dev/null$' | sort -u)"
           test -n "$targets"
           while IFS= read -r target; do
-            case "$target" in
-              main.lua|src/core/OakParcelDexPresentation.lua|tests/oak_parcel_dex_presentation_test.lua|scripts/runtime_natural_capture_replay.sh|work/tasks/oak-parcel-dex-presentation-north.md)
+            case "$ROUTE:$target" in
+              oak-parcel-dex-presentation-north:main.lua|oak-parcel-dex-presentation-north:src/core/OakParcelDexPresentation.lua|oak-parcel-dex-presentation-north:tests/oak_parcel_dex_presentation_test.lua|oak-parcel-dex-presentation-north:scripts/runtime_natural_capture_replay.sh|oak-parcel-dex-presentation-north:work/tasks/oak-parcel-dex-presentation-north.md)
+                ;;
+              phase3-title-oak-entry-proof:main.lua|phase3-title-oak-entry-proof:tests/phase3_title_oak_entry_test.lua|phase3-title-oak-entry-proof:scripts/runtime_title_oak_entry_replay.sh|phase3-title-oak-entry-proof:work/tasks/phase3-title-oak-entry-proof.md|phase3-title-oak-entry-proof:work/tasks/phase3-exit-proof.md)
                 ;;
               *)
-                echo "Patch target is outside the active Oak task allowlist: $target" >&2
+                echo "Patch target is not authorized for explicit route '$ROUTE': $target" >&2
                 exit 1
                 ;;
             esac
@@ -121,13 +154,26 @@ jobs:
           git apply "$PATCH_FILE"
           git diff --check
 
-      - name: Run focused presenter test
+      - name: Run task-focused test
         if: steps.request.outputs.mode == 'patch'
         shell: bash
+        env:
+          ROUTE: ${{ steps.route.outputs.route }}
         run: |
           set -euo pipefail
           if command -v lua5.1 >/dev/null; then LUA=lua5.1; else LUA=lua; fi
-          "$LUA" tests/oak_parcel_dex_presentation_test.lua
+          case "$ROUTE" in
+            oak-parcel-dex-presentation-north)
+              "$LUA" tests/oak_parcel_dex_presentation_test.lua
+              ;;
+            phase3-title-oak-entry-proof)
+              "$LUA" tests/phase3_title_oak_entry_test.lua
+              ;;
+            *)
+              echo "Patch execution has no focused-test route for '$ROUTE'." >&2
+              exit 1
+              ;;
+          esac
 
       - name: Run no-ROM suite
         if: steps.request.outputs.mode == 'patch'
@@ -145,25 +191,49 @@ jobs:
           set -euo pipefail
           bash scripts/test_all.sh
 
-      - name: Run natural-capture runtime replay
+      - name: Run task runtime replay
         if: steps.request.outputs.mode == 'patch'
         shell: bash
         env:
           POKEPORT_ROM: ${{ steps.rom.outputs.path }}
+          ROUTE: ${{ steps.route.outputs.route }}
         run: |
           set -euo pipefail
-          bash scripts/runtime_natural_capture_replay.sh
+          case "$ROUTE" in
+            oak-parcel-dex-presentation-north)
+              bash scripts/runtime_natural_capture_replay.sh
+              ;;
+            phase3-title-oak-entry-proof)
+              bash scripts/runtime_title_oak_entry_replay.sh
+              ;;
+            *)
+              echo "Patch execution has no runtime-replay route for '$ROUTE'." >&2
+              exit 1
+              ;;
+          esac
 
       - name: Publish verified bounded implementation
         if: steps.request.outputs.mode == 'patch'
         shell: bash
         env:
           PATCH_FILE: ${{ steps.request.outputs.file }}
+          ROUTE: ${{ steps.route.outputs.route }}
         run: |
           set -euo pipefail
-          git add main.lua src/core/OakParcelDexPresentation.lua tests/oak_parcel_dex_presentation_test.lua scripts/runtime_natural_capture_replay.sh work/tasks/oak-parcel-dex-presentation-north.md 2>/dev/null || true
+          case "$ROUTE" in
+            oak-parcel-dex-presentation-north)
+              git add main.lua src/core/OakParcelDexPresentation.lua tests/oak_parcel_dex_presentation_test.lua scripts/runtime_natural_capture_replay.sh work/tasks/oak-parcel-dex-presentation-north.md 2>/dev/null || true
+              ;;
+            phase3-title-oak-entry-proof)
+              git add main.lua tests/phase3_title_oak_entry_test.lua scripts/runtime_title_oak_entry_replay.sh work/tasks/phase3-title-oak-entry-proof.md work/tasks/phase3-exit-proof.md 2>/dev/null || true
+              ;;
+            *)
+              echo "Patch execution has no publish route for '$ROUTE'." >&2
+              exit 1
+              ;;
+          esac
           if git diff --cached --quiet; then
-            echo "Patch produced no implementation changes." >&2
+            echo "Patch produced no authorized implementation changes." >&2
             exit 1
           fi
           git config user.name 'FireRed Local Worker Bridge'
