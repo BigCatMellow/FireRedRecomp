@@ -1,50 +1,54 @@
 {
   "schema_version": 1,
-  "updated_utc": "2026-09-11T01:40:00Z",
-  "role": "REVIEWER",
-  "status": "REVIEWED_PASS",
+  "updated_utc": "2026-09-11T02:05:00Z",
+  "role": "ORCHESTRATOR",
+  "status": "READY_FOR_WORKER",
   "current_phase": "Phase 3 — playable vertical slice",
   "canonical_status_owner": "work/roadmaps/CAPABILITY_CHECKLIST.md",
-  "active_task": "work/tasks/oak-parcel-dex-presentation-north.md",
-  "objective": "Complete the already-scoped north-facing Oak Parcel/Pokedex presenter without widening scope.",
-  "next_role": "ORCHESTRATOR",
-  "review_result": {
-    "result": "PASS",
+  "active_task": "work/tasks/phase3-title-oak-entry-proof.md",
+  "objective": "Prove the normal runtime boot/title/new-game through Oak/identity flow into the Player's House 2F bedroom, preferring evidence-only characterization if the existing runtime already works.",
+  "next_role": "WORKER",
+  "reconciliation_result": {
+    "result": "PREVIOUS_LEAF_CLOSED_NEXT_PARENT_GAP_DISPATCHED",
+    "reviewed_leaf": "work/tasks/oak-parcel-dex-presentation-north.md",
+    "review_result": "PASS",
     "reviewed_revision": "2d8c3221775044a54668683e500055307fe4d20b",
     "review_record": "work/reviews/oak-parcel-dex-presentation-north-final-review.md",
-    "review_record_revision": "62a05a500d8c53128072515c906f84e8ed78cc78",
     "canonical_status_change": "NONE",
-    "task_status_change": "NONE",
-    "reason": "Exact implementation revision satisfies the existing bounded Oak north acceptance criteria and required evidence. PASS applies only to this leaf package; Phase 3 remains IN PROGRESS pending parent exit proof."
+    "task_status_change": "Oak north leaf marked DONE",
+    "reason": "Independent review closes only the Oak north presentation leaf. The Phase 3 parent remains open; the smallest explicit remaining entry gap is deterministic normal-runtime proof from title/new-game through Oak/identity into the bedroom."
   },
-  "worker_result": {
+  "previous_worker_result": {
     "result": "BOUNDED_IMPLEMENTATION_PUBLISHED_AND_VERIFIED",
     "implementation_revision": "2d8c3221775044a54668683e500055307fe4d20b",
     "request_revision": "56f954e56cc632d993ecbc6c25f934d8fbfb4726",
     "request_file": "work/local-runner/requests/2026-09-10-oak-parcel-dex-runtime-v6.patch",
     "bridge_run_id": 34547647645,
-    "changed_gameplay_files": ["main.lua"],
-    "canonical_status_change": "NONE",
-    "task_status_change": "NONE"
+    "changed_gameplay_files": ["main.lua"]
   },
-  "review_evidence": {
-    "revision_boundary": "PASS — one implementation commit; only main.lua changed",
-    "guard_and_fallback": "PASS",
-    "source_sequence_and_live_object_lifecycle": "PASS",
-    "input_lock": "PASS",
-    "terminal_single_commit": "PASS",
-    "legal_content_boundary": "PASS",
-    "bridge_run_id": 34547647645,
-    "local_runner": "firered-mint",
-    "rom_sha1": "41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc",
+  "previous_review_evidence": {
     "focused_presenter_test": "PASS — 24 passed, 0 failed",
     "full_no_rom_suite": "PASS — 121 test files",
     "full_verified_rom_suite": "PASS — 121 test files",
     "phase3_exit_path_rom_test": "PASS — 12 passed, 0 failed",
     "runtime_natural_capture_replay": "PASS — Oak presentation true; restart persisted dex=true, labScene=6, martScene=2"
   },
+  "dispatch": {
+    "task": "work/tasks/phase3-title-oak-entry-proof.md",
+    "parent": "work/tasks/phase3-exit-proof.md",
+    "acceptance_summary": "Drive normal application boot through title/new-game, existing Oak/identity flow, fresh-session initialization, and Player's House 2F using normal runtime seams; verify boundary state; run focused/no-ROM/verified-ROM tests; route exact revision to independent Reviewer.",
+    "preferred_approach": "Characterize first. If current runtime already connects the pieces, add only deterministic replay/assertion evidence. Implement only the smallest bounded integration correction if an observed failure requires it.",
+    "must_not_widen_into": [
+      "Phase 2 Oak Nidoran/platform/fade/shrink visual parity",
+      "general scene-stack architecture",
+      "generic script-interpreter expansion",
+      "general trainer battle or Phase 4 work",
+      "save-layout or sector expansion",
+      "supported-ROM policy changes"
+    ],
+    "next_after_success": "Independent Reviewer verifies the exact title/Oak entry evidence/revision; Orchestrator then re-evaluates the full Phase 3 exit proof before any canonical status change."
+  },
   "blocker": null,
-  "next_action": "ORCHESTRATOR may close only the reviewed Oak north leaf where supported, then re-read the Phase 3 parent exit proof and canonical checklist and dispatch the smallest remaining unproven Phase 3 acceptance item. Do not infer Phase 3 completion from this leaf PASS.",
   "legal_content_boundary": "Never commit ROMs, BIOS dumps, generated caches, extracted game assets, or other prohibited content.",
-  "phase_completion_rule": "Do not mark Phase 3 DONE until its canonical exit criterion is fully evidenced and independently reviewed."
+  "phase_completion_rule": "Do not mark Phase 3 DONE until the complete canonical exit path is fully evidenced and independently reviewed."
 }
