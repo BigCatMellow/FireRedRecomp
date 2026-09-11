@@ -1,21 +1,21 @@
 {
   "schema_version": 1,
-  "updated_utc": "2026-09-11T01:02:43Z",
-  "role": "ORCHESTRATOR",
-  "status": "READY_FOR_REVIEWER",
+  "updated_utc": "2026-09-11T01:40:00Z",
+  "role": "REVIEWER",
+  "status": "REVIEWED_PASS",
   "current_phase": "Phase 3 — playable vertical slice",
   "canonical_status_owner": "work/roadmaps/CAPABILITY_CHECKLIST.md",
   "active_task": "work/tasks/oak-parcel-dex-presentation-north.md",
   "objective": "Complete the already-scoped north-facing Oak Parcel/Pokedex presenter without widening scope.",
-  "next_role": "REVIEWER",
-  "orchestrator_reconciliation": {
-    "result": "AWAITING_INDEPENDENT_REVIEW",
-    "reviewed_revision": null,
-    "implementation_revision": "2d8c3221775044a54668683e500055307fe4d20b",
+  "next_role": "ORCHESTRATOR",
+  "review_result": {
+    "result": "PASS",
+    "reviewed_revision": "2d8c3221775044a54668683e500055307fe4d20b",
+    "review_record": "work/reviews/oak-parcel-dex-presentation-north-final-review.md",
+    "review_record_revision": "62a05a500d8c53128072515c906f84e8ed78cc78",
     "canonical_status_change": "NONE",
     "task_status_change": "NONE",
-    "dispatch_change": "NONE",
-    "reason": "Worker published and verified the bounded Oak north runtime integration, but no independent Reviewer verdict exists yet. Preserve the same package in READY_FOR_REVIEWER state."
+    "reason": "Exact implementation revision satisfies the existing bounded Oak north acceptance criteria and required evidence. PASS applies only to this leaf package; Phase 3 remains IN PROGRESS pending parent exit proof."
   },
   "worker_result": {
     "result": "BOUNDED_IMPLEMENTATION_PUBLISHED_AND_VERIFIED",
@@ -27,32 +27,24 @@
     "canonical_status_change": "NONE",
     "task_status_change": "NONE"
   },
-  "evidence": {
-    "baseline_no_rom": {
-      "result": "PASS",
-      "workflow_run_id": 34547081873,
-      "revision": "6cfc6da77dae9c2fc17df1f375b993f50405bb7b",
-      "note": "Request-only revision; gameplay main.lua remained at the pre-implementation blob."
-    },
+  "review_evidence": {
+    "revision_boundary": "PASS — one implementation commit; only main.lua changed",
+    "guard_and_fallback": "PASS",
+    "source_sequence_and_live_object_lifecycle": "PASS",
+    "input_lock": "PASS",
+    "terminal_single_commit": "PASS",
+    "legal_content_boundary": "PASS",
+    "bridge_run_id": 34547647645,
     "local_runner": "firered-mint",
     "rom_sha1": "41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc",
-    "patch_validation": "PASS",
-    "focused_presenter_test": "PASS",
-    "full_no_rom_suite": "PASS",
-    "full_verified_rom_suite": "PASS",
-    "runtime_natural_capture_replay": "PASS",
-    "publication": "PASS"
+    "focused_presenter_test": "PASS — 24 passed, 0 failed",
+    "full_no_rom_suite": "PASS — 121 test files",
+    "full_verified_rom_suite": "PASS — 121 test files",
+    "phase3_exit_path_rom_test": "PASS — 12 passed, 0 failed",
+    "runtime_natural_capture_replay": "PASS — Oak presentation true; restart persisted dex=true, labScene=6, martScene=2"
   },
-  "failed_request_history": [
-    {"revision": "6a7e472b0f45fcafbd927091672f0008d959809e", "bridge_run_id": 34546586750, "result": "NO_CODE_APPLIED", "reason": "malformed unified diff at line 18"},
-    {"revision": "bc4d1519bcfbada02c97b9017273fbb9388e97a6", "bridge_run_id": 34546852311, "result": "NO_CODE_APPLIED", "reason": "malformed unified diff at line 208"},
-    {"revision": "6cfc6da77dae9c2fc17df1f375b993f50405bb7b", "bridge_run_id": 34547081926, "result": "NO_CODE_APPLIED", "reason": "patch did not match main.lua input-lock hunk"},
-    {"revision": "a248b17f9c54369c945a85d34a2f2cf3942c59ae", "bridge_run_id": 34547332162, "result": "NO_CODE_APPLIED", "reason": "later replay bookkeeping hunk did not match"},
-    {"revision": "60bf9c6dd14ebfc4cd71ca48d852b24d5c1f91a5", "bridge_run_id": 34547517581, "result": "NO_CODE_APPLIED", "reason": "large insertion diff count stale after walk-in-place interval addition"}
-  ],
   "blocker": null,
-  "next_action": "REVIEWER independently verifies exact revision 2d8c3221775044a54668683e500055307fe4d20b against the existing Oak north task acceptance, source/ROM constraints, scope boundary, runtime behavior, and recorded bridge evidence. Do not infer Phase 3 completion from this leaf package.",
+  "next_action": "ORCHESTRATOR may close only the reviewed Oak north leaf where supported, then re-read the Phase 3 parent exit proof and canonical checklist and dispatch the smallest remaining unproven Phase 3 acceptance item. Do not infer Phase 3 completion from this leaf PASS.",
   "legal_content_boundary": "Never commit ROMs, BIOS dumps, generated caches, extracted game assets, or other prohibited content.",
-  "phase_completion_rule": "Do not mark Phase 3 DONE until its canonical exit criterion is fully evidenced and independently reviewed.",
-  "continuous_improvement": "No process change needed this turn. The local bridge already demonstrated fail-closed request handling and successful bounded publication; the remaining gate is independent review, not an orchestration defect."
+  "phase_completion_rule": "Do not mark Phase 3 DONE until its canonical exit criterion is fully evidenced and independently reviewed."
 }
