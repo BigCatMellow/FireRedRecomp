@@ -1,22 +1,21 @@
 {
   "schema_version": 1,
-  "updated_utc": "2026-09-11T02:05:00Z",
-  "role": "ORCHESTRATOR",
-  "status": "READY_FOR_WORKER",
+  "updated_utc": "2026-09-11T02:22:53Z",
+  "role": "WORKER",
+  "status": "BLOCKED_WORKER_EXECUTION_BRIDGE",
   "current_phase": "Phase 3 — playable vertical slice",
   "canonical_status_owner": "work/roadmaps/CAPABILITY_CHECKLIST.md",
   "active_task": "work/tasks/phase3-title-oak-entry-proof.md",
   "objective": "Prove the normal runtime boot/title/new-game through Oak/identity flow into the Player's House 2F bedroom, preferring evidence-only characterization if the existing runtime already works.",
-  "next_role": "WORKER",
-  "reconciliation_result": {
-    "result": "PREVIOUS_LEAF_CLOSED_NEXT_PARENT_GAP_DISPATCHED",
-    "reviewed_leaf": "work/tasks/oak-parcel-dex-presentation-north.md",
-    "review_result": "PASS",
-    "reviewed_revision": "2d8c3221775044a54668683e500055307fe4d20b",
-    "review_record": "work/reviews/oak-parcel-dex-presentation-north-final-review.md",
-    "canonical_status_change": "NONE",
-    "task_status_change": "Oak north leaf marked DONE",
-    "reason": "Independent review closes only the Oak north presentation leaf. The Phase 3 parent remains open; the smallest explicit remaining entry gap is deterministic normal-runtime proof from title/new-game through Oak/identity into the bedroom."
+  "next_role": "ORCHESTRATOR",
+  "worker_result": {
+    "result": "BLOCKED_AFTER_CHARACTERIZATION",
+    "first_missing_runtime_seam": "Current main.lua exposes title, Oak intro, and post-Oak identity as separate runtime views. Title input has no normal transition into Oak intro; Oak intro A input does transition into beginNewGameFlow(). Existing Phase 3 runtime replay calls beginNewGameFlow() directly and explicitly does not claim to automate the preceding Oak scene.",
+    "required_bounded_change": "A narrow main.lua title-to-Oak runtime input transition plus deterministic entry replay/assertion evidence, within work/tasks/phase3-title-oak-entry-proof.md.",
+    "execution_blocker": "The only verified safe large-file patch substrate, .github/workflows/local-worker-bridge.yml, is still explicitly allowlisted and test-wired for the completed Oak Parcel/Dex task. It rejects title-entry replay/test targets and publishes only the previous task's files. Changing that workflow would widen beyond the active task's MAY CHANGE boundary without new authority.",
+    "gameplay_change_published": false,
+    "tests_run": false,
+    "reason_tests_not_run": "No task implementation could be safely applied under the current execution substrate; no ROM-backed result is claimed."
   },
   "previous_worker_result": {
     "result": "BOUNDED_IMPLEMENTATION_PUBLISHED_AND_VERIFIED",
@@ -26,29 +25,12 @@
     "bridge_run_id": 34547647645,
     "changed_gameplay_files": ["main.lua"]
   },
-  "previous_review_evidence": {
-    "focused_presenter_test": "PASS — 24 passed, 0 failed",
-    "full_no_rom_suite": "PASS — 121 test files",
-    "full_verified_rom_suite": "PASS — 121 test files",
-    "phase3_exit_path_rom_test": "PASS — 12 passed, 0 failed",
-    "runtime_natural_capture_replay": "PASS — Oak presentation true; restart persisted dex=true, labScene=6, martScene=2"
+  "blocker": {
+    "kind": "EXECUTION_SUBSTRATE_SCOPE_MISMATCH",
+    "detail": "Local Worker Bridge remains hard-coded to the previous Oak Parcel/Dex task allowlist and focused test/replay. The current title/Oak entry task cannot use it without an explicit bridge maintenance update outside this Worker's current task authority.",
+    "smallest_resolution": "Orchestrator/maintainer should authorize and dispatch a bounded bridge-maintenance update that derives or replaces the stale task-specific allowlist/test commands for phase3-title-oak-entry-proof.md, without weakening the public-repo/self-hosted-runner security boundary. Then return this same task to READY_FOR_WORKER.",
+    "do_not_work_around": "Do not replace the ~224 KB main.lua through a whole-file edit from partial excerpts, weaken bridge target validation, or treat T/S/N developer hotkeys as proof of normal title-to-Oak reachability."
   },
-  "dispatch": {
-    "task": "work/tasks/phase3-title-oak-entry-proof.md",
-    "parent": "work/tasks/phase3-exit-proof.md",
-    "acceptance_summary": "Drive normal application boot through title/new-game, existing Oak/identity flow, fresh-session initialization, and Player's House 2F using normal runtime seams; verify boundary state; run focused/no-ROM/verified-ROM tests; route exact revision to independent Reviewer.",
-    "preferred_approach": "Characterize first. If current runtime already connects the pieces, add only deterministic replay/assertion evidence. Implement only the smallest bounded integration correction if an observed failure requires it.",
-    "must_not_widen_into": [
-      "Phase 2 Oak Nidoran/platform/fade/shrink visual parity",
-      "general scene-stack architecture",
-      "generic script-interpreter expansion",
-      "general trainer battle or Phase 4 work",
-      "save-layout or sector expansion",
-      "supported-ROM policy changes"
-    ],
-    "next_after_success": "Independent Reviewer verifies the exact title/Oak entry evidence/revision; Orchestrator then re-evaluates the full Phase 3 exit proof before any canonical status change."
-  },
-  "blocker": null,
   "legal_content_boundary": "Never commit ROMs, BIOS dumps, generated caches, extracted game assets, or other prohibited content.",
   "phase_completion_rule": "Do not mark Phase 3 DONE until the complete canonical exit path is fully evidenced and independently reviewed."
 }
