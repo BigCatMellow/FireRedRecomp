@@ -1,7 +1,7 @@
 diff --git a/main.lua b/main.lua
 --- a/main.lua
 +++ b/main.lua
-@@ -3389,7 +3389,72 @@ function love.load()
+@@ -3389,5 +3389,70 @@ function love.load()
        tostring(session and session:getVar(Battle.ViridianParcelStory.VAR_MART_SCENE))))
      if loaded then love.event.quit() else love.event.quit(1) end
 +  elseif runtimeReplay == "title_oak_entry" then
