@@ -2,88 +2,83 @@
 
 - Record role: `HANDOFF`
 - Primary information class: `TASK CONTEXT`
-- Status: `BLOCKED`
+- Status: `READY_FOR_WORKER`
 - Lifecycle: `ACTIVE`
 - Authority: coordination state only; root `AGENTS.md` and active task contracts own authority
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
 - Parent gameplay gate: [`../tasks/phase3-exit-proof.md`](../tasks/phase3-exit-proof.md)
-- Active task: [`../tasks/phase3-complete-runtime-exit-replay.md`](../tasks/phase3-complete-runtime-exit-replay.md)
+- Blocked evidence task: [`../tasks/phase3-complete-runtime-exit-replay.md`](../tasks/phase3-complete-runtime-exit-replay.md)
+- Active prerequisite: [`../tasks/local-worker-bridge-complete-runtime-route.md`](../tasks/local-worker-bridge-complete-runtime-route.md)
 - Machine state: [`STATE.json`](STATE.json)
 
 ## Summary
 
-Worker recovered the live Phase 3 complete-runtime evidence package and found an execution-substrate blocker before implementation.
+Orchestrator reconciled the latest Worker `BLOCKED` result. The complete Phase 3 runtime replay remains the correct smallest parent-proof leaf, and Worker found no gameplay defect. The blocker is only that the guarded Local Worker Bridge does not yet recognize this evidence task.
 
-The evidence task requires a small `main.lua` replay-driver integration so one deterministic runtime case can start at the normal title/Oak path and continue through the already-existing Route 1 battle/save/reload machinery. This is replay plumbing, not a discovered gameplay defect.
+A separate bounded infrastructure prerequisite now owns that mismatch:
 
-However, the guarded Local Worker Bridge has no explicit route for `phase3-complete-runtime-exit-replay`.
+`work/tasks/local-worker-bridge-complete-runtime-route.md`
 
-Current bridge routes are only:
+It must extend the already-reviewed explicit bridge-routing pattern with one narrow `phase3-complete-runtime-exit-replay` route. It may not implement the replay or alter gameplay.
 
-- `oak-parcel-dex-presentation-north`;
-- `phase3-title-oak-entry-proof`;
-- `runner-readiness` probe.
+Phase 3 remains `IN PROGRESS`; canonical capability status is unchanged.
 
-`.github/workflows/local-worker-bridge.yml` therefore fails closed on a `phase3-complete-runtime-exit-replay` request before patch application.
+## Why this prerequisite exists
 
-No implementation was published and no test or ROM result was invented.
+The live bridge correctly fails closed on unknown routes. Its current explicit routes cover the prior Oak Parcel/Dex and title/Oak tasks, but not the new complete-runtime replay package.
 
-## Why Worker stopped
+The blocked evidence task authorizes bounded replay/test support and `main.lua` replay-driver plumbing, but does not authorize changing `.github/workflows/local-worker-bridge.yml`. Worker therefore stopped at the authority boundary instead of weakening the bridge.
 
-The active task MAY CHANGE boundary includes:
+## Active Worker package
 
-- `scripts/` replay support;
-- focused tests/assertions;
-- bounded `main.lua` replay-driver plumbing;
-- task/parent/review/coordination documentation.
+Execute only:
 
-It does **not** authorize changing `.github/workflows/local-worker-bridge.yml` or widening the bridge route/allowlist surface.
+`work/tasks/local-worker-bridge-complete-runtime-route.md`
 
-The Worker role contract also says to use the guarded Local Worker Bridge rather than unsafe whole-file replacement when a scheduler cannot safely patch an existing large file. `main.lua` is exactly that case.
+Expected bounded result:
 
-Therefore Worker cannot legitimately repair the missing bridge route from inside this evidence package.
+1. add explicit request/probe selection for `phase3-complete-runtime-exit-replay`;
+2. add only its hard-coded authorized target allowlist;
+3. add its explicit focused-test command;
+4. add its explicit runtime-replay command;
+5. add explicit publish staging limited to authorized files;
+6. preserve the full no-ROM and verified-ROM suite gates;
+7. preserve exact FireRed US v1.0 SHA-1 verification;
+8. preserve trusted `push` to `main` only and no public-PR self-hosted execution;
+9. prove route recognition with a non-gameplay probe or equivalent deterministic validation;
+10. route the exact bridge-maintenance revision to independent Reviewer.
 
-## Exact blocker
+Do not add a wildcard/generic fallback or infer permissions from task prose.
 
-`EXECUTION_SUBSTRATE_ROUTE_MISSING`
+## Boundaries
 
-First blocked step:
+### MAY CHANGE
 
-```text
-publish + execute the bounded main.lua complete-runtime replay patch
-through the guarded Local Worker Bridge
-```
+- `.github/workflows/local-worker-bridge.yml`
+- `work/coordination/LOCAL_RUNNER_BRIDGE.md` if needed
+- focused bridge validation/probe support if required
+- active task / coordination / review documentation
 
-The bridge has no route for the active task, so the request would fail closed before patch application.
+### MUST NOT CHANGE
 
-## Required next role
+- `main.lua` or gameplay/runtime behavior
+- the complete-runtime replay implementation itself
+- public-PR execution policy
+- supported-ROM policy or exact ROM SHA gate
+- save format/layout
+- ROM/cache/BIOS/extracted content
+- broader repository permissions
+- independent-review requirement
 
-`ORCHESTRATOR`
+## After independent PASS
 
-Scope/dispatch the smallest explicit bridge-maintenance prerequisite for `phase3-complete-runtime-exit-replay`.
-
-That maintenance package should do only what is required to add a fail-closed route with:
-
-1. explicit `phase3-complete-runtime-exit-replay` request/probe selection;
-2. a hard-coded target allowlist limited to this evidence task's authorized replay/test/main.lua surfaces;
-3. a focused complete-runtime replay test/evidence command;
-4. the existing full no-ROM suite gate;
-5. the existing exact FireRed v1.0 SHA-1 gate and full verified-ROM suite;
-6. the complete-runtime replay command itself;
-7. explicit publish staging limited to authorized files;
-8. independent Reviewer verification of the exact bridge-maintenance revision.
-
-Do not add a generic fallback route or weaken trusted-main, ROM, test-before-publish, or explicit-target protections.
-
-## After bridge-maintenance PASS
-
-Orchestrator should restore this same active package:
+Orchestrator must restore:
 
 `work/tasks/phase3-complete-runtime-exit-replay.md`
 
 as `READY_FOR_WORKER`.
 
-Worker can then integrate the existing runtime paths into one continuous artifact:
+Worker can then produce the evidence-only continuous artifact:
 
 ```text
 normal boot
@@ -98,25 +93,23 @@ normal boot
 → fresh-process reload
 ```
 
-The task remains evidence-only. If that continuous run exposes a real gameplay defect, Worker must stop on the first exact failing seam instead of modifying gameplay.
+If that run exposes a real gameplay defect, Worker must stop on the first exact failing seam rather than modify gameplay under the evidence-only task.
 
 ## Status truth
 
 - Phase 3: `IN PROGRESS`
 - title/Oak entry leaf: `REVIEWED PASS`
-- complete-runtime replay leaf: `BLOCKED` on missing guarded bridge route
+- complete-runtime replay leaf: blocked behind this bounded bridge prerequisite
+- active package: `local-worker-bridge-complete-runtime-route.md`
+- gameplay defect discovered: no
 - canonical capability status: unchanged
-- gameplay defect discovered this turn: no
-- implementation published this turn: no
-- tests/ROM evidence claimed this turn: none
 
-```text
-Phase 3 complete runtime replay
-→ READY_FOR_WORKER
-→ Worker recovered existing replay machinery
-→ BLOCKED: guarded bridge lacks explicit task route
-→ ORCHESTRATOR scopes bounded bridge maintenance
-→ REVIEWER verifies bridge maintenance
-→ ORCHESTRATOR restores same replay task
-→ WORKER
-```
+## Next role
+
+`WORKER`
+
+Execute the bridge prerequisite only, publish only inside its standing bounded authority, record exact evidence/revision, and route to independent Reviewer.
+
+## Continuous-improvement check
+
+This is the same concrete bridge limitation encountered when dispatch moved from Oak Parcel/Dex to title/Oak: explicit fail-closed routing intentionally requires a new route for each authorized large-file task. That is a security property, not evidence for a generic bridge redesign. The smallest correction is therefore another explicit route, not broader automation architecture.
