@@ -42,11 +42,8 @@ Phase 3 playable vertical slice [IN PROGRESS]  ← CURRENT DISPATCH FOCUS
         ├─ Route 1 battle/capture/save/reload: substantial evidence exists
         ├─ canonical Viridian Parcel/Dex/capture progression: evidenced
         ├─ visible north Oak Parcel/Dex presentation: REVIEWED PASS
-        └─ title/new-game → Oak/identity → bedroom runtime entry: READY FOR WORKER
-                 │
-                 └─ Local Worker Bridge retargeting: REVIEWED PASS
-                          ↓
-                    implement/prove narrow title → Oak seam
+        ├─ title/new-game → Oak/identity → bedroom runtime entry: REVIEWED PASS
+        └─ complete continuous boot→battle→save→reload runtime artifact: READY FOR WORKER
                           ↓ independent PASS
                     reconcile full Phase 3 exit proof
                           ↓
@@ -70,11 +67,12 @@ Phase 10 mod/release engineering
 | Phase 0 — charter/reproducibility | `IN PROGRESS` | no current dispatch | save-version contract + first CI verification | stronger release baseline |
 | Phase 1 — ROM importer/canonical model | `DONE` | none | already met | downstream systems consume canonical data |
 | Phase 2 — camera + Oak/reference parity | `IN PROGRESS` | deferred by current dispatch order | true 240×160 camera parity + Oak/reference assertions | Phase 2 closure |
-| Phase 3A — deterministic vertical-slice proof | `IN PROGRESS` | [`../tasks/phase3-exit-proof.md`](../tasks/phase3-exit-proof.md) | boot → new game → Oak intro → bedroom → Pallet → Route 1 → wild battle → catch/defeat → save → reload | Phase 3 exit eligibility |
+| Phase 3A — deterministic vertical-slice proof | `IN PROGRESS` | [`../tasks/phase3-exit-proof.md`](../tasks/phase3-exit-proof.md) | one complete automated boot → title/Oak → bedroom/Pallet → Route 1 → wild battle → catch/defeat → save → fresh reload artifact + independent review | Phase 3 exit eligibility |
 | Phase 3B — canonical Viridian Parcel/Dex progression | evidenced | [`../tasks/viridian-parcel-dex-progression.md`](../tasks/viridian-parcel-dex-progression.md) | already evidenced; do not redo | supports Phase 3A |
 | Phase 3C — north-facing Oak Parcel/Dex scene | `REVIEWED PASS` | [`../tasks/oak-parcel-dex-presentation-north.md`](../tasks/oak-parcel-dex-presentation-north.md) | PASS at `2d8c3221775044a54668683e500055307fe4d20b` | supports Phase 3A |
-| Phase 3D — title/new-game through Oak/identity into bedroom | `READY FOR WORKER` | **[`../tasks/phase3-title-oak-entry-proof.md`](../tasks/phase3-title-oak-entry-proof.md)** | normal runtime proof, required suites, independent review | re-evaluate Phase 3A |
-| Phase 3D-pre — Local Worker Bridge retargeting | `REVIEWED PASS` | [`../tasks/local-worker-bridge-task-routing.md`](../tasks/local-worker-bridge-task-routing.md) | PASS at `0f0dc2f028f204dce4fcaee4e0fff0d9d0afb61e`; do not redo | Phase 3D unblocked |
+| Phase 3D — title/new-game through Oak/identity into bedroom | `REVIEWED PASS` | [`../tasks/phase3-title-oak-entry-proof.md`](../tasks/phase3-title-oak-entry-proof.md) | PASS at `8bdbda903fb0574cb169968976d4b40ce96d3563` | supports Phase 3A |
+| Phase 3D-pre — Local Worker Bridge retargeting | `REVIEWED PASS` | [`../tasks/local-worker-bridge-task-routing.md`](../tasks/local-worker-bridge-task-routing.md) | PASS at `0f0dc2f028f204dce4fcaee4e0fff0d9d0afb61e`; do not redo | completed prerequisite |
+| Phase 3E — complete end-to-end runtime exit replay | `READY FOR WORKER` | **[`../tasks/phase3-complete-runtime-exit-replay.md`](../tasks/phase3-complete-runtime-exit-replay.md)** | one deterministic complete runtime command, required suites, independent PASS | re-evaluate Phase 3A and canonical Phase 3 status |
 | Phase 4 — full Gen 3 battle engine | `IN PROGRESS` | future | general trainer battles, switching, move/effect and stress matrices | reliable trainer/story progression |
 | Phase 5 — overworld/field systems | `IN PROGRESS` | future | Pallet→Elite Four traversal without invalid paths | credits traversal |
 | Phase 6 — menus/inventory/progression UI | `IN PROGRESS` | future | complete player UI, no dev-key fallbacks | normal completion |
@@ -102,35 +100,27 @@ boot
 → fresh-process reload
 ```
 
-The parent remains open. Downstream battle/capture/save evidence and the Viridian Parcel/Dex chain are substantial. The smallest remaining explicit entry gap is the normal runtime transition from title/new-game through Oak/identity into the bedroom.
+All known functional seams on that path now have deterministic evidence, including independent PASS for the former title→Oak entry gap. The parent nevertheless remains open because its acceptance calls for a ROM-backed automated proof of the complete path when no remaining boundary is untestable. Current evidence is split across overlapping artifacts.
 
-### Active gameplay leaf: title/Oak entry
+### Closed leaf: title/Oak entry
 
-Worker characterization found:
+[`../tasks/phase3-title-oak-entry-proof.md`](../tasks/phase3-title-oak-entry-proof.md) is `CLOSED — REVIEWED PASS` at exact implementation revision `8bdbda903fb0574cb169968976d4b40ce96d3563`.
 
-- title view exists;
-- Oak intro view exists;
-- Oak intro `A` input already transitions into `beginNewGameFlow()`;
-- the title view has no normal runtime input transition into Oak intro;
-- the existing replay starts after that missing seam and therefore cannot prove normal title-to-Oak reachability.
+Reviewer verified normal title `A`/`START` → existing Oak scene → existing identity flow → fresh Player's House 2F without post-Oak fixture injection, with focused, full no-ROM, full verified-ROM, Phase 3 ROM, and runtime replay evidence.
 
-The smallest gameplay correction is a narrow title-to-Oak runtime seam plus deterministic entry replay/assertion evidence. No gameplay change was published during characterization.
+Do not redo this leaf unless direct evidence shows regression.
 
-The execution-substrate prerequisite is now closed by independent PASS. Worker may execute only [`../tasks/phase3-title-oak-entry-proof.md`](../tasks/phase3-title-oak-entry-proof.md), preserving its MAY CHANGE / MUST NOT CHANGE boundaries and required focused, no-ROM, verified-ROM, runtime-replay, and independent-review evidence.
+### Active leaf: complete runtime exit replay
+
+The smallest remaining parent acceptance item is evidence integration, not a known gameplay feature gap.
+
+Worker may execute only [`../tasks/phase3-complete-runtime-exit-replay.md`](../tasks/phase3-complete-runtime-exit-replay.md): produce one deterministic automated run from normal boot through title/Oak, bedroom/Pallet, Route 1 wild battle, save, and fresh-process reload, reusing existing runtime seams.
+
+This package may add replay-driver/test plumbing. It may **not** change normal gameplay behavior. If a real gameplay defect appears during continuous execution, Worker must stop and report the exact first failing seam for separate scoping.
 
 ### Completed prerequisite: Local Worker Bridge retargeting
 
 [`../tasks/local-worker-bridge-task-routing.md`](../tasks/local-worker-bridge-task-routing.md) is `CLOSED — REVIEWED PASS` at substantive revision `0f0dc2f028f204dce4fcaee4e0fff0d9d0afb61e`.
-
-Reviewer confirmed the bridge explicitly supports the title/Oak task route while preserving:
-
-- trusted pushes to `main` only;
-- no `pull_request` / `pull_request_target` self-hosted execution;
-- explicit task-bounded target validation;
-- exact FireRed v1.0 ROM SHA-1 verification;
-- required tests before publish;
-- no ROM/cache/assets in GitHub;
-- fail-closed behavior for unknown task routes.
 
 Do not redo this prerequisite unless new evidence shows regression.
 
