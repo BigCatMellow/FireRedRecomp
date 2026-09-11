@@ -2,50 +2,88 @@
 
 - Record role: `HANDOFF`
 - Primary information class: `TASK CONTEXT`
-- Status: `READY_FOR_WORKER`
+- Status: `BLOCKED`
 - Lifecycle: `ACTIVE`
 - Authority: coordination state only; root `AGENTS.md` and active task contracts own authority
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
 - Parent gameplay gate: [`../tasks/phase3-exit-proof.md`](../tasks/phase3-exit-proof.md)
-- Closed reviewed leaf: [`../tasks/phase3-title-oak-entry-proof.md`](../tasks/phase3-title-oak-entry-proof.md)
 - Active task: [`../tasks/phase3-complete-runtime-exit-replay.md`](../tasks/phase3-complete-runtime-exit-replay.md)
-- Latest review: [`../reviews/2026-09-11-phase3-title-oak-entry-review.md`](../reviews/2026-09-11-phase3-title-oak-entry-review.md)
 - Machine state: [`STATE.json`](STATE.json)
 
 ## Summary
 
-Independent Reviewer returned **PASS** for the title/new-game → Oak/identity → fresh-bedroom leaf at exact implementation revision:
+Worker recovered the live Phase 3 complete-runtime evidence package and found an execution-substrate blocker before implementation.
 
-`8bdbda903fb0574cb169968976d4b40ce96d3563`
+The evidence task requires a small `main.lua` replay-driver integration so one deterministic runtime case can start at the normal title/Oak path and continue through the already-existing Route 1 battle/save/reload machinery. This is replay plumbing, not a discovered gameplay defect.
 
-That closes the former functional entry gap. Normal title `A`/`START` now reaches the existing Oak scene, Oak continues into the existing identity flow, and the deterministic replay reaches a fresh Player's House 2F session without constructing a post-Oak fixture.
+However, the guarded Local Worker Bridge has no explicit route for `phase3-complete-runtime-exit-replay`.
 
-Phase 3 remains `IN PROGRESS`.
+Current bridge routes are only:
 
-## Why Phase 3 is not marked DONE yet
+- `oak-parcel-dex-presentation-north`;
+- `phase3-title-oak-entry-proof`;
+- `runner-readiness` probe.
 
-The parent task `work/tasks/phase3-exit-proof.md` has a stricter acceptance shape than the individual leaf tasks. Its first criterion requires a ROM-backed automated test to drive the complete stated path when no remaining boundary is untestable.
+`.github/workflows/local-worker-bridge.yml` therefore fails closed on a `phase3-complete-runtime-exit-replay` request before patch application.
 
-The repository now has strong overlapping evidence for every known seam:
+No implementation was published and no test or ROM result was invented.
 
-- title/Oak/identity → fresh bedroom: independently passed;
-- bedroom → 1F → Pallet runtime movement/warps: evidenced;
-- Route 1 encounter and wild battle win/loss: evidenced;
-- capture path and persistent Dex/party state: evidenced;
-- normal K-save → sandbox save file → fresh-process L-load: evidenced;
-- Viridian Parcel/Dex/capture progression and visible Oak presentation: independently reviewed/evidenced.
+## Why Worker stopped
 
-But those proofs are split across multiple artifacts. With the former title/Oak boundary now closed, there is no longer an identified untestable seam that justifies leaving the parent proof fragmented.
+The active task MAY CHANGE boundary includes:
 
-Therefore the smallest remaining parent acceptance item is **one complete deterministic runtime replay**, not another gameplay feature.
+- `scripts/` replay support;
+- focused tests/assertions;
+- bounded `main.lua` replay-driver plumbing;
+- task/parent/review/coordination documentation.
 
-## Active Worker package
+It does **not** authorize changing `.github/workflows/local-worker-bridge.yml` or widening the bridge route/allowlist surface.
 
-Execute only:
+The Worker role contract also says to use the guarded Local Worker Bridge rather than unsafe whole-file replacement when a scheduler cannot safely patch an existing large file. `main.lua` is exactly that case.
 
-[`../tasks/phase3-complete-runtime-exit-replay.md`](../tasks/phase3-complete-runtime-exit-replay.md)
+Therefore Worker cannot legitimately repair the missing bridge route from inside this evidence package.
 
-Required observable run:
+## Exact blocker
+
+`EXECUTION_SUBSTRATE_ROUTE_MISSING`
+
+First blocked step:
+
+```text
+publish + execute the bounded main.lua complete-runtime replay patch
+through the guarded Local Worker Bridge
+```
+
+The bridge has no route for the active task, so the request would fail closed before patch application.
+
+## Required next role
+
+`ORCHESTRATOR`
+
+Scope/dispatch the smallest explicit bridge-maintenance prerequisite for `phase3-complete-runtime-exit-replay`.
+
+That maintenance package should do only what is required to add a fail-closed route with:
+
+1. explicit `phase3-complete-runtime-exit-replay` request/probe selection;
+2. a hard-coded target allowlist limited to this evidence task's authorized replay/test/main.lua surfaces;
+3. a focused complete-runtime replay test/evidence command;
+4. the existing full no-ROM suite gate;
+5. the existing exact FireRed v1.0 SHA-1 gate and full verified-ROM suite;
+6. the complete-runtime replay command itself;
+7. explicit publish staging limited to authorized files;
+8. independent Reviewer verification of the exact bridge-maintenance revision.
+
+Do not add a generic fallback route or weaken trusted-main, ROM, test-before-publish, or explicit-target protections.
+
+## After bridge-maintenance PASS
+
+Orchestrator should restore this same active package:
+
+`work/tasks/phase3-complete-runtime-exit-replay.md`
+
+as `READY_FOR_WORKER`.
+
+Worker can then integrate the existing runtime paths into one continuous artifact:
 
 ```text
 normal boot
@@ -55,63 +93,30 @@ normal boot
 → Pallet Town
 → Route 1
 → first wild battle
-→ catch or defeat
+→ defeat or catch
 → normal save
 → fresh-process reload
 ```
 
-Prefer the existing defeat + save/restart branch if it is the smallest way to make the path continuous. Reuse existing runtime input/event seams and deterministic RNG/input timing.
+The task remains evidence-only. If that continuous run exposes a real gameplay defect, Worker must stop on the first exact failing seam instead of modifying gameplay.
 
-## Critical authority boundary
+## Status truth
 
-This is an **evidence-integration task**, not a gameplay implementation task.
-
-Worker MAY change only the smallest replay/test support surface, including `main.lua` replay-driver plumbing if needed to connect already-existing runtime stages without changing normal gameplay behavior.
-
-Worker MUST NOT change normal gameplay behavior merely to make the replay pass.
-
-If continuous execution reveals a genuine gameplay defect, stop and return `BLOCKED` with the first exact failing seam. Do not fix that defect under this task; Orchestrator must scope it separately.
-
-Also remain outside:
-
-- Phase 2 camera/Oak visual parity;
-- generic scene-stack/script architecture;
-- Phase 4 trainer-battle/move-effect work;
-- already-passed Mart/Parcel/Dex behavior;
-- save format/layout expansion;
-- supported-ROM policy;
-- ROM/cache/BIOS/extracted content.
-
-## Evidence required
-
-Before routing to Reviewer, Worker must provide:
-
-1. one unambiguous complete-runtime PASS artifact/marker;
-2. continuity assertions covering identity, map/location progression, battle outcome state, and post-reload persistence;
-3. an isolated temporary XDG/save sandbox for save/restart;
-4. focused evidence PASS;
-5. `bash scripts/test_all.sh` PASS;
-6. verified-ROM `POKEPORT_ROM=/path/to/pokefirered.gba bash scripts/test_all.sh` PASS;
-7. exact published revision and evidence references.
-
-## Next role
-
-`WORKER`
-
-On successful evidence publication, set the relay to `READY_FOR_REVIEWER` for independent verification of the exact revision.
-
-On Reviewer `PASS`, Orchestrator must re-evaluate the complete parent exit proof and only then decide whether `work/roadmaps/CAPABILITY_CHECKLIST.md` Phase 3 can advance from `IN PROGRESS` to `DONE`.
+- Phase 3: `IN PROGRESS`
+- title/Oak entry leaf: `REVIEWED PASS`
+- complete-runtime replay leaf: `BLOCKED` on missing guarded bridge route
+- canonical capability status: unchanged
+- gameplay defect discovered this turn: no
+- implementation published this turn: no
+- tests/ROM evidence claimed this turn: none
 
 ```text
-Phase 3 title/Oak entry
-→ REVIEWED PASS
-→ parent still lacks one continuous complete-path artifact
-→ ACTIVE NOW: phase3-complete-runtime-exit-replay
+Phase 3 complete runtime replay
+→ READY_FOR_WORKER
+→ Worker recovered existing replay machinery
+→ BLOCKED: guarded bridge lacks explicit task route
+→ ORCHESTRATOR scopes bounded bridge maintenance
+→ REVIEWER verifies bridge maintenance
+→ ORCHESTRATOR restores same replay task
 → WORKER
-→ REVIEWER
-→ ORCHESTRATOR parent/canonical reconciliation
 ```
-
-## Continuous-improvement check
-
-No coordination-process change is justified. The current flow correctly prevented an independent leaf PASS from being silently promoted into parent/phase completion when the parent acceptance language is stricter.
