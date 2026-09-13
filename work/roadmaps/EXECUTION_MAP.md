@@ -43,7 +43,9 @@ Phase 3 playable vertical slice [IN PROGRESS]  ← CURRENT DISPATCH FOCUS
         ├─ canonical Viridian Parcel/Dex/capture progression: evidenced
         ├─ visible north Oak Parcel/Dex presentation: REVIEWED PASS
         ├─ title/new-game → Oak/identity → bedroom runtime entry: REVIEWED PASS
-        └─ complete continuous boot→battle→save→reload runtime artifact: READY FOR WORKER
+        └─ bridge-route prerequisite: ACTIVE
+                          ↓ independent PASS
+          complete continuous boot→battle→save→reload runtime artifact: READY FOR WORKER
                           ↓ independent PASS
                     reconcile full Phase 3 exit proof
                           ↓
@@ -72,7 +74,8 @@ Phase 10 mod/release engineering
 | Phase 3C — north-facing Oak Parcel/Dex scene | `REVIEWED PASS` | [`../tasks/oak-parcel-dex-presentation-north.md`](../tasks/oak-parcel-dex-presentation-north.md) | PASS at `2d8c3221775044a54668683e500055307fe4d20b` | supports Phase 3A |
 | Phase 3D — title/new-game through Oak/identity into bedroom | `REVIEWED PASS` | [`../tasks/phase3-title-oak-entry-proof.md`](../tasks/phase3-title-oak-entry-proof.md) | PASS at `8bdbda903fb0574cb169968976d4b40ce96d3563` | supports Phase 3A |
 | Phase 3D-pre — Local Worker Bridge retargeting | `REVIEWED PASS` | [`../tasks/local-worker-bridge-task-routing.md`](../tasks/local-worker-bridge-task-routing.md) | PASS at `0f0dc2f028f204dce4fcaee4e0fff0d9d0afb61e`; do not redo | completed prerequisite |
-| Phase 3E — complete end-to-end runtime exit replay | `READY FOR WORKER` | **[`../tasks/phase3-complete-runtime-exit-replay.md`](../tasks/phase3-complete-runtime-exit-replay.md)** | one deterministic complete runtime command, required suites, independent PASS | re-evaluate Phase 3A and canonical Phase 3 status |
+| Phase 3E-pre — explicit bridge route | `ACTIVE` | **[`../tasks/local-worker-bridge-complete-runtime-route.md`](../tasks/local-worker-bridge-complete-runtime-route.md)** | bounded route, probe, suites, independent PASS | restore Phase 3E to Worker |
+| Phase 3E — complete end-to-end runtime exit replay | `BLOCKED BY 3E-pre` | [`../tasks/phase3-complete-runtime-exit-replay.md`](../tasks/phase3-complete-runtime-exit-replay.md) | one deterministic complete runtime command, required suites, independent PASS | re-evaluate Phase 3A and canonical Phase 3 status |
 | Phase 4 — full Gen 3 battle engine | `IN PROGRESS` | future | general trainer battles, switching, move/effect and stress matrices | reliable trainer/story progression |
 | Phase 5 — overworld/field systems | `IN PROGRESS` | future | Pallet→Elite Four traversal without invalid paths | credits traversal |
 | Phase 6 — menus/inventory/progression UI | `IN PROGRESS` | future | complete player UI, no dev-key fallbacks | normal completion |
