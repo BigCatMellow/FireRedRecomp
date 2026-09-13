@@ -15,9 +15,10 @@ self-diffs, and publication. Capture media remains outside git.
 ## Parallel critical path
 
 Phase 2 comparison remains blocked only on user-owned retail captures. That does
-not block independent Phase 4 work. The next bounded task is an explicit Local
-Worker Bridge route for no-item trainer-party construction (`partyFlags` `0` and
-`1`); it must pass a probe and independent review before implementation.
+not block independent Phase 4 work. No-item trainer-party construction is now
+published and independently reviewed at `f40c4021` (guarded run `34776145784`).
+The active bounded task is its successor's explicit bridge route for foe-only
+ordered multi-Pokémon trainer orchestration.
 
 ## Phase 2 resume point
 

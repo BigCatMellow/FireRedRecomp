@@ -1,6 +1,6 @@
 # Task: Phase 4 trainer-party construction for no-item layouts
 
-- Status: `BLOCKED ON BRIDGE ROUTE`
+- Status: `CLOSED — REVIEWED PASS`
 - Type: `PHASE 4 / BATTLE DATA ADAPTER / BOUNDED IMPLEMENTATION`
 - Risk: `MEDIUM`
 - Parent gate: general trainer battles and switching
@@ -47,3 +47,11 @@ trainer battles live yet.
 
 After PASS, scope foe-only ordered multi-mon trainer orchestration as a separate
 task with explicit reward and forced-replacement evidence.
+
+## Completion evidence
+
+Published `f40c4021` after guarded run `34776145784` passed route validation,
+focused tests, no-ROM and verified-ROM suites, the constructor-only runtime gate,
+and publication. Independent review passed the exact implementation: default
+layout behavior remains pinned, custom slots use catalog PP, and item/unknown
+layouts reject explicitly.
