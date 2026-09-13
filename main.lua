@@ -3310,9 +3310,13 @@ function love.load()
     -- isolated XDG/LÖVE sandbox containing only the prior process's save.
     love.keypressed("l")
     local session = newGame.session
+    local identityLoaded = session and Charmap.decode(session.identity.playerName) == "RED"
+      and Charmap.decode(session.identity.rivalName) == "GREEN" and session.identity.playerGender == 0
+    local moneyPersisted = session and session.state.saveBlock1.money < NewGameDefaults.startingMoney
     local loaded = session and session.mapId == GameSession.MAP_PALLET_TOWN_PLAYERS_HOUSE_2F
       and session.location.x == 6 and session.location.y == 6
       and session.state.saveBlock1.playerPartyCount == 1
+      and identityLoaded and moneyPersisted
     print(("RUNTIME_REPLAY restart_load %s map=%s pos=%s,%s party=%s identity=%s/%s/%s"):format(
       loaded and "PASS" or "FAIL", tostring(session and session.mapId),
       tostring(session and session.location.x), tostring(session and session.location.y),
@@ -3859,6 +3863,11 @@ function love.load()
       end
     end
     world.replayInputMask = nil
+    local identityContinuous = world.runtimeReplayIdentity and newGame.session
+      and newGame.session.identity.playerGender == world.runtimeReplayIdentity.playerGender
+      and newGame.session.identity.playerName == world.runtimeReplayIdentity.playerName
+      and newGame.session.identity.rivalName == world.runtimeReplayIdentity.rivalName
+    local defeatMoney = newGame.session and newGame.session.state.saveBlock1.money < NewGameDefaults.startingMoney
     local passed = started and (runtimeReplay == "house_to_pallet" and walkMapId == MAP_PALLET_TOWN)
       and newGame.session and newGame.session.mapId == MAP_PALLET_TOWN
     if replayRoute1 then
@@ -3874,6 +3883,7 @@ function love.load()
       else
         passed = passed and result.wildOutcome == (runtimeReplay == "route1_wild_win" and "playerWon" or "playerLost")
       end
+      if continuousEntry then passed = passed and identityContinuous and defeatMoney end
     end
     if passed and (runtimeReplay == "route1_wild_defeat_save" or runtimeReplay == "phase3_complete_runtime_exit_save") then
       -- K reaches saveGame only through the normal public hotkey callback.
