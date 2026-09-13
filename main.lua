@@ -473,6 +473,9 @@ local world = {
   saveCounter = 0,
   saveBytes = nil,
 }
+-- Keep this on the existing shared table: this legacy entry chunk is at
+-- Lua 5.1's 200-local limit, while the camera geometry remains pure.
+world.cameraViewport = require("src.core.CameraViewport")
 
 -- Real land-encounter slot count (ENCOUNTER_CHANCE_LAND_MONS_SLOT count,
 -- src/data/wild_encounters.h -- WildEncounters.resolveInfo needs told how
@@ -490,6 +493,77 @@ local loadMap, tryWarpAt, startWildBattle, syncSessionLocation, bootstrapFreshSe
 -- world.connectionForEdge/world.tryConnectionAt (not locals): same real
 -- 200-local-per-chunk limit as world.walkMapConnections above.
 local WALK_CAMERA_WIDTH, WALK_CAMERA_HEIGHT = 240, 160 -- real GBA screen resolution
+
+-- Keep the field camera calculation shared between normal rendering and the
+-- deterministic runtime proof.  PlayerMovement remains the sole owner of
+-- world position; this only converts its current composited pixel position
+-- into a camera origin.
+function world.currentWalkCamera()
+  if not mapImage or not playerMovement then return nil end
+  local borderOffsetPx = BORDER_MARGIN_METATILES * 16
+  local playerCompositedX = playerMovement:pixelX() + borderOffsetPx
+  local playerCompositedY = playerMovement:pixelY() + borderOffsetPx
+  local mapPixelWidth, mapPixelHeight = mapImage:getDimensions()
+  local camera = world.cameraViewport.follow(mapPixelWidth, mapPixelHeight,
+    playerCompositedX, playerCompositedY)
+  return camera, playerCompositedX, playerCompositedY, mapPixelWidth, mapPixelHeight
+end
+
+-- Kept as a world method (rather than a large inline love.load branch) so
+-- the legacy entry chunk stays below Lua 5.1's local-variable ceiling.
+function world.runPhase2CameraViewportReplay()
+  local function sampleCamera()
+    local camera, playerX, playerY, mapWidth, mapHeight = world.currentWalkCamera()
+    return camera, playerX, playerY, mapWidth, mapHeight
+  end
+  local cameraBefore, playerBeforeX, playerBeforeY, mapWidth, mapHeight = sampleCamera()
+  local worldMapId = walkMapId
+  local cameraMoved, moved = false, false
+  local directions = {
+    { direction=PlayerMovement.RIGHT, dx=1, dy=0 },
+    { direction=PlayerMovement.DOWN, dx=0, dy=1 },
+    { direction=PlayerMovement.LEFT, dx=-1, dy=0 },
+    { direction=PlayerMovement.UP, dx=0, dy=-1 },
+  }
+  -- Prefer a legal step whose destination moves the camera further into the
+  -- currently loaded map. This drives PlayerMovement's real collision/tick
+  -- path and samples the shared renderer camera during each accepted step.
+  for _ = 1, 32 do
+    local chosen, bestScore
+    for _, candidate in ipairs(directions) do
+      local tx, ty = playerMovement.tileX + candidate.dx, playerMovement.tileY + candidate.dy
+      if not world.isPlayerWalkTileBlocked(tx, ty) then
+        local candidateCamera = world.cameraViewport.follow(mapWidth, mapHeight,
+          tx * 16 + BORDER_MARGIN_METATILES * 16, ty * 16 + BORDER_MARGIN_METATILES * 16)
+        local score = candidateCamera.x + candidateCamera.y
+        if not bestScore or score > bestScore then chosen, bestScore = candidate, score end
+      end
+    end
+    if not chosen then break end
+    playerMovement:tryMove(chosen.direction, world.isPlayerWalkTileBlocked, getLedgeJumpDirection)
+    if not playerMovement.moving then break end
+    for _ = 1, 8 do love.update(1 / 60) end
+    local cameraDuring = sampleCamera()
+    for _ = 1, 8 do love.update(1 / 60) end
+    local cameraAfter = sampleCamera()
+    moved = true
+    cameraMoved = cameraMoved or cameraDuring.x ~= cameraBefore.x or cameraDuring.y ~= cameraBefore.y
+      or cameraAfter.x ~= cameraBefore.x or cameraAfter.y ~= cameraBefore.y
+    cameraBefore = cameraAfter
+  end
+  local cameraAfter, playerAfterX, playerAfterY, finalMapWidth, finalMapHeight = sampleCamera()
+  local stableWorld = walkMapId == worldMapId and mapWidth == finalMapWidth and mapHeight == finalMapHeight
+  local passed = walkActive and cameraAfter and moved and cameraMoved and stableWorld
+    and cameraAfter.width == WALK_CAMERA_WIDTH and cameraAfter.height == WALK_CAMERA_HEIGHT
+    and (playerAfterX ~= playerBeforeX or playerAfterY ~= playerBeforeY)
+  print(("RUNTIME_REPLAY phase2_camera_viewport %s map=%s viewport=%sx%s camera=%s,%s player=%s,%s moved=%s cameraMoved=%s worldStable=%s"):format(
+    passed and "PASS" or "FAIL", tostring(walkMapId), tostring(cameraAfter and cameraAfter.width),
+    tostring(cameraAfter and cameraAfter.height), tostring(cameraAfter and cameraAfter.x),
+    tostring(cameraAfter and cameraAfter.y), tostring(playerAfterX), tostring(playerAfterY),
+    tostring(moved), tostring(cameraMoved), tostring(stableWorld)))
+  world.replayInputMask = nil
+  if passed then love.event.quit() else love.event.quit(1) end
+end
 
 -- Real metatile BEHAVIOR byte at (x,y) (MetatileAttributes.lua, real
 -- metatileAttributes bits 0-8), or nil if off-map/not loaded yet.
@@ -3304,7 +3378,9 @@ function love.load()
     or runtimeReplay == "natural_capture_save"
   local replayNaturalCapture = runtimeReplay == "natural_capture"
     or runtimeReplay == "natural_capture_save"
-  if runtimeReplay == "restart_load" then
+  if runtimeReplay == "phase2_camera_viewport" then
+    world.runPhase2CameraViewportReplay()
+  elseif runtimeReplay == "restart_load" then
     -- This is intentionally a separate process from the save replay.  L is
     -- the normal hotkey callback, and the outer script supplies a fresh,
     -- isolated XDG/LÖVE sandbox containing only the prior process's save.
@@ -4597,18 +4673,16 @@ function love.draw()
   elseif walkActive and mapImage and playerMovement then
     local windowWidth, windowHeight = love.graphics.getDimensions()
     local viewport = ViewportScale.fit(WALK_CAMERA_WIDTH, WALK_CAMERA_HEIGHT, windowWidth - 40, windowHeight - (y + 10))
-    -- Camera: a real 240x160 GBA-screen-sized crop of the already-
-    -- composited map, centered on the player's real (sub-tile-
-    -- interpolated) pixel position, clamped so it never shows past the
-    -- composited image's edges.
-    local borderOffsetPx = BORDER_MARGIN_METATILES * 16
-    local playerCompositedX = playerMovement:pixelX() + borderOffsetPx
-    local playerCompositedY = playerMovement:pixelY() + borderOffsetPx
-    local mapPixelWidth, mapPixelHeight = mapImage:getDimensions()
-    local quadX = math.max(0, math.min(playerCompositedX + 8 - WALK_CAMERA_WIDTH / 2, mapPixelWidth - WALK_CAMERA_WIDTH))
-    local quadY = math.max(0, math.min(playerCompositedY + 8 - WALK_CAMERA_HEIGHT / 2, mapPixelHeight - WALK_CAMERA_HEIGHT))
-    local quad = love.graphics.newQuad(quadX, quadY, WALK_CAMERA_WIDTH, WALK_CAMERA_HEIGHT, mapPixelWidth, mapPixelHeight)
+    -- CameraViewport owns the fixed GBA-sized crop and edge clamp.  The
+    -- map can theoretically be smaller than that logical screen, so clear
+    -- the fixed viewport before drawing its bounded valid source region.
+    local camera, playerCompositedX, playerCompositedY, mapPixelWidth, mapPixelHeight = world.currentWalkCamera()
     local baseX, baseY = 20 + viewport.x, y + 10 + viewport.y
+    love.graphics.setColor(0, 0, 0)
+    love.graphics.rectangle("fill", baseX, baseY, camera.width * viewport.scale, camera.height * viewport.scale)
+    love.graphics.setColor(1, 1, 1)
+    local quad = love.graphics.newQuad(camera.x, camera.y, camera.sourceWidth, camera.sourceHeight,
+      mapPixelWidth, mapPixelHeight)
     love.graphics.draw(mapImage, quad, baseX, baseY, 0, viewport.scale, viewport.scale)
 
     -- The map is quad-cropped to the real 240x160 GBA screen, but the
@@ -4629,8 +4703,10 @@ function love.draw()
       if npcImage then
         local npcX = npc:pixelX() + borderOffsetPx
         local npcY = npc:pixelY() + borderOffsetPx
-        local screenX = baseX + (npcX - quadX) * viewport.scale
-        local screenY = baseY + (npcY - quadY - (npcImage:getHeight() - 16)) * viewport.scale
+        local screenX, screenY = world.cameraViewport.worldToScreen(camera, npcX,
+          npcY - (npcImage:getHeight() - 16))
+        screenX = baseX + screenX * viewport.scale
+        screenY = baseY + screenY * viewport.scale
         if hFlip then
           love.graphics.draw(npcImage, screenX + npcImage:getWidth() * viewport.scale, screenY, 0, -viewport.scale, viewport.scale)
         else
@@ -4640,7 +4716,8 @@ function love.draw()
     end
 
     if spriteImage then
-      love.graphics.draw(spriteImage, baseX + (playerCompositedX - quadX) * viewport.scale, baseY + (playerCompositedY - quadY - 16) * viewport.scale, 0, viewport.scale, viewport.scale)
+      local screenX, screenY = world.cameraViewport.worldToScreen(camera, playerCompositedX, playerCompositedY - 16)
+      love.graphics.draw(spriteImage, baseX + screenX * viewport.scale, baseY + screenY * viewport.scale, 0, viewport.scale, viewport.scale)
     end
 
     -- Real message box (DialogueRunner), drawn over the field like the
