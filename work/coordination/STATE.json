@@ -5,33 +5,32 @@
   "status": "READY_FOR_WORKER",
   "current_phase": "Phase 2 — rendering, input, and scene runtime",
   "canonical_status_owner": "work/roadmaps/CAPABILITY_CHECKLIST.md",
-  "active_task": "work/tasks/local-worker-bridge-phase2-camera-integration-test-route.md",
-  "objective": "Correct the explicit camera bridge route so it validates, runs, and stages both independently reviewed focused camera tests before publishing the camera patch.",
+  "active_task": "work/tasks/local-worker-bridge-phase2-camera-optional-staging-fix.md",
+  "objective": "Correct only the Phase 2 camera route's optional-document staging so verified allowlisted implementation files publish after all existing gates pass.",
   "next_role": "WORKER",
   "reconciliation": {
     "phase3_result": "DONE — continuous runtime exit replay independently passed at 4f4f29ec",
     "canonical_phase3_status": "DONE",
     "next_canonical_gate": "Phase 2 true 240x160 camera viewport, then Oak/reference screenshot parity",
     "camera_task": "work/tasks/phase2-gba-camera-viewport-proof.md",
-    "camera_task_status": "READY FOR WORKER — publication held for exact route correction",
+    "camera_task_status": "REVIEWED LOCALLY — guarded publication held for exact optional-staging correction",
     "bridge_prerequisite": "CLOSED — REVIEWED PASS at 27867add; trusted probe run 34735602055",
     "task_status_drift_corrected": "The camera task header still said BLOCKED ON BRIDGE ROUTE after the prerequisite PASS; corrected to READY FOR WORKER without changing implementation scope or acceptance.",
     "canonical_status_change_this_turn": false
   },
   "active_task_acceptance_summary": [
-    "Add only tests/phase2_camera_viewport_integration_test.lua to the exact Phase 2 camera bridge allowlist, focused commands, and explicit staging.",
-    "Preserve every existing route and security invariant; no camera or gameplay files may change.",
-    "Independent review is required before submitting the already-reviewed camera patch request."
+    "Keep the existing Phase 2 camera staging list exact; stage its listed files individually only when present.",
+    "Preserve all validation, focused/full/runtime gates and every bridge policy; no camera or gameplay files may change.",
+    "Independent review is required before retrying the already-reviewed camera patch request."
   ],
   "boundaries": {
     "may_change": [
       ".github/workflows/local-worker-bridge.yml",
-      "work/coordination/LOCAL_RUNNER_BRIDGE.md if needed",
       "task / coordination / review documentation"
     ],
     "must_not_change": [
-      "camera/gameplay/runtime implementation or tests",
-      "trusted-main-only/no-public-PR policy, ROM gate, or explicit fail-closed routing",
+      "camera/gameplay/runtime implementation, tests, or route allowlist set",
+      "trusted-main-only/no-public-PR policy, ROM gate, routing, or test order",
       "public-PR execution policy",
       "supported-ROM policy or exact ROM SHA gate",
       "ROM/cache/BIOS/reference screenshots/extracted content",
@@ -40,7 +39,7 @@
     ]
   },
   "blocker": null,
-  "next_after_success": "After independent PASS, submit the already-reviewed camera patch through the corrected route, then reconcile its guarded-runner evidence before scoping Oak/reference parity.",
+  "next_after_success": "After independent PASS, retry the unchanged reviewed camera patch through the corrected route, then reconcile its guarded-runner evidence before scoping Oak/reference parity.",
   "legal_content_boundary": "Never commit ROMs, BIOS dumps, generated caches, ROM-derived reference screenshots, extracted game assets, or other prohibited content.",
   "phase_completion_rule": "Phase 2 remains IN PROGRESS until the true 240x160 camera viewport and the Oak/reference screenshot discrepancy gate are both evidenced and independently reviewed."
 }

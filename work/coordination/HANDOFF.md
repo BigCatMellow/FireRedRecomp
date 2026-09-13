@@ -7,7 +7,7 @@
 - Authority: coordination state only; root `AGENTS.md` and active task contracts own authority
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
 - Completed prerequisite: [`../tasks/local-worker-bridge-phase2-camera-route.md`](../tasks/local-worker-bridge-phase2-camera-route.md)
-- Active route correction: [`../tasks/local-worker-bridge-phase2-camera-integration-test-route.md`](../tasks/local-worker-bridge-phase2-camera-integration-test-route.md)
+- Active route correction: [`../tasks/local-worker-bridge-phase2-camera-optional-staging-fix.md`](../tasks/local-worker-bridge-phase2-camera-optional-staging-fix.md)
 - Machine state: [`STATE.json`](STATE.json)
 
 ## Summary
@@ -23,22 +23,23 @@ The task now explicitly says `READY FOR WORKER`; its implementation scope,
 acceptance criteria, and safety boundaries are unchanged.
 
 The camera implementation at `ab8bdc71` passed independent local review, focused
-tests, both 125-file suites, and a ROM-backed Route 1 replay. Before it is sent to
-the guarded bridge, one narrow route correction must add its second focused
-integration test to the hard-coded allowlist, command, and publish staging. This
-prevents silently omitting evidence merely to fit a stale route.
+tests, both 125-file suites, and a ROM-backed Route 1 replay. Guarded run
+`34753075794` then repeated all target, focused, full-suite, verified-ROM, and
+runtime gates successfully, but failed only in final staging because an absent
+optional review document shares one `git add` invocation with required files.
+The active correction stages only the existing exact allowlist entries that exist;
+it adds no path and changes no evidence gate.
 
 ## Active Worker package
 
-Execute only `work/tasks/local-worker-bridge-phase2-camera-integration-test-route.md`.
+Execute only `work/tasks/local-worker-bridge-phase2-camera-optional-staging-fix.md`.
 
 Required result:
 
 ```text
-exact integration-test path
-→ hard-coded route validation
-→ explicit focused command
-→ explicit publish staging
+exact existing staging list
+→ stage each listed present file
+→ absent optional review doc does not suppress required files
 → all prior bridge guardrails unchanged
 ```
 
