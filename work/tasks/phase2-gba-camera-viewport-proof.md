@@ -1,6 +1,6 @@
 # Task: prove the true 240×160 GBA overworld camera viewport
 
-- Status: `READY FOR WORKER`
+- Status: `CLOSED — REVIEWED PASS`
 - AGI status: `AGI READY`
 - Type: `PHASE 2 / RENDERING / BOUNDED INTEGRATION`
 - Owner: project maintainer
@@ -99,3 +99,14 @@ If exact retail camera anchoring/edge rules cannot be established from source or
 Completion means the live overworld uses a tested 240×160 camera-clipped viewport, focused and full suites pass including verified-ROM evidence, and an independent Reviewer returns `PASS` on the exact revision.
 
 This task alone does **not** make Phase 2 `DONE`. After PASS, Orchestrator must re-evaluate the remaining Oak-intro/reference screenshot discrepancy gate and dispatch its smallest measurable leaf.
+
+## Completion evidence
+
+- Published implementation: `4c5456f3`.
+- Independent review: `PASS`; see
+  `work/reviews/2026-09-13-phase2-gba-camera-viewport-review.md`.
+- Guarded Local Worker Bridge run `34753297372`: all target validation, two
+  focused tests, no-ROM suite, verified-ROM suite, runtime replay, and final
+  publication steps passed.
+- Runtime evidence: Route 1 map `787`, viewport `240x160`, camera `208,264`,
+  live movement/camera movement true, and world state stable.

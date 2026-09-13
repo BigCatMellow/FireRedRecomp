@@ -1,6 +1,6 @@
 # Task: fix optional-document staging for the Phase 2 camera bridge route
 
-- Status: `ACTIVE`
+- Status: `CLOSED — REVIEWED PASS`
 - AGI status: `AGI READY`
 - Type: `INFRASTRUCTURE / EXECUTION SUBSTRATE`
 - Owner: project maintainer
@@ -51,3 +51,9 @@ After independent `PASS`, retry the already-reviewed allowlist-matched camera pa
 request. Treat the prior run's focused/full/runtime successes as evidence of the
 unchanged implementation, but require the guarded runner's final publish step to
 succeed before reconciling the camera leaf.
+
+## Completion evidence
+
+Independent review passed `11394868d1800dcc53526d9b8f068d0042ec4514`.
+The retried guarded run `34753297372` completed final staging and publication
+successfully without changing its exact path set or evidence gates.

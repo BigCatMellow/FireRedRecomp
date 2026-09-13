@@ -1,6 +1,6 @@
 # Task: correct the Phase 2 camera bridge integration-test route
 
-- Status: `ACTIVE`
+- Status: `CLOSED — REVIEWED PASS`
 - AGI status: `AGI READY`
 - Type: `INFRASTRUCTURE / EXECUTION SUBSTRATE`
 - Owner: project maintainer
@@ -55,3 +55,9 @@ After independent `PASS`, return immediately to the unchanged camera implementat
 revision `ab8bdc718c097092caad92dedc92b377c18c1ef6`, create its bounded bridge
 patch request, and require the guarded runner's focused/full/runtime evidence before
 claiming publication.
+
+## Completion evidence
+
+Independent review passed `9ec098a836d14e796e8a4aa35e4a7948feb882a7`.
+The exact integration test then ran successfully in guarded camera publication
+run `34753297372`.

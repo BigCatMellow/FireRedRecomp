@@ -2,80 +2,47 @@
 
 - Record role: `HANDOFF`
 - Primary information class: `TASK CONTEXT`
-- Status: `READY_FOR_REVIEWER`
+- Status: `READY_FOR_WORKER`
 - Lifecycle: `ACTIVE`
 - Authority: coordination state only; root `AGENTS.md` and active task contracts own authority
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
-- Active review target: [`../tasks/local-worker-bridge-phase2-camera-optional-staging-fix.md`](../tasks/local-worker-bridge-phase2-camera-optional-staging-fix.md)
-- Camera task awaiting reconciliation: [`../tasks/phase2-gba-camera-viewport-proof.md`](../tasks/phase2-gba-camera-viewport-proof.md)
+- Completed Phase 2 leaf: [`../tasks/phase2-gba-camera-viewport-proof.md`](../tasks/phase2-gba-camera-viewport-proof.md)
+- Active prerequisite: [`../tasks/local-worker-bridge-phase2-oak-reference-evidence-route.md`](../tasks/local-worker-bridge-phase2-oak-reference-evidence-route.md)
 - Machine state: [`STATE.json`](STATE.json)
 
 ## Summary
 
-Phase 3 remains canonically `DONE`. Phase 2 remains `IN PROGRESS`.
+The true 240×160 camera viewport is complete and independently reviewed at
+`4c5456f3`. Guarded Local Worker Bridge run `34753297372` passed target
+validation, two focused tests, no-ROM and verified-ROM suites, the live Route 1
+replay, and final publication. Phase 2 remains `IN PROGRESS` only for its
+Oak/reference visual-parity gate.
 
-Live GitHub advanced beyond the previous relay. The optional camera-route staging
-correction was committed at exact revision
-`11394868d1800dcc53526d9b8f068d0042ec4514`. Its diff replaces the single
-all-path `git add` for the existing camera allowlist with an existence-checked
-loop that stages each same listed path individually.
+The next bounded leaf is evidence infrastructure, not an unmeasured visual fix:
+the Oak/reference harness must produce deterministic 240×160 implementation
+captures and an honest external retail-reference protocol without committing
+reference media or treating self-diff as parity.
 
-The camera patch was then retried at `df8a17ad671ba5b614ac37abba5f2faaaf527b16`
-and the guarded Local Worker Bridge published it at
-`4c5456f3fc37723e60b365cce1fc8e8a32df1288`.
+## Active Worker package
 
-However, the active staging-fix task explicitly requires independent Reviewer
-`PASS` before retrying the camera patch, and no durable independent review record
-for revision `11394868...` exists on live `main`. Do not infer PASS merely from
-the later successful publication. The repository sequence therefore has an
-evidence-ordering defect that must be reconciled without undoing or self-reviewing
-the already-published bounded changes.
+Execute only `work/tasks/local-worker-bridge-phase2-oak-reference-evidence-route.md`.
+It adds the harness's one explicit fail-closed route and probe only; it must not
+modify capture, Oak, camera, or gameplay behavior.
 
-## Active Reviewer package
+## After independent PASS
 
-Review only `work/tasks/local-worker-bridge-phase2-camera-optional-staging-fix.md`
-against exact revision:
-
-`11394868d1800dcc53526d9b8f068d0042ec4514`
-
-Verify the task's existing acceptance and boundaries, including:
-
-- exact existing camera staging list preserved;
-- each listed path staged only if present;
-- missing optional review document cannot suppress required present files;
-- no wildcard/directory staging or generic fallback;
-- no route, policy, ROM gate, test-order, gameplay, or allowlist widening;
-- required static/no-ROM evidence as available under the Reviewer contract.
-
-Return `PASS`, `NEEDS_FIX`, or `BLOCK`. Do not perform Worker implementation.
-
-## After PASS
-
-Orchestrator should close only the staging prerequisite, then route the exact
-published camera revision `4c5456f3fc37723e60b365cce1fc8e8a32df1288`
-through independent review/reconciliation against
-`work/tasks/phase2-gba-camera-viewport-proof.md`. Only after that camera leaf is
-independently PASS may Orchestrator scope the remaining Oak/reference screenshot
-parity leaf.
-
-## Boundaries
-
-Do not mark Phase 2 `DONE`. Do not alter camera/gameplay/runtime implementation in
-the staging-fix review. Do not weaken trusted-main-only execution, public-PR
-prohibition, ROM SHA verification, explicit route/path allowlists, required tests,
-or legal/content boundaries. Never commit ROMs, BIOS dumps, generated caches,
-ROM-derived reference screenshots, extracted assets, or other prohibited content.
+Dispatch `work/tasks/phase2-oak-reference-evidence-harness.md` immediately.
+After its evidence is independently reviewed, scope the external comparison leaf.
+If a trusted external retail reference is unavailable at that stage, record it as
+the precise external-input blocker rather than fabricating a parity claim.
 
 ## Goal-continuity commitment
 
-Continue through:
+The coordinator continues automatically through:
 
 ```text
-staging-fix independent review
-→ exact published camera revision independent review/reconciliation
-→ Oak/reference parity scope
+Oak/reference bridge route → capture harness → review → external comparison scope
 ```
 
-Stop only on a genuine failed evidence gate, authority/safety boundary, or missing
-trustworthy retail-reference input. Record the first exact blocker rather than
-widening scope.
+Only a genuine authority/safety boundary, failed required evidence gate, or missing
+external retail reference may interrupt that chain.

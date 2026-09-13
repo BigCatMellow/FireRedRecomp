@@ -1,47 +1,46 @@
 {
   "schema_version": 1,
-  "updated_utc": "2026-09-13T11:01:00Z",
+  "updated_utc": "2026-09-13T04:00:00Z",
   "role": "ORCHESTRATOR",
-  "status": "READY_FOR_REVIEWER",
+  "status": "READY_FOR_WORKER",
   "current_phase": "Phase 2 — rendering, input, and scene runtime",
   "canonical_status_owner": "work/roadmaps/CAPABILITY_CHECKLIST.md",
-  "active_task": "work/tasks/local-worker-bridge-phase2-camera-optional-staging-fix.md",
-  "objective": "Independently verify the exact optional-document staging correction at 11394868d1800dcc53526d9b8f068d0042ec4514 before treating that prerequisite as closed.",
-  "next_role": "REVIEWER",
+  "active_task": "work/tasks/local-worker-bridge-phase2-oak-reference-evidence-route.md",
+  "objective": "Add and independently review an explicit fail-closed bridge route for deterministic Phase 2 Oak/reference evidence capture before dispatching the capture harness.",
+  "next_role": "WORKER",
   "reconciliation": {
     "phase3_result": "DONE — continuous runtime exit replay independently passed at 4f4f29ec",
     "canonical_phase3_status": "DONE",
     "next_canonical_gate": "Phase 2 true 240x160 camera viewport, then Oak/reference screenshot parity",
     "camera_task": "work/tasks/phase2-gba-camera-viewport-proof.md",
-    "camera_task_status": "PUBLISHED BY GUARDED BRIDGE at 4c5456f3fc37723e60b365cce1fc8e8a32df1288; canonical reconciliation withheld pending required independent review sequence",
+    "camera_task_status": "CLOSED — REVIEWED PASS at 4c5456f3; guarded run 34753297372",
     "bridge_prerequisite": "CLOSED — REVIEWED PASS at 27867add; trusted probe run 34735602055",
-    "optional_staging_fix_revision": "11394868d1800dcc53526d9b8f068d0042ec4514",
-    "optional_staging_fix_review": "MISSING — no independent review record found on live main",
-    "guarded_camera_publication": "4c5456f3fc37723e60b365cce1fc8e8a32df1288, published after retry commit df8a17ad671ba5b614ac37abba5f2faaaf527b16",
+    "task_status_drift_corrected": "The camera task header still said BLOCKED ON BRIDGE ROUTE after the prerequisite PASS; corrected to READY FOR WORKER without changing implementation scope or acceptance.",
     "canonical_status_change_this_turn": false
   },
   "active_task_acceptance_summary": [
-    "Verify the existing Phase 2 camera staging list remains exact and stages each listed file only when present.",
-    "Verify missing optional review documentation cannot suppress present allowlisted implementation files.",
-    "Verify no wildcard/directory staging, route widening, policy weakening, ROM-gate change, or gameplay change was introduced.",
-    "Return PASS, NEEDS_FIX, or BLOCK on exact revision 11394868d1800dcc53526d9b8f068d0042ec4514."
+    "Add one exact phase2-oak-reference-evidence-harness route with bounded capture/test/runtime/staging surfaces.",
+    "Preserve all existing bridge security, ROM, and evidence gates; no visual/gameplay implementation may change.",
+    "Independent review and a non-gameplay route probe are required before dispatching the evidence harness."
   ],
   "boundaries": {
     "may_change": [
-      "review documentation",
-      "coordination state/handoff after verdict"
+      ".github/workflows/local-worker-bridge.yml",
+      "work/coordination/LOCAL_RUNNER_BRIDGE.md if needed",
+      "task / coordination / review documentation"
     ],
     "must_not_change": [
-      "camera/gameplay/runtime implementation or tests",
-      "bridge implementation during Reviewer turn",
-      "trusted-main-only/no-public-PR policy, ROM gate, routing, or test order",
+      "Oak/camera/gameplay/capture implementation or tests",
+      "trusted-main-only/no-public-PR policy, ROM gate, routing policy, or test order",
+      "public-PR execution policy",
       "supported-ROM policy or exact ROM SHA gate",
       "ROM/cache/BIOS/reference screenshots/extracted content",
-      "broader repository permissions"
+      "broader repository permissions",
+      "independent-review requirement"
     ]
   },
-  "blocker": "The staging fix was followed by guarded camera publication before its task-required independent review was durably recorded. Do not close the staging prerequisite or reconcile the camera leaf until Reviewer verifies the exact staging-fix revision.",
-  "next_after_success": "After staging-fix PASS, independently review/reconcile the exact published camera revision 4c5456f3fc37723e60b365cce1fc8e8a32df1288 against work/tasks/phase2-gba-camera-viewport-proof.md; only then scope Oak/reference parity.",
+  "blocker": null,
+  "next_after_success": "After independent PASS, dispatch the Phase 2 Oak/reference evidence harness; then scope external reference comparison from its protocol without claiming parity from implementation self-diffs.",
   "legal_content_boundary": "Never commit ROMs, BIOS dumps, generated caches, ROM-derived reference screenshots, extracted game assets, or other prohibited content.",
   "phase_completion_rule": "Phase 2 remains IN PROGRESS until the true 240x160 camera viewport and the Oak/reference screenshot discrepancy gate are both evidenced and independently reviewed."
 }

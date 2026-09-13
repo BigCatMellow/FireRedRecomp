@@ -1,0 +1,44 @@
+# Task: add Local Worker Bridge route for Phase 2 Oak/reference evidence
+
+- Status: `ACTIVE`
+- AGI status: `AGI READY`
+- Type: `INFRASTRUCTURE / EXECUTION SUBSTRATE`
+- Owner: project maintainer
+- Risk: `LOW`
+- Parent dependency: `work/tasks/phase2-oak-reference-evidence-harness.md`
+
+## Goal
+
+Add one explicit fail-closed Local Worker Bridge route for the bounded Phase 2
+Oak/reference evidence harness. This task changes routing only, never visual or
+gameplay behavior.
+
+## MAY CHANGE
+
+- `.github/workflows/local-worker-bridge.yml`;
+- `work/coordination/LOCAL_RUNNER_BRIDGE.md` if needed;
+- focused route probe/validation support;
+- this task and coordination/review documentation.
+
+## MUST NOT CHANGE
+
+- `main.lua`, capture implementation, Oak/camera/gameplay behavior, or tests;
+- public-PR policy, permissions, exact ROM SHA gate, full-suite gates, fail-closed
+  routing, or independent review;
+- ROM/BIOS/reference screenshots/extracted content.
+
+## Acceptance criteria
+
+1. One exact `phase2-oak-reference-evidence-harness` route selects explicit,
+   task-bounded target, focused-test, optional runtime capture, and staging lists.
+2. Unknown routes remain fail closed; no wildcard/generic fallback is introduced.
+3. Existing trusted-main-only, no-public-PR, ROM SHA, validation-before-apply,
+   focused/no-ROM/verified-ROM/runtime-before-publish invariants remain intact.
+4. A one-file non-gameplay probe proves the route is recognized.
+5. Independent Reviewer passes the exact route revision before the evidence
+   harness becomes `READY FOR WORKER`.
+
+## Completion / handoff
+
+Restore `phase2-oak-reference-evidence-harness.md` as the sole active Worker
+package after independent PASS.
