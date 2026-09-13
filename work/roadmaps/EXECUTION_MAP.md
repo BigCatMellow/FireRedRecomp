@@ -41,7 +41,7 @@ Phase 2 renderer/runtime [IN PROGRESS]  ← CURRENT DISPATCH FOCUS
         │
         ├─ outer window scaling: evidenced
         ├─ imported map/title/Oak rendering foundations: substantial evidence exists
-        ├─ true 240×160 overworld camera viewport: READY FOR WORKER
+        ├─ true 240×160 overworld camera viewport: REVIEWED PASS (`4c5456f3`)
         └─ Oak/reference screenshot discrepancy gate: remains after camera viewport PASS
                           ↓
 Phase 4 battle generalization
