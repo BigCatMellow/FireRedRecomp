@@ -59,6 +59,9 @@ jobs:
             phase3-title-oak-entry-proof*.patch|phase3-title-oak-entry-proof*.probe)
               route='phase3-title-oak-entry-proof'
               ;;
+            phase3-complete-runtime-exit-replay*.patch|phase3-complete-runtime-exit-replay*.probe)
+              route='phase3-complete-runtime-exit-replay'
+              ;;
             oak-parcel-dex-presentation-north*.patch|oak-parcel-dex-presentation-north*.probe)
               route='oak-parcel-dex-presentation-north'
               ;;
@@ -136,6 +139,8 @@ jobs:
                 ;;
               phase3-title-oak-entry-proof:main.lua|phase3-title-oak-entry-proof:tests/phase3_title_oak_entry_test.lua|phase3-title-oak-entry-proof:scripts/runtime_title_oak_entry_replay.sh|phase3-title-oak-entry-proof:work/tasks/phase3-title-oak-entry-proof.md|phase3-title-oak-entry-proof:work/tasks/phase3-exit-proof.md)
                 ;;
+              phase3-complete-runtime-exit-replay:main.lua|phase3-complete-runtime-exit-replay:tests/phase3_complete_runtime_exit_replay_test.lua|phase3-complete-runtime-exit-replay:scripts/runtime_phase3_complete_exit_replay.sh|phase3-complete-runtime-exit-replay:work/tasks/phase3-complete-runtime-exit-replay.md|phase3-complete-runtime-exit-replay:work/tasks/phase3-exit-proof.md)
+                ;;
               *)
                 echo "Patch target is not authorized for explicit route '$ROUTE': $target" >&2
                 exit 1
@@ -168,6 +173,9 @@ jobs:
               ;;
             phase3-title-oak-entry-proof)
               "$LUA" tests/phase3_title_oak_entry_test.lua
+              ;;
+            phase3-complete-runtime-exit-replay)
+              "$LUA" tests/phase3_complete_runtime_exit_replay_test.lua
               ;;
             *)
               echo "Patch execution has no focused-test route for '$ROUTE'." >&2
@@ -206,6 +214,9 @@ jobs:
             phase3-title-oak-entry-proof)
               bash scripts/runtime_title_oak_entry_replay.sh
               ;;
+            phase3-complete-runtime-exit-replay)
+              bash scripts/runtime_phase3_complete_exit_replay.sh
+              ;;
             *)
               echo "Patch execution has no runtime-replay route for '$ROUTE'." >&2
               exit 1
@@ -226,6 +237,9 @@ jobs:
               ;;
             phase3-title-oak-entry-proof)
               git add main.lua tests/phase3_title_oak_entry_test.lua scripts/runtime_title_oak_entry_replay.sh work/tasks/phase3-title-oak-entry-proof.md work/tasks/phase3-exit-proof.md 2>/dev/null || true
+              ;;
+            phase3-complete-runtime-exit-replay)
+              git add main.lua tests/phase3_complete_runtime_exit_replay_test.lua scripts/runtime_phase3_complete_exit_replay.sh work/tasks/phase3-complete-runtime-exit-replay.md work/tasks/phase3-exit-proof.md 2>/dev/null || true
               ;;
             *)
               echo "Patch execution has no publish route for '$ROUTE'." >&2
