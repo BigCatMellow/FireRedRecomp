@@ -1,7 +1,7 @@
 # Task: prove the true 240×160 GBA overworld camera viewport
 
-- Status: `BLOCKED ON BRIDGE ROUTE`
-- AGI status: `AGI READY AFTER PREREQUISITE`
+- Status: `READY FOR WORKER`
+- AGI status: `AGI READY`
 - Type: `PHASE 2 / RENDERING / BOUNDED INTEGRATION`
 - Owner: project maintainer
 - Risk: `MEDIUM`
@@ -30,6 +30,7 @@ This task is about the **native GBA-sized gameplay viewport**, not broad visual 
 - Integer/arbitrary window scaling already exists and is independently exercised.
 - Imported map composites and object/player rendering already exist.
 - Pixel-diff comparison tooling already exists; true external-reference comparison remains a later acceptance item unless a trustworthy reference can be generated without committing copyrighted assets.
+- The guarded Local Worker Bridge route for this task received independent `PASS` at `27867addb8a32cf4afdcff27a5d8e6c95b650333`, with trusted route probe run `34735602055` at `518c1ca6d682f6ebe07d9e5873823b0d83b1119c`.
 
 ## MAY CHANGE
 
