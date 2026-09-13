@@ -1,6 +1,6 @@
 # Task: add Local Worker Bridge route for the complete Phase 3 replay
 
-- Status: `ACTIVE`
+- Status: `CLOSED — REVIEWED PASS`
 - AGI status: `AGI READY`
 - Type: `INFRASTRUCTURE / EXECUTION SUBSTRATE`
 - Owner: project maintainer
@@ -93,4 +93,7 @@ Stop rather than weaken security if this would require public-PR self-hosted exe
 
 ## Completion / handoff
 
-Completion closes only this execution-substrate prerequisite. After independent `PASS`, Orchestrator restores `work/tasks/phase3-complete-runtime-exit-replay.md` as `READY_FOR_WORKER`. Phase 3 remains `IN PROGRESS` until the complete parent exit proof itself is independently verified.
+Independent review passed published revision `e94db28c`; Local Worker Bridge run
+`34733871388` selected the route and passed its private-ROM/toolchain probe.
+This closes only the prerequisite. `phase3-complete-runtime-exit-replay.md` is
+now the active `READY_FOR_WORKER` package; Phase 3 remains `IN PROGRESS`.

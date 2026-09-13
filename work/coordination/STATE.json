@@ -5,17 +5,16 @@
   "status": "READY_FOR_WORKER",
   "current_phase": "Phase 3 — playable vertical slice",
   "canonical_status_owner": "work/roadmaps/CAPABILITY_CHECKLIST.md",
-  "active_task": "work/tasks/local-worker-bridge-complete-runtime-route.md",
-  "objective": "Add only the explicit fail-closed Local Worker Bridge route required to execute the already-authorized phase3-complete-runtime-exit-replay evidence package, preserving trusted-main, exact-target, verified-ROM, test-before-publish, and no-public-PR invariants.",
+  "active_task": "work/tasks/phase3-complete-runtime-exit-replay.md",
+  "objective": "Produce and independently validate the continuous ROM-backed Phase 3 boot-to-save-to-fresh-reload evidence artifact without changing gameplay behavior.",
   "next_role": "WORKER",
   "reconciliation": {
-    "blocked_parent_leaf": "work/tasks/phase3-complete-runtime-exit-replay.md",
-    "worker_result": "BLOCKED",
-    "blocker": "EXECUTION_SUBSTRATE_ROUTE_MISSING",
+    "worker_result": "READY",
+    "blocker": null,
     "gameplay_defect_found": false,
     "implementation_published": false,
     "tests_claimed": false,
-    "new_prerequisite": "work/tasks/local-worker-bridge-complete-runtime-route.md",
+    "bridge_prerequisite": "CLOSED — REVIEWED PASS at e94db28c",
     "canonical_status_change": false,
     "phase3_status": "IN PROGRESS"
   },
@@ -46,7 +45,7 @@
     ]
   },
   "blocker": null,
-  "next_after_success": "After independent PASS on this bridge prerequisite, Orchestrator restores work/tasks/phase3-complete-runtime-exit-replay.md as READY_FOR_WORKER. Do not advance Phase 3 until that complete runtime proof itself receives independent PASS.",
+  "next_after_success": "After independent PASS on the complete runtime proof, reconcile the parent Phase 3 exit gate; do not advance Phase 3 before that review.",
   "legal_content_boundary": "Never commit ROMs, BIOS dumps, generated caches, extracted game assets, or other prohibited content.",
   "phase_completion_rule": "Do not mark Phase 3 DONE until the complete parent exit criterion is evidenced and independently reviewed."
 }
