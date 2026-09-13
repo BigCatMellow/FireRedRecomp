@@ -1,0 +1,4 @@
+Phase 4 no-item trainer-party bridge route recognition probe.
+
+This non-gameplay probe verifies only the explicit route selector and the
+existing trusted local runner, Lua toolchain, and private-ROM hash gate.
