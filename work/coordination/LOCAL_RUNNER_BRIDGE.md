@@ -25,6 +25,7 @@ Current supported request/probe prefixes are:
 - `oak-parcel-dex-presentation-north...` — retained for the already-completed bounded Oak Parcel/Dex route;
 - `phase3-title-oak-entry-proof...` — bounded Phase 3 title/new-game → Oak/identity → bedroom entry route;
 - `phase3-complete-runtime-exit-replay...` — bounded continuous Phase 3 evidence route;
+- `phase2-gba-camera-viewport-proof...` — bounded true-240×160 camera viewport route;
 - `runner-online...probe` — non-patch runner-readiness probe only.
 
 Adding a new route requires a bounded task that authorizes bridge maintenance. Do not add a generic fallback route.

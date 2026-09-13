@@ -62,6 +62,9 @@ jobs:
             phase3-complete-runtime-exit-replay*.patch|phase3-complete-runtime-exit-replay*.probe)
               route='phase3-complete-runtime-exit-replay'
               ;;
+            phase2-gba-camera-viewport-proof*.patch|phase2-gba-camera-viewport-proof*.probe)
+              route='phase2-gba-camera-viewport-proof'
+              ;;
             oak-parcel-dex-presentation-north*.patch|oak-parcel-dex-presentation-north*.probe)
               route='oak-parcel-dex-presentation-north'
               ;;
@@ -141,6 +144,8 @@ jobs:
                 ;;
               phase3-complete-runtime-exit-replay:main.lua|phase3-complete-runtime-exit-replay:tests/phase3_complete_runtime_exit_replay_test.lua|phase3-complete-runtime-exit-replay:scripts/runtime_phase3_complete_exit_replay.sh|phase3-complete-runtime-exit-replay:work/tasks/phase3-complete-runtime-exit-replay.md|phase3-complete-runtime-exit-replay:work/tasks/phase3-exit-proof.md)
                 ;;
+              phase2-gba-camera-viewport-proof:main.lua|phase2-gba-camera-viewport-proof:src/core/CameraViewport.lua|phase2-gba-camera-viewport-proof:tests/camera_viewport_test.lua|phase2-gba-camera-viewport-proof:scripts/runtime_camera_viewport_replay.sh|phase2-gba-camera-viewport-proof:work/tasks/phase2-gba-camera-viewport-proof.md|phase2-gba-camera-viewport-proof:work/coordination/STATE.json|phase2-gba-camera-viewport-proof:work/coordination/HANDOFF.md|phase2-gba-camera-viewport-proof:work/reviews/phase2-gba-camera-viewport-proof-review.md)
+                ;;
               *)
                 echo "Patch target is not authorized for explicit route '$ROUTE': $target" >&2
                 exit 1
@@ -176,6 +181,9 @@ jobs:
               ;;
             phase3-complete-runtime-exit-replay)
               "$LUA" tests/phase3_complete_runtime_exit_replay_test.lua
+              ;;
+            phase2-gba-camera-viewport-proof)
+              "$LUA" tests/camera_viewport_test.lua
               ;;
             *)
               echo "Patch execution has no focused-test route for '$ROUTE'." >&2
@@ -217,6 +225,9 @@ jobs:
             phase3-complete-runtime-exit-replay)
               bash scripts/runtime_phase3_complete_exit_replay.sh
               ;;
+            phase2-gba-camera-viewport-proof)
+              bash scripts/runtime_camera_viewport_replay.sh
+              ;;
             *)
               echo "Patch execution has no runtime-replay route for '$ROUTE'." >&2
               exit 1
@@ -240,6 +251,9 @@ jobs:
               ;;
             phase3-complete-runtime-exit-replay)
               git add main.lua tests/phase3_complete_runtime_exit_replay_test.lua scripts/runtime_phase3_complete_exit_replay.sh work/tasks/phase3-complete-runtime-exit-replay.md work/tasks/phase3-exit-proof.md 2>/dev/null || true
+              ;;
+            phase2-gba-camera-viewport-proof)
+              git add main.lua src/core/CameraViewport.lua tests/camera_viewport_test.lua scripts/runtime_camera_viewport_replay.sh work/tasks/phase2-gba-camera-viewport-proof.md work/coordination/STATE.json work/coordination/HANDOFF.md work/reviews/phase2-gba-camera-viewport-proof-review.md 2>/dev/null || true
               ;;
             *)
               echo "Patch execution has no publish route for '$ROUTE'." >&2
