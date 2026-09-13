@@ -1,0 +1,4 @@
+Phase 4 player forced-replacement UI bridge-route recognition probe.
+
+This non-gameplay marker exercises only the explicit Local Worker Bridge route
+selector and its existing trusted-main, toolchain, and private-ROM hash gates.
