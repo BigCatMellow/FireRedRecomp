@@ -28,6 +28,9 @@ Current supported request/probe prefixes are:
 - `phase2-gba-camera-viewport-proof...` — bounded true-240×160 camera viewport route;
 - `phase2-oak-reference-evidence-harness...` — bounded deterministic 240×160
   Oak/Pallet implementation-capture and external-reference protocol route;
+- `phase4-trainer-party-no-item-layouts...` — bounded `partyFlags` 0/1
+  trainer-party construction route; it has no runtime replay because live
+  trainer-flow wiring is explicitly out of scope;
 - `runner-online...probe` — non-patch runner-readiness probe only.
 
 Adding a new route requires a bounded task that authorizes bridge maintenance. Do not add a generic fallback route.

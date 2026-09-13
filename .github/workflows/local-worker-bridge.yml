@@ -68,6 +68,9 @@ jobs:
             phase2-oak-reference-evidence-harness*.patch|phase2-oak-reference-evidence-harness*.probe)
               route='phase2-oak-reference-evidence-harness'
               ;;
+            phase4-trainer-party-no-item-layouts*.patch|phase4-trainer-party-no-item-layouts*.probe)
+              route='phase4-trainer-party-no-item-layouts'
+              ;;
             oak-parcel-dex-presentation-north*.patch|oak-parcel-dex-presentation-north*.probe)
               route='oak-parcel-dex-presentation-north'
               ;;
@@ -151,6 +154,8 @@ jobs:
                 ;;
               phase2-oak-reference-evidence-harness:main.lua|phase2-oak-reference-evidence-harness:tests/phase2_oak_reference_evidence_test.lua|phase2-oak-reference-evidence-harness:scripts/phase2_oak_reference_evidence_capture.sh|phase2-oak-reference-evidence-harness:work/tasks/phase2-oak-reference-evidence-harness.md|phase2-oak-reference-evidence-harness:work/coordination/STATE.json|phase2-oak-reference-evidence-harness:work/coordination/HANDOFF.md)
                 ;;
+              phase4-trainer-party-no-item-layouts:src/core/TrainerPokemonFactory.lua|phase4-trainer-party-no-item-layouts:tests/trainer_pokemon_factory_test.lua|phase4-trainer-party-no-item-layouts:tests/phase4_trainer_party_rom_test.lua|phase4-trainer-party-no-item-layouts:work/tasks/phase4-trainer-party-no-item-layouts.md|phase4-trainer-party-no-item-layouts:work/coordination/STATE.json|phase4-trainer-party-no-item-layouts:work/coordination/HANDOFF.md)
+                ;;
               *)
                 echo "Patch target is not authorized for explicit route '$ROUTE': $target" >&2
                 exit 1
@@ -193,6 +198,10 @@ jobs:
               ;;
             phase2-oak-reference-evidence-harness)
               "$LUA" tests/phase2_oak_reference_evidence_test.lua
+              ;;
+            phase4-trainer-party-no-item-layouts)
+              "$LUA" tests/trainer_pokemon_factory_test.lua
+              "$LUA" tests/phase4_trainer_party_rom_test.lua
               ;;
             *)
               echo "Patch execution has no focused-test route for '$ROUTE'." >&2
@@ -244,6 +253,9 @@ jobs:
               fi
               bash scripts/phase2_oak_reference_evidence_capture.sh
               ;;
+            phase4-trainer-party-no-item-layouts)
+              echo "No runtime replay is authorized: this route is constructor-only and must not wire live trainer flow."
+              ;;
             *)
               echo "Patch execution has no runtime-replay route for '$ROUTE'." >&2
               exit 1
@@ -277,6 +289,13 @@ jobs:
               ;;
             phase2-oak-reference-evidence-harness)
               for path in main.lua tests/phase2_oak_reference_evidence_test.lua scripts/phase2_oak_reference_evidence_capture.sh work/tasks/phase2-oak-reference-evidence-harness.md work/coordination/STATE.json work/coordination/HANDOFF.md; do
+                if [[ -e "$path" ]]; then
+                  git add -- "$path"
+                fi
+              done
+              ;;
+            phase4-trainer-party-no-item-layouts)
+              for path in src/core/TrainerPokemonFactory.lua tests/trainer_pokemon_factory_test.lua tests/phase4_trainer_party_rom_test.lua work/tasks/phase4-trainer-party-no-item-layouts.md work/coordination/STATE.json work/coordination/HANDOFF.md; do
                 if [[ -e "$path" ]]; then
                   git add -- "$path"
                 fi
