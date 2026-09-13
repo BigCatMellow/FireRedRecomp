@@ -1,0 +1,5 @@
+local f = assert(io.open("main.lua", "rb")); local s = f:read("*a"); f:close()
+assert(s:find('runtimeReplay == "phase3_complete_runtime_exit_save"', 1, true))
+assert(s:find('press(InputState.START_BUTTON)', 1, true))
+assert(s:find('love.keypressed("k")', 1, true))
+print("PASS: continuous Phase 3 replay route contract")

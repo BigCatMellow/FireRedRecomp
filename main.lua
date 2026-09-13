@@ -3298,6 +3298,7 @@ function love.load()
   local runtimeReplay = os.getenv("POKEPORT_RUNTIME_REPLAY")
   local replayRoute1 = runtimeReplay == "route1_wild_defeat"
     or runtimeReplay == "route1_wild_defeat_save"
+    or runtimeReplay == "phase3_complete_runtime_exit_save"
     or runtimeReplay == "route1_wild_win"
     or runtimeReplay == "natural_capture"
     or runtimeReplay == "natural_capture_save"
@@ -3425,7 +3426,6 @@ function love.load()
       tostring(session and session.identity.playerGender)))
     if passed then love.event.quit() else love.event.quit(1) end
   elseif runtimeReplay == "house_to_pallet" or replayRoute1 then
-    beginNewGameFlow()
 
     local function tick(mask, count)
       world.replayInputMask = mask
@@ -3445,6 +3445,18 @@ function love.load()
     local function press(button)
       tick(button, 1)
       tick(0, 1)
+    end
+    local continuousEntry = runtimeReplay == "phase3_complete_runtime_exit_save"
+    if continuousEntry then
+      local title = titleActive and not oakSceneActive and not newGame.active
+      press(InputState.START_BUTTON)
+      local oak = oakSceneActive and not titleActive and not newGame.active
+      press(InputState.A_BUTTON)
+      if not (title and oak and newGame.active and newGame.flow) then
+        error("continuous replay could not enter identity flow")
+      end
+    else
+      beginNewGameFlow()
     end
     local function finishMartParcelPresentation()
       -- Drive only the same A/reveal path available to a player.  The
@@ -3863,7 +3875,7 @@ function love.load()
         passed = passed and result.wildOutcome == (runtimeReplay == "route1_wild_win" and "playerWon" or "playerLost")
       end
     end
-    if passed and runtimeReplay == "route1_wild_defeat_save" then
+    if passed and (runtimeReplay == "route1_wild_defeat_save" or runtimeReplay == "phase3_complete_runtime_exit_save") then
       -- K reaches saveGame only through the normal public hotkey callback.
       -- The save-restart shell gate owns the isolated filesystem boundary.
       love.keypressed("k")
@@ -3914,7 +3926,7 @@ function love.load()
         .. " capture=" .. tostring(capture.captureOutcome)
         .. " party=" .. tostring(newGame.session and newGame.session.state.saveBlock1.playerPartyCount))
     end
-    if runtimeReplay == "route1_wild_defeat_save" or runtimeReplay == "natural_capture_save" then
+    if runtimeReplay == "route1_wild_defeat_save" or runtimeReplay == "natural_capture_save" or runtimeReplay == "phase3_complete_runtime_exit_save" then
       replayDetail = replayDetail .. " saved=" .. tostring(world.runtimeReplaySaved)
     end
     print(("RUNTIME_REPLAY %s %s map=%s pos=%s,%s%s"):format(runtimeReplay,
