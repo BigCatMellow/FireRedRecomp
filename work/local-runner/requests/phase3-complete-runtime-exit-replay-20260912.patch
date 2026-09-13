@@ -1,0 +1,123 @@
+diff --git a/main.lua b/main.lua
+index 574bead8..b42646f8 100644
+--- a/main.lua
++++ b/main.lua
+@@ -3298,6 +3298,7 @@ function love.load()
+   local runtimeReplay = os.getenv("POKEPORT_RUNTIME_REPLAY")
+   local replayRoute1 = runtimeReplay == "route1_wild_defeat"
+     or runtimeReplay == "route1_wild_defeat_save"
++    or runtimeReplay == "phase3_complete_runtime_exit_save"
+     or runtimeReplay == "route1_wild_win"
+     or runtimeReplay == "natural_capture"
+     or runtimeReplay == "natural_capture_save"
+@@ -3309,9 +3310,13 @@ function love.load()
+     -- isolated XDG/LÖVE sandbox containing only the prior process's save.
+     love.keypressed("l")
+     local session = newGame.session
++    local identityLoaded = session and Charmap.decode(session.identity.playerName) == "RED"
++      and Charmap.decode(session.identity.rivalName) == "GREEN" and session.identity.playerGender == 0
++    local moneyPersisted = session and session.state.saveBlock1.money < NewGameDefaults.startingMoney
+     local loaded = session and session.mapId == GameSession.MAP_PALLET_TOWN_PLAYERS_HOUSE_2F
+       and session.location.x == 6 and session.location.y == 6
+       and session.state.saveBlock1.playerPartyCount == 1
++      and identityLoaded and moneyPersisted
+     print(("RUNTIME_REPLAY restart_load %s map=%s pos=%s,%s party=%s identity=%s/%s/%s"):format(
+       loaded and "PASS" or "FAIL", tostring(session and session.mapId),
+       tostring(session and session.location.x), tostring(session and session.location.y),
+@@ -3425,7 +3430,6 @@ function love.load()
+       tostring(session and session.identity.playerGender)))
+     if passed then love.event.quit() else love.event.quit(1) end
+   elseif runtimeReplay == "house_to_pallet" or replayRoute1 then
+-    beginNewGameFlow()
+ 
+     local function tick(mask, count)
+       world.replayInputMask = mask
+@@ -3446,6 +3450,18 @@ function love.load()
+       tick(button, 1)
+       tick(0, 1)
+     end
++    local continuousEntry = runtimeReplay == "phase3_complete_runtime_exit_save"
++    if continuousEntry then
++      local title = titleActive and not oakSceneActive and not newGame.active
++      press(InputState.START_BUTTON)
++      local oak = oakSceneActive and not titleActive and not newGame.active
++      press(InputState.A_BUTTON)
++      if not (title and oak and newGame.active and newGame.flow) then
++        error("continuous replay could not enter identity flow")
++      end
++    else
++      beginNewGameFlow()
++    end
+     local function finishMartParcelPresentation()
+       -- Drive only the same A/reveal path available to a player.  The
+       -- presenter itself owns when each real scripted movement completes
+@@ -3847,6 +3863,11 @@ function love.load()
+       end
+     end
+     world.replayInputMask = nil
++    local identityContinuous = world.runtimeReplayIdentity and newGame.session
++      and newGame.session.identity.playerGender == world.runtimeReplayIdentity.playerGender
++      and newGame.session.identity.playerName == world.runtimeReplayIdentity.playerName
++      and newGame.session.identity.rivalName == world.runtimeReplayIdentity.rivalName
++    local defeatMoney = newGame.session and newGame.session.state.saveBlock1.money < NewGameDefaults.startingMoney
+     local passed = started and (runtimeReplay == "house_to_pallet" and walkMapId == MAP_PALLET_TOWN)
+       and newGame.session and newGame.session.mapId == MAP_PALLET_TOWN
+     if replayRoute1 then
+@@ -3862,8 +3883,9 @@ function love.load()
+       else
+         passed = passed and result.wildOutcome == (runtimeReplay == "route1_wild_win" and "playerWon" or "playerLost")
+       end
++      if continuousEntry then passed = passed and identityContinuous and defeatMoney end
+     end
+-    if passed and runtimeReplay == "route1_wild_defeat_save" then
++    if passed and (runtimeReplay == "route1_wild_defeat_save" or runtimeReplay == "phase3_complete_runtime_exit_save") then
+       -- K reaches saveGame only through the normal public hotkey callback.
+       -- The save-restart shell gate owns the isolated filesystem boundary.
+       love.keypressed("k")
+@@ -3914,7 +3936,7 @@ function love.load()
+         .. " capture=" .. tostring(capture.captureOutcome)
+         .. " party=" .. tostring(newGame.session and newGame.session.state.saveBlock1.playerPartyCount))
+     end
+-    if runtimeReplay == "route1_wild_defeat_save" or runtimeReplay == "natural_capture_save" then
++    if runtimeReplay == "route1_wild_defeat_save" or runtimeReplay == "natural_capture_save" or runtimeReplay == "phase3_complete_runtime_exit_save" then
+       replayDetail = replayDetail .. " saved=" .. tostring(world.runtimeReplaySaved)
+     end
+     print(("RUNTIME_REPLAY %s %s map=%s pos=%s,%s%s"):format(runtimeReplay,
+diff --git a/scripts/runtime_phase3_complete_exit_replay.sh b/scripts/runtime_phase3_complete_exit_replay.sh
+new file mode 100755
+index 00000000..8e93dfd5
+--- /dev/null
++++ b/scripts/runtime_phase3_complete_exit_replay.sh
+@@ -0,0 +1,17 @@
++#!/usr/bin/env bash
++set -euo pipefail
++repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
++cd "$repo_root"
++: "${POKEPORT_ROM:?set POKEPORT_ROM to the verified FireRed US v1.0 ROM}"
++sandbox=$(mktemp -d "${TMPDIR:-/tmp}/firered-phase3-complete.XXXXXX")
++trap 'rm -rf -- "$sandbox"' EXIT
++run() {
++  local route=$1 expected=$2 output status=0
++  if output=$(timeout 60s xvfb-run -a env ALSOFT_DRIVERS=null XDG_DATA_HOME="$sandbox/data" XDG_CONFIG_HOME="$sandbox/config" XDG_CACHE_HOME="$sandbox/cache" POKEPORT_ROM="$POKEPORT_ROM" POKEPORT_TITLE=1 POKEPORT_RNG_SEED=0 POKEPORT_RUNTIME_REPLAY="$route" love . 2>&1); then :; else status=$?; fi
++  printf '%s\n' "$output"
++  [[ "$output" == *"$expected"* ]] || { echo "missing $expected (exit $status)" >&2; return 1; }
++}
++run phase3_complete_runtime_exit_save 'RUNTIME_REPLAY phase3_complete_runtime_exit_save PASS'
++test -s "$sandbox/data/love/firered-recomp/firered_recomp.sav"
++run restart_load 'RUNTIME_REPLAY restart_load PASS'
++echo 'PASS: continuous Phase 3 runtime exit replay'
+diff --git a/tests/phase3_complete_runtime_exit_replay_test.lua b/tests/phase3_complete_runtime_exit_replay_test.lua
+new file mode 100644
+index 00000000..774eabab
+--- /dev/null
++++ b/tests/phase3_complete_runtime_exit_replay_test.lua
+@@ -0,0 +1,9 @@
++local f = assert(io.open("main.lua", "rb")); local s = f:read("*a"); f:close()
++assert(s:find('runtimeReplay == "phase3_complete_runtime_exit_save"', 1, true))
++assert(s:find('press(InputState.START_BUTTON)', 1, true))
++assert(s:find('love.keypressed("k")', 1, true))
++assert(s:find('identityContinuous', 1, true))
++assert(s:find('defeatMoney', 1, true))
++assert(s:find('identityLoaded', 1, true))
++assert(s:find('moneyPersisted', 1, true))
++print("PASS: continuous Phase 3 replay route contract")
