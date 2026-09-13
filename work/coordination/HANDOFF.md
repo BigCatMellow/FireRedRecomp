@@ -2,72 +2,80 @@
 
 - Record role: `HANDOFF`
 - Primary information class: `TASK CONTEXT`
-- Status: `READY_FOR_WORKER`
+- Status: `READY_FOR_REVIEWER`
 - Lifecycle: `ACTIVE`
 - Authority: coordination state only; root `AGENTS.md` and active task contracts own authority
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
-- Completed prerequisite: [`../tasks/local-worker-bridge-phase2-camera-route.md`](../tasks/local-worker-bridge-phase2-camera-route.md)
-- Active route correction: [`../tasks/local-worker-bridge-phase2-camera-optional-staging-fix.md`](../tasks/local-worker-bridge-phase2-camera-optional-staging-fix.md)
+- Active review target: [`../tasks/local-worker-bridge-phase2-camera-optional-staging-fix.md`](../tasks/local-worker-bridge-phase2-camera-optional-staging-fix.md)
+- Camera task awaiting reconciliation: [`../tasks/phase2-gba-camera-viewport-proof.md`](../tasks/phase2-gba-camera-viewport-proof.md)
 - Machine state: [`STATE.json`](STATE.json)
 
 ## Summary
 
-Phase 3 remains canonically `DONE` after its independently reviewed continuous
-runtime replay. The Phase 2 camera bridge prerequisite is complete: route
-revision `27867add` received independent `PASS`, and the trusted one-file probe
-succeeded as Local Worker Bridge run `34735602055` at `518c1ca6`.
+Phase 3 remains canonically `DONE`. Phase 2 remains `IN PROGRESS`.
 
-A stale task-header inconsistency was corrected this turn: the camera task still
-said `BLOCKED ON BRIDGE ROUTE` even though that prerequisite had already passed.
-The task now explicitly says `READY FOR WORKER`; its implementation scope,
-acceptance criteria, and safety boundaries are unchanged.
+Live GitHub advanced beyond the previous relay. The optional camera-route staging
+correction was committed at exact revision
+`11394868d1800dcc53526d9b8f068d0042ec4514`. Its diff replaces the single
+all-path `git add` for the existing camera allowlist with an existence-checked
+loop that stages each same listed path individually.
 
-The camera implementation at `ab8bdc71` passed independent local review, focused
-tests, both 125-file suites, and a ROM-backed Route 1 replay. Guarded run
-`34753075794` then repeated all target, focused, full-suite, verified-ROM, and
-runtime gates successfully, but failed only in final staging because an absent
-optional review document shares one `git add` invocation with required files.
-The active correction stages only the existing exact allowlist entries that exist;
-it adds no path and changes no evidence gate.
+The camera patch was then retried at `df8a17ad671ba5b614ac37abba5f2faaaf527b16`
+and the guarded Local Worker Bridge published it at
+`4c5456f3fc37723e60b365cce1fc8e8a32df1288`.
 
-## Active Worker package
+However, the active staging-fix task explicitly requires independent Reviewer
+`PASS` before retrying the camera patch, and no durable independent review record
+for revision `11394868...` exists on live `main`. Do not infer PASS merely from
+the later successful publication. The repository sequence therefore has an
+evidence-ordering defect that must be reconciled without undoing or self-reviewing
+the already-published bounded changes.
 
-Execute only `work/tasks/local-worker-bridge-phase2-camera-optional-staging-fix.md`.
+## Active Reviewer package
 
-Required result:
+Review only `work/tasks/local-worker-bridge-phase2-camera-optional-staging-fix.md`
+against exact revision:
 
-```text
-exact existing staging list
-→ stage each listed present file
-→ absent optional review doc does not suppress required files
-→ all prior bridge guardrails unchanged
-```
+`11394868d1800dcc53526d9b8f068d0042ec4514`
 
-Require static/no-ROM evidence and independent review. Then submit the unchanged
-`ab8bdc71` camera package through the corrected route for guarded focused/full/
-verified-ROM/runtime evidence.
+Verify the task's existing acceptance and boundaries, including:
+
+- exact existing camera staging list preserved;
+- each listed path staged only if present;
+- missing optional review document cannot suppress required present files;
+- no wildcard/directory staging or generic fallback;
+- no route, policy, ROM gate, test-order, gameplay, or allowlist widening;
+- required static/no-ROM evidence as available under the Reviewer contract.
+
+Return `PASS`, `NEEDS_FIX`, or `BLOCK`. Do not perform Worker implementation.
+
+## After PASS
+
+Orchestrator should close only the staging prerequisite, then route the exact
+published camera revision `4c5456f3fc37723e60b365cce1fc8e8a32df1288`
+through independent review/reconciliation against
+`work/tasks/phase2-gba-camera-viewport-proof.md`. Only after that camera leaf is
+independently PASS may Orchestrator scope the remaining Oak/reference screenshot
+parity leaf.
 
 ## Boundaries
 
-May change only the bridge workflow/procedure and task/coordination/review
-documentation. Must not change camera/gameplay implementation or tests, movement,
-collision, story, battle, save, world simulation, `ViewportScale` semantics,
-Oak/title presentation, ROM policy, or prohibited content.
-
-## Next after independent PASS
-
-Publish and reconcile the camera leaf, then scope the remaining Oak/reference
-screenshot parity task from trustworthy external reference evidence. Do not mark
-Phase 2 `DONE` before that second leaf is independently reviewed.
+Do not mark Phase 2 `DONE`. Do not alter camera/gameplay/runtime implementation in
+the staging-fix review. Do not weaken trusted-main-only execution, public-PR
+prohibition, ROM SHA verification, explicit route/path allowlists, required tests,
+or legal/content boundaries. Never commit ROMs, BIOS dumps, generated caches,
+ROM-derived reference screenshots, extracted assets, or other prohibited content.
 
 ## Goal-continuity commitment
 
-The coordinator continues autonomously through:
+Continue through:
 
 ```text
-camera implementation → evidence/review → reconciliation → Oak/reference parity scope
+staging-fix independent review
+→ exact published camera revision independent review/reconciliation
+→ Oak/reference parity scope
 ```
 
-Only a genuine authority/safety boundary, failed required evidence gate, or missing
-external retail-reference input may interrupt this chain. Record the first exact
-blocker; do not substitute a smaller goal or wait for routine approval.
+Stop only on a genuine failed evidence gate, authority/safety boundary, or missing
+trustworthy retail-reference input. Record the first exact blocker rather than
+widening scope.
