@@ -77,6 +77,9 @@ jobs:
             phase4-player-forced-replacement-ui*.patch|phase4-player-forced-replacement-ui*.probe)
               route='phase4-player-forced-replacement-ui'
               ;;
+            phase4-player-voluntary-switch*.patch|phase4-player-voluntary-switch*.probe)
+              route='phase4-player-voluntary-switch'
+              ;;
             oak-parcel-dex-presentation-north*.patch|oak-parcel-dex-presentation-north*.probe)
               route='oak-parcel-dex-presentation-north'
               ;;
@@ -166,6 +169,8 @@ jobs:
                 ;;
               phase4-player-forced-replacement-ui:main.lua|phase4-player-forced-replacement-ui:src/core/BattleSceneController.lua|phase4-player-forced-replacement-ui:tests/phase4_player_forced_replacement_controller_test.lua|phase4-player-forced-replacement-ui:tests/phase4_player_forced_replacement_rom_test.lua|phase4-player-forced-replacement-ui:scripts/runtime_phase4_player_forced_replacement_replay.sh|phase4-player-forced-replacement-ui:work/tasks/phase4-player-forced-replacement-ui.md|phase4-player-forced-replacement-ui:work/coordination/STATE.json|phase4-player-forced-replacement-ui:work/coordination/HANDOFF.md)
                 ;;
+              phase4-player-voluntary-switch:main.lua|phase4-player-voluntary-switch:src/core/BattleSceneController.lua|phase4-player-voluntary-switch:tests/phase4_player_voluntary_switch_controller_test.lua|phase4-player-voluntary-switch:tests/phase4_player_voluntary_switch_rom_test.lua|phase4-player-voluntary-switch:scripts/runtime_phase4_player_voluntary_switch_replay.sh|phase4-player-voluntary-switch:work/tasks/phase4-player-voluntary-switch.md|phase4-player-voluntary-switch:work/coordination/STATE.json|phase4-player-voluntary-switch:work/coordination/HANDOFF.md)
+                ;;
               *)
                 echo "Patch target is not authorized for explicit route '$ROUTE': $target" >&2
                 exit 1
@@ -220,6 +225,10 @@ jobs:
             phase4-player-forced-replacement-ui)
               "$LUA" tests/phase4_player_forced_replacement_controller_test.lua
               "$LUA" tests/phase4_player_forced_replacement_rom_test.lua
+              ;;
+            phase4-player-voluntary-switch)
+              "$LUA" tests/phase4_player_voluntary_switch_controller_test.lua
+              "$LUA" tests/phase4_player_voluntary_switch_rom_test.lua
               ;;
             *)
               echo "Patch execution has no focused-test route for '$ROUTE'." >&2
@@ -280,6 +289,9 @@ jobs:
             phase4-player-forced-replacement-ui)
               bash scripts/runtime_phase4_player_forced_replacement_replay.sh
               ;;
+            phase4-player-voluntary-switch)
+              bash scripts/runtime_phase4_player_voluntary_switch_replay.sh
+              ;;
             *)
               echo "Patch execution has no runtime-replay route for '$ROUTE'." >&2
               exit 1
@@ -334,6 +346,13 @@ jobs:
               ;;
             phase4-player-forced-replacement-ui)
               for path in main.lua src/core/BattleSceneController.lua tests/phase4_player_forced_replacement_controller_test.lua tests/phase4_player_forced_replacement_rom_test.lua scripts/runtime_phase4_player_forced_replacement_replay.sh work/tasks/phase4-player-forced-replacement-ui.md work/coordination/STATE.json work/coordination/HANDOFF.md; do
+                if [[ -e "$path" ]]; then
+                  git add -- "$path"
+                fi
+              done
+              ;;
+            phase4-player-voluntary-switch)
+              for path in main.lua src/core/BattleSceneController.lua tests/phase4_player_voluntary_switch_controller_test.lua tests/phase4_player_voluntary_switch_rom_test.lua scripts/runtime_phase4_player_voluntary_switch_replay.sh work/tasks/phase4-player-voluntary-switch.md work/coordination/STATE.json work/coordination/HANDOFF.md; do
                 if [[ -e "$path" ]]; then
                   git add -- "$path"
                 fi

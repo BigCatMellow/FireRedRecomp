@@ -35,6 +35,9 @@ Current supported request/probe prefixes are:
   two-foe trainer replacement, per-foe reward, and final trainer-flag route;
 - `phase4-player-forced-replacement-ui...` — bounded trainer-only player
   forced-replacement state and persistence route;
+- `phase4-player-voluntary-switch...` — bounded trainer-only voluntary player
+  switch route, including legal-bench selection, save-backed active-party
+  replacement, and same-turn foe response;
 - `runner-online...probe` — non-patch runner-readiness probe only.
 
 Adding a new route requires a bounded task that authorizes bridge maintenance. Do not add a generic fallback route.
