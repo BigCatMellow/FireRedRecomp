@@ -21,7 +21,9 @@ Foe-only multi-Pokémon orchestration is now independently reviewed and publishe
 at `8533cf6a` (guarded run `34777072801`): it uses the forced-switch primitive
 only after faint messages, settles EXP/EV per foe, and flags the trainer only
 after the final foe. The next separate leaf is player forced-replacement UI
-discovery; do not infer it from the foe-only path.
+discovery; do not infer it from the foe-only path. Discovery is now complete:
+existing engine and party bridge seams suffice. The active package is the
+explicit bridge route for trainer-only forced replacement.
 
 ## Phase 2 resume point
 
