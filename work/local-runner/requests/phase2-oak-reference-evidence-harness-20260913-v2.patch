@@ -1,0 +1,272 @@
+diff --git a/main.lua b/main.lua
+index 06d38a9b..77225dcf 100644
+--- a/main.lua
++++ b/main.lua
+@@ -129,6 +129,11 @@ local statusLines = {}
+ local function addLine(text)
+   table.insert(statusLines, text)
+ end
++-- Phase 2 evidence capture renders the existing Oak/field draw paths to this
++-- dedicated logical surface.  It deliberately changes only the developer
++-- capture target: normal windows still include status text and use
++-- ViewportScale exactly as before.
++local captureSurface = os.getenv("POKEPORT_CAPTURE_SURFACE") == "1"
+ local mapImage
+ -- Title screen is drawn as several separate images (border, then the
+ -- flame particles, then copyright/box art, then the logo) rather than
+@@ -3182,6 +3187,19 @@ end
+ 
+ function love.load()
+   love.window.setTitle(Version.title .. " " .. Version.version)
++  if captureSurface then
++    -- This is the exported scene surface, independent of host window size,
++    -- chrome, and outer ViewportScale.  The regular draw path targets it
++    -- below; no crop, resample, or alternate scene renderer is involved.
++    -- The canvas is copied 1:1 to this client surface only so LÖVE's proven
++    -- asynchronous screenshot callback can export it.  The capture content
++    -- itself comes from captureCanvas, never from normal window layout.
++    love.window.setMode(240, 160, { resizable=false })
++    -- Set the mode before allocating the canvas: a mode change can recreate
++    -- the graphics context and invalidate an existing Canvas on some hosts.
++    world.phase2CaptureCanvas = love.graphics.newCanvas(240, 160)
++    world.phase2CaptureCanvas:setFilter("nearest", "nearest")
++  end
+   addLine(Version.title .. " " .. Version.version)
+ 
+   local romPath = os.getenv("POKEPORT_ROM")
+@@ -4024,7 +4042,20 @@ function love.load()
+   -- love.filesystem is sandboxed to the save directory (see conf.lua's
+   -- identity="firered-recomp"), so this always writes there under a fixed
+   -- name rather than to an arbitrary POKEPORT_SCREENSHOT path.
+-  if os.getenv("POKEPORT_SCREENSHOT") == "1" and (mapImage or viewerActive or titleActive or spriteActive or itemBallActive or fontActive or oakSpeechActive or oakSceneActive or flameActive or yesNoActive or walkActive or newGame.active or world.battle) then
++  if captureSurface and os.getenv("POKEPORT_SCREENSHOT") == "1" and (oakSceneActive or walkActive) then
++    love.graphics.captureScreenshot(function(imageData)
++      local width, height = imageData:getDimensions()
++      if width ~= 240 or height ~= 160 then
++        print(("PHASE2_CAPTURE_SURFACE FAIL dimensions=%dx%d"):format(width, height))
++        love.event.quit(1)
++        return
++      end
++      imageData:encode("png", "screenshot.png")
++      local anchor = os.getenv("POKEPORT_EVIDENCE_ANCHOR") or "unspecified"
++      print(("PHASE2_CAPTURE_SURFACE PASS anchor=%s dimensions=240x160"):format(anchor))
++      love.event.quit(0)
++    end)
++  elseif not captureSurface and os.getenv("POKEPORT_SCREENSHOT") == "1" and (mapImage or viewerActive or titleActive or spriteActive or itemBallActive or fontActive or oakSpeechActive or oakSceneActive or flameActive or yesNoActive or walkActive or newGame.active or world.battle) then
+     -- The font sample normally reveals one character at a time (real text
+     -- speed, driven by TaskScheduler in love.update) and can pause or wait
+     -- on a keypress mid-message; automated screenshots want the
+@@ -4580,6 +4611,11 @@ local function drawBattleScene(y)
+ end
+ 
+ function love.draw()
++  if captureSurface then love.graphics.setCanvas(world.phase2CaptureCanvas) end
++  -- The historical field draw below references borderOffsetPx as a global.
++  -- Preserve that normal-runtime behavior exactly; the evidence-only canvas
++  -- supplies the value solely while it is rendering the Pallet anchor.
++  if captureSurface then borderOffsetPx = BORDER_MARGIN_METATILES * 16 end
+   if newGame.active then ensureNewGameImageCurrent() end
+   if fontActive then ensureFontImageCurrent() end
+   if oakSpeechActive then ensureOakSpeechImageCurrent() end
+@@ -4591,10 +4627,12 @@ function love.draw()
+   else
+     love.graphics.clear(0.08, 0.08, 0.1)
+   end
+-  local y = 20
+-  for _, line in ipairs(statusLines) do
+-    love.graphics.print(line, 20, y)
+-    y = y + 20
++  local y = captureSurface and -10 or 20
++  if not captureSurface then
++    for _, line in ipairs(statusLines) do
++      love.graphics.print(line, 20, y)
++      y = y + 20
++    end
+   end
+ 
+   if world.battle then
+@@ -4823,6 +4861,11 @@ function love.draw()
+     local viewport = ViewportScale.fit(mapImage:getWidth(), mapImage:getHeight(), windowWidth - 40, windowHeight - (y + 10))
+     love.graphics.draw(mapImage, 20 + viewport.x, y + 10 + viewport.y, 0, viewport.scale, viewport.scale)
+   end
++  if captureSurface then
++    love.graphics.setCanvas()
++    love.graphics.clear(0, 0, 0)
++    love.graphics.draw(world.phase2CaptureCanvas, 0, 0)
++  end
+ end
+ 
+ -- Every view is mutually exclusive. Centralised here rather than having
+diff --git a/scripts/phase2_oak_reference_evidence_capture.sh b/scripts/phase2_oak_reference_evidence_capture.sh
+new file mode 100755
+index 00000000..19aea81a
+--- /dev/null
++++ b/scripts/phase2_oak_reference_evidence_capture.sh
+@@ -0,0 +1,111 @@
++#!/usr/bin/env bash
++# Produce implementation-only Phase 2 evidence captures.  Files are written
++# outside the repository and are deliberately not retail-reference media.
++set -euo pipefail
++
++repo_root=$(cd -P "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
++cd "$repo_root"
++
++external_temp_dir() {
++  # Deliberately ignore TMPDIR and all caller-selected output roots.  The
++  # capture can contain ROM-derived implementation pixels, so it must be a
++  # canonical /tmp sibling of (never a path inside) the working tree.
++  local created canonical
++  created=$(mktemp -d "/tmp/firered-recomp-phase2-${1}.XXXXXX")
++  canonical=$(cd -P "$created" && pwd)
++  case "$canonical" in
++    /tmp/*) ;;
++    *) echo "error: temporary capture root is not under canonical /tmp: $canonical" >&2; return 1 ;;
++  esac
++  case "$canonical" in
++    "$repo_root"|"$repo_root"/*)
++      echo "error: temporary capture root resolves inside repository: $canonical" >&2
++      return 1
++      ;;
++  esac
++  printf '%s\n' "$canonical"
++}
++
++: "${POKEPORT_ROM:?error: set POKEPORT_ROM to the verified FireRed US v1.0 ROM}"
++expected_sha1=41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc
++actual_sha1=$(sha1sum "$POKEPORT_ROM" | awk '{print $1}')
++if [[ "$actual_sha1" != "$expected_sha1" ]]; then
++  echo "error: POKEPORT_ROM SHA-1 is $actual_sha1, expected $expected_sha1" >&2
++  exit 1
++fi
++for command in love xvfb-run timeout mktemp lua5.1 sha1sum; do
++  command -v "$command" >/dev/null 2>&1 || {
++    echo "error: $command is required for Phase 2 evidence capture" >&2
++    exit 127
++  }
++done
++
++# Never accept a caller-selected output directory: captures can contain
++# ROM-derived implementation pixels and must remain in canonical /tmp.
++output_dir=$(external_temp_dir evidence)
++
++capture_once() {
++  local anchor=$1
++  local ordinal=$2
++  shift 2
++  local sandbox_root
++  sandbox_root=$(external_temp_dir capture)
++  local expected="$sandbox_root/data/love/firered-recomp/screenshot.png"
++  local output="$output_dir/${anchor}-${ordinal}.png"
++  local log="$sandbox_root/runtime.log"
++  # The sandbox root is newly created for exactly this invocation.  Refuse a
++  # pre-existing path anyway, so the subsequent file check proves that this
++  # run—not an earlier renderer attempt—created the evidence image.
++  if [[ -e "$expected" ]]; then
++    rm -rf -- "$sandbox_root"
++    echo "error: $anchor capture target was not fresh" >&2
++    exit 1
++  fi
++  local status=0
++  if timeout 60s xvfb-run -a env ALSOFT_DRIVERS=null \
++    XDG_DATA_HOME="$sandbox_root/data" XDG_CONFIG_HOME="$sandbox_root/config" \
++    XDG_CACHE_HOME="$sandbox_root/cache" POKEPORT_ROM="$POKEPORT_ROM" \
++    POKEPORT_CAPTURE_SURFACE=1 POKEPORT_SCREENSHOT=1 \
++    POKEPORT_EVIDENCE_ANCHOR="$anchor" "$@" love . >"$log" 2>&1; then
++    :
++  else
++    status=$?
++  fi
++  local marker="PHASE2_CAPTURE_SURFACE PASS anchor=$anchor dimensions=240x160"
++  # Different supported LÖVE/Xvfb runners report love.event.quit(0) as either
++  # 0 or 1.  Whitelist only those normal outcomes, and require this run's
++  # canvas draw-completion marker and fresh image; a screenshot by itself can
++  # be an earlier frame left after a renderer error.
++  if [[ "$status" -ne 0 && "$status" -ne 1 ]] || [[ ! -f "$expected" || "$(<"$log")" != *"$marker"* ]]; then
++    cat "$log" >&2 || true
++    rm -rf -- "$sandbox_root"
++    echo "error: $anchor capture failed (exit $status)" >&2
++    exit 1
++  fi
++  mv -- "$expected" "$output"
++  rm -rf -- "$sandbox_root"
++  printf '%s\n' "$output"
++}
++
++oak_a=$(capture_once oak-static a POKEPORT_OAKSCENE=1)
++oak_b=$(capture_once oak-static b POKEPORT_OAKSCENE=1)
++pallet_a=$(capture_once pallet-camera-anchor a POKEPORT_MAP=3,0 POKEPORT_WALK=1)
++pallet_b=$(capture_once pallet-camera-anchor b POKEPORT_MAP=3,0 POKEPORT_WALK=1)
++
++for image in "$oak_a" "$oak_b" "$pallet_a" "$pallet_b"; do
++  dimensions=$(lua5.1 - "$image" <<'LUA'
++package.path = package.path .. ";./?.lua"
++local PNG = require("tools.pixeldiff.png")
++local image, err = PNG.decodeFile(arg[1])
++assert(image, err)
++assert(image.width == 240 and image.height == 160,
++  ("expected 240x160, got %dx%d"):format(image.width, image.height))
++print(image.width .. "x" .. image.height)
++LUA
++)
++  printf 'CAPTURE anchor=%s dimensions=%s sha1=%s\n' "$(basename "$image" .png)" "$dimensions" "$(sha1sum "$image" | awk '{print $1}')"
++done
++
++lua5.1 tools/pixeldiff/main.lua "$oak_a" "$oak_b"
++lua5.1 tools/pixeldiff/main.lua "$pallet_a" "$pallet_b"
++printf 'PHASE2_EVIDENCE_CAPTURE PASS output_dir=%s anchors=oak-static,pallet-camera-anchor repeats=identical reference_input=absent\n' "$output_dir"
+diff --git a/tests/phase2_oak_reference_evidence_test.lua b/tests/phase2_oak_reference_evidence_test.lua
+new file mode 100644
+index 00000000..c367b6c2
+--- /dev/null
++++ b/tests/phase2_oak_reference_evidence_test.lua
+@@ -0,0 +1,50 @@
++-- Contract test for the narrowly scoped Phase 2 implementation-capture
++-- harness.  Runtime capture remains ROM-backed and is exercised by its shell
++-- script; this test protects the deterministic, no-reference-media protocol.
++local function read(path)
++  local f = assert(io.open(path, "rb"))
++  local text = f:read("*a")
++  f:close()
++  return text
++end
++
++local source = read("main.lua")
++assert(source:find('POKEPORT_CAPTURE_SURFACE', 1, true))
++assert(source:find('love.graphics.newCanvas(240, 160)', 1, true))
++assert(source:find('love.graphics.setCanvas(world.phase2CaptureCanvas)', 1, true))
++assert(source:find('love.graphics.draw(world.phase2CaptureCanvas, 0, 0)', 1, true))
++assert(source:find('love.graphics.captureScreenshot(function(imageData)', 1, true))
++assert(source:find('if width ~= 240 or height ~= 160 then', 1, true))
++assert(source:find('PHASE2_CAPTURE_SURFACE PASS anchor=%s dimensions=240x160', 1, true))
++assert(source:find('love.window.setMode(240, 160, { resizable=false })', 1, true))
++assert(source:find('local y = captureSurface and -10 or 20', 1, true))
++assert(source:find('if not captureSurface then', 1, true))
++assert(source:find('if captureSurface then borderOffsetPx = BORDER_MARGIN_METATILES * 16 end', 1, true))
++
++local script = read("scripts/phase2_oak_reference_evidence_capture.sh")
++assert(script:find('expected_sha1=41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc', 1, true))
++assert(script:find('POKEPORT_OAKSCENE=1', 1, true))
++assert(script:find('POKEPORT_MAP=3,0 POKEPORT_WALK=1', 1, true))
++assert(script:find('POKEPORT_CAPTURE_SURFACE=1 POKEPORT_SCREENSHOT=1', 1, true))
++assert(script:find('POKEPORT_EVIDENCE_ANCHOR="$anchor"', 1, true))
++assert(script:find('PHASE2_CAPTURE_SURFACE PASS anchor=$anchor dimensions=240x160', 1, true))
++assert(script:find('"$status" -ne 0 && "$status" -ne 1', 1, true))
++assert(script:find('! -f "$expected" || "$(<"$log")" != *"$marker"*', 1, true))
++assert(script:find('capture target was not fresh', 1, true))
++assert(script:find('tools/pixeldiff/main.lua', 1, true))
++assert(script:find('reference_input=absent', 1, true))
++assert(not script:find('git add', 1, true))
++assert(not script:find('reference%.png'))
++assert(not script:find('POKEPORT_EVIDENCE_OUTPUT_DIR', 1, true))
++assert(not script:find('${TMPDIR', 1, true))
++assert(script:find('mktemp -d "/tmp/firered-recomp-phase2-${1}.XXXXXX"', 1, true))
++assert(script:find('temporary capture root resolves inside repository', 1, true))
++
++local task = read("work/tasks/phase2-oak-reference-evidence-harness.md")
++assert(task:find('implementation_dimensions: 240x160', 1, true))
++assert(task:find('reference_provenance:', 1, true))
++assert(task:find('reference_crop:', 1, true))
++assert(task:find('comparison_command:', 1, true))
++assert(task:find('parity_claim: YES | NO', 1, true))
++assert(task:find('never parity evidence', 1, true))
++print("PASS: Phase 2 Oak/reference evidence harness contract")
