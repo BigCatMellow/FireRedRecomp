@@ -26,6 +26,8 @@ Current supported request/probe prefixes are:
 - `phase3-title-oak-entry-proof...` — bounded Phase 3 title/new-game → Oak/identity → bedroom entry route;
 - `phase3-complete-runtime-exit-replay...` — bounded continuous Phase 3 evidence route;
 - `phase2-gba-camera-viewport-proof...` — bounded true-240×160 camera viewport route;
+- `phase2-oak-reference-evidence-harness...` — bounded deterministic 240×160
+  Oak/Pallet implementation-capture and external-reference protocol route;
 - `runner-online...probe` — non-patch runner-readiness probe only.
 
 Adding a new route requires a bounded task that authorizes bridge maintenance. Do not add a generic fallback route.
@@ -43,6 +45,9 @@ Adding a new route requires a bounded task that authorizes bridge maintenance. D
 - Patch routes publish implementation changes only after the route-specific focused test, full no-ROM suite, full verified-ROM suite, and route-specific runtime replay pass.
 - Publish staging is route-specific and explicit; unauthorized files are not staged by the bridge.
 - A failing patch/test leaves the implementation unpublished; the patch request remains durable evidence for diagnosis.
+- Independent review records are deliberately created by the independent Reviewer
+  after guarded publication and are reconciled separately by the Orchestrator;
+  they are not Worker patch outputs and therefore are not a bridge staging target.
 
 ## Worker procedure
 

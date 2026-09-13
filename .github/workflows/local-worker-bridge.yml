@@ -65,6 +65,9 @@ jobs:
             phase2-gba-camera-viewport-proof*.patch|phase2-gba-camera-viewport-proof*.probe)
               route='phase2-gba-camera-viewport-proof'
               ;;
+            phase2-oak-reference-evidence-harness*.patch|phase2-oak-reference-evidence-harness*.probe)
+              route='phase2-oak-reference-evidence-harness'
+              ;;
             oak-parcel-dex-presentation-north*.patch|oak-parcel-dex-presentation-north*.probe)
               route='oak-parcel-dex-presentation-north'
               ;;
@@ -146,6 +149,8 @@ jobs:
                 ;;
               phase2-gba-camera-viewport-proof:main.lua|phase2-gba-camera-viewport-proof:src/core/CameraViewport.lua|phase2-gba-camera-viewport-proof:tests/camera_viewport_test.lua|phase2-gba-camera-viewport-proof:tests/phase2_camera_viewport_integration_test.lua|phase2-gba-camera-viewport-proof:scripts/runtime_camera_viewport_replay.sh|phase2-gba-camera-viewport-proof:work/tasks/phase2-gba-camera-viewport-proof.md|phase2-gba-camera-viewport-proof:work/coordination/STATE.json|phase2-gba-camera-viewport-proof:work/coordination/HANDOFF.md|phase2-gba-camera-viewport-proof:work/reviews/phase2-gba-camera-viewport-proof-review.md)
                 ;;
+              phase2-oak-reference-evidence-harness:main.lua|phase2-oak-reference-evidence-harness:tests/phase2_oak_reference_evidence_test.lua|phase2-oak-reference-evidence-harness:scripts/phase2_oak_reference_evidence_capture.sh|phase2-oak-reference-evidence-harness:work/tasks/phase2-oak-reference-evidence-harness.md|phase2-oak-reference-evidence-harness:work/coordination/STATE.json|phase2-oak-reference-evidence-harness:work/coordination/HANDOFF.md)
+                ;;
               *)
                 echo "Patch target is not authorized for explicit route '$ROUTE': $target" >&2
                 exit 1
@@ -185,6 +190,9 @@ jobs:
             phase2-gba-camera-viewport-proof)
               "$LUA" tests/camera_viewport_test.lua
               "$LUA" tests/phase2_camera_viewport_integration_test.lua
+              ;;
+            phase2-oak-reference-evidence-harness)
+              "$LUA" tests/phase2_oak_reference_evidence_test.lua
               ;;
             *)
               echo "Patch execution has no focused-test route for '$ROUTE'." >&2
@@ -229,6 +237,13 @@ jobs:
             phase2-gba-camera-viewport-proof)
               bash scripts/runtime_camera_viewport_replay.sh
               ;;
+            phase2-oak-reference-evidence-harness)
+              if [[ ! -f scripts/phase2_oak_reference_evidence_capture.sh ]]; then
+                echo "Required route-specific runtime capture is absent." >&2
+                exit 1
+              fi
+              bash scripts/phase2_oak_reference_evidence_capture.sh
+              ;;
             *)
               echo "Patch execution has no runtime-replay route for '$ROUTE'." >&2
               exit 1
@@ -255,6 +270,13 @@ jobs:
               ;;
             phase2-gba-camera-viewport-proof)
               for path in main.lua src/core/CameraViewport.lua tests/camera_viewport_test.lua tests/phase2_camera_viewport_integration_test.lua scripts/runtime_camera_viewport_replay.sh work/tasks/phase2-gba-camera-viewport-proof.md work/coordination/STATE.json work/coordination/HANDOFF.md work/reviews/phase2-gba-camera-viewport-proof-review.md; do
+                if [[ -e "$path" ]]; then
+                  git add -- "$path"
+                fi
+              done
+              ;;
+            phase2-oak-reference-evidence-harness)
+              for path in main.lua tests/phase2_oak_reference_evidence_test.lua scripts/phase2_oak_reference_evidence_capture.sh work/tasks/phase2-oak-reference-evidence-harness.md work/coordination/STATE.json work/coordination/HANDOFF.md; do
                 if [[ -e "$path" ]]; then
                   git add -- "$path"
                 fi
