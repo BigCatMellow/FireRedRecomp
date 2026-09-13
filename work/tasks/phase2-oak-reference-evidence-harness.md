@@ -1,6 +1,6 @@
 # Task: establish Phase 2 Oak/reference visual-evidence capture
 
-- Status: `ACTIVE`
+- Status: `ACTIVE — RUNTIME CORRECTION REQUIRED`
 - AGI status: `AGI READY`
 - Type: `PHASE 2 / EVIDENCE INFRASTRUCTURE / BOUNDED INTEGRATION`
 - Owner: project maintainer
@@ -59,6 +59,26 @@ camera/gameplay behavior.
    proved against the verified ROM when changed.
 5. Independent Reviewer verifies the exact implementation before this evidence
    leaf closes. Phase 2 remains `IN PROGRESS` pending a real external comparison.
+
+## Current runtime correction gate
+
+Guarded Local Worker Bridge run `34754826666` applied the bounded v1 patch and
+passed target validation, the focused harness test, the complete no-ROM suite,
+and the complete verified-ROM suite. Publication was correctly withheld because
+the route-specific runtime capture failed.
+
+The failure is narrow and directly evidenced: the Oak capture emitted
+`PHASE2_CAPTURE_SURFACE PASS anchor=oak-static dimensions=240x160` and the LÖVE
+process returned status `0`, but the proposed capture script treated anything
+other than status `1` as failure and reported `error: oak-static capture failed
+(exit 0)`.
+
+The next Worker attempt must correct only this observed exit-status contract (and
+its focused assertion if necessary), then rerun the same guarded route. It must
+not use the correction as authority to change rendering, Oak, camera, gameplay,
+output location, ROM verification, or bridge security policy. Accept only exit
+behavior demonstrated by the supported runner; do not weaken marker/image checks
+or convert arbitrary statuses into success.
 
 ## Stop / escalate
 
