@@ -41,7 +41,7 @@ Phase 2 renderer/runtime [IN PROGRESS]  ← CURRENT DISPATCH FOCUS
         │
         ├─ outer window scaling: evidenced
         ├─ imported map/title/Oak rendering foundations: substantial evidence exists
-        ├─ true 240×160 overworld camera viewport: SCOPED, blocked on guarded bridge route
+        ├─ true 240×160 overworld camera viewport: READY FOR WORKER
         └─ Oak/reference screenshot discrepancy gate: remains after camera viewport PASS
                           ↓
 Phase 4 battle generalization
@@ -61,8 +61,8 @@ Phase 10 mod/release engineering
 | --- | --- | --- | --- | --- |
 | Phase 0 — charter/reproducibility | `IN PROGRESS` | no current dispatch | save-version contract + first CI verification | stronger release baseline |
 | Phase 1 — ROM importer/canonical model | `DONE` | none | already met | downstream systems consume canonical data |
-| Phase 2A-pre — Local Worker Bridge route for camera proof | `READY FOR WORKER` | **[`../tasks/local-worker-bridge-phase2-camera-route.md`](../tasks/local-worker-bridge-phase2-camera-route.md)** | explicit fail-closed camera-task route + deterministic probe + independent PASS | Phase 2A Worker eligibility |
-| Phase 2A — true 240×160 overworld camera viewport | `BLOCKED ON BRIDGE ROUTE` | [`../tasks/phase2-gba-camera-viewport-proof.md`](../tasks/phase2-gba-camera-viewport-proof.md) | pure camera geometry tests + live/runtime camera evidence + full no-ROM/verified-ROM suites + independent PASS | re-evaluate remaining Phase 2 visual parity gate |
+| Phase 2A-pre — Local Worker Bridge route for camera proof | `REVIEWED PASS` | [`../tasks/local-worker-bridge-phase2-camera-route.md`](../tasks/local-worker-bridge-phase2-camera-route.md) | PASS at `27867add`; trusted probe `34735602055` | Phase 2A Worker eligibility |
+| Phase 2A — true 240×160 overworld camera viewport | `READY FOR WORKER` | **[`../tasks/phase2-gba-camera-viewport-proof.md`](../tasks/phase2-gba-camera-viewport-proof.md)** | pure camera geometry tests + live/runtime camera evidence + full no-ROM/verified-ROM suites + independent PASS | re-evaluate remaining Phase 2 visual parity gate |
 | Phase 2B — Oak/reference screenshot parity | `UNSCOPED` | future bounded task | trustworthy reference + explicit discrepancy assertions; no copyrighted reference artifact in git | Phase 2 closure eligibility |
 | Phase 3A — deterministic vertical-slice proof | `DONE` | [`../tasks/phase3-exit-proof.md`](../tasks/phase3-exit-proof.md) | continuous replay independently passed at `4f4f29ec` | Phase 3 complete |
 | Phase 3C — north-facing Oak Parcel/Dex scene | `REVIEWED PASS` | [`../tasks/oak-parcel-dex-presentation-north.md`](../tasks/oak-parcel-dex-presentation-north.md) | PASS at `2d8c3221775044a54668683e500055307fe4d20b` | supports Phase 3A |
@@ -90,13 +90,14 @@ The roadmap requires a native 240×160 GBA presentation and representative scree
 
 [`../tasks/phase2-gba-camera-viewport-proof.md`](../tasks/phase2-gba-camera-viewport-proof.md) is the bounded implementation/evidence task. It may add/reuse focused camera geometry, integrate that transform into the normal overworld draw path, and prove live 240×160 clipping without changing gameplay.
 
-It is not yet Worker-eligible because the guarded Local Worker Bridge requires an explicit route for every authorized ROM-backed implementation package.
+It is Worker-eligible. The guarded Local Worker Bridge route received independent
+PASS at `27867add` and its trusted route probe passed as run `34735602055`.
 
-#### Active prerequisite: guarded bridge route
+#### Completed prerequisite: guarded bridge route
 
-Worker must execute only [`../tasks/local-worker-bridge-phase2-camera-route.md`](../tasks/local-worker-bridge-phase2-camera-route.md). It extends the existing fail-closed route pattern for the camera task and may not implement camera behavior.
-
-After independent PASS, Orchestrator restores `phase2-gba-camera-viewport-proof.md` as `READY_FOR_WORKER`.
+[`../tasks/local-worker-bridge-phase2-camera-route.md`](../tasks/local-worker-bridge-phase2-camera-route.md)
+is `CLOSED — REVIEWED PASS`. Worker must now execute only
+[`../tasks/phase2-gba-camera-viewport-proof.md`](../tasks/phase2-gba-camera-viewport-proof.md).
 
 ### Remaining Phase 2 leaf after camera PASS
 

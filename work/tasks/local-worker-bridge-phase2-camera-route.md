@@ -1,6 +1,6 @@
 # Task: add Local Worker Bridge route for the Phase 2 camera viewport proof
 
-- Status: `ACTIVE`
+- Status: `CLOSED — REVIEWED PASS`
 - AGI status: `AGI READY`
 - Type: `INFRASTRUCTURE / EXECUTION SUBSTRATE`
 - Owner: project maintainer
@@ -78,3 +78,13 @@ Return `BLOCKED` rather than weakening the guardrails if this requires public-PR
 ## Completion / handoff
 
 Completion means the route is deterministically recognized, all bridge invariants remain intact, and an independent Reviewer returns `PASS`. Orchestrator must then restore `work/tasks/phase2-gba-camera-viewport-proof.md` as the sole `READY_FOR_WORKER` package.
+
+## Completion evidence
+
+- Route implementation: `27867addb8a32cf4afdcff27a5d8e6c95b650333`.
+- Independent review: `PASS`; see
+  `work/reviews/2026-09-13-local-worker-bridge-phase2-camera-route-review.md`.
+- Trusted Local Worker Bridge probe: GitHub Actions run `34735602055`,
+  successful at probe revision `518c1ca6d682f6ebe07d9e5873823b0d83b1119c`.
+- Local bounded validation: workflow shell syntax and diff checks passed; the
+  123-file no-ROM suite passed. No camera/gameplay files changed.

@@ -1,40 +1,38 @@
 {
   "schema_version": 1,
-  "updated_utc": "2026-09-13T03:01:00Z",
+  "updated_utc": "2026-09-13T03:30:00Z",
   "role": "ORCHESTRATOR",
   "status": "READY_FOR_WORKER",
   "current_phase": "Phase 2 — rendering, input, and scene runtime",
   "canonical_status_owner": "work/roadmaps/CAPABILITY_CHECKLIST.md",
-  "active_task": "work/tasks/local-worker-bridge-phase2-camera-route.md",
-  "objective": "Add and independently verify the explicit fail-closed Local Worker Bridge route required to execute the bounded Phase 2 true-240x160 camera viewport proof.",
+  "active_task": "work/tasks/phase2-gba-camera-viewport-proof.md",
+  "objective": "Implement and independently verify the bounded true-240x160 live overworld camera viewport without changing world simulation or outer-window scaling.",
   "next_role": "WORKER",
   "reconciliation": {
     "phase3_result": "DONE — continuous runtime exit replay independently passed at 4f4f29ec",
     "canonical_phase3_status": "DONE",
     "next_canonical_gate": "Phase 2 true 240x160 camera viewport, then Oak/reference screenshot parity",
     "camera_task": "work/tasks/phase2-gba-camera-viewport-proof.md",
-    "camera_task_status": "BLOCKED ON BRIDGE ROUTE",
-    "bridge_prerequisite": "work/tasks/local-worker-bridge-phase2-camera-route.md",
+    "camera_task_status": "READY FOR WORKER",
+    "bridge_prerequisite": "CLOSED — REVIEWED PASS at 27867add; trusted probe run 34735602055",
     "canonical_status_change_this_turn": false
   },
   "active_task_acceptance_summary": [
-    "Add one explicit phase2-gba-camera-viewport-proof bridge route; unknown routes remain fail-closed.",
-    "Authorize only the camera task's bounded target/test/runtime-evidence/publish surface; no wildcard or generic fallback.",
-    "Preserve trusted push-to-main only and no pull_request/pull_request_target self-hosted execution.",
-    "Preserve exact FireRed v1.0 SHA-1 verification plus test-before-publish gates.",
-    "Prove route recognition with a non-gameplay probe or equivalent deterministic validation.",
-    "Independent Reviewer PASS is required on the exact bridge-maintenance revision before camera implementation is dispatched."
+    "Use a true logical 240x160 viewport for normal overworld rendering while preserving world simulation and outer ViewportScale behavior.",
+    "Prove pure geometry, live movement/clamping behavior, at least one ROM-backed runtime observation, both full suites, and independent review.",
+    "Do not claim Oak/reference parity or modify broader presentation behavior."
   ],
   "boundaries": {
     "may_change": [
-      ".github/workflows/local-worker-bridge.yml",
-      "work/coordination/LOCAL_RUNNER_BRIDGE.md if needed",
-      "focused bridge validation/probe support if required",
-      "active task / coordination / review documentation"
+      "src/core/CameraViewport.lua",
+      "main.lua camera integration only",
+      "tests/camera_viewport_test.lua",
+      "scripts/runtime_camera_viewport_replay.sh if needed",
+      "task / coordination / review documentation"
     ],
     "must_not_change": [
-      "main.lua or normal camera/gameplay/runtime behavior",
-      "src/core camera implementation",
+      "map movement, collision, story, battle, save, or world simulation",
+      "outer ViewportScale semantics",
       "public-PR execution policy",
       "supported-ROM policy or exact ROM SHA gate",
       "ROM/cache/BIOS/reference screenshots/extracted content",
@@ -43,7 +41,7 @@
     ]
   },
   "blocker": null,
-  "next_after_success": "After independent PASS on the camera bridge route, Orchestrator must restore work/tasks/phase2-gba-camera-viewport-proof.md as READY_FOR_WORKER. After that implementation receives independent PASS, re-evaluate the remaining Oak/reference screenshot parity leaf; do not mark Phase 2 DONE before both exit components are proven.",
+  "next_after_success": "After independent PASS on the camera implementation, scope and dispatch the remaining Oak/reference screenshot parity leaf; do not mark Phase 2 DONE before both exit components are proven.",
   "legal_content_boundary": "Never commit ROMs, BIOS dumps, generated caches, ROM-derived reference screenshots, extracted game assets, or other prohibited content.",
   "phase_completion_rule": "Phase 2 remains IN PROGRESS until the true 240x160 camera viewport and the Oak/reference screenshot discrepancy gate are both evidenced and independently reviewed."
 }
