@@ -13,11 +13,16 @@
 ## Summary
 
 Phase 3 remains canonically `DONE` after its independently reviewed continuous
-runtime replay. The Phase 2 camera bridge prerequisite is now also complete:
-route revision `27867add` received independent `PASS`, and the trusted one-file
-probe succeeded as Local Worker Bridge run `34735602055` at `518c1ca6`.
+runtime replay. The Phase 2 camera bridge prerequisite is complete: route
+revision `27867add` received independent `PASS`, and the trusted one-file probe
+succeeded as Local Worker Bridge run `34735602055` at `518c1ca6`.
 
-The sole active Worker package is now the true 240×160 overworld camera viewport
+A stale task-header inconsistency was corrected this turn: the camera task still
+said `BLOCKED ON BRIDGE ROUTE` even though that prerequisite had already passed.
+The task now explicitly says `READY FOR WORKER`; its implementation scope,
+acceptance criteria, and safety boundaries are unchanged.
+
+The sole active Worker package is the true 240×160 overworld camera viewport
 proof. It must turn the existing inline crop into tested, deterministic camera
 geometry and prove normal runtime behavior; it may not change world simulation,
 outer window scaling, Oak presentation, or reference-parity scope.
