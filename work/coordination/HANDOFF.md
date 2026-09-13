@@ -2,7 +2,7 @@
 
 - Status: `READY_FOR_WORKER`
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
-- Active task: [`../tasks/local-worker-bridge-phase4-trainer-party-no-item-route.md`](../tasks/local-worker-bridge-phase4-trainer-party-no-item-route.md)
+- Active task: [`../tasks/phase4-foe-only-multimon-trainer-orchestration.md`](../tasks/phase4-foe-only-multimon-trainer-orchestration.md)
 
 ## Published evidence
 
@@ -17,8 +17,10 @@ self-diffs, and publication. Capture media remains outside git.
 Phase 2 comparison remains blocked only on user-owned retail captures. That does
 not block independent Phase 4 work. No-item trainer-party construction is now
 published and independently reviewed at `f40c4021` (guarded run `34776145784`).
-The active bounded task is its successor's explicit bridge route for foe-only
-ordered multi-Pokémon trainer orchestration.
+The guarded foe-only multi-Pokémon implementation is ready for independent
+review. It uses the existing forced-switch primitive only after the faint
+message sequence, settles EXP/EV per defeated foe, and postpones the trainer
+flag until the final foe is defeated.
 
 ## Phase 2 resume point
 

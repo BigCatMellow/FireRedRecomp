@@ -103,6 +103,7 @@ local Battle = {
   TrainerSightline = require("src.core.TrainerSightline"),
   TrainerApproach = require("src.core.TrainerApproach"),
   TrainerAI = require("src.core.TrainerAI"),
+  TrainerOrchestrator = require("src.core.TrainerBattleOrchestrator"),
   PartyBridge = require("src.core.BattlePartyBridge"),
   Engine = require("src.core.BattleEngine"),
   Controller = require("src.core.BattleSceneController"),
@@ -1442,19 +1443,38 @@ world.startRivalBattle = function(action)
   return true
 end
 
--- General live trainer battle (any real trainer reached via
--- TrainerSightline/TrainerApproach, not just the Oak-lab rival). Bounded
--- to a single-mon party for now: TrainerPokemonFactory.generate itself
--- asserts real partyFlags==0 (no held item/no custom moveset) and
--- !doubleBattle (see that module's header) -- a trainer outside that
--- shape, or with more than one party mon, fails loudly here rather than
--- silently mis-building a battle. Multi-mon trainer parties are a real,
--- separate follow-up: BattleEngine's forced-switch-after-faint primitive
--- (opts.hasReplacement/resolveForcedSwitch) already exists and would be
--- the right mechanism, but wiring a live foe-side party-of-N through it
--- (auto-advancing to the trainer's next mon, updating the displayed foe
--- sprite/name) is deliberately deferred rather than rushed into this
--- same pass.
+-- Applies exactly one defeated ordinary trainer foe's progression.  The
+-- orchestrator calls this between foes; final settlement calls it for the
+-- last foe before setting the trainer's flag.
+world.awardTrainerFoe = function(battle, foe, final)
+  local reward = Battle.RivalRewards.applyVictory(
+    battle.partyRecord, foe, world.battleCatalog.species,
+    world.battleCatalog.natures,
+    Battle.Learnset.resolve(romData, romAddrs.gLevelUpLearnsets,
+      battle.controller.engine.player.species),
+    world.regionMapSectionId, { allowLevelUpMoveGap = true })
+  local levelMsg = reward.newLevel > reward.oldLevel and (" Grew to Lv. %d!"):format(reward.newLevel) or ""
+  addLine(("Defeated %s! Gained %d EXP.%s%s"):format(battle.trainerName, reward.exp,
+    levelMsg, final and "" or " (next foe pending)"))
+  if reward.skippedLevelUpMoves then
+    addLine("(A level-up move was reached but not learned -- no move-learn UI yet.)")
+  end
+  -- A replacement battle can follow immediately. Keep the currently live
+  -- player battler aligned with the just-persisted cached record before the
+  -- next action; the party record remains the authority.
+  local live = battle.controller.engine.player
+  live.level, live.hp, live.maxHP = battle.partyRecord.level,
+    battle.partyRecord.hp, battle.partyRecord.maxHP
+  live.attack, live.defense, live.speed = battle.partyRecord.attack,
+    battle.partyRecord.defense, battle.partyRecord.speed
+  live.spAttack, live.spDefense = battle.partyRecord.spAttack, battle.partyRecord.spDefense
+  return reward
+end
+
+-- General live ordinary trainer battle: no-item singles with one or two
+-- foes only.  A two-foe roster uses BattleEngine's existing foe-side forced
+-- switch primitive; player selection, items, doubles, and broader AI remain
+-- deliberately outside this boundary.
 world.startTrainerBattle = function(trainerId)
   local catalog, session = world.battleCatalog, newGame.session
   if not catalog or not session then
@@ -1470,8 +1490,8 @@ world.startTrainerBattle = function(trainerId)
   end
   local ok, built = pcall(function()
     local trainer = assert(catalog.trainers[trainerId], "trainer record is missing")
-    assert(trainer.partySize == 1,
-      "multi-mon trainer parties are not wired into the live scene yet (see startTrainerBattle's header)")
+    assert(trainer.partySize == 1 or trainer.partySize == 2,
+      "only one- or two-foe ordinary trainer parties are wired into the live scene")
     -- Fail before the battle starts, not mid-battle when TrainerAI.choose
     -- is first called -- see TrainerAI.lua's own header for exactly which
     -- real aiFlags tiers are ported (0, AI_SCRIPT_CHECK_BAD_MOVE alone --
@@ -1480,19 +1500,31 @@ world.startTrainerBattle = function(trainerId)
     assert(trainer.aiFlags == 0 or trainer.aiFlags == Battle.TrainerAI.AI_SCRIPT_CHECK_BAD_MOVE
       or trainer.aiFlags == Battle.RivalAI.AI_FLAGS,
       ("trainer aiFlags 0x%X is not one of TrainerAI.lua's ported real tiers"):format(trainer.aiFlags))
-    local partyMon = assert(Battle.TrainerParty.resolve(trainer, romData)[0], "trainer party is empty")
-    local foeInfo = assert(catalog.species[partyMon.species], "trainer foe species record is missing")
-    local foe = Battle.TrainerFactory.generate({
-      trainer=trainer, partyMon=partyMon, speciesInfo=foeInfo,
-      speciesName=romData:sub(romAddrs.gSpeciesNames + partyMon.species * 11 + 1,
-        romAddrs.gSpeciesNames + partyMon.species * 11 + 10),
-      learnset=Battle.Learnset.resolve(romData, romAddrs.gLevelUpLearnsets, partyMon.species),
-      battleMoves=catalog.moves, natures=catalog.natures, rng=world.globalRng,
-    })
+    assert(trainer.partyFlags == 0 or trainer.partyFlags == 1,
+      "held-item trainer layouts are outside foe-only orchestration")
+    assert(not trainer.doubleBattle, "doubles are outside foe-only orchestration")
+    local party = Battle.TrainerParty.resolve(trainer, romData)
+    local foes = {}
+    for slot = 0, trainer.partySize - 1 do
+      local partyMon = assert(party[slot], "trainer party is short")
+      local foeInfo = assert(catalog.species[partyMon.species], "trainer foe species record is missing")
+      foes[#foes + 1] = Battle.TrainerFactory.generate({
+        trainer=trainer, partyMon=partyMon, speciesInfo=foeInfo,
+        speciesName=romData:sub(romAddrs.gSpeciesNames + partyMon.species * 11 + 1,
+          romAddrs.gSpeciesNames + partyMon.species * 11 + 10),
+        learnset=Battle.Learnset.resolve(romData, romAddrs.gLevelUpLearnsets, partyMon.species),
+        battleMoves=catalog.moves, natures=catalog.natures, rng=world.globalRng,
+      })
+    end
+    local foe = foes[1]
     local player = Battle.PartyBridge.battlerFromParty(partyRecord, catalog.species)
+    local orchestrator = trainer.partySize == 2 and Battle.TrainerOrchestrator.new({
+      foes=foes, toBattler=Battle.PartyBridge.battlerFromGenerated,
+    }) or nil
     local engine = Battle.Engine.new({
       player=player, foe=Battle.PartyBridge.battlerFromGenerated(foe),
       moves=catalog.moves, typeChart=catalog.typeChart, rng=world.globalRng,
+      hasReplacement=orchestrator and function(side) return orchestrator:hasReplacement(side) end,
     })
     local trainerName = Charmap.decode(trainer.rawName)
     local playerName = Charmap.decode(playerDecoded.nickname)
@@ -1501,9 +1533,35 @@ world.startTrainerBattle = function(trainerId)
     -- project yet (no import/*.lua module for it) -- the trainer's own
     -- real decoded name is shown alone rather than guessing a class
     -- prefix like "YOUNGSTER BEN".
-    local controller = Battle.Controller.new({
+    local controller
+    controller = Battle.Controller.new({
       engine=engine, playerName=playerName, foeName=foeName,
       chooseFoeMove=function(e) return Battle.TrainerAI.choose(e, trainer.aiFlags) end,
+      onMessagesComplete=orchestrator and function()
+        if engine.awaitingForcedSwitch ~= "foe" then return nil end
+        -- `world.battle` already owns the persistent player record by the
+        -- time input can advance these messages.
+        local incoming = orchestrator:resolveFoeReplacement(engine, function(defeated)
+          world.awardTrainerFoe(world.battle, defeated, false)
+        end)
+        local incomingName = speciesName(incoming.species)
+        controller.foeName = incomingName
+        if world.battle then
+          world.battle.foeInstance = incoming
+          if not world._trainerTestMode then
+            local imageOk, composite = pcall(Battle.Assets.decodeMon, romData, romAddrs, incoming.species, false)
+            if imageOk then
+              world.battle.foeImage = buildImage(composite)
+              world.battle.foeImage:setFilter("nearest", "nearest")
+            else
+              addLine("Trainer replacement sprite failed: " .. tostring(composite))
+            end
+          end
+          newGame.story:registerSeen(Battle.PokedexOrder.speciesToNationalDexNum(
+            romData, romAddrs.sSpeciesToNationalPokedexNum, incoming.species))
+        end
+        return { trainerName .. " sent out " .. incomingName .. "!" }
+      end,
       runDisabledMessage="No! There's no running\nfrom a TRAINER battle!",
       introMessages={
         trainerName .. " would like to battle!",
@@ -1513,7 +1571,7 @@ world.startTrainerBattle = function(trainerId)
       moveName=function(move) return Charmap.decodeAt(romData, romAddrs.gMoveNames, 13, move) end,
     })
     return {
-      trainer=trainer, foe=foe, player=player, controller=controller,
+      trainer=trainer, foe=foe, foes=foes, orchestrator=orchestrator, player=player, controller=controller,
       playerDecoded=playerDecoded, partyRecord=partyRecord, partySlot=partySlot,
       playerName=playerName, trainerName=trainerName, foeName=foeName,
     }
@@ -1526,6 +1584,7 @@ world.startTrainerBattle = function(trainerId)
   local images = {}
   for _, imageSpec in ipairs({ {"foeImage", built.foe.species, false},
       {"playerImage", built.player.species, true} }) do
+    if world._trainerTestMode then break end
     local imageOk, composite = pcall(Battle.Assets.decodeMon,
       romData, romAddrs, imageSpec[2], imageSpec[3])
     if imageOk then
@@ -1538,6 +1597,7 @@ world.startTrainerBattle = function(trainerId)
   world.battle = {
     kind="trainer", controller=built.controller, trainerId=trainerId,
     trainer=built.trainer, foeInstance=built.foe,
+    foeInstances=built.foes, orchestrator=built.orchestrator,
     foeImage=images.foeImage, playerImage=images.playerImage,
     partyRecord=built.partyRecord, partySlot=built.partySlot, persistedTurn=0,
     playerName=built.playerName, trainerName=built.trainerName,
@@ -4180,34 +4240,28 @@ end
 world.finishTrainerBattle = function(battle)
   local outcome = battle.controller.engine.outcome
   if outcome == "playerWon" then
-    if newGame.session then
-      newGame.session:setFlag(Battle.EarlyStory.TRAINER_FLAGS_START + battle.trainerId)
-    end
     if battle.partyRecord and battle.foeInstance then
       -- Real Cmd_getexp's BATTLE_TYPE_TRAINER 150% bonus -- EarlyRivalRewards.
       -- applyVictory already defaults to it (opts.expMultiplierPercent==150),
       -- this project's own wild-battle path is the one that opts OUT via
       -- applyWildVictory's 100% override, not the other way around.
-      local ok, reward = pcall(Battle.RivalRewards.applyVictory,
-        battle.partyRecord, battle.foeInstance, world.battleCatalog.species,
-        world.battleCatalog.natures,
-        Battle.Learnset.resolve(romData, romAddrs.gLevelUpLearnsets,
-          battle.controller.engine.player.species),
-        world.regionMapSectionId, { allowLevelUpMoveGap = true })
-      if ok then
-        local levelMsg = ""
-        if reward.newLevel > reward.oldLevel then
-          levelMsg = (" Grew to Lv. %d!"):format(reward.newLevel)
+      local ok, err = pcall(function()
+        if battle.orchestrator then
+          battle.orchestrator:resolveFinalFoeReward(function(foe) world.awardTrainerFoe(battle, foe, true) end)
+        else
+          world.awardTrainerFoe(battle, battle.foeInstance, true)
         end
-        addLine(("Defeated %s! Gained %d EXP.%s"):format(battle.trainerName, reward.exp, levelMsg))
-        if reward.skippedLevelUpMoves then
-          addLine("(A level-up move was reached but not learned -- no move-learn UI yet.)")
-        end
-      else
-        addLine(("Defeated %s, but reward application failed: %s"):format(battle.trainerName, tostring(reward)))
+      end)
+      if not ok then
+        addLine(("Defeated %s, but reward application failed: %s"):format(battle.trainerName, tostring(err)))
       end
     else
       addLine(("Defeated %s! (No session party to reward.)"):format(battle.trainerName))
+    end
+    -- The trainer flag is a final-victory settlement only.  A first foe
+    -- faint cannot reach this function because BattleEngine remains open.
+    if newGame.session then
+      newGame.session:setFlag(Battle.EarlyStory.TRAINER_FLAGS_START + battle.trainerId)
     end
   elseif outcome == "playerLost" then
     local sb1 = newGame.session.state.saveBlock1
@@ -4984,5 +5038,17 @@ end
 -- Keep the live LÖVE entrypoint unchanged, while allowing the pure fresh
 -- session constructor to be exercised by the plain-Lua targeted test.
 if ... == "main" then
-  return { GameSession=GameSession }
+  -- Narrow test seam for the production trainer-start function.  It only
+  -- supplies decoded verified-ROM data and suppresses presentation image
+  -- allocation; test code still calls `world.startTrainerBattle` itself.
+  return { GameSession=GameSession, world=world,
+    configureTrainerBattleTest=function(opts)
+      romData, romAddrs = assert(opts.romData), assert(opts.romAddrs)
+      world.battleCatalog = assert(opts.catalog)
+      world.globalRng = assert(opts.rng)
+      world.regionMapSectionId = opts.regionMapSectionId or 0
+      world._trainerTestMode = true
+      newGame.session = assert(opts.session)
+      newGame.story = opts.story or { registerSeen=function() end }
+    end }
 end

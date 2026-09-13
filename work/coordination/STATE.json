@@ -5,9 +5,9 @@
   "status": "READY_FOR_WORKER",
   "current_phase": "Phase 4 — full Gen 3 battle engine",
   "canonical_status_owner": "work/roadmaps/CAPABILITY_CHECKLIST.md",
-  "active_task": "work/tasks/local-worker-bridge-phase4-foe-only-multimon-route.md",
-  "objective": "Add and independently review an explicit fail-closed bridge route for bounded foe-only multi-Pokémon trainer orchestration while Phase 2 retail comparison remains externally blocked.",
-  "next_role": "WORKER",
+  "active_task": "work/tasks/phase4-foe-only-multimon-trainer-orchestration.md",
+  "objective": "Independently review bounded foe-only multi-Pokémon trainer orchestration while Phase 2 retail comparison remains externally blocked.",
+  "next_role": "REVIEWER",
   "reconciliation": {
     "camera_task_status": "CLOSED — REVIEWED PASS at 4c5456f3; guarded run 34753297372",
     "oak_evidence_bridge": "CLOSED — REVIEWED PASS at ff5ff890; trusted probe run 34753855210",

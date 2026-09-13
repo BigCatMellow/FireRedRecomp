@@ -1,6 +1,6 @@
 # Task: Phase 4 foe-only multi-Pokémon trainer orchestration
 
-- Status: `BLOCKED ON BRIDGE ROUTE`
+- Status: `IMPLEMENTED — PENDING INDEPENDENT REVIEW`
 - Type: `PHASE 4 / BATTLE ORCHESTRATION / BOUNDED INTEGRATION`
 - Parent dependency: `phase4-trainer-party-no-item-layouts.md` (`PASS`)
 
@@ -26,3 +26,10 @@ selection, held items, doubles, and broader AI remain separate.
 
 Player party selection UI, held-item mechanics, unsupported trainer layouts,
 doubles, general move effects, or unrelated story flow.
+
+## Worker evidence
+
+- Ordered foe-only orchestration is implemented through the existing
+  `BattleEngine:resolveForcedSwitch` boundary; no engine changes were made.
+- Focused controller and verified-ROM fixture tests accompany the implementation.
+- Independent review remains required before roadmap advancement.

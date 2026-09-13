@@ -60,6 +60,7 @@ function BattleSceneController.new(opts)
     moveName = opts.moveName or function(move) return "MOVE " .. tostring(move) end,
     foeMoveSlot = opts.foeMoveSlot or 1,
     chooseFoeMove = opts.chooseFoeMove,
+    onMessagesComplete = opts.onMessagesComplete,
     runDisabledMessage = opts.runDisabledMessage,
     bag = opts.bag,
     state = BattleSceneController.MESSAGES,
@@ -99,7 +100,10 @@ function BattleSceneController:_applyInvisibleEntries()
 end
 
 function BattleSceneController:_setMessages(entries, afterState)
-  self.messages = entries
+  self.messages = {}
+  for _, entry in ipairs(entries or {}) do
+    self.messages[#self.messages + 1] = type(entry) == "string" and {text=entry} or entry
+  end
   self.messageIndex = 1
   self.afterMessages = afterState
   self.state = BattleSceneController.MESSAGES
@@ -117,7 +121,18 @@ function BattleSceneController:advanceMessage()
   if self.state ~= BattleSceneController.MESSAGES then return end
   self.messageIndex = self.messageIndex + 1
   self:_applyInvisibleEntries()
-  if not self.messages[self.messageIndex] then self.state = self.afterMessages end
+  if not self.messages[self.messageIndex] then
+    -- A foe-only trainer roster may resolve its already-pending forced
+    -- switch here, after (never before) the faint/message sequence.  The
+    -- hook returns the incoming-foe messages, if any; it has no player UI
+    -- authority and is opt-in so all existing controller users are unchanged.
+    local followup = self.onMessagesComplete and self.onMessagesComplete(self)
+    if followup and #followup > 0 then
+      self:_setMessages(followup, BattleSceneController.ACTION)
+      return
+    end
+    self.state = self.afterMessages
+  end
   self:_touch()
 end
 
