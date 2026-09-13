@@ -12,37 +12,62 @@
 
 ## Summary
 
-The true 240×160 camera viewport is complete and independently reviewed at
-`4c5456f3`. Guarded Local Worker Bridge run `34753297372` passed target
-validation, two focused tests, no-ROM and verified-ROM suites, the live Route 1
-replay, and final publication. Phase 2 remains `IN PROGRESS` only for its
-Oak/reference visual-parity gate.
+Phase 2 remains `IN PROGRESS`. The true 240×160 camera viewport is already
+independently reviewed at `4c5456f3`; the only current critical-path work is the
+Oak/reference visual-evidence harness and later external comparison.
 
-The Oak-evidence bridge route is independently reviewed at `ff5ff890`; its
-one-file probe passed guarded run `34753855210`, including private-ROM SHA
-verification. The next bounded leaf is evidence infrastructure, not an unmeasured visual fix:
-the Oak/reference harness must produce deterministic 240×160 implementation
-captures and an honest external retail-reference protocol without committing
-reference media or treating self-diff as parity.
+The first guarded harness attempt did **not** publish implementation. Local Worker
+Bridge run `34754826666` successfully selected the explicit route, verified the
+private FireRed US v1.0 ROM SHA, applied the bounded v1 patch, and passed the
+focused harness test plus the complete no-ROM and verified-ROM suites. Publication
+was correctly withheld when the route-specific runtime capture failed.
+
+The runtime evidence isolates a small contract error in the unpublished patch:
+Oak capture printed
+`PHASE2_CAPTURE_SURFACE PASS anchor=oak-static dimensions=240x160` and exited with
+status `0`, but the proposed shell harness accepted only status `1`, then reported
+`error: oak-static capture failed (exit 0)`. There is no evidence of an Oak,
+camera, or gameplay defect.
 
 ## Active Worker package
 
-Execute only `work/tasks/phase2-oak-reference-evidence-harness.md`. It must add
-deterministic implementation-side capture/protocol support only; it must not alter
-Oak, camera, gameplay, or claim retail-reference parity.
+Continue only `work/tasks/phase2-oak-reference-evidence-harness.md`, now narrowed
+to the observed runtime correction:
 
-## After independent PASS
+1. Correct the capture script's supported-runner exit-status handling so the
+   evidenced successful status `0` is accepted.
+2. Preserve the required PASS marker, screenshot existence, exact 240×160
+   dimension checks, external `/tmp` isolation, ROM SHA verification, and all
+   existing route/security gates.
+3. Update the focused contract assertion only if needed for that exact correction.
+4. Submit a new bounded patch through the existing
+   `phase2-oak-reference-evidence-harness` bridge route and rerun all required
+   focused, no-ROM, verified-ROM, and runtime evidence.
+5. Do not change Oak visuals, camera behavior, gameplay, output/content policy,
+   outer scaling, bridge security policy, or supported-ROM policy.
 
-After its evidence is independently reviewed, scope the external comparison leaf.
-If a trusted external retail reference is unavailable at that stage, record it as
-the precise external-input blocker rather than fabricating a parity claim.
+The v1 patch is unpublished and therefore is not a reviewed implementation
+revision. Do not create a Reviewer handoff until the guarded route publishes an
+exact revision successfully.
+
+## After successful guarded publication
+
+Route the exact published harness revision to an independent Reviewer. A Reviewer
+PASS closes only the evidence-harness leaf. It does **not** establish retail Oak
+parity and does not make Phase 2 `DONE`.
+
+After that PASS, Orchestrator should scope the smallest external comparison leaf
+using the text-only protocol and user-owned/trusted retail-reference input. If no
+such reference is available, record that exact external-input blocker rather than
+fabricating a parity claim.
 
 ## Goal-continuity commitment
 
-The coordinator continues automatically through:
+The coordinator continues through:
 
 ```text
-capture harness → review → external comparison scope
+bounded exit-status correction → guarded publication → independent review
+→ external retail-reference comparison scope
 ```
 
 Only a genuine authority/safety boundary, failed required evidence gate, or missing
