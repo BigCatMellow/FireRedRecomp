@@ -4,9 +4,10 @@
 -- adds the byte sums of the compiled trainer name and species name in the
 -- high bytes, scales the trainer-party IV byte to 0..31, and asks
 -- CreateMonWithGenderNatureLetter for a random non-shiny OT id.  The three
--- lab rivals all use the simplest no-item/default-moves layout, but the
--- assertions below keep this bounded implementation honest if another
--- trainer is accidentally routed through it.
+-- lab rivals use the simplest no-item/default-moves layout.  This factory
+-- also supports the other no-item layout, whose four source move slots are
+-- already decoded by TrainerParty.  Held-item layouts remain deliberately
+-- outside this constructor.
 
 local PokemonStats = require("src.core.PokemonStats")
 local WildPokemonFactory = require("src.core.WildPokemonFactory")
@@ -51,6 +52,24 @@ local function fixedIvs(value)
   return { hp=iv, attack=iv, defense=iv, speed=iv, spAttack=iv, spDefense=iv }
 end
 
+local function customMoveSlots(sourceMoves, movesTable)
+  assert(type(sourceMoves) == "table",
+    "custom-move trainer party row must provide four ROM move slots")
+  local out = {}
+  for sourceSlot = 0, 3 do
+    local move = sourceMoves[sourceSlot]
+    assert(type(move) == "number",
+      ("custom-move trainer party row is missing ROM move slot %d"):format(sourceSlot))
+    if move ~= 0 then
+      local moveData = assert(movesTable[move],
+        ("missing gBattleMoves entry %d for trainer custom move slot %d")
+          :format(move, sourceSlot))
+      out[#out + 1] = { move=move, pp=moveData.pp }
+    end
+  end
+  return out
+end
+
 -- args: trainer (Trainer.parseRecord), partyMon (TrainerParty.resolve row),
 -- speciesInfo, speciesName (raw charmap bytes), learnset, battleMoves,
 -- natures, rng. Returns the same transient generated-mon shape consumed by
@@ -65,11 +84,16 @@ function TrainerPokemonFactory.generate(args)
   local natures = assert(args.natures, "nature table is required")
   local rng = assert(args.rng, "shared RNG is required")
 
-  assert(trainer.partyFlags == 0,
-    "bounded Oak-lab trainer constructor only supports no-item/default-move parties")
+  assert(trainer.partyFlags == 0 or trainer.partyFlags == 1,
+    ("trainer partyFlags %s is unsupported: held-item layouts and unknown layouts are excluded")
+      :format(tostring(trainer.partyFlags)))
   assert(not trainer.doubleBattle, "bounded Oak-lab trainer constructor only supports singles")
-  assert(not partyMon.heldItem and not partyMon.moves,
-    "resolved Oak-lab party row must use default moves and no held item")
+  assert(not partyMon.heldItem,
+    "no-item trainer-party constructor rejects held-item party rows")
+  if trainer.partyFlags == 0 then
+    assert(not partyMon.moves,
+      "default-move trainer party row must not carry custom move slots")
+  end
 
   local personality = (0x88
     + (byteSumUntilEos(trainer.rawName) + byteSumUntilEos(speciesName)) * 256)
@@ -77,12 +101,17 @@ function TrainerPokemonFactory.generate(args)
   local otId = randomNonShinyOtId(rng, personality)
   local ivs = fixedIvs(partyMon.iv)
   local nature = personality % 25
-  local moves, pp = WildPokemonFactory.initialMoves(args.learnset, partyMon.lvl, movesTable)
-  local moveSlots = {}
-  for i = 1, 4 do
-    if (moves[i] or 0) ~= 0 then
-      moveSlots[#moveSlots + 1] = { move=moves[i], pp=pp[i] or 0 }
+  local moveSlots
+  if trainer.partyFlags == 0 then
+    local moves, pp = WildPokemonFactory.initialMoves(args.learnset, partyMon.lvl, movesTable)
+    moveSlots = {}
+    for i = 1, 4 do
+      if (moves[i] or 0) ~= 0 then
+        moveSlots[#moveSlots + 1] = { move=moves[i], pp=pp[i] or 0 }
+      end
     end
+  else
+    moveSlots = customMoveSlots(partyMon.moves, movesTable)
   end
   local abilityNum = ((info.abilities or {})[2] or 0) ~= 0 and personality % 2 or 0
   local stats = PokemonStats.calculateAll(info, partyMon.lvl, ivs,
