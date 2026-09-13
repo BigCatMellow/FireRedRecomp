@@ -35,18 +35,15 @@ Default to one critical-path Worker package at a time.
 ```text
 Phase 1 importer/model [DONE]
         ↓
-Phase 2 renderer/runtime [IN PROGRESS]
-        ↓
 Phase 3 playable vertical slice [DONE]
-        │
-        ├─ Route 1 battle/capture/save/reload: substantial evidence exists
-        ├─ canonical Viridian Parcel/Dex/capture progression: evidenced
-        ├─ visible north Oak Parcel/Dex presentation: REVIEWED PASS
-        ├─ title/new-game → Oak/identity → bedroom runtime entry: REVIEWED PASS
-        └─ complete continuous boot→battle→save→reload runtime artifact: REVIEWED PASS at 4f4f29ec
-                          ↓
-Phase 2 camera/Oak-intro visual parity closure  ← CURRENT SCOPING FOCUS
         ↓
+Phase 2 renderer/runtime [IN PROGRESS]  ← CURRENT DISPATCH FOCUS
+        │
+        ├─ outer window scaling: evidenced
+        ├─ imported map/title/Oak rendering foundations: substantial evidence exists
+        ├─ true 240×160 overworld camera viewport: SCOPED, blocked on guarded bridge route
+        └─ Oak/reference screenshot discrepancy gate: remains after camera viewport PASS
+                          ↓
 Phase 4 battle generalization
         ↓
 Phase 5/7/6 completion toward credits
@@ -64,13 +61,13 @@ Phase 10 mod/release engineering
 | --- | --- | --- | --- | --- |
 | Phase 0 — charter/reproducibility | `IN PROGRESS` | no current dispatch | save-version contract + first CI verification | stronger release baseline |
 | Phase 1 — ROM importer/canonical model | `DONE` | none | already met | downstream systems consume canonical data |
-| Phase 2 — camera + Oak/reference parity | `IN PROGRESS` | next task must be scoped | true 240×160 camera parity + Oak/reference assertions | Phase 2 closure |
+| Phase 2A-pre — Local Worker Bridge route for camera proof | `READY FOR WORKER` | **[`../tasks/local-worker-bridge-phase2-camera-route.md`](../tasks/local-worker-bridge-phase2-camera-route.md)** | explicit fail-closed camera-task route + deterministic probe + independent PASS | Phase 2A Worker eligibility |
+| Phase 2A — true 240×160 overworld camera viewport | `BLOCKED ON BRIDGE ROUTE` | [`../tasks/phase2-gba-camera-viewport-proof.md`](../tasks/phase2-gba-camera-viewport-proof.md) | pure camera geometry tests + live/runtime camera evidence + full no-ROM/verified-ROM suites + independent PASS | re-evaluate remaining Phase 2 visual parity gate |
+| Phase 2B — Oak/reference screenshot parity | `UNSCOPED` | future bounded task | trustworthy reference + explicit discrepancy assertions; no copyrighted reference artifact in git | Phase 2 closure eligibility |
 | Phase 3A — deterministic vertical-slice proof | `DONE` | [`../tasks/phase3-exit-proof.md`](../tasks/phase3-exit-proof.md) | continuous replay independently passed at `4f4f29ec` | Phase 3 complete |
-| Phase 3B — canonical Viridian Parcel/Dex progression | evidenced | [`../tasks/viridian-parcel-dex-progression.md`](../tasks/viridian-parcel-dex-progression.md) | already evidenced; do not redo | supports Phase 3A |
 | Phase 3C — north-facing Oak Parcel/Dex scene | `REVIEWED PASS` | [`../tasks/oak-parcel-dex-presentation-north.md`](../tasks/oak-parcel-dex-presentation-north.md) | PASS at `2d8c3221775044a54668683e500055307fe4d20b` | supports Phase 3A |
 | Phase 3D — title/new-game through Oak/identity into bedroom | `REVIEWED PASS` | [`../tasks/phase3-title-oak-entry-proof.md`](../tasks/phase3-title-oak-entry-proof.md) | PASS at `8bdbda903fb0574cb169968976d4b40ce96d3563` | supports Phase 3A |
-| Phase 3D-pre — Local Worker Bridge retargeting | `REVIEWED PASS` | [`../tasks/local-worker-bridge-task-routing.md`](../tasks/local-worker-bridge-task-routing.md) | PASS at `0f0dc2f028f204dce4fcaee4e0fff0d9d0afb61e`; do not redo | completed prerequisite |
-| Phase 3E — complete end-to-end runtime exit replay | `REVIEWED PASS` | [`../tasks/phase3-complete-runtime-exit-replay.md`](../tasks/phase3-complete-runtime-exit-replay.md) | PASS at `4f4f29ec`; focused, full suites, and continuous replay recorded | Phase 3A complete |
+| Phase 3E — complete end-to-end runtime exit replay | `REVIEWED PASS` | [`../tasks/phase3-complete-runtime-exit-replay.md`](../tasks/phase3-complete-runtime-exit-replay.md) | PASS at `4f4f29ec` | Phase 3 complete |
 | Phase 4 — full Gen 3 battle engine | `IN PROGRESS` | future | general trainer battles, switching, move/effect and stress matrices | reliable trainer/story progression |
 | Phase 5 — overworld/field systems | `IN PROGRESS` | future | Pallet→Elite Four traversal without invalid paths | credits traversal |
 | Phase 6 — menus/inventory/progression UI | `IN PROGRESS` | future | complete player UI, no dev-key fallbacks | normal completion |
@@ -83,48 +80,27 @@ Phase 10 mod/release engineering
 
 ### Completed parent gate: Phase 3 exit proof
 
-Required observable path:
+The normal boot → title/Oak/identity → bedroom/Pallet → Route 1 battle → save → fresh-process reload path has an independently reviewed continuous replay at `4f4f29ec`. `CAPABILITY_CHECKLIST.md` therefore owns Phase 3 as `DONE`. Do not redo Phase 3 absent direct regression evidence.
 
-```text
-boot
-→ new game
-→ Oak intro
-→ bedroom
-→ Pallet Town
-→ Route 1
-→ wild battle
-→ catch or defeat
-→ save
-→ fresh-process reload
-```
+### Current parent gate: Phase 2 camera + Oak/reference parity
 
-All known functional seams have deterministic evidence. The continuous two-process
-replay at `4f4f29ec` also supplies the previously missing one-command proof and has
-an independent `PASS` in
-[`../reviews/2026-09-12-phase3-complete-runtime-exit-review.md`](../reviews/2026-09-12-phase3-complete-runtime-exit-review.md).
-The canonical checklist consequently marks Phase 3 `DONE`.
+The roadmap requires a native 240×160 GBA presentation and representative screenshot comparison. The detailed checklist identifies the earliest still-open mechanical prerequisite as the true 240×160 camera-clipped overworld viewport. Phase 3 has now supplied the player position/movement that older Phase 2 notes said was required before this work became meaningful.
 
-### Closed leaf: title/Oak entry
+#### Scoped implementation leaf: true GBA camera viewport
 
-[`../tasks/phase3-title-oak-entry-proof.md`](../tasks/phase3-title-oak-entry-proof.md) is `CLOSED — REVIEWED PASS` at exact implementation revision `8bdbda903fb0574cb169968976d4b40ce96d3563`.
+[`../tasks/phase2-gba-camera-viewport-proof.md`](../tasks/phase2-gba-camera-viewport-proof.md) is the bounded implementation/evidence task. It may add/reuse focused camera geometry, integrate that transform into the normal overworld draw path, and prove live 240×160 clipping without changing gameplay.
 
-Reviewer verified normal title `A`/`START` → existing Oak scene → existing identity flow → fresh Player's House 2F without post-Oak fixture injection, with focused, full no-ROM, full verified-ROM, Phase 3 ROM, and runtime replay evidence.
+It is not yet Worker-eligible because the guarded Local Worker Bridge requires an explicit route for every authorized ROM-backed implementation package.
 
-Do not redo this leaf unless direct evidence shows regression.
+#### Active prerequisite: guarded bridge route
 
-### Closed leaf: complete runtime exit replay
+Worker must execute only [`../tasks/local-worker-bridge-phase2-camera-route.md`](../tasks/local-worker-bridge-phase2-camera-route.md). It extends the existing fail-closed route pattern for the camera task and may not implement camera behavior.
 
-[`../tasks/phase3-complete-runtime-exit-replay.md`](../tasks/phase3-complete-runtime-exit-replay.md)
-is `CLOSED — REVIEWED PASS` at `4f4f29ec`. It proves normal boot through
-title/Oak/identity, bedroom/Pallet, Route 1 loss, normal save, and fresh-process
-reload, including identity and money persistence. Do not redo this leaf absent a
-direct regression.
+After independent PASS, Orchestrator restores `phase2-gba-camera-viewport-proof.md` as `READY_FOR_WORKER`.
 
-### Completed prerequisite: Local Worker Bridge retargeting
+### Remaining Phase 2 leaf after camera PASS
 
-[`../tasks/local-worker-bridge-task-routing.md`](../tasks/local-worker-bridge-task-routing.md) is `CLOSED — REVIEWED PASS` at substantive revision `0f0dc2f028f204dce4fcaee4e0fff0d9d0afb61e`.
-
-Do not redo this prerequisite unless new evidence shows regression.
+Oak-intro/reference screenshot parity remains open. Existing pixel-diff tooling is evidence infrastructure, not parity proof by itself. Orchestrator must scope that leaf only after the camera prerequisite is independently passed, using trustworthy reference behavior and without committing ROM-derived screenshots/assets.
 
 ## Status transition rules
 
