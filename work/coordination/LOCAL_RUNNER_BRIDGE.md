@@ -33,6 +33,8 @@ Current supported request/probe prefixes are:
   trainer-flow wiring is explicitly out of scope;
 - `phase4-foe-only-multimon-trainer-orchestration...` — bounded ordinary
   two-foe trainer replacement, per-foe reward, and final trainer-flag route;
+- `phase4-player-forced-replacement-ui...` — bounded trainer-only player
+  forced-replacement state and persistence route;
 - `runner-online...probe` — non-patch runner-readiness probe only.
 
 Adding a new route requires a bounded task that authorizes bridge maintenance. Do not add a generic fallback route.
