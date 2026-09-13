@@ -71,6 +71,9 @@ jobs:
             phase4-trainer-party-no-item-layouts*.patch|phase4-trainer-party-no-item-layouts*.probe)
               route='phase4-trainer-party-no-item-layouts'
               ;;
+            phase4-foe-only-multimon-trainer-orchestration*.patch|phase4-foe-only-multimon-trainer-orchestration*.probe)
+              route='phase4-foe-only-multimon-trainer-orchestration'
+              ;;
             oak-parcel-dex-presentation-north*.patch|oak-parcel-dex-presentation-north*.probe)
               route='oak-parcel-dex-presentation-north'
               ;;
@@ -156,6 +159,8 @@ jobs:
                 ;;
               phase4-trainer-party-no-item-layouts:src/core/TrainerPokemonFactory.lua|phase4-trainer-party-no-item-layouts:tests/trainer_pokemon_factory_test.lua|phase4-trainer-party-no-item-layouts:tests/phase4_trainer_party_rom_test.lua|phase4-trainer-party-no-item-layouts:work/tasks/phase4-trainer-party-no-item-layouts.md|phase4-trainer-party-no-item-layouts:work/coordination/STATE.json|phase4-trainer-party-no-item-layouts:work/coordination/HANDOFF.md)
                 ;;
+              phase4-foe-only-multimon-trainer-orchestration:main.lua|phase4-foe-only-multimon-trainer-orchestration:src/core/BattleSceneController.lua|phase4-foe-only-multimon-trainer-orchestration:src/core/TrainerBattleOrchestrator.lua|phase4-foe-only-multimon-trainer-orchestration:tests/phase4_foe_only_multimon_controller_test.lua|phase4-foe-only-multimon-trainer-orchestration:tests/phase4_foe_only_multimon_rom_test.lua|phase4-foe-only-multimon-trainer-orchestration:scripts/runtime_phase4_foe_only_multimon_replay.sh|phase4-foe-only-multimon-trainer-orchestration:work/tasks/phase4-foe-only-multimon-trainer-orchestration.md|phase4-foe-only-multimon-trainer-orchestration:work/coordination/STATE.json|phase4-foe-only-multimon-trainer-orchestration:work/coordination/HANDOFF.md)
+                ;;
               *)
                 echo "Patch target is not authorized for explicit route '$ROUTE': $target" >&2
                 exit 1
@@ -202,6 +207,10 @@ jobs:
             phase4-trainer-party-no-item-layouts)
               "$LUA" tests/trainer_pokemon_factory_test.lua
               "$LUA" tests/phase4_trainer_party_rom_test.lua
+              ;;
+            phase4-foe-only-multimon-trainer-orchestration)
+              "$LUA" tests/phase4_foe_only_multimon_controller_test.lua
+              "$LUA" tests/phase4_foe_only_multimon_rom_test.lua
               ;;
             *)
               echo "Patch execution has no focused-test route for '$ROUTE'." >&2
@@ -256,6 +265,9 @@ jobs:
             phase4-trainer-party-no-item-layouts)
               echo "No runtime replay is authorized: this route is constructor-only and must not wire live trainer flow."
               ;;
+            phase4-foe-only-multimon-trainer-orchestration)
+              bash scripts/runtime_phase4_foe_only_multimon_replay.sh
+              ;;
             *)
               echo "Patch execution has no runtime-replay route for '$ROUTE'." >&2
               exit 1
@@ -296,6 +308,13 @@ jobs:
               ;;
             phase4-trainer-party-no-item-layouts)
               for path in src/core/TrainerPokemonFactory.lua tests/trainer_pokemon_factory_test.lua tests/phase4_trainer_party_rom_test.lua work/tasks/phase4-trainer-party-no-item-layouts.md work/coordination/STATE.json work/coordination/HANDOFF.md; do
+                if [[ -e "$path" ]]; then
+                  git add -- "$path"
+                fi
+              done
+              ;;
+            phase4-foe-only-multimon-trainer-orchestration)
+              for path in main.lua src/core/BattleSceneController.lua src/core/TrainerBattleOrchestrator.lua tests/phase4_foe_only_multimon_controller_test.lua tests/phase4_foe_only_multimon_rom_test.lua scripts/runtime_phase4_foe_only_multimon_replay.sh work/tasks/phase4-foe-only-multimon-trainer-orchestration.md work/coordination/STATE.json work/coordination/HANDOFF.md; do
                 if [[ -e "$path" ]]; then
                   git add -- "$path"
                 fi

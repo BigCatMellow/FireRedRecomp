@@ -31,6 +31,8 @@ Current supported request/probe prefixes are:
 - `phase4-trainer-party-no-item-layouts...` — bounded `partyFlags` 0/1
   trainer-party construction route; it has no runtime replay because live
   trainer-flow wiring is explicitly out of scope;
+- `phase4-foe-only-multimon-trainer-orchestration...` — bounded ordinary
+  two-foe trainer replacement, per-foe reward, and final trainer-flag route;
 - `runner-online...probe` — non-patch runner-readiness probe only.
 
 Adding a new route requires a bounded task that authorizes bridge maintenance. Do not add a generic fallback route.
