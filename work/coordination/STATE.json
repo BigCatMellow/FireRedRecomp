@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "updated_utc": "2026-09-11T15:00:00Z",
+  "role": "ORCHESTRATOR",
+  "status": "READY_FOR_WORKER",
+  "current_phase": "Phase 3 — playable vertical slice",
+  "canonical_status_owner": "work/roadmaps/CAPABILITY_CHECKLIST.md",
+  "active_task": "work/tasks/local-worker-bridge-complete-runtime-route.md",
+  "objective": "Add only the explicit fail-closed Local Worker Bridge route required to execute the already-authorized phase3-complete-runtime-exit-replay evidence package, preserving trusted-main, exact-target, verified-ROM, test-before-publish, and no-public-PR invariants.",
+  "next_role": "WORKER",
+  "reconciliation": {
+    "blocked_parent_leaf": "work/tasks/phase3-complete-runtime-exit-replay.md",
+    "worker_result": "BLOCKED",
+    "blocker": "EXECUTION_SUBSTRATE_ROUTE_MISSING",
+    "gameplay_defect_found": false,
+    "implementation_published": false,
+    "tests_claimed": false,
+    "new_prerequisite": "work/tasks/local-worker-bridge-complete-runtime-route.md",
+    "canonical_status_change": false,
+    "phase3_status": "IN PROGRESS"
+  },
+  "active_task_acceptance_summary": [
+    "Add a dedicated explicit phase3-complete-runtime-exit-replay request/probe route; unknown routes remain fail-closed.",
+    "Hard-code only the blocked evidence task's authorized target, focused-test, runtime-replay, and publish-staging surfaces; no wildcard or generic fallback.",
+    "Preserve trusted push-to-main only and no pull_request/pull_request_target self-hosted execution.",
+    "Preserve exact FireRed v1.0 SHA-1 verification plus focused/no-ROM/verified-ROM/replay test-before-publish gates.",
+    "Prove the route with a non-gameplay probe or equivalent deterministic validation.",
+    "Independent Reviewer PASS is required on the exact bridge-maintenance revision."
+  ],
+  "boundaries": {
+    "may_change": [
+      ".github/workflows/local-worker-bridge.yml",
+      "work/coordination/LOCAL_RUNNER_BRIDGE.md if needed",
+      "focused bridge validation/probe support if required",
+      "task/coordination/review documentation"
+    ],
+    "must_not_change": [
+      "main.lua or gameplay/runtime behavior",
+      "complete-runtime replay implementation itself except names referenced by bridge routing",
+      "public-PR execution policy",
+      "supported-ROM policy or exact ROM SHA gate",
+      "save format/layout",
+      "ROM/cache/BIOS/extracted content",
+      "broader repository permissions",
+      "independent-review requirement"
+    ]
+  },
+  "blocker": null,
+  "next_after_success": "After independent PASS on this bridge prerequisite, Orchestrator restores work/tasks/phase3-complete-runtime-exit-replay.md as READY_FOR_WORKER. Do not advance Phase 3 until that complete runtime proof itself receives independent PASS.",
+  "legal_content_boundary": "Never commit ROMs, BIOS dumps, generated caches, extracted game assets, or other prohibited content.",
+  "phase_completion_rule": "Do not mark Phase 3 DONE until the complete parent exit criterion is evidenced and independently reviewed."
+}

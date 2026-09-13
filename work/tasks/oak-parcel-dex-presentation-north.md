@@ -1,6 +1,6 @@
 # Task: present north-facing Oak Parcel/Dex scene
 
-- Status: `DONE` — bounded runtime bridge is verified and independently approved; owner commit remains the publication boundary.
+- Status: `DONE`
 - AGI status: `AGI READY`
 - Type: `IMPLEMENTATION`
 - Owner: `/root`
@@ -29,7 +29,8 @@
   tests, runtime replay/script, and task/review documentation.
 - MUST NOT CHANGE: generic script interpreter/map hook/addobject systems,
   Oak orientation variants, Mart presenter/UI, save codec, or battle rules.
-- OPERATOR APPROVAL REQUIRED: publication/push.
+- OPERATOR APPROVAL REQUIRED: publication/push. Superseded for task-bounded
+  publication by the standing human authorization recorded in `AGENTS.md`.
 
 ## Verified north-facing descriptor
 
@@ -62,14 +63,20 @@
 - [x] It delegates all existing `ViridianParcelStory` durable writes exactly
   once after a successful preflight; no early mutation or duplicate reward.
 - [x] Verified-ROM replay proves terminal presentation plus persistent result;
-  focused tests and both suites pass.
-- [x] Independent review passes.
+  focused tests, both suites, and independent review pass.
 
 ## Verification and evidence
 
-- Verification: source-lock fixture, pure FSM tests, no-ROM and verified-ROM
-  suites, and verified-ROM runtime replay.
-- Review required: `INDEPENDENT_REVIEW`
+- Reviewed implementation revision: `2d8c3221775044a54668683e500055307fe4d20b`.
+- Independent review: `work/reviews/oak-parcel-dex-presentation-north-final-review.md` — `PASS`.
+- Local Worker Bridge run `34547647645` verified FireRed US v1.0 SHA-1
+  `41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc`.
+- Focused presenter test: 24 passed, 0 failed.
+- Full no-ROM suite: 121 test files passed.
+- Full verified-ROM suite: 121 test files passed, including
+  `phase3_exit_path_rom_test`: 12 passed, 0 failed.
+- Verified-ROM natural-capture replay passed the Oak presentation and
+  fresh-process persistence with Dex/Lab/Mart/Parcel/capture state intact.
 
 ## Stop / escalate
 
@@ -91,28 +98,11 @@ or preflight cannot preserve the current bounded atomic failure behavior.
 
 ## Completion / handoff
 
-- Completed: scoped and independently ROM/source validated; isolated
-  north-only presenter and focused test added. Independent review corrected
-  the first-four-texts-before-rival source ordering.
-- Runtime bridge now present in the uncommitted worktree: field/NPC input is
-  locked, text/movement is driven from the presenter, the existing rival
-  template is temporary, and terminal commit is the only durable-write path.
-- `luac5.1 -p main.lua`, focused presenter tests, and the 138-file
-  ROM-backed suite pass. The verified-ROM `natural_capture` runtime replay
-  now reaches terminal Oak state (`dex=true`) and catches successfully with
-  its source-controlled RNG seed (`POKEPORT_RNG_SEED=5`); the separate
-  two-process replay also proves save/restart persistence. The generic smoke
-  wrapper selects that seed for this capture-specific route while retaining
-  seed 0 for its other cases. Independent review remains due.
-- Focused follow-up review found and fixed a malformed-runtime escape path:
-  a missing temporary-rival template previously unlocked the UI but left the
-  presenter active, which could keep field input locked. `Presentation:abort`
-  now takes that path to the same terminal failure state as a failed commit;
-  `tests/oak_parcel_dex_presentation_test.lua` covers the no-durable-write
-  abort and repeat-abort rejection (26/0). The 138-file ROM suite and the
-  two-process natural-capture persistence replay still pass.
-- Completed: independent review is recorded in
-  `work/reviews/oak-parcel-dex-presentation-review.md`; it found and verified
-  the failed-commit temporary-rival cleanup fix. This bounded task is done.
-- Next action: hand the cleanly verified worktree to the owner for commit; do
-  not expand this cutscene into a generic script interpreter.
+Independent Reviewer `PASS` closes this bounded leaf only. The north-facing
+Oak Parcel/Dex presentation is wired, source-locked, regression-tested, and
+verified in the ROM-backed runtime replay. The explicit omissions remain out
+of scope and are not claims of parity.
+
+Phase 3 remains `IN PROGRESS`. Orchestrator must return to
+`work/tasks/phase3-exit-proof.md` and dispatch the smallest remaining unproven
+parent acceptance item rather than widening this completed task.

@@ -1,0 +1,3 @@
+purpose=verify-self-hosted-runner
+expected_runner_label=firered-local
+expected_rom_sha1=41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc

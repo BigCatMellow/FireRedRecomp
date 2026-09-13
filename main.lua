@@ -3679,6 +3679,51 @@ function love.load()
       tostring(session and session:getVar(Battle.ViridianParcelStory.VAR_LAB_SCENE)),
       tostring(session and session:getVar(Battle.ViridianParcelStory.VAR_MART_SCENE))))
     if loaded then love.event.quit() else love.event.quit(1) end
+  elseif runtimeReplay == "title_oak_entry" then
+    -- Exercise the normal title → Oak → identity input path. This replay
+    -- deliberately never constructs a post-Oak session directly.
+    local function tick(mask, count)
+      world.replayInputMask = mask
+      for _ = 1, count do love.update(1 / 60) end
+    end
+    local function press(button)
+      tick(button, 1)
+      tick(0, 1)
+    end
+    local startedAtTitle = titleActive and not oakSceneActive and not newGame.active
+    press(InputState.START_BUTTON)
+    local reachedOak = oakSceneActive and not titleActive and not newGame.active
+    press(InputState.A_BUTTON)
+    local reachedIdentity = newGame.active and newGame.flow ~= nil
+    if reachedIdentity then
+      press(InputState.A_BUTTON)
+      press(InputState.START_BUTTON)
+      press(InputState.A_BUTTON)
+      press(InputState.A_BUTTON)
+      press(InputState.DPAD_DOWN)
+      press(InputState.A_BUTTON)
+      press(InputState.A_BUTTON)
+      tick(0, 1)
+    end
+    world.replayInputMask = nil
+    local session = newGame.session
+    local sb1, sb2 = session and session.state.saveBlock1, session and session.state.saveBlock2
+    local dexZero = sb2 and sb2.pokedex and sb2.pokedex.seen == string.rep("\0", #sb2.pokedex.seen)
+    local bagEmpty = sb1 and #sb1.bagPocket_Items == 0 and #sb1.bagPocket_KeyItems == 0
+      and #sb1.bagPocket_PokeBalls == 0 and #sb1.bagPocket_TMHM == 0 and #sb1.bagPocket_Berries == 0
+    local pcPotion = sb1 and sb1.pcItems and sb1.pcItems[1]
+      and sb1.pcItems[1].itemId == GameSession.ITEM_POTION and sb1.pcItems[1].quantity == 1
+    local passed = startedAtTitle and reachedOak and reachedIdentity and session
+      and session.mapId == GameSession.MAP_PALLET_TOWN_PLAYERS_HOUSE_2F
+      and session.location.x == 6 and session.location.y == 6
+      and playerMovement and playerMovement.tileX == 6 and playerMovement.tileY == 6
+      and sb1.playerPartyCount == 0 and sb1.money == NewGameDefaults.startingMoney
+      and bagEmpty and pcPotion and dexZero
+    print(("RUNTIME_REPLAY title_oak_entry %s title=%s oak=%s identity=%s map=%s pos=%s,%s"):format(
+      passed and "PASS" or "FAIL", tostring(startedAtTitle), tostring(reachedOak),
+      tostring(reachedIdentity), tostring(session and session.mapId),
+      tostring(session and session.location.x), tostring(session and session.location.y)))
+    if passed then love.event.quit(0) else love.event.quit(1) end
   elseif runtimeReplay == "house_to_pallet" or replayRoute1 then
     beginNewGameFlow()
 
@@ -4616,6 +4661,12 @@ function love.update(dt)
         addLine(("Declined %s; all three real choices remain available.")
           :format(declined and speciesName(declined.species) or "starter"))
       end
+    elseif titleActive and (inputState:isNewlyPressed(InputState.A_BUTTON)
+        or inputState:isNewlyPressed(InputState.START_BUTTON)) then
+      -- Normal title confirmation enters the existing Oak scene; no session
+      -- or post-Oak state is constructed at this boundary.
+      world.clearViews()
+      oakSceneActive = true
     elseif oakSceneActive and inputState:isNewlyPressed(InputState.A_BUTTON) then
       -- The S view is the real Oak narration frame; A continues into the
       -- real next task family, starting gender selection.

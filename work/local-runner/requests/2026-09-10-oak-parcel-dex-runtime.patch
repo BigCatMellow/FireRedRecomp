@@ -1,0 +1,311 @@
+diff --git a/main.lua b/main.lua
+--- a/main.lua
++++ b/main.lua
+@@ -78,6 +78,7 @@ local Battle = {
+   EarlyStory = require("src.core.EarlyStory"),
+   ViridianParcelStory = require("src.core.ViridianParcelStory"),
+   ViridianMartParcelPresentation = require("src.core.ViridianMartParcelPresentation"),
++  OakParcelDexPresentation = require("src.core.OakParcelDexPresentation"),
+   PokedexOrder = require("import.PokedexOrder"),
+   Item = require("import.Item"),
+   SessionBagBridge = require("src.core.SessionBagBridge"),
+@@ -711,7 +712,8 @@ local function playerMovementTask(taskId)
+   if not walkActive or world.battle or world.starterChoice or world.trainerApproach
+       or (world.dialogue and world.dialogue:isActive())
+-      or (world.martParcelPresentation and world.martParcelPresentation:isInputLocked()) then return end
++      or (world.martParcelPresentation and world.martParcelPresentation:isInputLocked())
++      or (world.oakParcelDexPresentation and world.oakParcelDexPresentation:isInputLocked()) then return end
+@@ -760,7 +762,8 @@ local function npcMovementTask(taskId)
+   if not walkActive or world.battle or world.starterChoice or world.trainerApproach
+       or (world.dialogue and world.dialogue:isActive())
+-      or (world.martParcelPresentation and world.martParcelPresentation:isInputLocked()) then return end
++      or (world.martParcelPresentation and world.martParcelPresentation:isInputLocked())
++      or (world.oakParcelDexPresentation and world.oakParcelDexPresentation:isInputLocked()) then return end
+@@ -1519,10 +1522,15 @@ local function loadMapObjectEvents(data, events, mapId)
+   world.bgEvents = events.bgEvents or {}
+   world.coordEvents = events.coordEvents or {}
++  world.mapObjectEventTemplates = events.objectEvents
+   world.dialogue = nil
+   world.dialogueBuiltTokenIndex = -1
+   world.martParcelPresentation = nil
+   world.martParcelPrinter = nil
+   world.martParcelMotion = nil
+   world.martParcelClerk = nil
++  world.oakParcelDexPresentation = nil
++  world.oakParcelDexPrinter = nil
++  world.oakParcelDexMotion = nil
+ 
+   -- SpawnObjectEventsOnMapEntry skips templates whose FLAG_HIDE_* bit is
+@@ -1590,6 +1598,7 @@ local function loadWalkAssets(dbg)
+   scheduler:createTask(npcMovementTask, 0)
+   scheduler:createTask(dialogueTask, 0)
+   scheduler:createTask(world.martParcelPresentationTask, 0)
++  scheduler:createTask(world.oakParcelDexPresentationTask, 0)
+   scheduler:createTask(world.trainerApproachTask, 0)
+   dbg(("player movement started at first walkable tile %d,%d"):format(x, y))
+ end
+@@ -2399,6 +2408,170 @@ world.martParcelPresentationTask = function(taskId)
+   end
+ end
+ 
++-- Task-bounded command bridge for ReceiveDexScene.  This deliberately uses
++-- the existing ObjectEventState forced-step primitive and live Lab templates;
++-- it does not add generic script/addobject semantics.
++world.findLiveNpc = function(localId)
++  for _, npc in ipairs(world.npcs) do
++    if npc.localId == localId then return npc end
++  end
++  return nil
++end
++
++world.removeNpcLivePreserveFlag = function(localId)
++  local kept = {}
++  for _, npc in ipairs(world.npcs) do
++    if npc.localId ~= localId then kept[#kept + 1] = npc end
++  end
++  world.npcs = kept
++end
++
++world.spawnOakParcelDexRival = function(spawn)
++  local existing = world.findLiveNpc(spawn.localId)
++  if existing then return existing end
++  local templates = world.mapObjectEventTemplates or {}
++  local template, i = nil, 0
++  while templates[i] ~= nil do
++    if templates[i].localId == spawn.localId then template = templates[i]; break end
++    i = i + 1
++  end
++  if not template then return nil, "rival_template_missing" end
++  local built = ObjectEventState.new({ [0]=template }, { rng=world.globalRng, isBlocked=isWalkTileBlocked })
++  local rival = built[1]
++  if not rival then return nil, "rival_template_unbuildable" end
++  rival.x, rival.y = spawn.x, spawn.y
++  rival.initialX, rival.initialY = spawn.x, spawn.y
++  rival.destX, rival.destY = spawn.x, spawn.y
++  rival.moving, rival.stepFrame, rival.moveDx, rival.moveDy = false, 0, 0, 0
++  world.npcs[#world.npcs + 1] = rival
++  return rival
++end
++
++world.handleOakParcelDexPresentationCommand = function(command)
++  if not command then return end
++  local function setText(pointer)
++    world.oakParcelDexPrinter = TextPrinterState.new(tokenizeTextAt(pointer), FONT_REVEAL_TICKS_PER_CHAR)
++    world.dialogueBuiltTokenIndex = -1
++  end
++  if command.kind == "lock" then
++    setText(command.textPointer)
++  elseif command.kind == "show_text" then
++    setText(command.textPointer)
++  elseif command.kind == "reveal_text" and world.oakParcelDexPrinter then
++    world.oakParcelDexPrinter:revealAll()
++    world.dialogueBuiltTokenIndex = -1
++  elseif command.kind == "move" then
++    if command.group == "rival_arrival" then
++      local rival, reason = world.spawnOakParcelDexRival(command.spawn)
++      if not rival then
++        world.handleOakParcelDexPresentationCommand({kind="unlock", failed=true, reason=reason})
++        world.oakParcelDexPresentation.state = world.oakParcelDexPresentation.FAILED
++        return
++      end
++      playerMovement.facingDirection = PlayerMovement.DOWN
++      world.oakParcelDexMotion = {
++        kind="npc_steps", group=command.group, npc=rival,
++        directions={PlayerMovement.UP,PlayerMovement.UP,PlayerMovement.UP,PlayerMovement.UP,PlayerMovement.UP,PlayerMovement.UP},
++        index=1, playerFaceLeftAfter=88, ticks=0,
++      }
++    elseif command.group == "player_face_up" then
++      playerMovement.facingDirection = PlayerMovement.UP
++      world.oakParcelDexMotion = {kind="delay_complete", group=command.group, ticks=1}
++    elseif command.group == "oak_to_dex" then
++      local oak = world.findLiveNpc(Battle.OakParcelDexPresentation.OAK_LOCAL_ID)
++      world.oakParcelDexMotion = {kind="npc_steps", group=command.group, npc=oak,
++        directions={PlayerMovement.UP,PlayerMovement.LEFT}, index=1, ticks=0}
++    elseif command.group == "dex_reveal" then
++      local oak = world.findLiveNpc(Battle.OakParcelDexPresentation.OAK_LOCAL_ID)
++      if oak then oak.facingDirection = PlayerMovement.UP end
++      world.removeNpcLivePreserveFlag(Battle.OakParcelDexPresentation.DEX_PROP_LEFT_LOCAL_ID)
++      world.oakParcelDexMotion = {kind="dex_reveal", group=command.group, stage=1, ticks=10}
++    elseif command.group == "oak_return" then
++      local oak = world.findLiveNpc(Battle.OakParcelDexPresentation.OAK_LOCAL_ID)
++      world.oakParcelDexMotion = {kind="npc_steps", group=command.group, npc=oak,
++        directions={PlayerMovement.RIGHT,PlayerMovement.DOWN}, index=1, ticks=0}
++    elseif command.group == "rival_exit" then
++      playerMovement.facingDirection = PlayerMovement.LEFT
++      local rival = world.findLiveNpc(Battle.OakParcelDexPresentation.RIVAL_LOCAL_ID)
++      world.oakParcelDexMotion = {kind="npc_steps", group=command.group, npc=rival,
++        directions={PlayerMovement.DOWN,PlayerMovement.DOWN,PlayerMovement.DOWN,PlayerMovement.DOWN,PlayerMovement.DOWN,PlayerMovement.DOWN},
++        index=1, ticks=0}
++    end
++  elseif command.kind == "unlock" then
++    world.oakParcelDexPrinter = nil
++    world.oakParcelDexMotion = nil
++    world.dialogueBuiltTokenIndex = -1
++    if command.remove then world.removeNpcLivePreserveFlag(command.remove.localId) end
++    if command.done then
++      addLine("Oak Parcel/Dex scene complete. Pokédex and five Poké Balls persisted; Viridian Mart is now open.")
++    else
++      addLine("Oak Parcel/Dex scene stopped: " .. tostring(command.reason))
++    end
++  end
++end
++
++world.oakParcelDexPresentationTask = function(taskId)
++  local presenter = world.oakParcelDexPresentation
++  if not presenter or not presenter:isActive() then return end
++  local motion = world.oakParcelDexMotion
++  if motion then
++    if motion.kind == "delay_complete" then
++      motion.ticks = motion.ticks - 1
++      if motion.ticks <= 0 then
++        world.oakParcelDexMotion = nil
++        world.handleOakParcelDexPresentationCommand(presenter:movementComplete(motion.group))
++      end
++      return
++    elseif motion.kind == "dex_reveal" then
++      motion.ticks = motion.ticks - 1
++      if motion.ticks <= 0 and motion.stage == 1 then
++        world.removeNpcLivePreserveFlag(Battle.OakParcelDexPresentation.DEX_PROP_RIGHT_LOCAL_ID)
++        motion.stage, motion.ticks = 2, 25
++      elseif motion.ticks <= 0 then
++        world.oakParcelDexMotion = nil
++        world.handleOakParcelDexPresentationCommand(presenter:movementComplete(motion.group))
++      end
++      return
++    elseif motion.kind == "npc_steps" then
++      motion.ticks = motion.ticks + 1
++      if motion.playerFaceLeftAfter and motion.ticks >= motion.playerFaceLeftAfter then
++        playerMovement.facingDirection = PlayerMovement.LEFT
++        motion.playerFaceLeftAfter = nil
++      end
++      if not motion.npc then
++        world.handleOakParcelDexPresentationCommand({kind="unlock", failed=true, reason="movement_target_missing"})
++        presenter.state = presenter.FAILED
++        return
++      end
++      if motion.npc.moving then
++        if ObjectEventState.advanceStep(motion.npc) then motion.index = motion.index + 1 end
++      elseif motion.index <= #motion.directions then
++        ObjectEventState.beginForcedStep(motion.npc, motion.directions[motion.index])
++      else
++        world.oakParcelDexMotion = nil
++        world.handleOakParcelDexPresentationCommand(presenter:movementComplete(motion.group))
++      end
++      return
++    end
++  end
++  local printer = world.oakParcelDexPrinter
++  if not printer then return end
++  local aPressed = inputState:isNewlyPressed(InputState.A_BUTTON)
++  if aPressed then
++    world.handleOakParcelDexPresentationCommand(presenter:onA(true, printer:isFullyRevealed()))
++  else
++    printer:tick(false)
++  end
++end
++
+ -- Starts a real decoded script (an NPC's scriptPtr or a bg event's sign
+@@ -2463,13 +2636,35 @@ local function tryStartInteraction()
+     end
+     if world.viridianParcelStory and walkMapId == Battle.ViridianParcelStory.MAP_OAKS_LAB
+         -- LOCALID_OAKS_LAB_PROF_OAK is object-event local id 4: the first
+         -- three Lab templates use implicit ids 1..3 in map.json.
+         and npc.localId == 4 then
+-      local action = world.viridianParcelStory:completeLabParcelReturn(walkMapId)
+-      if action then
+-        addLine("Oak received the Parcel and gave you a Pokédex and five Poké Balls. Cutscene movement/dialogue timing is abbreviated; Viridian Mart is now open.")
++      local story = world.viridianParcelStory
++      local presenter = Battle.OakParcelDexPresentation.new({
++        canBegin=function()
++          if not story.inventory:canAddItem(Battle.ViridianParcelStory.ITEM_POKE_BALL, 5) then
++            return false, "poke_ball_bag_full"
++          end
++          return true
++        end,
++        commit=function() return story:completeLabParcelReturn(walkMapId) end,
++      })
++      local command = presenter:begin({
++        mapId=walkMapId,
++        playerX=playerMovement.tileX, playerY=playerMovement.tileY,
++        playerFacing=playerMovement.facingDirection,
++        oakPresent=true,
++        martScene=newGame.session:getVar(Battle.ViridianParcelStory.VAR_MART_SCENE),
++        labScene=newGame.session:getVar(Battle.ViridianParcelStory.VAR_LAB_SCENE),
++        parcelPresent=story.inventory:quantityOf(Battle.ViridianParcelStory.ITEM_OAKS_PARCEL) > 0,
++      })
++      if command then
++        world.oakParcelDexPresentation = presenter
++        world.handleOakParcelDexPresentationCommand(command)
+         return
+       end
+     end
+@@ -2693,7 +2888,7 @@ local function ensureDialogueImagesCurrent()
+ 
+   local runner = world.dialogue
+-  local printer = (runner and runner.printer) or world.martParcelPrinter
++  local printer = (runner and runner.printer) or world.martParcelPrinter or world.oakParcelDexPrinter
+   local tokenIndex = printer and printer.tokenIndex or -1
+@@ -3211,6 +3406,21 @@ local function finishMartParcelPresentation()
+       end
+       return false
+     end
++    local function finishOakParcelDexPresentation()
++      for _ = 1, 4800 do
++        local presenter = world.oakParcelDexPresentation
++        if not presenter then return false end
++        if presenter.state == presenter.DONE then return true end
++        if presenter.state == presenter.FAILED then return false end
++        local printer = world.oakParcelDexPrinter
++        if printer and printer:isFullyRevealed() then
++          press(InputState.A_BUTTON)
++        else
++          tick(0, 1)
++        end
++      end
++      return false
++    end
+     local function loseBattle()
+@@ -3430,6 +3640,7 @@ local function finishMartParcelPresentation()
+           local labReturn
+           local routeSouthStart
+           local martPresentationDone = false
++          local oakPresentationDone = false
+@@ -3484,8 +3695,9 @@ local function finishMartParcelPresentation()
+                 labReturn = { map=walkMapId, x=playerMovement.tileX, y=playerMovement.tileY,
+                   labScene=newGame.session:getVar(Battle.ViridianParcelStory.VAR_LAB_SCENE) }
+-                press(InputState.A_BUTTON) -- bounded Oak Parcel/Dex controller
+-                dexDelivered = newGame.session:getVar(Battle.ViridianParcelStory.VAR_MART_SCENE) == 2
++                press(InputState.A_BUTTON) -- start bounded source-derived Oak presenter
++                oakPresentationDone = finishOakParcelDexPresentation()
++                dexDelivered = oakPresentationDone and newGame.session:getVar(Battle.ViridianParcelStory.VAR_MART_SCENE) == 2
+@@ -3560,7 +3772,7 @@ local function finishMartParcelPresentation()
+             labReturn=labReturn,
+             routeSouthStart=routeSouthStart,
+-            martPresentationDone=martPresentationDone,
++            martPresentationDone=martPresentationDone, oakPresentationDone=oakPresentationDone,
+             purchased=purchased, boughtBalls=boughtBalls, captureOutcome=captureOutcome,
+@@ -3582,7 +3794,8 @@ local function finishMartParcelPresentation()
+         local capture = world.runtimeReplayNaturalCapture or {}
+         local sb1 = newGame.session and newGame.session.state.saveBlock1
+-        passed = passed and capture.reachedViridian and capture.reachedMart and capture.purchased
++        passed = passed and capture.reachedViridian and capture.reachedMart
++          and capture.martPresentationDone and capture.oakPresentationDone and capture.purchased
+           and capture.boughtBalls == 10 and capture.captureOutcome == "caught"
+@@ -3620,6 +3833,8 @@ local function finishMartParcelPresentation()
+         .. " martScenePresented=" .. tostring(capture.martSceneAfterPresentation)
+         .. " presentation=" .. tostring(capture.martPresentationDone)
++        .. " oakPresentation=" .. tostring(capture.oakPresentationDone)
++        .. " oakPresenterState=" .. tostring(world.oakParcelDexPresentation and world.oakParcelDexPresentation.state)
+         .. " presenterState=" .. tostring(world.martParcelPresentation and world.martParcelPresentation.state)
+@@ -4020,7 +4235,8 @@ function love.keypressed(key)
+     elseif walkActive and playerMovement
+         and (world.trainerApproach or (world.dialogue and world.dialogue:isActive())
+-          or (world.martParcelPresentation and world.martParcelPresentation:isInputLocked())) then
++          or (world.martParcelPresentation and world.martParcelPresentation:isInputLocked())
++          or (world.oakParcelDexPresentation and world.oakParcelDexPresentation:isInputLocked())) then
+@@ -4472,7 +4688,7 @@ function love.draw()
+     -- Real message box (DialogueRunner), drawn over the field like the
+     -- real bg0 dialogue window sitting in front of the map/OBJ layers.
+-    if ((world.dialogue and world.dialogue.printer) or world.martParcelPrinter) and world.dialogueWindowImage then
++    if ((world.dialogue and world.dialogue.printer) or world.martParcelPrinter or world.oakParcelDexPrinter) and world.dialogueWindowImage then
+       local boxX = baseX + 8 * viewport.scale
