@@ -32,6 +32,11 @@ BattleSceneController.__index = BattleSceneController
 BattleSceneController.MESSAGES = "messages"
 BattleSceneController.ACTION = "action"
 BattleSceneController.MOVE = "move"
+-- A forced replacement is deliberately its own state rather than the
+-- ordinary ACTION-menu POKEMON item.  The latter remains unavailable until
+-- its separate voluntary-switch task; this state is entered only when the
+-- engine has already emitted player-side forcedSwitchNeeded after a faint.
+BattleSceneController.PARTY = "party"
 BattleSceneController.COMPLETE = "complete"
 
 local function possessive(name)
@@ -61,11 +66,15 @@ function BattleSceneController.new(opts)
     foeMoveSlot = opts.foeMoveSlot or 1,
     chooseFoeMove = opts.chooseFoeMove,
     onMessagesComplete = opts.onMessagesComplete,
+    forcedSwitchChoices = opts.forcedSwitchChoices,
+    onForcedSwitchChoice = opts.onForcedSwitchChoice,
     runDisabledMessage = opts.runDisabledMessage,
     bag = opts.bag,
     state = BattleSceneController.MESSAGES,
     actionCursor = 0,
     moveCursor = 0,
+    partyCursor = 0,
+    partyChoices = {},
     messages = {},
     messageIndex = 1,
     afterMessages = BattleSceneController.ACTION,
@@ -132,6 +141,7 @@ function BattleSceneController:advanceMessage()
       return
     end
     self.state = self.afterMessages
+    if self.state == BattleSceneController.PARTY then self:_refreshForcedSwitchChoices() end
   end
   self:_touch()
 end
@@ -319,9 +329,25 @@ function BattleSceneController:_runTurn(playerAction)
   end
   local foeMoveSlot = self.chooseFoeMove and self.chooseFoeMove(self.engine) or self.foeMoveSlot
   local events = self.engine:runTurn(playerAction, { action = "move", moveSlot = foeMoveSlot })
-  local after = self.engine:isOver() and BattleSceneController.COMPLETE or BattleSceneController.ACTION
+  -- The engine has made the team-wide eligibility decision before it emits
+  -- forcedSwitchNeeded.  Do not fall through to ACTION while that pending
+  -- decision exists: a player faint with a legal bench must drain its
+  -- messages and then enter the forced-only selector.
+  local after = self.engine:isOver() and BattleSceneController.COMPLETE
+    or (self.engine.awaitingForcedSwitch == "player" and BattleSceneController.PARTY)
+    or BattleSceneController.ACTION
   self.actionCursor = 0
   self:_setMessages(self:_eventMessages(events), after)
+end
+
+function BattleSceneController:_refreshForcedSwitchChoices()
+  local choices = self.forcedSwitchChoices and self.forcedSwitchChoices() or {}
+  self.partyChoices = choices or {}
+  if #self.partyChoices == 0 then
+    self.partyCursor = 0
+  else
+    self.partyCursor = math.max(0, math.min(self.partyCursor, #self.partyChoices - 1))
+  end
 end
 
 function BattleSceneController:processInput(input)
@@ -353,6 +379,33 @@ function BattleSceneController:processInput(input)
         end
       else
         self:_setMessages({ { text = "POKEMON switching is not available yet." } }, BattleSceneController.ACTION)
+      end
+    end
+    return
+  end
+
+  if self.state == BattleSceneController.PARTY then
+    -- Re-read the save-backed candidates each input.  This makes a stale,
+    -- active, fainted, egg, or otherwise invalid choice unable to clear the
+    -- pending engine state between the faint and the actual confirmation.
+    self:_refreshForcedSwitchChoices()
+    if #self.partyChoices == 0 then
+      self:_touch()
+      return
+    end
+    local before = self.partyCursor
+    if input:isNewlyPressed(InputState.DPAD_UP) then
+      self.partyCursor = (self.partyCursor + #self.partyChoices - 1) % #self.partyChoices
+    elseif input:isNewlyPressed(InputState.DPAD_DOWN) then
+      self.partyCursor = (self.partyCursor + 1) % #self.partyChoices
+    end
+    if self.partyCursor ~= before then self:_touch() end
+    -- B/CANCEL intentionally does nothing here.  A forced replacement may
+    -- not cancel into ACTION or the ordinary player-loss path.
+    if input:isNewlyPressed(InputState.A_BUTTON) and self.onForcedSwitchChoice then
+      local entries = self.onForcedSwitchChoice(self.partyChoices[self.partyCursor + 1])
+      if entries then
+        self:_setMessages(entries, BattleSceneController.ACTION)
       end
     end
     return

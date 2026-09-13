@@ -1521,10 +1521,21 @@ world.startTrainerBattle = function(trainerId)
     local orchestrator = trainer.partySize == 2 and Battle.TrainerOrchestrator.new({
       foes=foes, toBattler=Battle.PartyBridge.battlerFromGenerated,
     }) or nil
+    -- The same save-backed eligibility rule is used at the engine's faint
+    -- fork and again at confirmation.  `activePartySlot` advances only
+    -- after a legal replacement is accepted, so an active/fainted/egg
+    -- record can never masquerade as a bench choice.
+    local activePartySlot = partySlot
+    local function playerSwitchTargets()
+      return Battle.PartyBridge.findSwitchTargets(session.state.saveBlock1, activePartySlot)
+    end
     local engine = Battle.Engine.new({
       player=player, foe=Battle.PartyBridge.battlerFromGenerated(foe),
       moves=catalog.moves, typeChart=catalog.typeChart, rng=world.globalRng,
-      hasReplacement=orchestrator and function(side) return orchestrator:hasReplacement(side) end,
+      hasReplacement=function(side)
+        if side == "foe" then return orchestrator and orchestrator:hasReplacement(side) or false end
+        return #playerSwitchTargets() > 0
+      end,
     })
     local trainerName = Charmap.decode(trainer.rawName)
     local playerName = Charmap.decode(playerDecoded.nickname)
@@ -1537,8 +1548,20 @@ world.startTrainerBattle = function(trainerId)
     controller = Battle.Controller.new({
       engine=engine, playerName=playerName, foeName=foeName,
       chooseFoeMove=function(e) return Battle.TrainerAI.choose(e, trainer.aiFlags) end,
-      onMessagesComplete=orchestrator and function()
-        if engine.awaitingForcedSwitch ~= "foe" then return nil end
+      onMessagesComplete=function()
+        if engine.awaitingForcedSwitch == "player" then
+          -- The outgoing mon must be durable at zero HP before the selector
+          -- can ever replace it.  The normal per-turn persistence below
+          -- already does this in a live frame; keeping it here makes the
+          -- message-drain/selection seam atomic and testable as well.
+          local activeBattle = world.battle
+          if activeBattle and activeBattle.partyRecord then
+            Battle.PartyBridge.persistPartyBattler(activeBattle.partyRecord, engine.player)
+            activeBattle.persistedTurn = engine.turn
+          end
+          return nil
+        end
+        if engine.awaitingForcedSwitch ~= "foe" or not orchestrator then return nil end
         -- `world.battle` already owns the persistent player record by the
         -- time input can advance these messages.
         local incoming = orchestrator:resolveFoeReplacement(engine, function(defeated)
@@ -1561,6 +1584,49 @@ world.startTrainerBattle = function(trainerId)
             romData, romAddrs.sSpeciesToNationalPokedexNum, incoming.species))
         end
         return { trainerName .. " sent out " .. incomingName .. "!" }
+      end,
+      forcedSwitchChoices=function()
+        if engine.awaitingForcedSwitch ~= "player" then return {} end
+        local choices = {}
+        for _, target in ipairs(playerSwitchTargets()) do
+          local decoded = Battle.PartyBridge.decodeRecord(target.record)
+          choices[#choices + 1] = {
+            slot=target.slot, record=target.record,
+            name=decoded and Charmap.decode(decoded.nickname) or "POKEMON",
+          }
+        end
+        return choices
+      end,
+      onForcedSwitchChoice=function(choice)
+        -- Treat all caller-provided selection data as untrusted/stale until
+        -- it matches a current live save-party target exactly.
+        if engine.awaitingForcedSwitch ~= "player" or not choice then return nil end
+        local selected
+        for _, target in ipairs(playerSwitchTargets()) do
+          if target.slot == choice.slot and target.record == choice.record then
+            selected = target
+            break
+          end
+        end
+        if not selected then return nil end
+        local activeBattle = assert(world.battle, "trainer player switch has no active battle")
+        Battle.PartyBridge.persistPartyBattler(activeBattle.partyRecord, engine.player)
+        local incoming, incomingDecoded = Battle.PartyBridge.battlerFromParty(selected.record, catalog.species)
+        engine:resolveForcedSwitch("player", incoming)
+        activePartySlot = selected.slot
+        activeBattle.partyRecord, activeBattle.partySlot = selected.record, selected.slot
+        activeBattle.playerName = Charmap.decode(incomingDecoded.nickname)
+        controller.playerName = activeBattle.playerName
+        if not world._trainerTestMode then
+          local imageOk, composite = pcall(Battle.Assets.decodeMon, romData, romAddrs, incoming.species, true)
+          if imageOk then
+            activeBattle.playerImage = buildImage(composite)
+            activeBattle.playerImage:setFilter("nearest", "nearest")
+          else
+            addLine("Trainer replacement back sprite failed: " .. tostring(composite))
+          end
+        end
+        return { choice.name .. ", come back!\nGo! " .. controller.playerName .. "!" }
       end,
       runDisabledMessage="No! There's no running\nfrom a TRAINER battle!",
       introMessages={
@@ -4661,6 +4727,16 @@ local function drawBattleScene(y)
     end
     local col, row = controller.moveCursor%2, math.floor(controller.moveCursor/2)
     cursorAt(8+col*82, 118+row*18)
+  elseif controller.state == Battle.Controller.PARTY then
+    -- This is intentionally a compact forced-only selector, not a reuse of
+    -- the field PartyScreen or a voluntary battle menu.  Its choices are
+    -- produced from the current save-party eligibility bridge.
+    drawText("Choose a POKEMON!", 7, 115, true)
+    for i, choice in ipairs(controller.partyChoices or {}) do
+      drawText(choice.name or "POKEMON", 20, 115 + i * 13, true)
+    end
+    local selected = controller.partyCursor or 0
+    cursorAt(10, 118 + (selected + 1) * 13)
   end
 end
 
