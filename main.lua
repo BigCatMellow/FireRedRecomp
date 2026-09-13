@@ -129,6 +129,11 @@ local statusLines = {}
 local function addLine(text)
   table.insert(statusLines, text)
 end
+-- Phase 2 evidence capture renders the existing Oak/field draw paths to this
+-- dedicated logical surface.  It deliberately changes only the developer
+-- capture target: normal windows still include status text and use
+-- ViewportScale exactly as before.
+local captureSurface = os.getenv("POKEPORT_CAPTURE_SURFACE") == "1"
 local mapImage
 -- Title screen is drawn as several separate images (border, then the
 -- flame particles, then copyright/box art, then the logo) rather than
@@ -3182,6 +3187,19 @@ end
 
 function love.load()
   love.window.setTitle(Version.title .. " " .. Version.version)
+  if captureSurface then
+    -- This is the exported scene surface, independent of host window size,
+    -- chrome, and outer ViewportScale.  The regular draw path targets it
+    -- below; no crop, resample, or alternate scene renderer is involved.
+    -- The canvas is copied 1:1 to this client surface only so LÖVE's proven
+    -- asynchronous screenshot callback can export it.  The capture content
+    -- itself comes from captureCanvas, never from normal window layout.
+    love.window.setMode(240, 160, { resizable=false })
+    -- Set the mode before allocating the canvas: a mode change can recreate
+    -- the graphics context and invalidate an existing Canvas on some hosts.
+    world.phase2CaptureCanvas = love.graphics.newCanvas(240, 160)
+    world.phase2CaptureCanvas:setFilter("nearest", "nearest")
+  end
   addLine(Version.title .. " " .. Version.version)
 
   local romPath = os.getenv("POKEPORT_ROM")
@@ -4024,7 +4042,20 @@ function love.load()
   -- love.filesystem is sandboxed to the save directory (see conf.lua's
   -- identity="firered-recomp"), so this always writes there under a fixed
   -- name rather than to an arbitrary POKEPORT_SCREENSHOT path.
-  if os.getenv("POKEPORT_SCREENSHOT") == "1" and (mapImage or viewerActive or titleActive or spriteActive or itemBallActive or fontActive or oakSpeechActive or oakSceneActive or flameActive or yesNoActive or walkActive or newGame.active or world.battle) then
+  if captureSurface and os.getenv("POKEPORT_SCREENSHOT") == "1" and (oakSceneActive or walkActive) then
+    love.graphics.captureScreenshot(function(imageData)
+      local width, height = imageData:getDimensions()
+      if width ~= 240 or height ~= 160 then
+        print(("PHASE2_CAPTURE_SURFACE FAIL dimensions=%dx%d"):format(width, height))
+        love.event.quit(1)
+        return
+      end
+      imageData:encode("png", "screenshot.png")
+      local anchor = os.getenv("POKEPORT_EVIDENCE_ANCHOR") or "unspecified"
+      print(("PHASE2_CAPTURE_SURFACE PASS anchor=%s dimensions=240x160"):format(anchor))
+      love.event.quit(0)
+    end)
+  elseif not captureSurface and os.getenv("POKEPORT_SCREENSHOT") == "1" and (mapImage or viewerActive or titleActive or spriteActive or itemBallActive or fontActive or oakSpeechActive or oakSceneActive or flameActive or yesNoActive or walkActive or newGame.active or world.battle) then
     -- The font sample normally reveals one character at a time (real text
     -- speed, driven by TaskScheduler in love.update) and can pause or wait
     -- on a keypress mid-message; automated screenshots want the
@@ -4580,6 +4611,11 @@ local function drawBattleScene(y)
 end
 
 function love.draw()
+  if captureSurface then love.graphics.setCanvas(world.phase2CaptureCanvas) end
+  -- The historical field draw below references borderOffsetPx as a global.
+  -- Preserve that normal-runtime behavior exactly; the evidence-only canvas
+  -- supplies the value solely while it is rendering the Pallet anchor.
+  if captureSurface then borderOffsetPx = BORDER_MARGIN_METATILES * 16 end
   if newGame.active then ensureNewGameImageCurrent() end
   if fontActive then ensureFontImageCurrent() end
   if oakSpeechActive then ensureOakSpeechImageCurrent() end
@@ -4591,10 +4627,12 @@ function love.draw()
   else
     love.graphics.clear(0.08, 0.08, 0.1)
   end
-  local y = 20
-  for _, line in ipairs(statusLines) do
-    love.graphics.print(line, 20, y)
-    y = y + 20
+  local y = captureSurface and -10 or 20
+  if not captureSurface then
+    for _, line in ipairs(statusLines) do
+      love.graphics.print(line, 20, y)
+      y = y + 20
+    end
   end
 
   if world.battle then
@@ -4822,6 +4860,11 @@ function love.draw()
     local windowWidth, windowHeight = love.graphics.getDimensions()
     local viewport = ViewportScale.fit(mapImage:getWidth(), mapImage:getHeight(), windowWidth - 40, windowHeight - (y + 10))
     love.graphics.draw(mapImage, 20 + viewport.x, y + 10 + viewport.y, 0, viewport.scale, viewport.scale)
+  end
+  if captureSurface then
+    love.graphics.setCanvas()
+    love.graphics.clear(0, 0, 0)
+    love.graphics.draw(world.phase2CaptureCanvas, 0, 0)
   end
 end
 

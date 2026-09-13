@@ -80,6 +80,47 @@ output location, ROM verification, or bridge security policy. Accept only exit
 behavior demonstrated by the supported runner; do not weaken marker/image checks
 or convert arbitrary statuses into success.
 
+## Capture and external-reference protocol
+
+Run the checked-in implementation harness only with the verified ROM, retaining
+its printed external output directory outside this repository:
+
+```bash
+POKEPORT_ROM=/path/to/FireRed-US-v1.0.gba \
+  bash scripts/phase2_oak_reference_evidence_capture.sh
+```
+
+It emits two `240x160` PNGs for `oak-static` and two for
+`pallet-camera-anchor`, verifies each pair with `tools/pixeldiff/`, and prints
+the output directory and image SHA-1 values. These are implementation captures,
+not retail-reference artifacts; do not add them to git.
+
+The next comparison leaf must create a text-only report using this schema:
+
+```text
+status: NO_REFERENCE_INPUT | COMPARED | DISCREPANCY_RECORDED
+implementation_revision: <full git revision>
+implementation_rom_sha1: 41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc
+implementation_command: <exact harness command>
+anchor: oak-static | pallet-camera-anchor
+implementation_dimensions: 240x160
+implementation_capture_sha1: <SHA-1>
+repeat_self_diff: IDENTICAL | DIFFERENT
+reference_provenance: <user-owned retail/emulator source, or ABSENT>
+reference_rom_revision: <known revision, or UNKNOWN>
+reference_emulator_and_version: <value, or UNKNOWN>
+reference_frame_or_timing: <value, or UNKNOWN>
+reference_crop: <exact 240x160 crop coordinates, or UNKNOWN>
+reference_scaling_and_filter: <nearest/integer settings, or UNKNOWN>
+comparison_command: <exact external command, or NOT_RUN>
+discrepancy_summary: <measured result, or NOT_RUN — no trusted reference input>
+parity_claim: YES | NO
+```
+
+`NO_REFERENCE_INPUT`, `UNKNOWN`, or a self-diff is never parity evidence. A
+trusted, user-owned external retail capture is required for a future
+`parity_claim: YES`; keep that media and any emulator output outside git.
+
 ## Stop / escalate
 
 Stop if exact virtual capture requires a renderer rewrite, gameplay/Oak/camera
