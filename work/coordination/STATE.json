@@ -1,49 +1,20 @@
 {
   "schema_version": 1,
-  "updated_utc": "2026-09-13T12:03:00Z",
+  "updated_utc": "2026-09-13T13:00:00Z",
   "role": "ORCHESTRATOR",
-  "status": "READY_FOR_WORKER",
+  "status": "BLOCKED_ON_EXTERNAL_INPUT",
   "current_phase": "Phase 2 — rendering, input, and scene runtime",
   "canonical_status_owner": "work/roadmaps/CAPABILITY_CHECKLIST.md",
-  "active_task": "work/tasks/phase2-oak-reference-evidence-harness.md",
-  "objective": "Correct only the observed Phase 2 Oak evidence runtime exit-status contract, then rerun the guarded harness route without changing visual or gameplay behavior.",
-  "next_role": "WORKER",
+  "active_task": "work/tasks/phase2-oak-reference-comparison.md",
+  "objective": "Compare published deterministic Oak/Pallet implementation captures against user-owned trusted external retail references without committing media or claiming parity from self-diff.",
+  "next_role": "OWNER / EXTERNAL INPUT PROVIDER",
   "reconciliation": {
-    "phase3_result": "DONE — continuous runtime exit replay independently passed at 4f4f29ec",
-    "canonical_phase3_status": "DONE",
-    "next_canonical_gate": "Phase 2 Oak/reference screenshot parity after the already-reviewed 240x160 camera viewport",
-    "camera_task": "work/tasks/phase2-gba-camera-viewport-proof.md",
     "camera_task_status": "CLOSED — REVIEWED PASS at 4c5456f3; guarded run 34753297372",
     "oak_evidence_bridge": "CLOSED — REVIEWED PASS at ff5ff890; trusted probe run 34753855210",
-    "oak_harness_attempt": "Guarded run 34754826666 applied the v1 patch and passed focused, no-ROM, and verified-ROM suites but failed route-specific runtime capture before publication.",
-    "oak_harness_runtime_failure": "Oak capture emitted the required 240x160 PASS marker and returned exit 0; proposed script incorrectly required exit 1 and rejected the successful capture.",
-    "published_harness_revision": null,
-    "reviewer_result_for_harness": null,
-    "canonical_status_change_this_turn": false
+    "oak_harness_status": "CLOSED — REVIEWED PASS at 0017727c; guarded run 34767029627"
   },
-  "active_task_acceptance_summary": [
-    "Correct only the supported-runner exit-status mismatch demonstrated by run 34754826666 while retaining marker/image/dimension validation.",
-    "Rerun the explicit guarded Phase 2 Oak evidence route; focused, no-ROM, verified-ROM, and route-specific runtime capture must all pass before publication.",
-    "Preserve Oak, camera, gameplay, outer scaling, legal-content boundaries, ROM verification, and independent-review requirements."
-  ],
-  "boundaries": {
-    "may_change": [
-      "scripts/phase2_oak_reference_evidence_capture.sh exit-status handling inside the existing task boundary",
-      "focused harness test assertion only if needed to match the corrected supported-runner contract",
-      "existing task / coordination documentation"
-    ],
-    "must_not_change": [
-      "Oak/camera/gameplay behavior, map/world simulation, or outer scaling",
-      "trusted-main-only/no-public-PR policy, ROM gate, routing policy, or test order",
-      "supported-ROM policy or exact ROM SHA gate",
-      "capture output legal/content isolation or marker/image/dimension validation",
-      "ROM/cache/BIOS/reference screenshots/extracted content",
-      "broader repository permissions",
-      "independent-review requirement"
-    ]
-  },
-  "blocker": "The unpublished v1 harness patch hard-coded status 1 as the only successful LÖVE screenshot-callback exit, but the supported guarded runner produced the required PASS marker with status 0. A bounded corrected patch is required.",
-  "next_after_success": "After guarded publication, route the exact published harness revision to independent Reviewer. Only after PASS may Orchestrator scope the external retail-reference comparison leaf.",
+  "blocker": "Trusted, user-owned retail-reference captures with provenance/timing/crop/filter details for Oak and Pallet anchors have not been supplied to the project.",
+  "next_after_success": "Independently review comparison records; then scope only measured discrepancy fixes, or reconcile Phase 2 if parity is actually proven.",
   "legal_content_boundary": "Never commit ROMs, BIOS dumps, generated caches, ROM-derived reference screenshots, extracted game assets, or other prohibited content.",
-  "phase_completion_rule": "Phase 2 remains IN PROGRESS until the Oak/reference screenshot discrepancy gate is evidenced and independently reviewed; harness self-diff cannot establish retail parity."
+  "phase_completion_rule": "Phase 2 remains IN PROGRESS until the Oak/reference screenshot discrepancy gate is evidenced and independently reviewed."
 }

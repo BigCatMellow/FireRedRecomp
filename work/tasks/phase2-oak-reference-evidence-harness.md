@@ -1,6 +1,6 @@
 # Task: establish Phase 2 Oak/reference visual-evidence capture
 
-- Status: `ACTIVE — RUNTIME CORRECTION REQUIRED`
+- Status: `CLOSED — REVIEWED PASS`
 - AGI status: `AGI READY`
 - Type: `PHASE 2 / EVIDENCE INFRASTRUCTURE / BOUNDED INTEGRATION`
 - Owner: project maintainer
@@ -60,7 +60,7 @@ camera/gameplay behavior.
 5. Independent Reviewer verifies the exact implementation before this evidence
    leaf closes. Phase 2 remains `IN PROGRESS` pending a real external comparison.
 
-## Current runtime correction gate
+## Resolved runtime correction gate
 
 Guarded Local Worker Bridge run `34754826666` applied the bounded v1 patch and
 passed target validation, the focused harness test, the complete no-ROM suite,
@@ -73,12 +73,10 @@ process returned status `0`, but the proposed capture script treated anything
 other than status `1` as failure and reported `error: oak-static capture failed
 (exit 0)`.
 
-The next Worker attempt must correct only this observed exit-status contract (and
-its focused assertion if necessary), then rerun the same guarded route. It must
-not use the correction as authority to change rendering, Oak, camera, gameplay,
-output location, ROM verification, or bridge security policy. Accept only exit
-behavior demonstrated by the supported runner; do not weaken marker/image checks
-or convert arbitrary statuses into success.
+The corrected v3 request accepted only the two demonstrated LÖVE exit conventions
+(`0` or `1`) while retaining the exact marker and fresh-image requirements. Guarded
+run `34767029627` then passed focused, no-ROM, verified-ROM, runtime capture, and
+publication at `0017727c`. Independent review passed that exact published revision.
 
 ## Capture and external-reference protocol
 
@@ -130,6 +128,6 @@ record that as the next leaf's external-input blocker; do not fabricate parity.
 
 ## Completion / handoff
 
-After independent PASS, Orchestrator dispatches the smallest reference-comparison
-task using the produced protocol and user-owned external reference input. That task,
-not this harness, determines whether Oak/reference parity can advance.
+The next task is `phase2-oak-reference-comparison.md`, using this protocol and
+user-owned external reference input. That task, not this harness, determines
+whether Oak/reference parity can advance.
