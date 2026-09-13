@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_utc": "2026-09-13T03:30:00Z",
+  "updated_utc": "2026-09-13T04:00:00Z",
   "role": "ORCHESTRATOR",
   "status": "READY_FOR_WORKER",
   "current_phase": "Phase 2 — rendering, input, and scene runtime",
@@ -15,6 +15,7 @@
     "camera_task": "work/tasks/phase2-gba-camera-viewport-proof.md",
     "camera_task_status": "READY FOR WORKER",
     "bridge_prerequisite": "CLOSED — REVIEWED PASS at 27867add; trusted probe run 34735602055",
+    "task_status_drift_corrected": "The camera task header still said BLOCKED ON BRIDGE ROUTE after the prerequisite PASS; corrected to READY FOR WORKER without changing implementation scope or acceptance.",
     "canonical_status_change_this_turn": false
   },
   "active_task_acceptance_summary": [
