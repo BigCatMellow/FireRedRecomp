@@ -2,7 +2,7 @@
 
 ## Contract
 
-- Status: `ACTIVE — FINAL COMPLETE-RUNTIME PROOF OPEN`
+- Status: `CLOSED — EXIT PROOF COMPLETE`
 - Owner: project maintainer
 - Source of truth: `docs/roadmap.md` Phase 3 and `docs/handoffs/firered-recomp-checklist.md`
 - Output boundary: deterministic test/support code and documentation needed to prove the existing Phase 3 path; no ROM, extracted assets, or unrelated Phase 4–10 work
@@ -57,17 +57,23 @@ The verified-ROM natural-capture replay reaches the visible first-Mart Parcel pr
 
 `scripts/runtime_save_restart_replay.sh` separately proves the cross-process save boundary: it runs the bounded loss replay in a fresh XDG sandbox, saves through the normal K callback, verifies the sandbox save file, then starts a fresh LÖVE process and loads through normal L handling.
 
-### Remaining parent gap
+### Parent proof — independently passed
 
-The earlier functional title/Oak seam is no longer open. The remaining issue is now purely the parent acceptance shape: the existing evidence is split across overlapping deterministic artifacts rather than one automated runtime command that continuously drives the complete stated Phase 3 path.
+`work/tasks/phase3-complete-runtime-exit-replay.md` is `CLOSED — REVIEWED PASS`
+at exact implementation revision `4f4f29ec`.
 
-Because acceptance criterion 1 explicitly calls for a ROM-backed automated test of the complete path when no untestable boundary remains, Phase 3 is **not yet eligible for `DONE`** merely by stitching claims together in prose.
+Its continuous, two-process ROM-backed artifact starts from normal application boot,
+drives title/Oak/identity, reaches the bedroom/Pallet/Route 1 route through normal
+runtime input, loses the first wild battle, saves through the normal callback into
+an isolated sandbox, and loads that save in a fresh process. It asserts identity,
+location/party continuity, and the reduced-money defeat outcome before and after
+reload. The focused test and both 123-file full suites passed. Independent review
+returned `PASS`; see
+`work/reviews/2026-09-12-phase3-complete-runtime-exit-review.md`.
 
-The bounded final continuation is:
-
-`work/tasks/phase3-complete-runtime-exit-replay.md`
-
-Its job is evidence integration only: reuse the already-passed runtime seams and prove normal boot → title/Oak/identity → bedroom/Pallet → Route 1 → first wild battle → catch or defeat → save → fresh-process reload in one deterministic automated artifact. It may add replay-driver/test plumbing but may not change normal gameplay behavior. If the continuous run reveals a real gameplay defect, it must stop and report the first exact failing seam for separate Orchestrator scoping.
+This fulfills the parent acceptance shape without authorizing any visual/presentation
+parity claim. Phase 3 is therefore eligible for—and has received—the canonical
+`DONE` status in `work/roadmaps/CAPABILITY_CHECKLIST.md`.
 
 ## Stop conditions
 

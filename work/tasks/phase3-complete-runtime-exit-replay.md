@@ -1,6 +1,6 @@
 # Task: prove the complete Phase 3 runtime exit path end to end
 
-- Status: `ACTIVE`
+- Status: `CLOSED — REVIEWED PASS`
 - AGI status: `AGI READY`
 - Type: `EVIDENCE / BOUNDED INTEGRATION`
 - Owner: project maintainer
@@ -98,4 +98,7 @@ Return `BLOCKED` with the first exact failing seam rather than changing gameplay
 
 ## Completion / handoff
 
-Completion means the complete Phase 3 exit path has one reproducible automated runtime artifact, required suites pass, and an independent Reviewer returns `PASS` on the exact revision. Orchestrator must then reconcile `work/tasks/phase3-exit-proof.md` and only then decide whether the canonical Phase 3 capability can advance to `DONE`.
+Completed at `4f4f29ec`: focused test, 123-file no-ROM and verified-ROM suites,
+and the isolated continuous two-process replay pass. Independent review returned
+`PASS`; the duplicate-patch bridge rejection did not alter the already-published
+reviewed implementation.

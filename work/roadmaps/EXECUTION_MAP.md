@@ -37,17 +37,15 @@ Phase 1 importer/model [DONE]
         ↓
 Phase 2 renderer/runtime [IN PROGRESS]
         ↓
-Phase 3 playable vertical slice [IN PROGRESS]  ← CURRENT DISPATCH FOCUS
+Phase 3 playable vertical slice [DONE]
         │
         ├─ Route 1 battle/capture/save/reload: substantial evidence exists
         ├─ canonical Viridian Parcel/Dex/capture progression: evidenced
         ├─ visible north Oak Parcel/Dex presentation: REVIEWED PASS
         ├─ title/new-game → Oak/identity → bedroom runtime entry: REVIEWED PASS
-        └─ complete continuous boot→battle→save→reload runtime artifact: READY FOR WORKER
-                          ↓ independent PASS
-                    reconcile full Phase 3 exit proof
+        └─ complete continuous boot→battle→save→reload runtime artifact: REVIEWED PASS at 4f4f29ec
                           ↓
-Phase 2 camera/Oak-intro visual parity closure
+Phase 2 camera/Oak-intro visual parity closure  ← CURRENT SCOPING FOCUS
         ↓
 Phase 4 battle generalization
         ↓
@@ -66,13 +64,13 @@ Phase 10 mod/release engineering
 | --- | --- | --- | --- | --- |
 | Phase 0 — charter/reproducibility | `IN PROGRESS` | no current dispatch | save-version contract + first CI verification | stronger release baseline |
 | Phase 1 — ROM importer/canonical model | `DONE` | none | already met | downstream systems consume canonical data |
-| Phase 2 — camera + Oak/reference parity | `IN PROGRESS` | deferred by current dispatch order | true 240×160 camera parity + Oak/reference assertions | Phase 2 closure |
-| Phase 3A — deterministic vertical-slice proof | `IN PROGRESS` | [`../tasks/phase3-exit-proof.md`](../tasks/phase3-exit-proof.md) | one complete automated boot → title/Oak → bedroom/Pallet → Route 1 → wild battle → catch/defeat → save → fresh reload artifact + independent review | Phase 3 exit eligibility |
+| Phase 2 — camera + Oak/reference parity | `IN PROGRESS` | next task must be scoped | true 240×160 camera parity + Oak/reference assertions | Phase 2 closure |
+| Phase 3A — deterministic vertical-slice proof | `DONE` | [`../tasks/phase3-exit-proof.md`](../tasks/phase3-exit-proof.md) | continuous replay independently passed at `4f4f29ec` | Phase 3 complete |
 | Phase 3B — canonical Viridian Parcel/Dex progression | evidenced | [`../tasks/viridian-parcel-dex-progression.md`](../tasks/viridian-parcel-dex-progression.md) | already evidenced; do not redo | supports Phase 3A |
 | Phase 3C — north-facing Oak Parcel/Dex scene | `REVIEWED PASS` | [`../tasks/oak-parcel-dex-presentation-north.md`](../tasks/oak-parcel-dex-presentation-north.md) | PASS at `2d8c3221775044a54668683e500055307fe4d20b` | supports Phase 3A |
 | Phase 3D — title/new-game through Oak/identity into bedroom | `REVIEWED PASS` | [`../tasks/phase3-title-oak-entry-proof.md`](../tasks/phase3-title-oak-entry-proof.md) | PASS at `8bdbda903fb0574cb169968976d4b40ce96d3563` | supports Phase 3A |
 | Phase 3D-pre — Local Worker Bridge retargeting | `REVIEWED PASS` | [`../tasks/local-worker-bridge-task-routing.md`](../tasks/local-worker-bridge-task-routing.md) | PASS at `0f0dc2f028f204dce4fcaee4e0fff0d9d0afb61e`; do not redo | completed prerequisite |
-| Phase 3E — complete end-to-end runtime exit replay | `READY FOR WORKER` | **[`../tasks/phase3-complete-runtime-exit-replay.md`](../tasks/phase3-complete-runtime-exit-replay.md)** | one deterministic complete runtime command, required suites, independent PASS | re-evaluate Phase 3A and canonical Phase 3 status |
+| Phase 3E — complete end-to-end runtime exit replay | `REVIEWED PASS` | [`../tasks/phase3-complete-runtime-exit-replay.md`](../tasks/phase3-complete-runtime-exit-replay.md) | PASS at `4f4f29ec`; focused, full suites, and continuous replay recorded | Phase 3A complete |
 | Phase 4 — full Gen 3 battle engine | `IN PROGRESS` | future | general trainer battles, switching, move/effect and stress matrices | reliable trainer/story progression |
 | Phase 5 — overworld/field systems | `IN PROGRESS` | future | Pallet→Elite Four traversal without invalid paths | credits traversal |
 | Phase 6 — menus/inventory/progression UI | `IN PROGRESS` | future | complete player UI, no dev-key fallbacks | normal completion |
@@ -83,7 +81,7 @@ Phase 10 mod/release engineering
 
 ## Current bounded chain
 
-### Parent gate: Phase 3 exit proof
+### Completed parent gate: Phase 3 exit proof
 
 Required observable path:
 
@@ -100,7 +98,11 @@ boot
 → fresh-process reload
 ```
 
-All known functional seams on that path now have deterministic evidence, including independent PASS for the former title→Oak entry gap. The parent nevertheless remains open because its acceptance calls for a ROM-backed automated proof of the complete path when no remaining boundary is untestable. Current evidence is split across overlapping artifacts.
+All known functional seams have deterministic evidence. The continuous two-process
+replay at `4f4f29ec` also supplies the previously missing one-command proof and has
+an independent `PASS` in
+[`../reviews/2026-09-12-phase3-complete-runtime-exit-review.md`](../reviews/2026-09-12-phase3-complete-runtime-exit-review.md).
+The canonical checklist consequently marks Phase 3 `DONE`.
 
 ### Closed leaf: title/Oak entry
 
@@ -110,13 +112,13 @@ Reviewer verified normal title `A`/`START` → existing Oak scene → existing i
 
 Do not redo this leaf unless direct evidence shows regression.
 
-### Active leaf: complete runtime exit replay
+### Closed leaf: complete runtime exit replay
 
-The smallest remaining parent acceptance item is evidence integration, not a known gameplay feature gap.
-
-Worker may execute only [`../tasks/phase3-complete-runtime-exit-replay.md`](../tasks/phase3-complete-runtime-exit-replay.md): produce one deterministic automated run from normal boot through title/Oak, bedroom/Pallet, Route 1 wild battle, save, and fresh-process reload, reusing existing runtime seams.
-
-This package may add replay-driver/test plumbing. It may **not** change normal gameplay behavior. If a real gameplay defect appears during continuous execution, Worker must stop and report the exact first failing seam for separate scoping.
+[`../tasks/phase3-complete-runtime-exit-replay.md`](../tasks/phase3-complete-runtime-exit-replay.md)
+is `CLOSED — REVIEWED PASS` at `4f4f29ec`. It proves normal boot through
+title/Oak/identity, bedroom/Pallet, Route 1 loss, normal save, and fresh-process
+reload, including identity and money persistence. Do not redo this leaf absent a
+direct regression.
 
 ### Completed prerequisite: Local Worker Bridge retargeting
 
