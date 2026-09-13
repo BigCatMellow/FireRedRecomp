@@ -1,7 +1,7 @@
 # Task: establish Phase 2 Oak/reference visual-evidence capture
 
-- Status: `BLOCKED ON BRIDGE ROUTE`
-- AGI status: `AGI READY AFTER PREREQUISITE`
+- Status: `ACTIVE`
+- AGI status: `AGI READY`
 - Type: `PHASE 2 / EVIDENCE INFRASTRUCTURE / BOUNDED INTEGRATION`
 - Owner: project maintainer
 - Risk: `MEDIUM`

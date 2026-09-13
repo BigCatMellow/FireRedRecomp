@@ -1,6 +1,6 @@
 # Task: add Local Worker Bridge route for Phase 2 Oak/reference evidence
 
-- Status: `ACTIVE`
+- Status: `CLOSED — REVIEWED PASS`
 - AGI status: `AGI READY`
 - Type: `INFRASTRUCTURE / EXECUTION SUBSTRATE`
 - Owner: project maintainer
@@ -42,3 +42,14 @@ gameplay behavior.
 
 Restore `phase2-oak-reference-evidence-harness.md` as the sole active Worker
 package after independent PASS.
+
+## Completion evidence
+
+- Route configuration `ff5ff890c0548f79b5c104f24a935ef07e739ad0` received
+  independent `PASS` after the required runtime-capture script was made
+  fail-closed.
+- One-file non-gameplay probe `763bb37f617a87bbcdf9415aa7482b24b1e70b5f`
+  passed guarded Local Worker Bridge run `34753855210`, including trusted-main
+  selection and private-ROM SHA verification.
+- The resulting route requires the exact capture script before publication;
+  its absence cannot be converted into a successful skip.

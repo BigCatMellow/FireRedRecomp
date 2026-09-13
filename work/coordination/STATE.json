@@ -1,12 +1,12 @@
 {
   "schema_version": 1,
-  "updated_utc": "2026-09-13T04:00:00Z",
+  "updated_utc": "2026-09-13T12:00:00Z",
   "role": "ORCHESTRATOR",
   "status": "READY_FOR_WORKER",
   "current_phase": "Phase 2 — rendering, input, and scene runtime",
   "canonical_status_owner": "work/roadmaps/CAPABILITY_CHECKLIST.md",
-  "active_task": "work/tasks/local-worker-bridge-phase2-oak-reference-evidence-route.md",
-  "objective": "Add and independently review an explicit fail-closed bridge route for deterministic Phase 2 Oak/reference evidence capture before dispatching the capture harness.",
+  "active_task": "work/tasks/phase2-oak-reference-evidence-harness.md",
+  "objective": "Establish deterministic, exact 240x160 Oak/Pallet implementation capture and an honest external reference protocol without changing visual or gameplay behavior.",
   "next_role": "WORKER",
   "reconciliation": {
     "phase3_result": "DONE — continuous runtime exit replay independently passed at 4f4f29ec",
@@ -15,22 +15,23 @@
     "camera_task": "work/tasks/phase2-gba-camera-viewport-proof.md",
     "camera_task_status": "CLOSED — REVIEWED PASS at 4c5456f3; guarded run 34753297372",
     "bridge_prerequisite": "CLOSED — REVIEWED PASS at 27867add; trusted probe run 34735602055",
+    "oak_evidence_bridge": "CLOSED — REVIEWED PASS at ff5ff890; trusted probe run 34753855210",
     "task_status_drift_corrected": "The camera task header still said BLOCKED ON BRIDGE ROUTE after the prerequisite PASS; corrected to READY FOR WORKER without changing implementation scope or acceptance.",
     "canonical_status_change_this_turn": false
   },
   "active_task_acceptance_summary": [
-    "Add one exact phase2-oak-reference-evidence-harness route with bounded capture/test/runtime/staging surfaces.",
-    "Preserve all existing bridge security, ROM, and evidence gates; no visual/gameplay implementation may change.",
-    "Independent review and a non-gameplay route probe are required before dispatching the evidence harness."
+    "Produce deterministic exact 240x160 implementation captures for static Oak and a Pallet camera anchor outside the repository.",
+    "Prove repeated implementation captures self-diff identically and record an honest external-reference/discrepancy protocol.",
+    "Preserve Oak, camera, gameplay, outer scaling, and all legal-content boundaries; independent review remains required."
   ],
   "boundaries": {
     "may_change": [
-      ".github/workflows/local-worker-bridge.yml",
-      "work/coordination/LOCAL_RUNNER_BRIDGE.md if needed",
+      "bounded capture/report script and focused tests",
+      "main.lua capture plumbing only when strictly necessary",
       "task / coordination / review documentation"
     ],
     "must_not_change": [
-      "Oak/camera/gameplay/capture implementation or tests",
+      "Oak/camera/gameplay behavior, map/world simulation, or outer scaling",
       "trusted-main-only/no-public-PR policy, ROM gate, routing policy, or test order",
       "public-PR execution policy",
       "supported-ROM policy or exact ROM SHA gate",
@@ -40,7 +41,7 @@
     ]
   },
   "blocker": null,
-  "next_after_success": "After independent PASS, dispatch the Phase 2 Oak/reference evidence harness; then scope external reference comparison from its protocol without claiming parity from implementation self-diffs.",
+  "next_after_success": "After independent PASS, scope the smallest external reference-comparison task from the protocol without claiming parity from implementation self-diffs.",
   "legal_content_boundary": "Never commit ROMs, BIOS dumps, generated caches, ROM-derived reference screenshots, extracted game assets, or other prohibited content.",
   "phase_completion_rule": "Phase 2 remains IN PROGRESS until the true 240x160 camera viewport and the Oak/reference screenshot discrepancy gate are both evidenced and independently reviewed."
 }
