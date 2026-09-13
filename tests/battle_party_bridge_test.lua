@@ -25,6 +25,7 @@ local speciesTable = { [19]=species }
 local moves = {
   [33]={pp=35, power=35},
   [39]={pp=30, power=0},
+  [50]={pp=25, power=65},
 }
 local natures = {}
 for i = 0, 24 do
@@ -80,13 +81,21 @@ check("bridge refreshes decoded metadata without changing identity",
   living.boxData.personality == generated.personality
     and living.moves[1].pp == 31 and living.moves[2].pp == 27)
 
+battler.moves[1] = {move=50, pp=25}
+battler.permanentMoveChanges[1] = 50
+BattlePartyBridge.persistPartyBattler(living, battler)
+after = BoxPokemonCodec.decode(living.box)
+check("bridge persists an explicit permanent move replacement", after.substructs[1].moves[1] == 50
+  and after.substructs[1].pp[1] == 25 and after.checksumValid)
+
 local bytes = SaveFileCodec.encodeSaveBlock1({
   playerPartyCount=1, playerParty={living},
 }, 0)
 local saved = SaveFileCodec.decodeSaveBlock1(bytes, 0).playerParty[1]
 local savedBox = BoxPokemonCodec.decode(saved.box)
 check("persisted battle state remains SaveFileCodec-compatible",
-  saved.hp == 4 and savedBox.substructs[1].pp[1] == 31
+  saved.hp == 4 and savedBox.substructs[1].moves[1] == 50
+    and savedBox.substructs[1].pp[1] == 25
     and savedBox.substructs[1].pp[2] == 27 and savedBox.checksumValid)
 
 local generatedBattler = BattlePartyBridge.battlerFromGenerated(generated)

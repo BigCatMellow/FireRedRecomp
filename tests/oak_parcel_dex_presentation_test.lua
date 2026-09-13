@@ -119,7 +119,22 @@ do
   assert(p:movementComplete("oak_return")); assert(p:onA(true, true)); assert(p:onA(true, true))
   local failed = assert(p:movementComplete("rival_exit"))
   check("late commit failure unlocks without terminal reward", failed.kind == "unlock" and failed.failed
-    and failed.reason == "parcel_remove_failed" and p.state == p.FAILED and calls.commit == 1)
+    and failed.reason == "parcel_remove_failed" and failed.remove
+    and failed.remove.localId == Presentation.RIVAL_LOCAL_ID
+    and failed.remove.preserveHideFlag and p.state == p.FAILED and calls.commit == 1)
+end
+
+do
+  local p, calls = fixture()
+  assert(p:begin(valid)); for _ = 1, 4 do assert(p:onA(true, true)) end
+  check("runtime abort releases an active cutscene without durable writes", (function()
+    local aborted = assert(p:abort("rival_template_missing"))
+    return aborted.kind == "unlock" and aborted.failed
+      and aborted.reason == "rival_template_missing" and p.state == p.FAILED
+      and not p:isInputLocked() and calls.commit == 0
+  end)())
+  local again, reason = p:abort("again")
+  check("terminal abort cannot be repeated", again == nil and reason == "not_active")
 end
 
 do

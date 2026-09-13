@@ -72,6 +72,7 @@ local NamingScreenScene = require("import.NamingScreenScene")
 local NewGameFlow = require("src.core.NewGameFlow")
 local NewGameDefaults = require("src.core.NewGameDefaults")
 local SaveFileCodec = require("src.core.SaveFileCodec")
+local PokemonStorageCodec = require("src.core.PokemonStorageCodec")
 local Battle = {
   Trainer = require("import.Trainer"),
   TrainerParty = require("import.TrainerParty"),
@@ -87,9 +88,11 @@ local Battle = {
   RivalAI = require("src.core.EarlyRivalAI"),
   RivalRewards = require("src.core.EarlyRivalRewards"),
   WhiteoutRules = require("src.core.WhiteoutRules"),
+  PokemonCenter = require("src.core.PokemonCenter"),
   EarlyStory = require("src.core.EarlyStory"),
   ViridianParcelStory = require("src.core.ViridianParcelStory"),
   ViridianMartParcelPresentation = require("src.core.ViridianMartParcelPresentation"),
+  OakParcelDexPresentation = require("src.core.OakParcelDexPresentation"),
   PokedexOrder = require("import.PokedexOrder"),
   Item = require("import.Item"),
   SessionBagBridge = require("src.core.SessionBagBridge"),
@@ -102,6 +105,7 @@ local Battle = {
   TrainerSightline = require("src.core.TrainerSightline"),
   TrainerApproach = require("src.core.TrainerApproach"),
   TrainerAI = require("src.core.TrainerAI"),
+  CaptureRewards = require("src.core.CaptureRewards"),
   PartyBridge = require("src.core.BattlePartyBridge"),
   Engine = require("src.core.BattleEngine"),
   Controller = require("src.core.BattleSceneController"),
@@ -337,6 +341,10 @@ function GameSession.fromNewGame(identity, opts)
       bagPocket_Items={}, bagPocket_KeyItems={}, bagPocket_PokeBalls={}, bagPocket_TMHM={}, bagPocket_Berries={},
       seen1=GameSession._zeroBytes(52), flags=GameSession._setFlagBits(defaults.setFlags), vars=GameSession._initialVars(), gameStats={}, rivalName=identity.rivalName,
     },
+    -- Struct PokemonStorage is saved independently from SaveBlock1 in
+    -- FireRed sectors 5-13. Keeping it here, rather than in a battle/UI
+    -- object, gives mods the same stable data boundary as the base game.
+    pokemonStorage=PokemonStorageCodec.new(),
   }
   return setmetatable({
     identity={ playerGender=identity.playerGender, playerName=identity.playerName, rivalName=identity.rivalName },
@@ -471,6 +479,9 @@ local world = {
   -- yet; loadGameFile() fills them in from the file's own header.
   saveCounter = 0,
   saveBytes = nil,
+  -- Replaced by enabled manifests once runtime mod discovery is wired.
+  modCompatibility = require("src.core.ModSaveCompatibility"),
+  modProfile = require("src.core.ModSaveCompatibility").profile({}),
 }
 
 -- Real land-encounter slot count (ENCOUNTER_CHANCE_LAND_MONS_SLOT count,
@@ -517,30 +528,22 @@ local MB = MetatileAttributes.BEHAVIOR
 -- real door behaviors relevant to buildings/caves (MB_WARP_DOOR,
 -- MB_CAVE_DOOR) -- other real passable-despite-collision behaviors (arrow
 -- warps, stairs, ladders, fall/hole warps) aren't covered.
--- Real GetMapBorderIdAt/GetIncomingConnection (src/fieldmap.c): a step
--- exactly one tile past the current map's edge is allowed, not blocked,
--- when a real MapConnection exists for that edge's direction. Returns the
--- matching connection, or nil. Simplified vs. real source: this project
--- doesn't yet resolve the destination map's own width/height here to
--- reject a connection whose real coverage doesn't reach this particular
--- (x,y) (IsCoordInIncomingConnectingMap's own bounds check) -- fine for
--- every map connection landed so far (Pallet Town's north/south
--- connections are each the one and only connection for that direction
--- and span the whole shared edge), but a future map with more than one
--- partial connection per direction would need that check added.
+-- Real GetMapBorderIdAt/GetIncomingConnection: a step exactly one tile past
+-- the edge is allowed only when the destination map's actual span covers
+-- that coordinate. This includes multiple partial connections on one edge.
 world.connectionForEdge = function(x, y)
   if not world.walkMapConnections then return nil end
-  local MapConnections = require("import.MapConnections")
-  local direction
-  if x < 0 then direction = MapConnections.CONNECTION_WEST
-  elseif x >= walkMapWidth then direction = MapConnections.CONNECTION_EAST
-  elseif y < 0 then direction = MapConnections.CONNECTION_NORTH
-  elseif y >= walkMapHeight then direction = MapConnections.CONNECTION_SOUTH
-  else return nil end
-  for _, conn in pairs(world.walkMapConnections) do
-    if conn.direction == direction then return conn end
-  end
-  return nil
+  local Traversal = require("src.core.MapConnectionTraversal")
+  local direction, sourceCoord = Traversal.edgeAt(x, y, walkMapWidth, walkMapHeight)
+  if not direction then return nil end
+  local sourceSize = (direction == Traversal.NORTH or direction == Traversal.SOUTH)
+    and walkMapWidth or walkMapHeight
+  return Traversal.findIncoming(world.walkMapConnections, direction, sourceCoord, sourceSize,
+    function(conn)
+      local header = MapHeader.resolve(romData, romAddrs.gMapGroups, conn.mapGroup * 256 + conn.mapNum)
+      local layout = MapLayout.resolve(romData, header.mapLayoutPtr)
+      return (direction == Traversal.NORTH or direction == Traversal.SOUTH) and layout.width or layout.height
+    end)
 end
 
 local function isWalkTileBlocked(x, y)
@@ -560,11 +563,18 @@ end
 -- through Oak, the rival, or the three starter balls to bypass their real
 -- A-button interactions.
 world.isPlayerWalkTileBlocked = function(x, y)
-  if isWalkTileBlocked(x, y) then return true end
-  for _, npc in ipairs(world.npcs) do
-    if not npc.moving and npc.x == x and npc.y == y then return true end
+  local function vanilla(tileX, tileY)
+    if isWalkTileBlocked(tileX, tileY) then return true end
+    for _, npc in ipairs(world.npcs) do
+      if not npc.moving and npc.x == tileX and npc.y == tileY then return true end
+    end
+    return false
   end
-  return false
+  local hooks = world.modRuntime and world.modRuntime.hooks
+  if hooks then
+    return hooks:call("field.isWalkTileBlocked", vanilla, x, y, world.mapId)
+  end
+  return vanilla(x, y)
 end
 
 -- One-way ledges (event_object_movement.c's real GetLedgeJumpDirection):
@@ -675,10 +685,24 @@ local function rollWildEncounterAt(x, y)
   if not world.trigger or world.battle then return end
   local encounter = world.trigger:onStep(getMetatileBehaviorAt(x, y), world.landInfo)
   if not encounter then return end
-  world.encounterLine = ("Wild %s (Lv %d) appeared!  [real slot %d]"):format(
-    speciesName(encounter.species), encounter.level, encounter.slot)
-  addLine(world.encounterLine)
-  startWildBattle(encounter)
+  local function vanilla(candidate)
+    assert(type(candidate) == "table" and type(candidate.species) == "number"
+      and candidate.species >= 1 and candidate.species == math.floor(candidate.species)
+      and type(candidate.level) == "number" and candidate.level >= 1 and candidate.level <= 100
+      and candidate.level == math.floor(candidate.level)
+      and (candidate.slot == nil or (type(candidate.slot) == "number" and candidate.slot >= 0
+        and candidate.slot == math.floor(candidate.slot))),
+      "mod wild encounter must provide integer species, level (1 through 100), and optional slot")
+    world.encounterLine = ("Wild %s (Lv %d) appeared!  [real slot %d]"):format(
+      speciesName(candidate.species), candidate.level, candidate.slot or 0)
+    addLine(world.encounterLine)
+    return startWildBattle(candidate)
+  end
+  local hooks = world.modRuntime and world.modRuntime.hooks
+  if hooks then
+    return hooks:call("field.wildEncounter", vanilla, encounter, world.mapId, x, y)
+  end
+  return vanilla(encounter)
 end
 
 -- Real ScrCmd_trainerbattle's own trainerId argument
@@ -718,6 +742,45 @@ world.tryTrainerSightlineAt = function(x, y)
   return true
 end
 
+-- One canonical completed-step pipeline. Mod packages may wrap it to add
+-- field logic or short-circuit vanilla processing for a specific map/tile;
+-- the callback receives the source map before a connection or warp changes it.
+world.onPlayerStep = function(x, y)
+  local function vanilla(mapId, tileX, tileY)
+    syncSessionLocation()
+    if not tryEarlyStoryTriggerAt(tileX, tileY)
+        and not world.tryConnectionAt(tileX, tileY)
+        and not tryWarpAt(tileX, tileY)
+        and not world.tryTrainerSightlineAt(tileX, tileY) then
+      rollWildEncounterAt(tileX, tileY)
+    end
+  end
+  local hooks = world.modRuntime and world.modRuntime.hooks
+  if hooks then
+    local context = {
+      message=function(text)
+        assert(type(text) == "string" and #text <= 512, "mod step message must be a short string")
+        addLine(text)
+      end,
+      setFlag=function(flagId)
+        assert(type(flagId) == "number" and flagId >= 0 and flagId <= 0xFFFF,
+          "mod flag id must be a u16")
+        assert(newGame.session, "mod step needs an active save session")
+        newGame.session:setFlag(math.floor(flagId))
+      end,
+      setVar=function(varId, value)
+        assert(type(varId) == "number" and varId >= 0 and varId <= 0xFFFF
+          and type(value) == "number" and value >= 0 and value <= 0xFFFF,
+          "mod variable id and value must be u16")
+        assert(newGame.session, "mod step needs an active save session")
+        newGame.session:setVar(math.floor(varId), math.floor(value))
+      end,
+    }
+    return hooks:call("field.playerStep", vanilla, world.mapId, x, y, context)
+  end
+  return vanilla(world.mapId, x, y)
+end
+
 local function playerMovementTask(taskId)
   -- A real `lock`/`lockall` (and just having a message box up at all)
   -- freezes the player -- mirrored by not ticking movement at all while a
@@ -726,20 +789,13 @@ local function playerMovementTask(taskId)
   -- instant CheckForTrainersWantingBattle succeeds).
   if not walkActive or world.battle or world.starterChoice or world.trainerApproach
       or (world.dialogue and world.dialogue:isActive())
-      or (world.martParcelPresentation and world.martParcelPresentation:isInputLocked()) then return end
+      or world.pokemonCenterPrompt
+      or (world.martParcelPresentation and world.martParcelPresentation:isInputLocked())
+      or (world.oakParcelDexPresentation and world.oakParcelDexPresentation:isInputLocked()) then return end
   local wasMoving = playerMovement.moving
   playerMovement:tick()
   if wasMoving and not playerMovement.moving then
-    syncSessionLocation()
-    -- A warp loads/repositions into a different map. The completed step
-    -- belongs to the source map, so don't incorrectly roll the destination
-    -- tile's encounter table during that same step.
-    if not tryEarlyStoryTriggerAt(playerMovement.tileX, playerMovement.tileY)
-        and not world.tryConnectionAt(playerMovement.tileX, playerMovement.tileY)
-        and not tryWarpAt(playerMovement.tileX, playerMovement.tileY)
-        and not world.tryTrainerSightlineAt(playerMovement.tileX, playerMovement.tileY) then
-      rollWildEncounterAt(playerMovement.tileX, playerMovement.tileY)
-    end
+    world.onPlayerStep(playerMovement.tileX, playerMovement.tileY)
   end
 end
 
@@ -774,7 +830,9 @@ end
 local function npcMovementTask(taskId)
   if not walkActive or world.battle or world.starterChoice or world.trainerApproach
       or (world.dialogue and world.dialogue:isActive())
-      or (world.martParcelPresentation and world.martParcelPresentation:isInputLocked()) then return end
+      or world.pokemonCenterPrompt
+      or (world.martParcelPresentation and world.martParcelPresentation:isInputLocked())
+      or (world.oakParcelDexPresentation and world.oakParcelDexPresentation:isInputLocked()) then return end
   for _, npc in ipairs(world.npcs) do
     if not npc.tickDisabled then
       local ok, err = pcall(npc.tick, npc)
@@ -789,6 +847,22 @@ end
 local function dialogueTask(taskId)
   local runner = world.dialogue
   if not runner then return end
+  local choice = runner.pendingChoice
+  if choice then
+    if not choice.announced then
+      choice.announced = true
+      addLine("Choice: YES / NO (Up/Down, A; B cancels when allowed).")
+    end
+    if inputState:isPressedOrRepeated(InputState.DPAD_UP) then
+      choice.cursor = (choice.cursor + #choice.choices - 1) % #choice.choices
+    elseif inputState:isPressedOrRepeated(InputState.DPAD_DOWN) then
+      choice.cursor = (choice.cursor + 1) % #choice.choices
+    elseif inputState:isNewlyPressed(InputState.A_BUTTON) then
+      runner:choose(choice.cursor)
+    elseif inputState:isNewlyPressed(InputState.B_BUTTON) and not choice.ignoreBPress then
+      runner:choose(127)
+    end
+  end
   runner:tick(inputState:isNewlyPressed(InputState.A_BUTTON))
   -- Real ScrCmd_pokemart: the script paused itself (DialogueRunner's
   -- pendingMartItemListPtr) waiting for the real mart menu to open and
@@ -1097,8 +1171,41 @@ local function loadBattleSceneAssets(data, addrs, dbg)
     return catalog
   end)
   if ok then
+    -- Battle records are live mod namespaces. The runtime starts from
+    -- decoded ROM tables and returns separate resolved tables, so a
+    -- failed/disabled mod can never mutate imported data. Any package under
+    -- LÖVE's `mods/<id>/` directory is loaded before battles or saves begin.
+    local runtime = require("src.core.ModRuntime").new({
+      namespaces = {
+        {name="battleSpecies", options={semantics="deep", base=result.species}},
+        {name="battleMoves", options={semantics="deep", base=result.moves}},
+        {name="battleNatures", options={semantics="deep", base=result.natures}},
+        {name="battleTrainers", options={semantics="deep", base=result.trainers}},
+        {name="battleItems", options={semantics="deep", base=result.items}},
+      },
+    })
+    local modRoot = "mods"
+    if love.filesystem.getInfo(modRoot, "directory") then
+      local filesystem = {
+        list=function(path) return love.filesystem.getDirectoryItems(path) end,
+        isDirectory=function(path) return love.filesystem.getInfo(path, "directory") ~= nil end,
+        read=function(path) return love.filesystem.read(path) end,
+      }
+      local loaded, loadErr = runtime:load(filesystem, modRoot)
+      if loaded then
+        addLine(("Loaded %d mod package(s)."):format(#loaded))
+      else
+        addLine("Mod packages were not loaded: " .. tostring(loadErr))
+      end
+    end
+    result.species = runtime:resolve("battleSpecies")
+    result.moves = runtime:resolve("battleMoves")
+    result.natures = runtime:resolve("battleNatures")
+    result.trainers = runtime:resolve("battleTrainers")
+    result.items = runtime:resolve("battleItems")
+    world.modRuntime, world.modProfile = runtime, runtime.profile
     world.battleCatalog = result
-    dbg("battle species/move/nature/trainer tables and grass terrain built")
+    dbg("battle species/move/nature/trainer tables, modded move view, and grass terrain built")
   else
     addLine("Battle scene assets failed: " .. tostring(result))
   end
@@ -1226,6 +1333,8 @@ startWildBattle = function(encounter)
   local engine = Battle.Engine.new({
     player=playerBattler, foe=foeBattler,
     moves=catalog.moves, typeChart=catalog.typeChart, rng=world.globalRng,
+    battleTerrain=0, -- BATTLE_TERRAIN_GRASS: wild encounters start in tall grass.
+    hooks=world.modRuntime and world.modRuntime.hooks,
   })
 
   local foeName = speciesName(encounter.species)
@@ -1301,7 +1410,7 @@ world.startRivalBattle = function(action)
     local engine = Battle.Engine.new({
       player=player, foe=Battle.PartyBridge.battlerFromGenerated(foe),
       moves=catalog.moves, typeChart=catalog.typeChart, rng=world.globalRng,
-      firstBattle=true,
+      firstBattle=true, canEscape=false, hooks=world.modRuntime and world.modRuntime.hooks,
     })
     local rivalName = Charmap.decode(session.state.saveBlock1.rivalName)
     local playerName = Charmap.decode(playerDecoded.nickname)
@@ -1411,6 +1520,7 @@ world.startTrainerBattle = function(trainerId)
     local engine = Battle.Engine.new({
       player=player, foe=Battle.PartyBridge.battlerFromGenerated(foe),
       moves=catalog.moves, typeChart=catalog.typeChart, rng=world.globalRng,
+      canEscape=false, hooks=world.modRuntime and world.modRuntime.hooks,
     })
     local trainerName = Charmap.decode(trainer.rawName)
     local playerName = Charmap.decode(playerDecoded.nickname)
@@ -1516,6 +1626,12 @@ local function loadMapObjectEvents(data, events, mapId)
   world.martParcelPrinter = nil
   world.martParcelMotion = nil
   world.martParcelClerk = nil
+  world.oakParcelDexPresentation = nil
+  world.oakParcelDexPrinter = nil
+  world.oakParcelDexMotion = nil
+  world.oakParcelDexRival = nil
+  world.pokemonCenterPrompt = nil
+  world.objectEventTemplates = events.objectEvents
 
   -- SpawnObjectEventsOnMapEntry skips templates whose FLAG_HIDE_* bit is
   -- set. Before a real session exists the map remains a data/demo view and
@@ -1607,6 +1723,7 @@ local function loadWalkAssets(dbg)
   scheduler:createTask(npcMovementTask, 0)
   scheduler:createTask(dialogueTask, 0)
   scheduler:createTask(world.martParcelPresentationTask, 0)
+  scheduler:createTask(world.oakParcelDexPresentationTask, 0)
   scheduler:createTask(world.trainerApproachTask, 0)
   dbg(("player movement started at first walkable tile %d,%d"):format(x, y))
 end
@@ -1840,6 +1957,35 @@ world.tryViridianMartParcelPresentationAtDestination = function()
   return true
 end
 
+-- Starts only the source-locked north-facing Oak interaction. Every other
+-- orientation/state falls through to the existing abbreviated Oak handling.
+world.tryOakParcelDexPresentation = function(oak)
+  local story = world.viridianParcelStory
+  if not story or not playerMovement then return false end
+  local presenter = Battle.OakParcelDexPresentation.new({
+    canBegin=function()
+      if not story.inventory:canAddItem(Battle.ViridianParcelStory.ITEM_POKE_BALL, 5) then
+        return false, "poke_ball_bag_full"
+      end
+      return true
+    end,
+    commit=function()
+      return story:completeLabParcelReturn(walkMapId)
+    end,
+  })
+  local command = presenter:begin({
+    mapId=walkMapId, playerX=playerMovement.tileX, playerY=playerMovement.tileY,
+    playerFacing=playerMovement.facingDirection, oakPresent=oak ~= nil,
+    martScene=story.session:getVar(Battle.ViridianParcelStory.VAR_MART_SCENE),
+    labScene=story.session:getVar(Battle.ViridianParcelStory.VAR_LAB_SCENE),
+    parcelPresent=story.inventory:quantityOf(Battle.ViridianParcelStory.ITEM_OAKS_PARCEL) > 0,
+  })
+  if not command then return false end
+  world.oakParcelDexPresentation = presenter
+  world.handleOakParcelDexPresentationCommand(command)
+  return true
+end
+
 -- Opens the real overworld START menu (src/start_menu.c's
 -- SetUpStartMenu_NormalField -- see StartMenu.lua's own header for the
 -- exact real item gating). Real FLAG_SYS_POKEMON_GET/FLAG_SYS_POKEDEX_GET
@@ -1984,9 +2130,23 @@ function loadMap(data, addrs, mapId, dbg)
   dbg("blockData resolved")
   walkMapBlockData, walkMapWidth, walkMapHeight = blockData, layout.width, layout.height
   local events = MapEvents.resolve(data, header.eventsPtr)
+  if newGame.session then
+    local location = Battle.PokemonCenter.respawnLocation(events.objectEvents, events.warps, function(warp)
+      local destHeader = MapHeader.resolve(data, addrs.gMapGroups, warp.mapGroup * 256 + warp.mapNum)
+      local destEvents = MapEvents.resolve(data, destHeader.eventsPtr)
+      return destEvents.warps[warp.warpId]
+    end)
+    if location then newGame.session.state.saveBlock1.lastHealLocation = location end
+  end
   walkMapWarps = events.warps
   world.walkMapConnections = (header.connectionsPtr ~= 0) and require("import.MapConnections").resolve(data, header.connectionsPtr) or {}
   walkMapId = mapId
+  -- A map-entry hook cannot run while this function is still decoding map
+  -- state: warp/connection/new-game paths set the final player tile only
+  -- afterward. syncSessionLocation dispatches this token exactly once after
+  -- that final position is established.
+  world.mapLoadToken = (world.mapLoadToken or 0) + 1
+  world.pendingMapLoadToken = world.mapLoadToken
   walkMapPrimaryAttrsPtr = Tileset.resolve(data, layout.primaryTilesetPtr).metatileAttributesPtr
   walkMapSecondaryAttrsPtr = Tileset.resolve(data, layout.secondaryTilesetPtr).metatileAttributesPtr
   local border = MapBorder.resolve(data, layout.borderPtr, layout.borderWidth, layout.borderHeight)
@@ -2020,25 +2180,41 @@ function tryWarpAt(x, y)
   if not walkMapWarps then return false end
   for _, warp in pairs(walkMapWarps) do
     if warp.x == x and warp.y == y then
-      local destMapId = warp.mapGroup * 256 + warp.mapNum
-      loadMap(romData, romAddrs, destMapId, function() end)
-      local destWarp = walkMapWarps[warp.warpId]
-      local destX, destY
-      if destWarp then
-        destX, destY = destWarp.x, destWarp.y
-      else
-        destX, destY = findFirstWalkableTile()
+      local function vanilla(destination)
+        assert(type(destination) == "table" and type(destination.mapId) == "number"
+          and destination.mapId >= 0 and destination.mapId <= 0xFFFF
+          and destination.mapId == math.floor(destination.mapId)
+          and type(destination.warpId) == "number" and destination.warpId >= 0
+          and destination.warpId <= 0xFF and destination.warpId == math.floor(destination.warpId),
+          "mod warp destination needs u16 mapId and u8 warpId")
+        local mapGroup, mapNum = math.floor(destination.mapId / 256), destination.mapId % 256
+        assert(romAddrs.mapGroupCounts and romAddrs.mapGroupCounts[mapGroup + 1]
+          and mapNum < romAddrs.mapGroupCounts[mapGroup + 1], "mod warp destination map is unavailable")
+        loadMap(romData, romAddrs, destination.mapId, function() end)
+        local destWarp = walkMapWarps[destination.warpId]
+        local destX, destY
+        if destWarp then
+          destX, destY = destWarp.x, destWarp.y
+        else
+          destX, destY = findFirstWalkableTile()
+        end
+        if destX and playerMovement then
+          playerMovement.tileX, playerMovement.tileY = destX, destY
+          playerMovement.moving = false
+          playerMovement.stepFrame = 0
+          syncSessionLocation()
+          -- MAP_SCRIPT_ON_FRAME_TABLE is evaluated only after the completed
+          -- warp has supplied this destination tile, never during loadMap.
+          world.tryViridianMartParcelPresentationAtDestination()
+        end
+        return true
       end
-      if destX and playerMovement then
-        playerMovement.tileX, playerMovement.tileY = destX, destY
-        playerMovement.moving = false
-        playerMovement.stepFrame = 0
-        syncSessionLocation()
-        -- MAP_SCRIPT_ON_FRAME_TABLE is evaluated only after the completed
-        -- warp has supplied this destination tile, never during loadMap.
-        world.tryViridianMartParcelPresentationAtDestination()
+      local destination = {mapId=warp.mapGroup * 256 + warp.mapNum, warpId=warp.warpId}
+      local hooks = world.modRuntime and world.modRuntime.hooks
+      if hooks then
+        return hooks:call("field.warp", vanilla, destination, walkMapId, x, y)
       end
-      return true
+      return vanilla(destination)
     end
   end
   return false
@@ -2059,19 +2235,10 @@ end
 world.tryConnectionAt = function(x, y)
   local conn = world.connectionForEdge(x, y)
   if not conn then return false end
-  local MapConnections = require("import.MapConnections")
   local destMapId = conn.mapGroup * 256 + conn.mapNum
   loadMap(romData, romAddrs, destMapId, function() end)
-  local destX, destY
-  if conn.direction == MapConnections.CONNECTION_NORTH then
-    destX, destY = x - conn.offset, walkMapHeight - 1
-  elseif conn.direction == MapConnections.CONNECTION_SOUTH then
-    destX, destY = x - conn.offset, 0
-  elseif conn.direction == MapConnections.CONNECTION_WEST then
-    destX, destY = walkMapWidth - 1, y - conn.offset
-  else -- CONNECTION_EAST
-    destX, destY = 0, y - conn.offset
-  end
+  local destX, destY = require("src.core.MapConnectionTraversal")
+    .destinationPosition(conn, x, y, walkMapWidth, walkMapHeight)
   if destX < 0 or destX >= walkMapWidth or destY < 0 or destY >= walkMapHeight then
     destX, destY = findFirstWalkableTile()
   end
@@ -2089,12 +2256,43 @@ end
 -- player step and after a real warp; actual save-file writing remains a
 -- separate UI/IO concern, but a future call to SaveFileCodec.encode can use
 -- `newGame.session.state` without reconstructing where the player is.
+world.dispatchMapLoaded = function()
+  local token = world.pendingMapLoadToken
+  if not token or not newGame.session or not playerMovement or not walkMapId then return end
+  -- Consume before dispatch: a short-circuiting hook or a later field error
+  -- must never cause a second entry notification for the same map load.
+  world.pendingMapLoadToken = nil
+  local function vanilla() return true end
+  local hooks = world.modRuntime and world.modRuntime.hooks
+  if not hooks then return vanilla() end
+  local context = {
+    message=function(text)
+      assert(type(text) == "string" and #text <= 512, "mod map-entry message must be a short string")
+      addLine(text)
+    end,
+    setFlag=function(flagId)
+      assert(type(flagId) == "number" and flagId >= 0 and flagId <= 0xFFFF,
+        "mod map-entry flag id must be a u16")
+      newGame.session:setFlag(math.floor(flagId))
+    end,
+    setVar=function(varId, value)
+      assert(type(varId) == "number" and varId >= 0 and varId <= 0xFFFF
+        and type(value) == "number" and value >= 0 and value <= 0xFFFF,
+        "mod map-entry variable id and value must be u16")
+      newGame.session:setVar(math.floor(varId), math.floor(value))
+    end,
+  }
+  return hooks:call("field.mapLoaded", vanilla, walkMapId,
+    playerMovement.tileX, playerMovement.tileY, context)
+end
+
 syncSessionLocation = function()
   if newGame.session and playerMovement and walkMapId then
     newGame.session:setLocation(walkMapId, playerMovement.tileX, playerMovement.tileY,
       playerMovement.facingDirection == PlayerMovement.UP and "north"
         or playerMovement.facingDirection == PlayerMovement.DOWN and "south"
         or playerMovement.facingDirection == PlayerMovement.LEFT and "west" or "east")
+    world.dispatchMapLoaded()
   end
 end
 
@@ -2148,7 +2346,18 @@ function saveGame()
     return
   end
   local bytes, counter = SaveFileCodec.encode(newGame.session.state, world.saveCounter, world.saveBytes)
-  local ok, err = love.filesystem.write(SAVE_FILENAME, bytes)
+  local diskBytes = require("src.core.ModSaveProfileCodec").attach(bytes, world.modProfile)
+  -- Keep exactly one known previous generation before replacing the primary.
+  -- A backup failure never blocks a normal save, but it is surfaced rather
+  -- than pretending recovery protection exists when it does not.
+  if love.filesystem.getInfo(SAVE_FILENAME) then
+    local previous = love.filesystem.read(SAVE_FILENAME)
+    if previous then
+      local backupOk, backupErr = love.filesystem.write("firered_recomp.backup.sav", previous)
+      if not backupOk then addLine("Save warning: recovery backup failed: " .. tostring(backupErr)) end
+    end
+  end
+  local ok, err = love.filesystem.write(SAVE_FILENAME, diskBytes)
   if not ok then
     addLine("Save failed: " .. tostring(err))
     return
@@ -2163,36 +2372,65 @@ end
 -- loading the decoded map and repositioning the player exactly the way
 -- bootstrapFreshSession positions a brand new one.
 function loadGameFile()
-  if not love.filesystem.getInfo(SAVE_FILENAME) then
-    addLine("Load failed: no save file exists yet.")
-    return
+  local function parse(contents)
+    if not contents then return nil, "could not read the save file", true end
+    local extractedOk, extracted = pcall(function()
+      return { require("src.core.ModSaveProfileCodec").extract(contents) }
+    end)
+    if not extractedOk then return nil, tostring(extracted), true end
+    local baseBytes, savedProfile = extracted[1], extracted[2]
+    local compatibility = world.modCompatibility.compare(
+      savedProfile or world.modCompatibility.profile({}), world.modProfile)
+    if compatibility.status == "reject" or compatibility.status == "migrate" then
+      return nil, world.modCompatibility.describe(compatibility), false
+    end
+    local state, info = SaveFileCodec.decode(baseBytes)
+    if not state then return nil, tostring(info and info.status or "unreadable save data"), true end
+    return {state=state, info=info, baseBytes=baseBytes, compatibility=compatibility}
   end
-  local contents = love.filesystem.read(SAVE_FILENAME)
-  if not contents then
-    addLine("Load failed: could not read the save file.")
-    return
+
+  local primaryExists = love.filesystem.getInfo(SAVE_FILENAME) ~= nil
+  local parsed, loadErr, recoverable = parse(primaryExists and love.filesystem.read(SAVE_FILENAME) or nil)
+  local recovered = false
+  if not parsed and recoverable and love.filesystem.getInfo("firered_recomp.backup.sav") then
+    local backupParsed, backupErr = parse(love.filesystem.read("firered_recomp.backup.sav"))
+    if backupParsed then
+      parsed, recovered = backupParsed, true
+    else
+      loadErr = backupErr
+    end
   end
-  local state, info = SaveFileCodec.decode(contents)
-  if not state then
-    addLine("Load failed: " .. tostring(info and info.status or "unreadable save data"))
+  if not parsed then
+    if not primaryExists and not love.filesystem.getInfo("firered_recomp.backup.sav") then
+      addLine("Load failed: no save file exists yet.")
+    else
+      addLine("Load failed: " .. tostring(loadErr))
+    end
     return
   end
 
-  newGame.session = GameSession.fromSavedState(state)
+  newGame.session = GameSession.fromSavedState(parsed.state)
   newGame.story = Battle.EarlyStory.new(newGame.session)
   world.createViridianParcelStory()
-  world.saveCounter, world.saveBytes = info.saveCounter, contents
+  world.saveCounter, world.saveBytes = parsed.info.saveCounter, parsed.baseBytes
 
   loadMap(romData, romAddrs, newGame.session.mapId, function() end)
   if playerMovement then
     playerMovement.tileX, playerMovement.tileY = newGame.session.location.x, newGame.session.location.y
     playerMovement.facingDirection = PlayerMovement.DOWN
     playerMovement.moving, playerMovement.stepFrame = false, 0
+    -- This is the save's final destination tile, not a later field step.
+    -- Consume loadMap's entry token here so field.mapLoaded sees the restored
+    -- coordinates exactly once.
+    syncSessionLocation()
   end
   world.clearViews()
   walkActive = true
+  if recovered then addLine("Recovered from the previous save generation.") end
+  local compatibilityNotice = world.modCompatibility.describe(parsed.compatibility)
+  if compatibilityNotice then addLine(compatibilityNotice) end
   addLine(("Loaded save (slot generation %d): map %d,%d at %d,%d."):format(
-    info.saveCounter, newGame.session.location.mapGroup, newGame.session.location.mapNum,
+    parsed.info.saveCounter, newGame.session.location.mapGroup, newGame.session.location.mapNum,
     newGame.session.location.x, newGame.session.location.y))
 end
 
@@ -2409,6 +2647,145 @@ world.martParcelPresentationTask = function(taskId)
   end
 end
 
+-- Bounded ReceiveDexScene bridge. It owns only the source-locked north-facing
+-- choreography from OakParcelDexPresentation; it neither changes the script
+-- VM nor introduces a general object-spawn/movement API.
+world.handleOakParcelDexPresentationCommand = function(command)
+  if not command then return end
+  if command.kind == "lock" or command.kind == "show_text" then
+    world.oakParcelDexPrinter = TextPrinterState.new(tokenizeTextAt(command.textPointer), FONT_REVEAL_TICKS_PER_CHAR)
+    world.dialogueBuiltTokenIndex = -1
+  elseif command.kind == "reveal_text" and world.oakParcelDexPrinter then
+    world.oakParcelDexPrinter:revealAll()
+    world.dialogueBuiltTokenIndex = -1
+  elseif command.kind == "move" then
+    world.oakParcelDexMotion = { group=command.group, phase=0, steps=0, delay=0 }
+    if command.group == "rival_arrival" then
+      local template, index = nil, 0
+      while world.objectEventTemplates[index] ~= nil do
+        if world.objectEventTemplates[index].localId == Battle.OakParcelDexPresentation.RIVAL_LOCAL_ID then
+          template = world.objectEventTemplates[index]
+          break
+        end
+        index = index + 1
+      end
+      if not template then
+        world.handleOakParcelDexPresentationCommand(
+          world.oakParcelDexPresentation:abort("rival_template_missing"))
+        return
+      end
+      local rivals = ObjectEventState.new({[0]=template}, {rng=world.globalRng, isBlocked=isWalkTileBlocked})
+      local rival = rivals[1]
+      rival.x, rival.y, rival.initialX, rival.initialY = 5, 10, 5, 10
+      rival.facingDirection = PlayerMovement.UP
+      world.oakParcelDexRival = rival
+      world.npcs[#world.npcs + 1] = rival
+      playerMovement.facingDirection = PlayerMovement.DOWN
+      world.oakParcelDexMotion.delay = 88 -- five delay16 plus delay8.
+    elseif command.group == "player_face_up" then
+      playerMovement.facingDirection = PlayerMovement.UP
+    elseif command.group == "dex_reveal" then
+      local kept = {}
+      for _, npc in ipairs(world.npcs) do
+        if npc.localId ~= Battle.OakParcelDexPresentation.DEX_PROP_LEFT_LOCAL_ID then kept[#kept + 1] = npc end
+      end
+      world.npcs = kept
+      world.oakParcelDexMotion.delay = 10
+    elseif command.group == "rival_exit" then
+      playerMovement.facingDirection = PlayerMovement.LEFT
+    end
+  elseif command.kind == "unlock" then
+    world.oakParcelDexPrinter = nil
+    world.oakParcelDexMotion = nil
+    world.dialogueBuiltTokenIndex = -1
+    if command.remove then
+      local kept = {}
+      for _, npc in ipairs(world.npcs) do
+        if npc.localId ~= command.remove.localId then kept[#kept + 1] = npc end
+      end
+      world.npcs = kept -- temporary rival only: intentionally do not set its hide flag.
+    end
+    world.oakParcelDexRival = nil
+    if command.done then
+      addLine("Oak received the Parcel and gave you a Pokédex and five Poké Balls. Viridian Mart is now open.")
+    else
+      addLine("Oak Parcel/Dex scene stopped: " .. tostring(command.reason))
+    end
+  end
+end
+
+world.oakParcelDexPresentationTask = function(taskId)
+  local presenter = world.oakParcelDexPresentation
+  if not presenter or not presenter:isActive() then return end
+  local motion = world.oakParcelDexMotion
+  if motion then
+    local oak
+    for _, npc in ipairs(world.npcs) do
+      if npc.localId == Battle.OakParcelDexPresentation.OAK_LOCAL_ID then oak = npc; break end
+    end
+    local function complete()
+      world.oakParcelDexMotion = nil
+      world.handleOakParcelDexPresentationCommand(presenter:movementComplete(motion.group))
+    end
+    local function walk(npc, direction, total)
+      if not npc then return false end
+      if npc.moving then
+        if ObjectEventState.advanceStep(npc) then motion.steps = motion.steps + 1 end
+      elseif motion.steps < total then
+        ObjectEventState.beginForcedStep(npc, direction)
+      end
+      return motion.steps >= total and not npc.moving
+    end
+    if motion.group == "rival_arrival" then
+      if motion.delay > 0 then
+        motion.delay = motion.delay - 1
+        if motion.delay == 0 then playerMovement.facingDirection = PlayerMovement.LEFT end
+      end
+      if walk(world.oakParcelDexRival, PlayerMovement.UP, 6) and motion.delay == 0 then complete() end
+      return
+    elseif motion.group == "player_face_up" then
+      complete()
+      return
+    elseif motion.group == "oak_to_dex" then
+      if motion.phase == 0 and walk(oak, PlayerMovement.UP, 1) then motion.phase, motion.steps = 1, 0 end
+      if motion.phase == 1 and walk(oak, PlayerMovement.LEFT, 1) then complete() end
+      return
+    elseif motion.group == "dex_reveal" then
+      if oak then oak.facingDirection = PlayerMovement.UP end
+      if motion.phase == 0 then
+        motion.delay = motion.delay - 1
+        if motion.delay <= 0 then
+          local kept = {}
+          for _, npc in ipairs(world.npcs) do
+            if npc.localId ~= Battle.OakParcelDexPresentation.DEX_PROP_RIGHT_LOCAL_ID then kept[#kept + 1] = npc end
+          end
+          world.npcs = kept
+          motion.phase, motion.delay = 1, 25
+        end
+      else
+        motion.delay = motion.delay - 1
+        if motion.delay <= 0 then complete() end
+      end
+      return
+    elseif motion.group == "oak_return" then
+      if motion.phase == 0 and walk(oak, PlayerMovement.RIGHT, 1) then motion.phase, motion.steps = 1, 0 end
+      if motion.phase == 1 and walk(oak, PlayerMovement.DOWN, 1) then complete() end
+      return
+    elseif motion.group == "rival_exit" then
+      if walk(world.oakParcelDexRival, PlayerMovement.DOWN, 6) then complete() end
+      return
+    end
+  end
+  local printer = world.oakParcelDexPrinter
+  if printer then
+    if inputState:isNewlyPressed(InputState.A_BUTTON) then
+      world.handleOakParcelDexPresentationCommand(presenter:onA(true, printer:isFullyRevealed()))
+    else
+      printer:tick(false)
+    end
+  end
+end
+
 -- Starts a real decoded script (an NPC's scriptPtr or a bg event's sign
 -- script) running through DialogueRunner. facingNpc, when given, is the
 -- ObjectEventState the real `faceplayer` opcode should turn toward the
@@ -2426,6 +2803,25 @@ local function startScript(scriptPtr, facingNpc)
   world.dialogue = DialogueRunner.new(instructions, addrToIndex, {
     tokenize = tokenizeTextAt,
     ticksPerChar = FONT_REVEAL_TICKS_PER_CHAR,
+    getVar = function(varId)
+      if newGame.session and varId >= GameSession.VARS_START and varId <= 0x40FF then
+        return newGame.session:getVar(varId)
+      end
+    end,
+    setVar = function(varId, value)
+      if newGame.session and varId >= GameSession.VARS_START and varId <= 0x40FF then
+        newGame.session:setVar(varId, value)
+      end
+    end,
+    getFlag = function(flagId)
+      return newGame.session and newGame.session:getFlag(flagId) or false
+    end,
+    setFlag = function(flagId)
+      if newGame.session then newGame.session:setFlag(flagId) end
+    end,
+    clearFlag = function(flagId)
+      if newGame.session then newGame.session:clearFlag(flagId) end
+    end,
     onFacePlayer = function()
       if facingNpc then
         facingNpc.facingDirection = OPPOSITE_DIRECTION[playerMovement.facingDirection] or facingNpc.facingDirection
@@ -2446,6 +2842,81 @@ local function startScript(scriptPtr, facingNpc)
         addLine(("removeobjectat targeted a different map (%d,%d) -- not live-removed (out of scope)."):format(mapGroup, mapNum))
       end
     end,
+    -- SPECIAL_HealPlayerParty is index 0 in the real gSpecials table.
+    -- This shared primitive covers Mom and every OutOfCenterPartyHeal
+    -- caller without map-specific shortcuts; other specials stay unhooked.
+    onSpecial = function(specialId)
+      if specialId == 0 and newGame.session and world.battleCatalog then
+        Battle.RivalRewards.healParty(newGame.session.state.saveBlock1, world.battleCatalog.moves)
+      end
+    end,
+    onGiveItem = function(itemId, quantity)
+      if not newGame.session or not world.battleCatalog or not world.battleCatalog.items then return false end
+      local sb1 = newGame.session.state.saveBlock1
+      local bag = Battle.SessionBagBridge.fromSaveBlock1(sb1, world.battleCatalog.items)
+      local ok = bag:addItem(itemId, quantity)
+      if ok then Battle.SessionBagBridge.toSaveBlock1(bag, sb1) end
+      return ok
+    end,
+    onRemoveItem = function(itemId, quantity)
+      if not newGame.session or not world.battleCatalog or not world.battleCatalog.items then return false end
+      local sb1 = newGame.session.state.saveBlock1
+      local bag = Battle.SessionBagBridge.fromSaveBlock1(sb1, world.battleCatalog.items)
+      local ok = bag:removeItem(itemId, quantity)
+      if ok then Battle.SessionBagBridge.toSaveBlock1(bag, sb1) end
+      return ok
+    end,
+    onWarp = function(destination)
+      local mapId = destination.mapGroup * 256 + destination.mapNum
+      if not romAddrs.mapGroupCounts[destination.mapGroup + 1]
+          or destination.mapNum >= romAddrs.mapGroupCounts[destination.mapGroup + 1] then
+        addLine("Script warp targeted an unavailable map.")
+        return
+      end
+      loadMap(romData, romAddrs, mapId, function() end)
+      local x, y = destination.x, destination.y
+      if x == 0xFFFF or y == 0xFFFF then
+        local entrance = walkMapWarps[destination.warpId]
+        x, y = entrance and entrance.x or nil, entrance and entrance.y or nil
+      end
+      if not x or not y then x, y = findFirstWalkableTile() end
+      if playerMovement and x then
+        playerMovement.tileX, playerMovement.tileY = x, y
+        playerMovement.moving, playerMovement.stepFrame = false, 0
+        syncSessionLocation()
+      end
+    end,
+    onGivePokemon = function(mon)
+      if not newGame.session or not world.battleCatalog or not world.globalRng then return false end
+      local catalog, sb1, sb2 = world.battleCatalog, newGame.session.state.saveBlock1, newGame.session.state.saveBlock2
+      local ok, record = pcall(Battle.StarterFactory.generate, {
+        species=mon.species, speciesInfo=catalog.species[mon.species],
+        speciesName=romData:sub(romAddrs.gSpeciesNames + mon.species * 11 + 1, romAddrs.gSpeciesNames + mon.species * 11 + 10),
+        learnset=Battle.Learnset.resolve(romData, romAddrs.gLevelUpLearnsets, mon.species),
+        battleMoves=catalog.moves, natures=catalog.natures, rng=world.globalRng,
+        trainer={id=sb2.playerTrainerId, name=sb2.playerName:sub(1, 7), gender=sb2.playerGender},
+        metLocation=world.regionMapSectionId, level=mon.level, heldItem=mon.item,
+      })
+      if not ok then return false end
+      if (sb1.playerPartyCount or 0) < 6 then
+        sb1.playerParty = sb1.playerParty or {}
+        sb1.playerPartyCount = (sb1.playerPartyCount or 0) + 1
+        sb1.playerParty[sb1.playerPartyCount] = record
+      else
+        local storage = newGame.session.state.pokemonStorage
+        local pcRecord = Battle.WildFactory.toPcRecord(record, catalog.moves)
+        local startBox = storage.currentBox or 1
+        local stored = false
+        for offset = 0, storage.boxes.TOTAL_BOXES_COUNT - 1 do
+          local box = ((startBox - 1 + offset) % storage.boxes.TOTAL_BOXES_COUNT) + 1
+          if storage.boxes:add(box, pcRecord) then stored = true; break end
+        end
+        if not stored then return false end
+      end
+      local dex = Battle.PokedexOrder.speciesToNationalDexNum(romData, romAddrs.sSpeciesToNationalPokedexNum, mon.species)
+      if dex and newGame.story then newGame.story:registerCaught(dex) end
+      return true
+    end,
   })
   world.dialogueBuiltTokenIndex = -1
 end
@@ -2460,12 +2931,19 @@ end
 local function tryStartInteraction()
   if world.battle then return end
   if not playerMovement or playerMovement.moving then return end
+  if world.pokemonCenterPrompt then return end
   if world.dialogue and world.dialogue:isActive() then return end
 
   local npc = ObjectEventInteraction.findInteractionTarget(
     playerMovement.tileX, playerMovement.tileY, playerMovement.facingDirection, world.npcs,
     { behaviorAt = getMetatileBehaviorAt })
   if npc then
+    if newGame.session and Battle.PokemonCenter.isCenter(world.objectEventTemplates)
+        and Battle.PokemonCenter.isNurse(npc) then
+      world.pokemonCenterPrompt = { cursor=MenuCursor.new(2, 0), phase="choice" }
+      addLine("Welcome to our POKéMON CENTER! Shall we heal your POKéMON? YES/NO")
+      return
+    end
     if world.viridianParcelStory and walkMapId == Battle.ViridianParcelStory.MAP_VIRIDIAN_MART
         and npc.localId == 1
         and newGame.session:getVar(Battle.ViridianParcelStory.VAR_MART_SCENE) == 1 then
@@ -2480,6 +2958,7 @@ local function tryStartInteraction()
         -- LOCALID_OAKS_LAB_PROF_OAK is object-event local id 4: the first
         -- three Lab templates use implicit ids 1..3 in map.json.
         and npc.localId == 4 then
+      if world.tryOakParcelDexPresentation(npc) then return end
       local action = world.viridianParcelStory:completeLabParcelReturn(walkMapId)
       if action then
         addLine("Oak received the Parcel and gave you a Pokédex and five Poké Balls. Cutscene movement/dialogue timing is abbreviated; Viridian Mart is now open.")
@@ -2520,6 +2999,38 @@ local function tryStartInteraction()
     end
     i = i + 1
   end
+end
+
+-- Mod seam for the real A-button field interaction path. The hook sees the
+-- current source map, player tile, and facing direction; it may delegate to
+-- the vanilla object/sign script lookup or provide a custom interaction.
+world.onPlayerInteract = function()
+  local function vanilla() return tryStartInteraction() end
+  local hooks = world.modRuntime and world.modRuntime.hooks
+  if hooks and playerMovement then
+    local context = {
+      message=function(text)
+        assert(type(text) == "string" and #text <= 512, "mod interaction message must be a short string")
+        addLine(text)
+      end,
+      setFlag=function(flagId)
+        assert(type(flagId) == "number" and flagId >= 0 and flagId <= 0xFFFF,
+          "mod flag id must be a u16")
+        assert(newGame.session, "mod interaction needs an active save session")
+        newGame.session:setFlag(math.floor(flagId))
+      end,
+      setVar=function(varId, value)
+        assert(type(varId) == "number" and varId >= 0 and varId <= 0xFFFF
+          and type(value) == "number" and value >= 0 and value <= 0xFFFF,
+          "mod variable id and value must be u16")
+        assert(newGame.session, "mod interaction needs an active save session")
+        newGame.session:setVar(math.floor(varId), math.floor(value))
+      end,
+    }
+    return hooks:call("field.interact", vanilla, world.mapId,
+      playerMovement.tileX, playerMovement.tileY, playerMovement.facingDirection, context)
+  end
+  return vanilla()
 end
 
 local function loadMapFromRom(romPath)
@@ -2633,7 +3144,7 @@ local function ensureDialogueImagesCurrent()
   end
 
   local runner = world.dialogue
-  local printer = (runner and runner.printer) or world.martParcelPrinter
+  local printer = (runner and runner.printer) or world.martParcelPrinter or world.oakParcelDexPrinter
   local tokenIndex = printer and printer.tokenIndex or -1
   if tokenIndex == world.dialogueBuiltTokenIndex then return end
   world.dialogueBuiltTokenIndex = tokenIndex
@@ -2647,7 +3158,7 @@ local function ensureDialogueImagesCurrent()
   -- byte would produce, since TextRenderer's own default is the
   -- white-on-transparent pair the F view wants instead.
   local tokens = { { type = "color", fg = 2, shadow = 3 } }
-  for _, token in ipairs(printer:revealedTokens()) do tokens[#tokens + 1] = token end
+  for _, token in ipairs(printer:revealedPageTokens()) do tokens[#tokens + 1] = token end
   local ok, composited = pcall(TextRenderer.renderTokens, fontData, fontAddrs, tokens, fontPalette)
   if ok then
     world.dialogueTextImage = buildImage(composited)
@@ -3019,16 +3530,12 @@ function love.load()
       for dir in moves:gmatch("[^,]+") do
         playerMovement:tryMove(dir, world.isPlayerWalkTileBlocked, getLedgeJumpDirection)
         for i = 1, 16 do playerMovement:tick() end
-        syncSessionLocation()
-        if not tryEarlyStoryTriggerAt(playerMovement.tileX, playerMovement.tileY)
-            and not tryWarpAt(playerMovement.tileX, playerMovement.tileY) then
-          rollWildEncounterAt(playerMovement.tileX, playerMovement.tileY)
-        end
+        world.onPlayerStep(playerMovement.tileX, playerMovement.tileY)
         if world.battle then break end
       end
     end
     if os.getenv("POKEPORT_WALK_TALK") == "1" and not world.battle then
-      tryStartInteraction()
+      world.onPlayerInteract()
       local talkTicks = tonumber(os.getenv("POKEPORT_WALK_TALK_TICKS") or "120")
       for _ = 1, talkTicks do
         if world.dialogue then world.dialogue:tick(false) end
@@ -3198,19 +3705,36 @@ function love.load()
       -- Drive only the same A/reveal path available to a player.  The
       -- presenter itself owns when each real scripted movement completes
       -- and when the persistent controller is allowed to commit.
-      for _ = 1, 2400 do
+      for _ = 1, 20000 do
         local presenter = world.martParcelPresentation
         if not presenter then return false end
         if presenter.state == presenter.DONE then return true end
         if presenter.state == presenter.FAILED then return false end
         local printer = world.martParcelPrinter
-        if printer and printer:isFullyRevealed() then
+        if printer and (printer:isFullyRevealed() or printer.waitingForPage or printer.waitingForPress) then
           press(InputState.A_BUTTON)
         else
           tick(0, 1)
         end
       end
-      return false
+      return world.martParcelPresentation and world.martParcelPresentation.state == world.martParcelPresentation.DONE
+    end
+    local function finishOakParcelDexPresentation()
+      -- Drive the same lock/text/movement path a player uses. Persistent
+      -- Parcel/Dex state may only appear after the presenter reaches DONE.
+      for _ = 1, 30000 do
+        local presenter = world.oakParcelDexPresentation
+        if not presenter then return false end
+        if presenter.state == presenter.DONE then return true end
+        if presenter.state == presenter.FAILED then return false end
+        local printer = world.oakParcelDexPrinter
+        if printer and (printer:isFullyRevealed() or printer.waitingForPage or printer.waitingForPress) then
+          press(InputState.A_BUTTON)
+        else
+          tick(0, 1)
+        end
+      end
+      return world.oakParcelDexPresentation and world.oakParcelDexPresentation.state == world.oakParcelDexPresentation.DONE
     end
     local function loseBattle()
       local outcome
@@ -3465,8 +3989,8 @@ function love.load()
                 move(InputState.DPAD_UP)
                 labReturn = { map=walkMapId, x=playerMovement.tileX, y=playerMovement.tileY,
                   labScene=newGame.session:getVar(Battle.ViridianParcelStory.VAR_LAB_SCENE) }
-                press(InputState.A_BUTTON) -- bounded Oak Parcel/Dex controller
-                dexDelivered = newGame.session:getVar(Battle.ViridianParcelStory.VAR_MART_SCENE) == 2
+                press(InputState.A_BUTTON) -- starts bounded Oak Parcel/Dex controller
+                dexDelivered = finishOakParcelDexPresentation()
               end
               -- Take the same real field route north again; the shop is
               -- reached only after Oak has persisted scene 2.
@@ -3674,6 +4198,19 @@ end
 -- doesn't depend on how fast this machine renders frames.
 local FIXED_TICK = 1 / 60
 local tickAccumulator = 0
+-- gPaydayMoney is a per-battle u16 accumulator. FireRed's givepaydaymoney
+-- reaches AddMoney only on the local win script; collect it once here before
+-- the battle is discarded, never on a catch, run, or loss.
+world.collectPayDayMoney = function(battle)
+  if battle.paydayAwarded or not newGame.session then return 0 end
+  battle.paydayAwarded = true
+  local amount = battle.controller.engine.paydayMoney or 0
+  if amount <= 0 then return 0 end
+  local save = newGame.session.state.saveBlock1
+  local before = save.money or 0
+  save.money = math.min(999999, before + amount) -- real AddMoney cap.
+  return save.money - before
+end
 world.settleOakLabRivalBattle = function(battle)
   if battle.kind ~= "oakLabRival" or battle.settled
       or not battle.controller.engine.outcome then return end
@@ -3703,6 +4240,8 @@ world.settleOakLabRivalBattle = function(battle)
       messages[#messages + 1] = "OAK: Hm! Excellent! If you win,\nyour POKEMON will grow!"
       messages[#messages + 1] = ("%s got $%d for winning!")
         :format(Charmap.decode(newGame.session.state.saveBlock2.playerName), Battle.RivalRewards.PRIZE_MONEY)
+      local payDay = world.collectPayDayMoney(battle)
+      if payDay > 0 then messages[#messages + 1] = ("Picked up $%d!"):format(payDay) end
     elseif outcome == "playerLost" then
       Battle.RivalRewards.applyLoss(battle.partyRecord)
       messages[#messages + 1] = battle.rivalName .. ": Yeah! Am I great or what?"
@@ -3881,6 +4420,16 @@ function love.update(dt)
         if battle.controller.bag and newGame.session then
           Battle.SessionBagBridge.toSaveBlock1(battle.controller.bag, newGame.session.state.saveBlock1)
         end
+        -- Oak's settlement appends its reward text before its controller
+        -- reaches COMPLETE. Every other local win gets Pay Day's text here,
+        -- then returns to COMPLETE on a later frame before final teardown.
+        if battle.kind ~= "oakLabRival" and outcome == "playerWon" and not battle.paydayAwarded then
+          local payDay = world.collectPayDayMoney(battle)
+          if payDay > 0 then
+            battle.controller:appendMessages({ ("Picked up $%d!"):format(payDay) }, Battle.Controller.COMPLETE)
+            return
+          end
+        end
         if battle.kind == "oakLabRival" then
           world.finishOakLabRivalBattle(battle)
         elseif battle.kind == "trainer" then
@@ -3941,21 +4490,31 @@ function love.update(dt)
             if ok then
               local nationalDexNo = Battle.PokedexOrder.speciesToNationalDexNum(
                 romData, romAddrs.sSpeciesToNationalPokedexNum, battle.foeInstance.species)
-              -- Real GiveMonToPlayer tries the party first; PC-box overflow
-              -- (src/core/CaptureRewards.lua's giveMonToPlayer, real
-              -- SendMonToPC) needs a live PcBoxes instance this session
-              -- doesn't carry yet -- flagged, not silently dropped: a full
-              -- party still marks the Dex (real HandleSetPokedexFlag ran
-              -- regardless of where GiveMonToPlayer routed the mon) but
-              -- says plainly that the capture itself wasn't stored.
               if (sb1.playerPartyCount or 0) < 6 then
                 sb1.playerParty = sb1.playerParty or {}
                 sb1.playerParty[sb1.playerPartyCount + 1] = caught
                 sb1.playerPartyCount = sb1.playerPartyCount + 1
                 addLine(("Gotcha! %s was caught and added to the party!"):format(speciesName(battle.foeInstance.species)))
               else
-                addLine(("Gotcha! %s was caught, but the party is full and PC-box storage isn't wired into the live session yet -- this capture was NOT saved.")
-                  :format(speciesName(battle.foeInstance.species)))
+                local storage = newGame.session.state.pokemonStorage
+                local pcRecord = Battle.WildFactory.toPcRecord(caught, world.battleCatalog.moves)
+                local destination, box, slot
+                local startBox = storage.currentBox or 1
+                for offset = 0, storage.boxes.TOTAL_BOXES_COUNT - 1 do
+                  local candidate = ((startBox - 1 + offset) % storage.boxes.TOTAL_BOXES_COUNT) + 1
+                  local candidateSlot = storage.boxes:add(candidate, pcRecord)
+                  if candidateSlot then
+                    destination, box, slot = "pc", candidate, candidateSlot
+                    break
+                  end
+                end
+                if destination then
+                  addLine(("Gotcha! %s was sent to PC Box %d, slot %d!")
+                    :format(speciesName(battle.foeInstance.species), box, slot))
+                else
+                  addLine(("Gotcha! %s was caught, but every PC Box is full.")
+                    :format(speciesName(battle.foeInstance.species)))
+                end
               end
               if nationalDexNo then
                 newGame.story:registerCaught(nationalDexNo)
@@ -3967,6 +4526,25 @@ function love.update(dt)
             addLine("Wild battle: caught, but no session party to persist to (developer battle).")
           end
           world.battle = nil
+        elseif outcome == "teleported" then
+          local sb1 = newGame.session and newGame.session.state.saveBlock1
+          if sb1 then
+            local start = NewGameDefaults.startingWarp
+            local destination = Battle.WhiteoutRules.respawnLocation(sb1.lastHealLocation,
+              { mapGroup=4, mapNum=1, warpId=start.warpId, x=start.x, y=start.y })
+            loadMap(romData, romAddrs, destination.mapGroup * 256 + destination.mapNum, function() end)
+            if playerMovement then
+              playerMovement.tileX, playerMovement.tileY = destination.x, destination.y
+              playerMovement.facingDirection = PlayerMovement.DOWN
+              playerMovement.moving, playerMovement.stepFrame = false, 0
+            end
+            syncSessionLocation()
+            addLine(("Teleported to %d,%d (%d,%d).")
+              :format(destination.mapGroup, destination.mapNum, destination.x, destination.y))
+          else
+            addLine("Teleported from the wild battle (no session destination available).")
+          end
+          world.battle = nil
         else
           addLine("Returned to the field after running from the wild battle.")
           world.battle = nil
@@ -3975,6 +4553,22 @@ function love.update(dt)
     elseif world.martActive and world.martMenu then
       world.martMenu:processInput(inputState)
       if world.martMenu:isDone() then world.closeMart() end
+    elseif world.pokemonCenterPrompt then
+      local prompt = world.pokemonCenterPrompt
+      if prompt.phase == "choice" then
+        local outcome = prompt.cursor:processInput(inputState)
+        if outcome == "cancel" or (outcome == "confirm" and prompt.cursor.cursorPos == 1) then
+          addLine("We hope to see you again!")
+          world.pokemonCenterPrompt = nil
+        elseif outcome == "confirm" then
+          Battle.RivalRewards.healParty(newGame.session.state.saveBlock1, world.battleCatalog.moves)
+          prompt.phase = "done"
+          addLine("Thank you for waiting. We've restored your POKéMON to full health.")
+        end
+      elseif inputState:isNewlyPressed(InputState.A_BUTTON) or inputState:isNewlyPressed(InputState.B_BUTTON) then
+        addLine("We hope to see you again!")
+        world.pokemonCenterPrompt = nil
+      end
     elseif world.partyScreenActive and world.partyScreen then
       world.partyScreen:processInput(inputState)
       if world.partyScreen:isDone() then
@@ -4028,7 +4622,8 @@ function love.update(dt)
       beginNewGameFlow()
     elseif walkActive and playerMovement
         and (world.trainerApproach or (world.dialogue and world.dialogue:isActive())
-          or (world.martParcelPresentation and world.martParcelPresentation:isInputLocked())) then
+          or (world.martParcelPresentation and world.martParcelPresentation:isInputLocked())
+          or (world.oakParcelDexPresentation and world.oakParcelDexPresentation:isInputLocked())) then
       -- A real script's `lock`/`lockall` (and just having a message box
       -- open) blocks field input entirely -- the A press is consumed by
       -- the dialogue's own advance, handled in dialogueTask. A pending
@@ -4036,7 +4631,7 @@ function love.update(dt)
       -- (see trainerApproachTask/tryTrainerSightlineAt).
     elseif walkActive and playerMovement then
       if inputState:isNewlyPressed(InputState.START_BUTTON) then world.openStartMenu() end
-      if inputState:isNewlyPressed(InputState.A_BUTTON) then tryStartInteraction() end
+      if inputState:isNewlyPressed(InputState.A_BUTTON) then world.onPlayerInteract() end
       -- Real continuous walking-while-held uses a plain held-key check
       -- every frame (not the menu-style repeat-with-delay system --
       -- that's specific to menu cursors, see InputState.lua/MenuCursor.lua),
@@ -4344,7 +4939,7 @@ function love.draw()
 
     -- Real message box (DialogueRunner), drawn over the field like the
     -- real bg0 dialogue window sitting in front of the map/OBJ layers.
-    if ((world.dialogue and world.dialogue.printer) or world.martParcelPrinter) and world.dialogueWindowImage then
+    if ((world.dialogue and world.dialogue.printer) or world.martParcelPrinter or world.oakParcelDexPrinter) and world.dialogueWindowImage then
       local boxX = baseX + 8 * viewport.scale
       local boxY = baseY + (WALK_CAMERA_HEIGHT - world.dialogueWindowImage:getHeight() - 8) * viewport.scale
       if world.dialogueFillColor then
@@ -4356,13 +4951,9 @@ function love.draw()
       end
       love.graphics.draw(world.dialogueWindowImage, boxX, boxY, 0, viewport.scale, viewport.scale)
       if world.dialogueTextImage then
-        -- Real messages page with \p (EXT "new paragraph": clear the
-        -- window and start over) and \l (scroll up a line). Charmap.lua
-        -- currently renders all three real linebreak bytes as a plain
-        -- newline (documented in its own header), so a long real message
-        -- can run past the box's 4 content rows and past its right edge
-        -- until real pagination exists. Clipped to the frame's interior
-        -- so it never spills onto the field in the meantime.
+        -- \p waits for A then clears the page; \l drops one preceding
+        -- explicit line. The scissor remains a safety boundary for text
+        -- that naturally wraps beyond this bounded renderer's line model.
         love.graphics.intersectScissor(boxX + TextWindow.TILE_SIZE * viewport.scale, boxY + TextWindow.TILE_SIZE * viewport.scale,
           DIALOGUE_CONTENT_TILES_W * TextWindow.TILE_SIZE * viewport.scale, DIALOGUE_CONTENT_TILES_H * TextWindow.TILE_SIZE * viewport.scale)
         love.graphics.draw(world.dialogueTextImage, boxX + TextWindow.TILE_SIZE * viewport.scale, boxY + TextWindow.TILE_SIZE * viewport.scale, 0, viewport.scale, viewport.scale)

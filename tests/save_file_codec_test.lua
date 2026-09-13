@@ -2,6 +2,7 @@
 package.path = package.path .. ";./?.lua"
 local SaveFileCodec = require("src.core.SaveFileCodec")
 local BoxPokemonCodec = require("src.core.BoxPokemonCodec")
+local PokemonStorageCodec = require("src.core.PokemonStorageCodec")
 local NewGameDefaults = require("src.core.NewGameDefaults")
 
 local passed, failed = 0, 0
@@ -180,6 +181,10 @@ end
 --------------------------------------------------------------------------
 
 local state2 = freshState()
+state2.pokemonStorage = PokemonStorageCodec.new()
+state2.pokemonStorage.currentBox = 3
+local storedBoxBlob = buildBoxMonBlob(0x87654321, 0x1234ABCD, 4, 5)
+assert(state2.pokemonStorage.boxes:add(3, { box=storedBoxBlob }) == 1)
 state2.saveBlock2.encryptionKey = 0xA5A5A5A5
 state2.saveBlock1.money = 45250
 state2.saveBlock1.playerPartyCount = 1
@@ -212,6 +217,11 @@ if decoded2 then
   check("round-tripped box blob still decodes via BoxPokemonCodec", decodedMon.checksumValid == true)
   check("round-tripped box blob species is Bulbasaur", decodedMon.substructs[0].species == 1)
 
+  check("PC storage current box round-trips through sectors 5-13",
+    decoded2.pokemonStorage.currentBox == 3, decoded2.pokemonStorage.currentBox)
+  check("boxed Pokemon round-trips through sectors 5-13",
+    decoded2.pokemonStorage.boxes:get(3, 1).box == storedBoxBlob)
+
   check("bag item quantity round-trips through XOR encryption",
     decoded2.saveBlock1.bagPocket_Items[1].quantity == 3, decoded2.saveBlock1.bagPocket_Items[1].quantity)
   check("bag item itemId round-trips", decoded2.saveBlock1.bagPocket_Items[1].itemId == 19)
@@ -230,6 +240,28 @@ do
   local result, err = SaveFileCodec.decode(corruptedVersion)
   check("unsupported version is refused", result == nil)
   check("unsupported version error message is descriptive", type(err) == "string" and err:find("version") ~= nil, err)
+end
+
+--------------------------------------------------------------------------
+-- Schema-v1 migration: an earlier project save has the same first five
+-- sectors per physical slot but no PC-storage sectors. It must load rather
+-- than be rejected, and receive an empty generic storage container.
+--------------------------------------------------------------------------
+
+do
+  local oldSlotBytes = 5 * SaveFileCodec.SECTOR_SIZE
+  local newSlotBytes = SaveFileCodec.SLOT_BYTES
+  local legacy = SaveFileCodec.MAGIC .. string.char(1, 0, 0, 0)
+  for slot = 0, 1 do
+    local start = SaveFileCodec.HEADER_SIZE + slot * newSlotBytes
+    legacy = legacy .. bytes2:sub(start + 1, start + oldSlotBytes)
+  end
+  local migrated, migrationInfo = SaveFileCodec.decode(legacy)
+  check("schema-v1 save remains readable", migrated ~= nil, migrationInfo)
+  if migrated then
+    check("schema-v1 retains its selected save generation", migrationInfo.saveCounter == 2, migrationInfo.saveCounter)
+    check("schema-v1 initializes empty PC storage", migrated.pokemonStorage.boxes:get(1, 1) == nil)
+  end
 end
 
 do
@@ -265,6 +297,21 @@ do
     check("fallback party is empty (original fresh save had no party member)",
       decoded3.saveBlock1.playerPartyCount == 0)
   end
+end
+
+-- PC storage sectors are not optional: damage to sector 5 must reject the
+-- entire newer generation just like damage to SaveBlock1/2 does.
+do
+  local targetSlot = counter2 % SaveFileCodec.NUM_SAVE_SLOTS
+  local storageSector = 5
+  local sectorStart = SaveFileCodec.HEADER_SIZE
+    + targetSlot * SaveFileCodec.SLOT_BYTES + storageSector * SaveFileCodec.SECTOR_SIZE
+  local flipAt = sectorStart + 10
+  local flippedByte = (string.byte(bytes2, flipAt + 1) + 1) % 256
+  local corrupted = bytes2:sub(1, flipAt) .. string.char(flippedByte) .. bytes2:sub(flipAt + 2)
+  local decoded, info = SaveFileCodec.decode(corrupted)
+  check("PC-sector corruption falls back to the older whole save", decoded ~= nil and info.saveCounter == 1,
+    info and info.saveCounter)
 end
 
 -- Corrupting BOTH slots leaves no valid copy -- decode must fail cleanly,

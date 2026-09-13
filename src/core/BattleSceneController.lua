@@ -168,6 +168,18 @@ function BattleSceneController:_eventMessages(events)
       entries[#entries + 1] = { hpSide = event.target, hp = event.hpRemaining }
       if event.superEffective then add("It's super effective!") end
       if event.notVeryEffective then add("It's not very effective...") end
+    elseif event.type == "substituteDamage" then
+      add(name(event.target) .. "'s substitute\ntook the hit!")
+    elseif event.type == "substituteBroken" then
+      add(name(event.side) .. "'s substitute\nbroke!")
+    elseif event.type == "substituteSet" then
+      add(name(event.side) .. " put in\na substitute!", { hpSide = event.side, hp = event.hpRemaining })
+    elseif event.type == "substituteFailed" then
+      add("But it failed!")
+    elseif event.type == "transform" then
+      add(name(event.side) .. " transformed!")
+    elseif event.type == "transformFailed" then
+      add("But it failed!")
     elseif event.type == "noEffect" then
       add("It doesn't affect " .. name(event.target) .. "...")
     elseif event.type == "faint" then
@@ -181,6 +193,157 @@ function BattleSceneController:_eventMessages(events)
       add(name(event.side) .. " must send out\na new POKEMON!")
     elseif event.type == "noPP" then
       add("There's no PP left for this move!")
+    elseif event.type == "sleep" or event.type == "yawnSleep" then
+      add(name(event.target or event.side) .. " fell asleep!")
+    elseif event.type == "sleepFailed" then
+      add("But it failed!")
+    elseif event.type == "asleep" then
+      add(name(event.side) .. " is fast asleep.")
+    elseif event.type == "wokeUp" then
+      add(name(event.side) .. " woke up!")
+    elseif event.type == "poison" then
+      add(name(event.target) .. " was poisoned!")
+    elseif event.type == "toxic" then
+      add(name(event.target) .. " was badly poisoned!")
+    elseif event.type == "poisonFailed" then
+      add("But it failed!")
+    elseif event.type == "poisonDamage" or event.type == "toxicDamage" then
+      add(name(event.side) .. " is hurt\nby poison!", { hpSide=event.side, hp=event.hpRemaining })
+    elseif event.type == "paralyze" then
+      add(name(event.target) .. " is paralyzed!\nIt may be unable to move!")
+    elseif event.type == "paralyzeFailed" then
+      add("But it failed!")
+    elseif event.type == "fullyParalyzed" then
+      add(name(event.side) .. " is paralyzed!\nIt can't move!")
+    elseif event.type == "paralysisCured" then
+      add(name(event.side) .. " was cured of\nparalysis!")
+    elseif event.type == "snoreFailed" then
+      add("But it failed!")
+    elseif event.type == "lockOn" then
+      add(name(event.side) .. " took aim\nat " .. name(event.target) .. "!")
+    elseif event.type == "nightmare" then
+      add(name(event.target) .. " fell into\na NIGHTMARE!")
+    elseif event.type == "nightmareFailed" then
+      add("But it failed!")
+    elseif event.type == "nightmareDamage" then
+      add(name(event.side) .. " is locked in\na NIGHTMARE!", { hpSide=event.side, hp=event.hpRemaining })
+    elseif event.type == "curse" then
+      add(name(event.target) .. " was afflicted\nby a curse!")
+    elseif event.type == "curseSelfDamage" then
+      add(name(event.side) .. " cut its own HP\nand laid a curse!", { hpSide=event.side, hp=event.hpRemaining })
+    elseif event.type == "curseDamage" then
+      add(name(event.side) .. " is afflicted\nby the curse!", { hpSide=event.side, hp=event.hpRemaining })
+    elseif event.type == "curseFailed" then
+      add("But it failed!")
+    elseif event.type == "trapped" then
+      add(name(event.target) .. " can't escape\nnow!")
+    elseif event.type == "trapDamage" then
+      add(name(event.side) .. " is hurt\nby the trap!", { hpSide=event.side, hp=event.hpRemaining })
+    elseif event.type == "trapEnded" or event.type == "trapCleared" then
+      add(name(event.side) .. " was freed\nfrom the trap!")
+    elseif event.type == "trapFailed" then
+      add("But it failed!")
+    elseif event.type == "foresight" then
+      add(name(event.target) .. " was identified!")
+    elseif event.type == "perishSong" then
+      add("All active POKEMON will\nfaint in three turns!")
+    elseif event.type == "perishSongFailed" then
+      add("But it failed!")
+    elseif event.type == "perishCount" then
+      add(name(event.side) .. "'s perish count\nis " .. event.count .. "!")
+    elseif event.type == "perishFaint" then
+      add(name(event.side) .. " perished!", { hpSide=event.side, hp=0 })
+    elseif event.type == "wish" then
+      add(name(event.side) .. " made a wish!")
+    elseif event.type == "wishHeal" then
+      add(name(event.side) .. "'s wish came true!", { hpSide=event.side, hp=event.hpRemaining })
+    elseif event.type == "wishFailed" then
+      add(event.fullHP and name(event.side) .. "'s wish came true!" or "But it failed!")
+    elseif event.type == "grudge" then
+      add(name(event.side) .. " wants revenge!")
+    elseif event.type == "grudgeFailed" then
+      add("But it failed!")
+    elseif event.type == "grudgePP" then
+      add(name(event.side) .. " lost all its PP\ndue to the GRUDGE!")
+    elseif event.type == "destinyBond" then
+      add(name(event.side) .. " is trying to take\nthe foe with it!")
+    elseif event.type == "destinyBondKO" then
+      add(name(event.side) .. " took " .. name(event.target) .. "\nwith it!")
+    elseif event.type == "mimic" then
+      add(name(event.side) .. " learned\n" .. self.moveName(event.move) .. "!")
+    elseif event.type == "mimicFailed" then
+      add("But it failed!")
+    elseif event.type == "sketch" then
+      add(name(event.side) .. " sketched\n" .. self.moveName(event.move) .. "!")
+    elseif event.type == "sketchFailed" or event.type == "sleepTalkFailed" then
+      add("But it failed!")
+    elseif event.type == "attract" then
+      add(name(event.target) .. " fell in love!")
+    elseif event.type == "attractFailed" then
+      add("But it failed!")
+    elseif event.type == "infatuated" then
+      add(name(event.side) .. " is in love\nwith " .. name(event.source) .. "!")
+    elseif event.type == "loveImmobility" then
+      add(name(event.side) .. " is immobilized\nby love!")
+    elseif event.type == "camouflage" then
+      add(name(event.side) .. " changed its type!")
+    elseif event.type == "camouflageFailed" then
+      add("But it failed!")
+    elseif event.type == "naturePower" then
+      add("Nature Power turned into\n" .. self.moveName(event.move) .. "!")
+    elseif event.type == "naturePowerFailed" then
+      add("But it failed!")
+    elseif event.type == "burn" then
+      add(name(event.target) .. " was burned!")
+    elseif event.type == "burnFailed" then
+      add("But it failed!")
+    elseif event.type == "burnDamage" then
+      add(name(event.side) .. " is hurt\nby its burn!", { hpSide=event.side, hp=event.hpRemaining })
+    elseif event.type == "freeze" then
+      add(name(event.target) .. " was frozen solid!")
+    elseif event.type == "frozen" then
+      add(name(event.side) .. " is frozen solid!")
+    elseif event.type == "thawed" then
+      add(name(event.side) .. " thawed out!")
+    elseif event.type == "confuse" then
+      add(name(event.target) .. " became confused!")
+    elseif event.type == "confuseFailed" then
+      add("But it failed!")
+    elseif event.type == "confuseStatFailed" then
+      add("But it failed!")
+    elseif event.type == "confused" then
+      add(name(event.side) .. " is confused!")
+    elseif event.type == "confusionSelfHit" then
+      add("It hurt itself in\nits confusion!", { hpSide=event.side, hp=event.hpRemaining })
+    elseif event.type == "snappedOut" then
+      add(name(event.side) .. " snapped out\nof confusion!")
+    elseif event.type == "flinched" then
+      add(name(event.side) .. " flinched and\ncouldn't move!")
+    elseif event.type == "ingrain" then
+      add(name(event.side) .. " planted its roots!")
+    elseif event.type == "ingrainFailed" then
+      add("But it failed!")
+    elseif event.type == "ingrainHeal" then
+      add(name(event.side) .. " absorbed nutrients\nwith its roots!", { hpSide=event.side, hp=event.hpRemaining })
+    elseif event.type == "leechSeed" then
+      add(name(event.target) .. " was seeded!")
+    elseif event.type == "leechSeedFailed" then
+      add("But it failed!")
+    elseif event.type == "leechSeedDrain" then
+      add(name(event.side) .. " is sapped\nby LEECH SEED!", { hpSide=event.side, hp=event.hpRemaining })
+      entries[#entries + 1] = { hpSide=event.target, hp=event.targetHpRemaining }
+    elseif event.type == "yawn" then
+      add(name(event.target) .. " grew drowsy!")
+    elseif event.type == "yawnFailed" then
+      add("But it failed!")
+    elseif event.type == "rest" then
+      add(name(event.side) .. " went to sleep and\nrestored its health!", { hpSide=event.side, hp=event.hpRemaining })
+    elseif event.type == "restFailed" then
+      add("But it failed!")
+    elseif event.type == "refresh" then
+      add(name(event.side) .. " became healthy!")
+    elseif event.type == "refreshFailed" then
+      add("But it failed!")
     elseif event.type == "statChange" then
       -- Real gStatNamesTable (src/battle_message.c): Attack/Defense/
       -- Speed/Sp. Atk/Sp. Def/Accuracy/Evasiveness. Real message shape
@@ -228,7 +391,10 @@ function BattleSceneController:_eventMessages(events)
       -- FROM) in the MESSAGE, even though it's the attacker's own side
       -- whose HP bar actually changes (a real heal) -- hpSide must stay
       -- event.side (the attacker) despite the message naming the other side.
-      add(name(otherSide(event.side)) .. " had its\nenergy drained!", { hpSide = event.side, hp = event.hpRemaining })
+      local text = event.kind == "dreamEater"
+        and (possessive(name(otherSide(event.side))) .. " dream\nwas eaten!")
+        or (name(otherSide(event.side)) .. " had its\nenergy drained!")
+      add(text, { hpSide = event.side, hp = event.hpRemaining })
     elseif event.type == "multiHit" then
       -- Real sText_HitXTimes: "Hit N time(s)!" -- only emitted when the
       -- sequence completes without an early stop (matching real
@@ -245,6 +411,10 @@ function BattleSceneController:_eventMessages(events)
       end
     elseif event.type == "run" then
       add(event.success and "Got away safely!" or "Can't escape!")
+    elseif event.type == "teleport" then
+      add(name(event.side) .. " fled from the\nbattle!")
+    elseif event.type == "teleportFailed" then
+      add("But it failed!")
     elseif event.type == "throwBall" then
       add(self.playerName .. " threw a POKé BALL!")
     elseif event.type == "screenSet" then
@@ -270,6 +440,168 @@ function BattleSceneController:_eventMessages(events)
       local screenName = event.screen == "reflect" and "REFLECT" or "LIGHT SCREEN"
       local prefix = event.side == "player" and "Your team's" or "The foe's"
       add(prefix .. " " .. screenName .. "\nwore off!")
+    elseif event.type == "haze" then
+      -- Real STRINGID_STATCHANGESGONE, emitted unconditionally after
+      -- Cmd_normalisebuffs resets both battlers' seven stage values.
+      add("All stat changes were\neliminated!")
+    elseif event.type == "focusEnergySet" then
+      -- Real gBattleText_GetPumped / B_MSG_GETTING_PUMPED.
+      add(name(event.side) .. " is getting\npumped!")
+    elseif event.type == "focusEnergyFailed" then
+      -- Real B_MSG_FOCUS_ENERGY_FAILED -> sText_ButItFailed.
+      add("But it failed!")
+    elseif event.type == "protectSet" then
+      add(name(event.side) .. " protected\nitself!")
+    elseif event.type == "protectFailed" then
+      add("But it failed!")
+    elseif event.type == "endureSet" then
+      add(name(event.side) .. " braced\nitself!")
+    elseif event.type == "endureFailed" then
+      add("But it failed!")
+    elseif event.type == "endured" then
+      add(name(event.side) .. " endured the hit!")
+    elseif event.type == "protected" then
+      add(name(event.side) .. " protected\nitself!")
+    elseif event.type == "spikesSet" then
+      add("SPIKES were scattered all around\nthe opponent's side!")
+    elseif event.type == "spikesFailed" then
+      add("But it failed!")
+    elseif event.type == "spikesDamage" then
+      add(name(event.side) .. " is hurt\nby SPIKES!")
+    elseif event.type == "spikesCleared" then
+      add(name(event.side) .. " blew away\nSPIKES!")
+    elseif event.type == "magnitude" then
+      add("Magnitude " .. event.magnitude .. "!")
+    elseif event.type == "screensShattered" then
+      add("The wall shattered!")
+    elseif event.type == "heal" then
+      add(name(event.side) .. " regained\nhealth!")
+    elseif event.type == "healFailed" then
+      add("But it failed!")
+    elseif event.type == "bellyDrum" then
+      add(name(event.side) .. " cut its HP and\nmaxed out ATTACK!")
+    elseif event.type == "bellyDrumFailed" then
+      add("But it failed!")
+    elseif event.type == "psychUp" then
+      add(name(event.side) .. " copied the foe's\nstat changes!")
+    elseif event.type == "painSplit" then
+      add("The battlers shared\ntheir pain!")
+    elseif event.type == "painSplitFailed" then
+      add("But it failed!")
+    elseif event.type == "counterFailed" then
+      add("But it failed!")
+    elseif event.type == "bideStart" or event.type == "bideStore" then
+      add(name(event.side) .. " is storing\nenergy!")
+    elseif event.type == "bideRelease" then
+      add(name(event.side) .. " unleashed\nenergy!")
+    elseif event.type == "bideFailed" or event.type == "presentFailed"
+        or event.type == "spiteFailed" or event.type == "conversionFailed"
+        or event.type == "mementoFailed" then
+      add("But it failed!")
+    elseif event.type == "presentHeal" then
+      add(name(event.target) .. " regained\nhealth!")
+    elseif event.type == "rageBuilding" then
+      add(name(event.side) .. "'s RAGE is\nbuilding!")
+    elseif event.type == "splash" then
+      add("But nothing happened!")
+    elseif event.type == "spite" then
+      add(name(event.target) .. "'s PP was\nreduced!")
+    elseif event.type == "conversion" then
+      add(name(event.side) .. " changed its\ntype!")
+    elseif event.type == "ohkoFailed" then
+      add("But it failed!")
+    elseif event.type == "focusPunchLostFocus" then
+      add(name(event.side) .. " lost its focus\nand couldn't move!")
+    elseif event.type == "fakeOutFailed" then
+      add("But it failed!")
+    elseif event.type == "recharging" then
+      add(name(event.side) .. " must recharge!")
+    elseif event.type == "chargeSet" then
+      add(name(event.side) .. " is charging\npower!")
+    elseif event.type == "semiInvulnerableCharge" then
+      local texts = { air="flew up high!", underground="dug underground!", underwater="hid underwater!" }
+      add(name(event.side) .. " " .. texts[event.kind])
+    elseif event.type == "semiInvulnerableMiss" then
+      add("The attack missed!")
+    elseif event.type == "futureSightSet" then
+      add(name(event.side) .. " foresaw an\nattack!")
+    elseif event.type == "futureSightHit" then
+      add(name(event.target) .. " took the\nfuture attack!")
+    elseif event.type == "futureSightFailed" or event.type == "futureSightMiss" then
+      add("But it failed!")
+    elseif event.type == "uproarSet" or event.type == "uproarContinues" then
+      add(name(event.side) .. " is causing\nan UPROAR!")
+    elseif event.type == "uproarWake" then
+      add(name(event.target) .. " woke up in\nthe UPROAR!")
+    elseif event.type == "uproarEnded" then
+      add(name(event.side) .. " calmed down.")
+    elseif event.type == "stockpile" then
+      add(name(event.side) .. " stockpiled\nenergy!")
+    elseif event.type == "stockpileFailed" or event.type == "spitUpFailed" or event.type == "swallowFailed" then
+      add("But it failed!")
+    elseif event.type == "swallow" then
+      add(name(event.side) .. " regained\nhealth!")
+    elseif event.type == "tormentSet" then
+      add(name(event.target) .. " was subjected\nto TORMENT!")
+    elseif event.type == "tormentFailed" then
+      add("But it failed!")
+    elseif event.type == "tormented" then
+      add(name(event.side) .. " can't use the\nsame move twice!")
+    elseif event.type == "imprisonSet" then
+      add(name(event.side) .. " sealed the foe's\nmove!")
+    elseif event.type == "imprisonFailed" then
+      add("But it failed!")
+    elseif event.type == "imprisoned" then
+      add(name(event.side) .. "'s move is\nsealed!")
+    elseif event.type == "encoreSet" then
+      add(name(event.target) .. " got an\nENCORE!")
+    elseif event.type == "encoreFailed" then
+      add("But it failed!")
+    elseif event.type == "encoreEnded" then
+      add(name(event.side) .. "'s ENCORE\nended!")
+    elseif event.type == "disableSet" then
+      add(name(event.target) .. "'s move was\nDISABLED!")
+    elseif event.type == "disableFailed" then
+      add("But it failed!")
+    elseif event.type == "disabled" then
+      add(name(event.side) .. "'s move is\ndisabled!")
+    elseif event.type == "disableEnded" then
+      add(name(event.side) .. "'s DISABLE\nended!")
+    elseif event.type == "tauntSet" then
+      add(name(event.target) .. " fell for the\nTAUNT!")
+    elseif event.type == "tauntFailed" then
+      add("But it failed!")
+    elseif event.type == "taunted" then
+      add(name(event.side) .. " can't use that\nmove after TAUNT!")
+    elseif event.type == "tauntEnded" then
+      add(name(event.side) .. "'s TAUNT wore off!")
+    elseif event.type == "sportSet" then
+      add(event.sport == "mud" and "Electricity's power\nwas weakened!" or "Fire's power\nwas weakened!")
+    elseif event.type == "sportFailed" then
+      add("But it failed!")
+    elseif event.type == "weatherSet" then
+      local texts = { rain="It started to rain!", sun="The sunlight got bright!", sandstorm="A sandstorm brewed!", hail="It started to hail!" }
+      add(texts[event.weather])
+    elseif event.type == "weatherFailed" then
+      add("But it failed!")
+    elseif event.type == "weatherContinues" then
+      local texts = { rain="Rain continues to fall.", sun="The sunlight is strong.", sandstorm="The sandstorm rages.", hail="Hail continues to fall." }
+      add(texts[event.weather])
+    elseif event.type == "weatherExpired" then
+      local texts = { rain="The rain stopped.", sun="The sunlight faded.", sandstorm="The sandstorm subsided.", hail="The hail stopped." }
+      add(texts[event.weather])
+    elseif event.type == "weatherDamage" then
+      add(event.weather == "sandstorm" and (name(event.side) .. " is buffeted\nby the sandstorm!") or (name(event.side) .. " is pelted\nby hail!"))
+    elseif event.type == "sideStatusSet" and event.status == "mist" then
+      add(name(event.side) .. " is protected\nby MIST!")
+    elseif event.type == "sideStatusSet" and event.status == "safeguard" then
+      add(name(event.side) .. " is protected\nby SAFEGUARD!")
+    elseif event.type == "sideStatusFailed" then
+      add("But it failed!")
+    elseif event.type == "sideStatusExpired" and event.status == "mist" then
+      add(possessive(name(event.side)) .. " MIST\nwore off!")
+    elseif event.type == "sideStatusExpired" and event.status == "safeguard" then
+      add(possessive(name(event.side)) .. " SAFEGUARD\nprotected it no more!")
     elseif event.type == "capture" then
       if event.success then
         add("Gotcha! " .. self.foeName .. " was caught!")

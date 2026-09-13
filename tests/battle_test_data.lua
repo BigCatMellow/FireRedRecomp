@@ -53,11 +53,59 @@ M.MOVE_TAKE_DOWN = 36
 M.MOVE_DOUBLE_EDGE = 38
 M.MOVE_SUBMISSION = 66
 M.MOVE_ABSORB = 71
+M.MOVE_DREAM_EATER = 138
 M.MOVE_DOUBLE_SLAP = 3
 M.MOVE_FURY_ATTACK = 31
 M.MOVE_DOUBLE_KICK = 24
 M.MOVE_BONEMERANG = 155
 M.MOVE_STRUGGLE = 165
+M.MOVE_SNORE = 173
+M.MOVE_SWAGGER = 207
+M.MOVE_FLATTER = 260
+M.MOVE_CONVERSION_2 = 176
+M.MOVE_LOCK_ON = 199
+M.MOVE_NIGHTMARE = 171
+M.MOVE_CURSE = 174
+M.MOVE_MEAN_LOOK = 212
+M.MOVE_FORESIGHT = 193
+M.MOVE_PERISH_SONG = 195
+M.MOVE_SAFEGUARD = 219
+M.MOVE_WISH = 273
+M.MOVE_GRUDGE = 288
+M.MOVE_FAKE_OUT = 252
+M.MOVE_FACADE = 263
+M.MOVE_SMELLING_SALT = 265
+M.MOVE_TWISTER = 239
+M.MOVE_TWINEEDLE = 41
+M.MOVE_TRI_ATTACK = 161
+M.MOVE_HYPER_BEAM = 63
+M.MOVE_TRIPLE_KICK = 167
+M.MOVE_MINIMIZE = 107
+M.MOVE_STOMP = 23
+M.MOVE_SKULL_BASH = 130
+M.MOVE_RAZOR_WIND = 13
+M.MOVE_SKY_ATTACK = 143
+M.MOVE_SOLAR_BEAM = 76
+M.MOVE_CHARGE = 268
+M.MOVE_THUNDER = 87
+M.MOVE_MUD_SPORT = 300
+M.MOVE_WATER_SPORT = 346
+M.MOVE_FLY = 19
+M.MOVE_GUST = 16
+M.MOVE_FUTURE_SIGHT = 248
+M.MOVE_UPROAR = 253
+M.MOVE_STOCKPILE = 254
+M.MOVE_SPIT_UP = 255
+M.MOVE_SWALLOW = 256
+M.MOVE_TORMENT = 259
+M.MOVE_TAUNT = 269
+M.MOVE_IMPRISON = 286
+M.MOVE_ENCORE = 227
+M.MOVE_DISABLE = 50
+M.MOVE_POISON_FANG = 305
+M.MOVE_POISON_TAIL = 342
+M.MOVE_BLAZE_KICK = 299
+M.MOVE_TEETER_DANCE = 298
 M.MOVE_LIGHT_SCREEN = 113
 M.MOVE_REFLECT = 115
 
@@ -73,6 +121,74 @@ M.moves = {
                       secondaryEffectChance = 0, target = 0, priority = 0, flags = 0x33 },
   [M.MOVE_EMBER] = { effect = 4, power = 40, type = M.TYPE_FIRE, accuracy = 100, pp = 25,
                      secondaryEffectChance = 10, target = 0, priority = 0, flags = 0x12 },
+  [M.MOVE_FAKE_OUT] = { effect = 158, power = 40, type = M.TYPE_NORMAL, accuracy = 100, pp = 10,
+                        secondaryEffectChance = 0, target = 0, priority = 3, flags = 0x13 },
+  [M.MOVE_FACADE] = { effect = 169, power = 70, type = M.TYPE_NORMAL, accuracy = 100, pp = 20,
+                      secondaryEffectChance = 0, target = 0, priority = 0, flags = 0x13 },
+  [M.MOVE_SMELLING_SALT] = { effect = 171, power = 60, type = M.TYPE_NORMAL, accuracy = 100, pp = 10,
+                             secondaryEffectChance = 0, target = 0, priority = 0, flags = 0x13 },
+  [M.MOVE_TWISTER] = { effect = 146, power = 40, type = M.TYPE_DRAGON, accuracy = 100, pp = 20,
+                       secondaryEffectChance = 20, target = 0, priority = 0, flags = 0x12 },
+  [M.MOVE_TWINEEDLE] = { effect = 77, power = 25, type = M.TYPE_BUG, accuracy = 100, pp = 20,
+                         secondaryEffectChance = 20, target = 0, priority = 0, flags = 0x12 },
+  [M.MOVE_TRI_ATTACK] = { effect = 36, power = 80, type = M.TYPE_NORMAL, accuracy = 100, pp = 10,
+                         secondaryEffectChance = 20, target = 0, priority = 0, flags = 0x12 },
+  [M.MOVE_HYPER_BEAM] = { effect = 80, power = 150, type = M.TYPE_NORMAL, accuracy = 90, pp = 5,
+                         secondaryEffectChance = 0, target = 0, priority = 0, flags = 0x12 },
+  [M.MOVE_TRIPLE_KICK] = { effect = 104, power = 10, type = M.TYPE_FIGHTING, accuracy = 90, pp = 10,
+                           secondaryEffectChance = 0, target = 0, priority = 0, flags = 0x12 },
+  [M.MOVE_MINIMIZE] = { effect = 108, power = 0, type = M.TYPE_NORMAL, accuracy = 0, pp = 20,
+                        secondaryEffectChance = 0, target = M.MOVE_TARGET_USER, priority = 0, flags = 0x40 },
+  [M.MOVE_STOMP] = { effect = 150, power = 65, type = M.TYPE_NORMAL, accuracy = 100, pp = 20,
+                     secondaryEffectChance = 30, target = 0, priority = 0, flags = 0x13 },
+  [M.MOVE_SKULL_BASH] = { effect = 145, power = 100, type = M.TYPE_NORMAL, accuracy = 100, pp = 15,
+                          secondaryEffectChance = 0, target = 0, priority = 0, flags = 0x12 },
+  [M.MOVE_RAZOR_WIND] = { effect = 39, power = 80, type = M.TYPE_NORMAL, accuracy = 100, pp = 10,
+                          secondaryEffectChance = 0, target = 0, priority = 0, flags = 0x12 },
+  [M.MOVE_SKY_ATTACK] = { effect = 75, power = 140, type = M.TYPE_FLYING, accuracy = 90, pp = 5,
+                          secondaryEffectChance = 30, target = 0, priority = 0, flags = 0x12 },
+  [M.MOVE_SOLAR_BEAM] = { effect = 151, power = 120, type = M.TYPE_GRASS, accuracy = 100, pp = 10,
+                          secondaryEffectChance = 0, target = 0, priority = 0, flags = 0x12 },
+  [M.MOVE_CHARGE] = { effect = 174, power = 0, type = M.TYPE_ELECTRIC, accuracy = 0, pp = 20,
+                      secondaryEffectChance = 0, target = M.MOVE_TARGET_USER, priority = 0, flags = 0 },
+  [M.MOVE_THUNDER] = { effect = 152, power = 110, type = M.TYPE_ELECTRIC, accuracy = 70, pp = 10,
+                       secondaryEffectChance = 30, target = 0, priority = 0, flags = 0x12 },
+  [M.MOVE_MUD_SPORT] = { effect = 201, power = 0, type = M.TYPE_GROUND, accuracy = 0, pp = 15,
+                         secondaryEffectChance = 0, target = M.MOVE_TARGET_USER, priority = 0, flags = 0 },
+  [M.MOVE_WATER_SPORT] = { effect = 210, power = 0, type = M.TYPE_WATER, accuracy = 0, pp = 15,
+                           secondaryEffectChance = 0, target = M.MOVE_TARGET_USER, priority = 0, flags = 0 },
+  [M.MOVE_FLY] = { effect = 155, power = 70, type = M.TYPE_FLYING, accuracy = 95, pp = 15,
+                   secondaryEffectChance = 0, target = 0, priority = 0, flags = 0x13 },
+  [M.MOVE_GUST] = { effect = 149, power = 40, type = M.TYPE_FLYING, accuracy = 100, pp = 35,
+                    secondaryEffectChance = 0, target = 0, priority = 0, flags = 0x12 },
+  [M.MOVE_FUTURE_SIGHT] = { effect = 148, power = 80, type = M.TYPE_PSYCHIC, accuracy = 90, pp = 15,
+                            secondaryEffectChance = 0, target = 0, priority = 0, flags = 0 },
+  [M.MOVE_UPROAR] = { effect = 159, power = 50, type = M.TYPE_NORMAL, accuracy = 100, pp = 10,
+                      secondaryEffectChance = 100, target = 0, priority = 0, flags = 0x12 },
+  [M.MOVE_STOCKPILE] = { effect = 160, power = 0, type = M.TYPE_NORMAL, accuracy = 0, pp = 10,
+                         secondaryEffectChance = 0, target = M.MOVE_TARGET_USER, priority = 0, flags = 0 },
+  [M.MOVE_SPIT_UP] = { effect = 161, power = 100, type = M.TYPE_NORMAL, accuracy = 100, pp = 10,
+                       secondaryEffectChance = 0, target = 0, priority = 0, flags = 0x12 },
+  [M.MOVE_SWALLOW] = { effect = 162, power = 0, type = M.TYPE_NORMAL, accuracy = 0, pp = 10,
+                       secondaryEffectChance = 0, target = M.MOVE_TARGET_USER, priority = 0, flags = 0 },
+  [M.MOVE_TORMENT] = { effect = 165, power = 0, type = M.TYPE_DARK, accuracy = 100, pp = 15,
+                       secondaryEffectChance = 0, target = 0, priority = 0, flags = 0x12 },
+  [M.MOVE_IMPRISON] = { effect = 192, power = 0, type = M.TYPE_PSYCHIC, accuracy = 100, pp = 10,
+                        secondaryEffectChance = 0, target = M.MOVE_TARGET_USER, priority = 0, flags = 0 },
+  [M.MOVE_ENCORE] = { effect = 90, power = 0, type = M.TYPE_NORMAL, accuracy = 100, pp = 5,
+                      secondaryEffectChance = 0, target = 0, priority = 0, flags = 0x12 },
+  [M.MOVE_DISABLE] = { effect = 86, power = 0, type = M.TYPE_NORMAL, accuracy = 55, pp = 20,
+                       secondaryEffectChance = 0, target = 0, priority = 0, flags = 0x12 },
+  [M.MOVE_POISON_FANG] = { effect = 202, power = 50, type = M.TYPE_POISON, accuracy = 100, pp = 15,
+                           secondaryEffectChance = 30, target = 0, priority = 0, flags = 0x13 },
+  [M.MOVE_POISON_TAIL] = { effect = 209, power = 50, type = M.TYPE_POISON, accuracy = 100, pp = 25,
+                           secondaryEffectChance = 10, target = 0, priority = 0, flags = 0x13 },
+  [M.MOVE_BLAZE_KICK] = { effect = 200, power = 85, type = M.TYPE_FIRE, accuracy = 90, pp = 10,
+                          secondaryEffectChance = 10, target = 0, priority = 0, flags = 0x13 },
+  [M.MOVE_TEETER_DANCE] = { effect = 199, power = 0, type = M.TYPE_NORMAL, accuracy = 100, pp = 20,
+                            secondaryEffectChance = 0, target = M.MOVE_TARGET_BOTH, priority = 0, flags = 0x10 },
+  [M.MOVE_TAUNT] = { effect = 175, power = 0, type = M.TYPE_DARK, accuracy = 100, pp = 20,
+                     secondaryEffectChance = 0, target = 0, priority = 0, flags = 0 },
   -- Growl/Tail Whip: EFFECT_ATTACK_DOWN/EFFECT_DEFENSE_DOWN, real
   -- opponent-target (MOVE_TARGET_BOTH in a real single battle still
   -- resolves against the lone foe), 1-stage stat moves.
@@ -125,6 +241,34 @@ M.moves = {
   -- heal); Absorb itself.
   [M.MOVE_ABSORB] = { effect = 3, power = 20, type = M.TYPE_GRASS, accuracy = 100, pp = 20,
                       secondaryEffectChance = 0, target = M.MOVE_TARGET_SELECTED, priority = 0, flags = 0 },
+  [M.MOVE_DREAM_EATER] = { effect = 8, power = 100, type = M.TYPE_PSYCHIC, accuracy = 100, pp = 15,
+                           secondaryEffectChance = 0, target = M.MOVE_TARGET_SELECTED, priority = 0, flags = 0x12 },
+  [M.MOVE_SNORE] = { effect = 92, power = 40, type = M.TYPE_NORMAL, accuracy = 100, pp = 15,
+                     secondaryEffectChance = 30, target = M.MOVE_TARGET_SELECTED, priority = 0, flags = 0x32 },
+  [M.MOVE_SWAGGER] = { effect = 118, power = 0, type = M.TYPE_NORMAL, accuracy = 90, pp = 15,
+                       secondaryEffectChance = 100, target = M.MOVE_TARGET_SELECTED, priority = 0, flags = 0x12 },
+  [M.MOVE_FLATTER] = { effect = 166, power = 0, type = M.TYPE_DARK, accuracy = 100, pp = 15,
+                       secondaryEffectChance = 0, target = M.MOVE_TARGET_SELECTED, priority = 0, flags = 0x12 },
+  [M.MOVE_CONVERSION_2] = { effect = 93, power = 0, type = M.TYPE_NORMAL, accuracy = 100, pp = 30,
+                            secondaryEffectChance = 0, target = M.MOVE_TARGET_USER, priority = 0, flags = 0 },
+  [M.MOVE_LOCK_ON] = { effect = 94, power = 0, type = M.TYPE_NORMAL, accuracy = 100, pp = 5,
+                       secondaryEffectChance = 0, target = M.MOVE_TARGET_SELECTED, priority = 0, flags = 0x12 },
+  [M.MOVE_NIGHTMARE] = { effect = 107, power = 0, type = M.TYPE_GHOST, accuracy = 100, pp = 15,
+                         secondaryEffectChance = 0, target = M.MOVE_TARGET_SELECTED, priority = 0, flags = 0x12 },
+  [M.MOVE_CURSE] = { effect = 109, power = 0, type = M.TYPE_MYSTERY, accuracy = 0, pp = 10,
+                     secondaryEffectChance = 0, target = M.MOVE_TARGET_SELECTED, priority = 0, flags = 0 },
+  [M.MOVE_MEAN_LOOK] = { effect = 106, power = 0, type = M.TYPE_NORMAL, accuracy = 100, pp = 5,
+                         secondaryEffectChance = 0, target = M.MOVE_TARGET_SELECTED, priority = 0, flags = 0x12 },
+  [M.MOVE_FORESIGHT] = { effect = 113, power = 0, type = M.TYPE_NORMAL, accuracy = 100, pp = 40,
+                         secondaryEffectChance = 0, target = M.MOVE_TARGET_SELECTED, priority = 0, flags = 0x12 },
+  [M.MOVE_PERISH_SONG] = { effect = 114, power = 0, type = M.TYPE_NORMAL, accuracy = 0, pp = 5,
+                           secondaryEffectChance = 0, target = M.MOVE_TARGET_USER, priority = 0, flags = 0 },
+  [M.MOVE_SAFEGUARD] = { effect = 124, power = 0, type = M.TYPE_NORMAL, accuracy = 0, pp = 25,
+                         secondaryEffectChance = 0, target = M.MOVE_TARGET_USER, priority = 0, flags = 0 },
+  [M.MOVE_WISH] = { effect = 179, power = 0, type = M.TYPE_NORMAL, accuracy = 100, pp = 10,
+                    secondaryEffectChance = 0, target = M.MOVE_TARGET_USER, priority = 0, flags = 0x02 },
+  [M.MOVE_GRUDGE] = { effect = 194, power = 0, type = M.TYPE_GHOST, accuracy = 100, pp = 5,
+                      secondaryEffectChance = 0, target = M.MOVE_TARGET_SELECTED, priority = 0, flags = 0x12 },
   -- Multi-hit family (BattleEngine.MULTI_HIT_MOVES): real EFFECT_MULTI_HIT=29
   -- (Double Slap, Fury Attack -- rolled 2-5 hits) and real
   -- EFFECT_DOUBLE_HIT=44 (Double Kick, Bonemerang -- always exactly 2 hits,

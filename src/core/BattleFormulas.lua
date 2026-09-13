@@ -97,14 +97,15 @@
 --
 -- Real modifiers NOT ported here (all no-ops in this slice, each because
 -- the system it depends on doesn't exist yet): held items and their hold
--- effects, abilities, badge stat boosts, burn's attack halving, weather,
+-- effects, abilities, badge stat boosts, burn's attack halving,
 -- Explosion's defense halving, double-battle spread-damage halving,
 -- Helping Hand, Charge, Flash Fire, Levitate and Wonder Guard. Each is a
 -- documented gap, not an approximation: the ported code paths above are
 -- byte-for-byte the real ones for a plain single-battle direct-damage move
 -- with no items/abilities/status.
 --
--- 8. Reflect / Light Screen halving IS supported, inside
+-- 8. Reflect / Light Screen halving and temporary Rain/Sun Fire/Water
+--    modifiers ARE supported, inside
 --    calculateBaseDamage -- see that function's own comment for the exact
 --    real insertion point (src/pokemon.c's physical branch ~2542 and
 --    special branch ~2600) and the minimum-1-clamp ordering fix this
@@ -127,6 +128,8 @@ end
 -- Real type ids, include/constants/pokemon.h.
 BattleFormulas.TYPE_NORMAL = 0
 BattleFormulas.TYPE_MYSTERY = 9 -- the ??? type; splits physical from special
+BattleFormulas.TYPE_FIRE = 10
+BattleFormulas.TYPE_WATER = 11
 BattleFormulas.TYPE_NONE = 255
 
 -- IS_TYPE_PHYSICAL / IS_TYPE_SPECIAL, include/battle.h:475-476. This is
@@ -222,7 +225,7 @@ end
 --   function signature/call site). BattleEngine passes its
 --   self.sideStatus[defenderSide] table straight through, since that
 --   table already has exactly these two boolean fields.
-function BattleFormulas.calculateBaseDamage(attacker, defender, move, isCrit, defenderScreens)
+function BattleFormulas.calculateBaseDamage(attacker, defender, move, isCrit, defenderScreens, weather)
   local moveType = move.type
   local power = move.power
   local damage = 0
@@ -235,6 +238,11 @@ function BattleFormulas.calculateBaseDamage(attacker, defender, move, isCrit, de
       damage = attacker.attack
     else
       damage = BattleFormulas.applyStatMod(attacker.attack, atkStage)
+    end
+    -- STATUS1_BURN (bit 4) halves physical damage's attack operand in Gen
+    -- III. This abilityless slice has no Guts exception.
+    if math.floor((attacker.status or 0) / 16) % 2 == 1 then
+      damage = math.floor(damage / 2)
     end
 
     damage = damage * power
@@ -308,6 +316,17 @@ function BattleFormulas.calculateBaseDamage(attacker, defender, move, isCrit, de
     if defenderScreens and defenderScreens.lightScreen and not isCrit then
       damage = idiv(damage, 2)
     end
+    -- Real weather block in the special branch of CalculateBaseDamage:
+    -- temporary rain weakens Fire and boosts Water; sun reverses that.
+    -- Fire and Water are both special in FireRed, so this placement also
+    -- reproduces the real physical/special branch boundary and truncation.
+    if weather == "rain" then
+      if moveType == BattleFormulas.TYPE_FIRE then damage = idiv(damage, 2) end
+      if moveType == BattleFormulas.TYPE_WATER then damage = idiv(15 * damage, 10) end
+    elseif weather == "sun" then
+      if moveType == BattleFormulas.TYPE_FIRE then damage = idiv(15 * damage, 10) end
+      if moveType == BattleFormulas.TYPE_WATER then damage = idiv(damage, 2) end
+    end
     -- No minimum-1 clamp here: real special branch genuinely lacks one,
     -- confirmed still true even after Light Screen halving -- real source
     -- has no such clamp anywhere in this branch, so a special hit that
@@ -315,6 +334,56 @@ function BattleFormulas.calculateBaseDamage(attacker, defender, move, isCrit, de
   end
 
   return damage + 2
+end
+
+-- Cmd_remaininghptopower: Flail and Reversal replace their imported power
+-- of 1 with this dynamic value before the ordinary damage script. The
+-- source first scales current HP to 48 pixels with C integer truncation,
+-- preserving a nonzero minimum for a living battler, then selects the
+-- first matching threshold from sFlailHpScaleToPowerTable.
+function BattleFormulas.flailPower(hp, maxHP)
+  local scaled = idiv(hp * 48, maxHP)
+  if scaled == 0 and hp > 0 then scaled = 1 end
+  if scaled <= 1 then return 200 end
+  if scaled <= 4 then return 150 end
+  if scaled <= 9 then return 100 end
+  if scaled <= 16 then return 80 end
+  if scaled <= 32 then return 40 end
+  return 20
+end
+
+-- Cmd_scaledamagebyhealthratio, used by Eruption and Water Spout. Unlike
+-- Flail's tier table, this is a direct C-integer proportion of the move's
+-- imported power, with a one-power minimum for any living attacker.
+function BattleFormulas.healthScaledPower(hp, maxHP, power)
+  local scaled = idiv(hp * power, maxHP)
+  if scaled == 0 and hp > 0 then return 1 end
+  return scaled
+end
+
+-- Cmd_magnitudedamagecalculation: one Random()%100 roll selects both the
+-- displayed magnitude and dynamic base power.
+function BattleFormulas.rollMagnitude(rng)
+  local roll = rng:next16() % 100
+  if roll < 5 then return 4, 10 end
+  if roll < 15 then return 5, 30 end
+  if roll < 35 then return 6, 50 end
+  if roll < 65 then return 7, 70 end
+  if roll < 85 then return 8, 90 end
+  if roll < 95 then return 9, 110 end
+  return 10, 150
+end
+
+-- Cmd_psywavedamageeffect rejects Random()%16 values 11-15, then scales
+-- the user's level by 50% through 150% in ten-percent steps.
+function BattleFormulas.psywaveDamage(level, rng)
+  local roll
+  repeat roll = rng:next16() % 16 until roll <= 10
+  return idiv(level * (50 + roll * 10), 100)
+end
+
+function BattleFormulas.superFangDamage(targetHp)
+  return math.max(1, idiv(targetHp, 2))
 end
 
 BattleFormulas.MUL_NO_EFFECT = 0
@@ -344,7 +413,7 @@ end
 -- Returns damage, flags where flags = {superEffective=, notVeryEffective=,
 --   noEffect=} (a plain-Lua stand-in for the real MOVE_RESULT_* bits, used
 --   by the presentation layer for the real "It's super effective!" line).
-function BattleFormulas.typeCalc(damage, moveType, attackerTypes, defenderTypes, typeChartRows)
+function BattleFormulas.typeCalc(damage, moveType, attackerTypes, defenderTypes, typeChartRows, foresight)
   local flags = { superEffective = false, notVeryEffective = false, noEffect = false }
 
   -- Real ModulateDmgByType2 (src/battle_script_commands.c): a later
@@ -381,8 +450,10 @@ function BattleFormulas.typeCalc(damage, moveType, attackerTypes, defenderTypes,
     local row = typeChartRows[i]
     if not row then break end
     if row.attackingType == BattleFormulas.TYPE_FORESIGHT then
-      -- Real code breaks here only under STATUS2_FORESIGHT (not modeled);
-      -- otherwise it skips the marker row and keeps walking.
+      -- The source table places the Normal/Fighting-vs-Ghost immunity rows
+      -- after this marker. Foresight stops walking there, preserving every
+      -- ordinary matchup while making those two moves effective on Ghost.
+      if foresight then break end
       i = i + 1
     else
       if row.attackingType == moveType then
@@ -497,7 +568,11 @@ end
 -- Real speed used for turn order (GetWhoStrikesFirst, src/battle_main.c
 -- :3428). Paralysis/items/abilities/badges deliberately not modeled.
 function BattleFormulas.effectiveSpeed(battler)
-  return BattleFormulas.applyStatMod(battler.speed, stageOf(battler, "speed"))
+  local speed = BattleFormulas.applyStatMod(battler.speed, stageOf(battler, "speed"))
+  -- STATUS1_PARALYSIS is bit 6; real GetWhoStrikesFirst quarters speed
+  -- after applying the speed stat stage.
+  if math.floor((battler.status or 0) / 64) % 2 == 1 then speed = math.floor(speed / 4) end
+  return speed
 end
 
 -- Real GetWhoStrikesFirst (src/battle_main.c:3400), reduced to the

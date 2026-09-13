@@ -44,6 +44,19 @@ RomAddresses["41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc"] = { -- FireRed (US) v1.
   -- Verified against real MAP_PALLET_TOWN (group 3, num 0): resolves to a
   -- header with mapLayoutId=78, exactly LAYOUT_PALLET_TOWN.
   gMapGroups = 0x083526a8 - 0x08000000,
+  -- Number of MapHeader pointers in each gMapGroups entry, in map-group
+  -- order. gMapGroups itself has no length metadata, so this verified
+  -- manifest is required to enumerate it safely rather than guessing where
+  -- pointer-looking data ends. Generated from data/maps/map_groups.json in
+  -- the matching FireRed v1.0 decomp (43 groups, 425 maps).
+  --
+  -- A future ROM/mod profile may provide a different list while retaining
+  -- the same canonical MapCatalog output shape.
+  mapGroupCounts = {
+    5, 123, 60, 66, 4, 6, 8, 10, 6, 8, 20, 10, 8, 2, 10,
+    4, 2, 2, 2, 1, 1, 2, 2, 3, 2, 3, 2, 1, 1, 1, 1,
+    7, 5, 5, 8, 8, 5, 5, 1, 1, 1, 2, 1,
+  },
   -- gWildMonHeaders: flat array (linear-scanned by mapGroup/mapNum,
   -- terminated by mapGroup=0xFF), pokefirered src/data/wild_encounters.h
   -- Verified against real MAP_ROUTE1 (found at scan index 87): encounterRate=21,

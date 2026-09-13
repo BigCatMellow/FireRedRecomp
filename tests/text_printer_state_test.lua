@@ -35,6 +35,31 @@ do
   check("ticking past the end doesn't error or overshoot", s.tokenIndex == #tokens)
 end
 
+-- Real \p waits for input before clearing the current dialogue page; real
+-- \l removes one preceding explicit line from that bounded page.
+do
+  local tokens = {
+    charToken(1), { type = "newline", kind = "line" }, charToken(2),
+    { type = "newline", kind = "paragraph" }, charToken(3),
+  }
+  local s = TextPrinterState.new(tokens, 1)
+  for _ = 1, 3 do s:tick(false) end
+  check("paragraph marker waits after the first page", s.waitingForPage and s.tokenIndex == 4)
+  check("old page remains visible while waiting", #s:revealedPageTokens() == 4)
+  s:tick(true)
+  check("paragraph press clears the visible page", not s.waitingForPage and #s:revealedPageTokens() == 0)
+  s:tick(false)
+  check("next page starts revealing after the paragraph press", #s:revealedPageTokens() == 1)
+
+  local scroll = TextPrinterState.new({
+    charToken(1), { type = "newline", kind = "line" }, charToken(2),
+    { type = "newline", kind = "scroll" }, charToken(3),
+  }, 1)
+  for _ = 1, 5 do scroll:tick(false) end
+  local visible = scroll:revealedPageTokens()
+  check("scroll removes the first explicit line", #visible == 3 and visible[1].glyphId == 2 and visible[3].glyphId == 3)
+end
+
 -- Color/control tokens (other than PAUSE/PAUSE_UNTIL_PRESS) are consumed
 -- immediately, not gated by ticksPerChar -- several can process in one tick.
 do

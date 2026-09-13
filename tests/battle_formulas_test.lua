@@ -55,6 +55,36 @@ check("golden physical base damage: Lv5 Bulbasaur Tackle = 4",
 -- Charmander Lv5 Ember vs Bulbasaur: 11*40*4/11=160; /50=3; +2=5.
 check("golden special base damage: Lv5 Charmander Ember = 5",
   F.calculateBaseDamage(charmander, bulbasaur, Data.moves[Data.MOVE_EMBER], false) == 5)
+check("rain halves Fire base damage before CalculateBaseDamage's +2",
+  F.calculateBaseDamage(charmander, bulbasaur, Data.moves[Data.MOVE_EMBER], false, nil, "rain") == 3)
+check("sun boosts Fire base damage before CalculateBaseDamage's +2",
+  F.calculateBaseDamage(charmander, bulbasaur, Data.moves[Data.MOVE_EMBER], false, nil, "sun") == 6)
+
+-- Cmd_remaininghptopower / sFlailHpScaleToPowerTable, used by Flail and
+-- Reversal. maxHP=48 makes the source's scaled-HP threshold boundaries
+-- direct; a living low-HP battler also preserves the source minimum of 1.
+check("Flail power uses the real six scaled-HP tiers",
+  F.flailPower(1, 48) == 200 and F.flailPower(4, 48) == 150
+    and F.flailPower(9, 48) == 100 and F.flailPower(16, 48) == 80
+    and F.flailPower(32, 48) == 40 and F.flailPower(48, 48) == 20)
+check("Flail's scaled-HP calculation preserves one pixel for a living mon",
+  F.flailPower(1, 1000) == 200)
+check("Eruption/Water Spout use real proportional power with a living minimum",
+  F.healthScaledPower(100, 100, 150) == 150 and F.healthScaledPower(50, 100, 150) == 75
+    and F.healthScaledPower(1, 1000, 150) == 1)
+r = rng({ 4, 5, 14, 15, 34, 35, 64, 65, 84, 85, 94, 95 })
+local magnitudeTiers = { {4,10}, {5,30}, {5,30}, {6,50}, {6,50}, {7,70}, {7,70}, {8,90}, {8,90}, {9,110}, {9,110}, {10,150} }
+local magnitudeOk = true
+for _, expected in ipairs(magnitudeTiers) do
+  local level, power = F.rollMagnitude(r)
+  magnitudeOk = magnitudeOk and level == expected[1] and power == expected[2]
+end
+check("Magnitude uses every real random-roll boundary", magnitudeOk and r.draws == 12)
+r = rng({ 11, 15, 10 })
+check("Psywave rejects 11-15 then uses the accepted ten-percent tier",
+  F.psywaveDamage(20, r) == 30 and r.draws == 3)
+check("Super Fang halves current HP with the real one-damage minimum",
+  F.superFangDamage(19) == 9 and F.superFangDamage(1) == 1)
 
 local damage, flags = F.typeCalc(4, Data.TYPE_NORMAL, bulbasaur.types, charmander.types, Data.typeChart)
 check("Tackle is not STAB for Bulbasaur and stays at base damage", damage == 4, damage)

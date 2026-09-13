@@ -1,6 +1,6 @@
 # Task: present north-facing Oak Parcel/Dex scene
 
-- Status: `ACTIVE`
+- Status: `DONE` — bounded runtime bridge is verified and independently approved; owner commit remains the publication boundary.
 - AGI status: `AGI READY`
 - Type: `IMPLEMENTATION`
 - Owner: `/root`
@@ -55,14 +55,15 @@
 
 ## Acceptance criteria
 
-- [ ] Exact guard starts a ROM-text/movement bounded presenter; all other Oak
+- [x] Exact guard starts a ROM-text/movement bounded presenter; all other Oak
   interactions follow existing behavior.
-- [ ] Presenter locks input, uses source-derived north-facing motion/text,
+- [x] Presenter locks input, uses source-derived north-facing motion/text,
   temporary rival lifecycle, and Dex prop removal without generic spawning.
-- [ ] It delegates all existing `ViridianParcelStory` durable writes exactly
+- [x] It delegates all existing `ViridianParcelStory` durable writes exactly
   once after a successful preflight; no early mutation or duplicate reward.
-- [ ] Verified-ROM replay proves terminal presentation plus persistent result;
-  focused tests, both suites, and independent review pass.
+- [x] Verified-ROM replay proves terminal presentation plus persistent result;
+  focused tests and both suites pass.
+- [x] Independent review passes.
 
 ## Verification and evidence
 
@@ -93,7 +94,25 @@ or preflight cannot preserve the current bounded atomic failure behavior.
 - Completed: scoped and independently ROM/source validated; isolated
   north-only presenter and focused test added. Independent review corrected
   the first-four-texts-before-rival source ordering.
-- Not completed: runtime wiring, source-lock integration evidence, both suites,
-  replay, and final independent review.
-- Next action: apply the recorded bounded main.lua wiring plan, then verify it
-  in the runtime without expanding into a generic script interpreter.
+- Runtime bridge now present in the uncommitted worktree: field/NPC input is
+  locked, text/movement is driven from the presenter, the existing rival
+  template is temporary, and terminal commit is the only durable-write path.
+- `luac5.1 -p main.lua`, focused presenter tests, and the 138-file
+  ROM-backed suite pass. The verified-ROM `natural_capture` runtime replay
+  now reaches terminal Oak state (`dex=true`) and catches successfully with
+  its source-controlled RNG seed (`POKEPORT_RNG_SEED=5`); the separate
+  two-process replay also proves save/restart persistence. The generic smoke
+  wrapper selects that seed for this capture-specific route while retaining
+  seed 0 for its other cases. Independent review remains due.
+- Focused follow-up review found and fixed a malformed-runtime escape path:
+  a missing temporary-rival template previously unlocked the UI but left the
+  presenter active, which could keep field input locked. `Presentation:abort`
+  now takes that path to the same terminal failure state as a failed commit;
+  `tests/oak_parcel_dex_presentation_test.lua` covers the no-durable-write
+  abort and repeat-abort rejection (26/0). The 138-file ROM suite and the
+  two-process natural-capture persistence replay still pass.
+- Completed: independent review is recorded in
+  `work/reviews/oak-parcel-dex-presentation-review.md`; it found and verified
+  the failed-commit temporary-rival cleanup fix. This bounded task is done.
+- Next action: hand the cleanly verified worktree to the owner for commit; do
+  not expand this cutscene into a generic script interpreter.

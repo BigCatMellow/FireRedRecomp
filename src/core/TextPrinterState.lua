@@ -38,6 +38,8 @@ function TextPrinterState.new(tokens, ticksPerChar)
     tickCount = 0,
     pauseTicksRemaining = 0,
     waitingForPress = false,
+    waitingForPage = false,
+    pageStartIndex = 1, -- first token of the currently visible \p page
     ticksPerChar = ticksPerChar or DEFAULT_TICKS_PER_CHAR,
   }, { __index = TextPrinterState })
 end
@@ -46,6 +48,13 @@ end
 -- whether the A button was newly pressed this tick (only matters while
 -- paused on a PAUSE_UNTIL_PRESS code) -- pass false if not applicable.
 function TextPrinterState:tick(aButtonNewlyPressed)
+  if self.waitingForPage then
+    if aButtonNewlyPressed then
+      self.waitingForPage = false
+      self.pageStartIndex = self.tokenIndex + 1
+    end
+    return
+  end
   if self.waitingForPress then
     if aButtonNewlyPressed then self.waitingForPress = false end
     return
@@ -59,6 +68,13 @@ function TextPrinterState:tick(aButtonNewlyPressed)
     local nextToken = self.tokens[self.tokenIndex + 1]
     if nextToken.type == "char" then
       break
+    elseif nextToken.type == "newline" and nextToken.kind == "paragraph" then
+      -- Real \p starts a new page and waits for an A press. The marker stays
+      -- revealed while the old page remains on screen; accepting it advances
+      -- pageStartIndex so the next page renders into a cleared window.
+      self.tokenIndex = self.tokenIndex + 1
+      self.waitingForPage = true
+      return
     elseif nextToken.type == "control" and nextToken.sub == TextPrinterState.EXT_CTRL_CODE_PAUSE then
       self.pauseTicksRemaining = nextToken.params[1] or 0
       self.tokenIndex = self.tokenIndex + 1
@@ -87,6 +103,28 @@ function TextPrinterState:revealedTokens()
   return sliced
 end
 
+-- Tokens visible in a standard bounded dialogue window. \p discards all
+-- previous content once acknowledged; each \l discards one prior explicit
+-- line, matching the real text window's scroll-up behavior. A renderer can
+-- continue using revealedTokens() when it wants the complete transcript.
+function TextPrinterState:revealedPageTokens()
+  local start = self.pageStartIndex
+  for i = start, self.tokenIndex do
+    local token = self.tokens[i]
+    if token and token.type == "newline" and token.kind == "scroll" then
+      for j = start, i do
+        if self.tokens[j].type == "newline" then
+          start = j + 1
+          break
+        end
+      end
+    end
+  end
+  local sliced = {}
+  for i = start, self.tokenIndex do sliced[#sliced + 1] = self.tokens[i] end
+  return sliced
+end
+
 function TextPrinterState:isFullyRevealed()
   return self.tokenIndex >= #self.tokens
 end
@@ -98,6 +136,11 @@ function TextPrinterState:revealAll()
   self.tokenIndex = #self.tokens
   self.pauseTicksRemaining = 0
   self.waitingForPress = false
+  self.waitingForPage = false
+  self.pageStartIndex = 1
+  for i, token in ipairs(self.tokens) do
+    if token.type == "newline" and token.kind == "paragraph" then self.pageStartIndex = i + 1 end
+  end
 end
 
 return TextPrinterState

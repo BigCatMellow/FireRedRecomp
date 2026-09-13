@@ -54,6 +54,87 @@ check("FIGHT opens move menu", c.state == BattleSceneController.MOVE and c.moveC
 c:processInput(input(InputState.B_BUTTON))
 check("B backs out of move menu", c.state == BattleSceneController.ACTION)
 
+local hazeMessage = c:_eventMessages({ { type="haze", side="player" } })
+check("Haze has its real stat-reset presentation message",
+  hazeMessage[1] and hazeMessage[1].text == ("All stat changes were" .. string.char(10) .. "eliminated!"),
+  hazeMessage[1] and hazeMessage[1].text)
+
+local focusEnergyMessage = c:_eventMessages({ { type="focusEnergySet", side="player" } })
+check("Focus Energy has its real getting-pumped presentation message",
+  focusEnergyMessage[1] and focusEnergyMessage[1].text == ("BULBASAUR is getting" .. string.char(10) .. "pumped!"),
+  focusEnergyMessage[1] and focusEnergyMessage[1].text)
+
+local fakeOutFailedMessage = c:_eventMessages({ { type="fakeOutFailed", side="player" } })
+check("Fake Out's later-turn failure uses the real generic failure message",
+  fakeOutFailedMessage[1] and fakeOutFailedMessage[1].text == "But it failed!",
+  fakeOutFailedMessage[1] and fakeOutFailedMessage[1].text)
+
+local teleportMessages = c:_eventMessages({ { type="teleport", side="player" }, { type="teleportFailed", side="foe" } })
+check("Teleport presents its flee and trainer-failure messages",
+  teleportMessages[1] and teleportMessages[1].text == "BULBASAUR fled from the\nbattle!"
+    and teleportMessages[2] and teleportMessages[2].text == "But it failed!", teleportMessages)
+
+local paralysisCuredMessage = c:_eventMessages({ { type="paralysisCured", side="foe", byMove=true } })
+check("Smelling Salt's cure has a paralysis-cleared presentation message",
+  paralysisCuredMessage[1] and paralysisCuredMessage[1].text == ("CHARMANDER was cured of" .. string.char(10) .. "paralysis!"),
+  paralysisCuredMessage[1] and paralysisCuredMessage[1].text)
+
+local rechargingMessage = c:_eventMessages({ { type="recharging", side="player" } })
+check("Recharge uses the retail must-recharge presentation message",
+  rechargingMessage[1] and rechargingMessage[1].text == "BULBASAUR must recharge!",
+  rechargingMessage[1] and rechargingMessage[1].text)
+
+local rainMessage = c:_eventMessages({ { type="weatherSet", weather="rain" } })
+check("Rain Dance has its real weather-start presentation message",
+  rainMessage[1] and rainMessage[1].text == "It started to rain!", rainMessage[1] and rainMessage[1].text)
+
+local protectMessage = c:_eventMessages({ { type="protectSet", side="player" } })
+check("Protect has its real self-protection presentation message",
+  protectMessage[1] and protectMessage[1].text == ("BULBASAUR protected" .. string.char(10) .. "itself!"), protectMessage[1] and protectMessage[1].text)
+
+local endureMessage = c:_eventMessages({ { type="endureSet", side="player" } })
+check("Endure has its real brace presentation message",
+  endureMessage[1] and endureMessage[1].text == ("BULBASAUR braced" .. string.char(10) .. "itself!"), endureMessage[1] and endureMessage[1].text)
+
+local spikesSetMessage = c:_eventMessages({ { type="spikesSet", side="player", target="foe" } })
+check("Spikes has its real placement presentation message",
+  spikesSetMessage[1] and spikesSetMessage[1].text == ("SPIKES were scattered all around" .. string.char(10) .. "the opponent's side!"), spikesSetMessage[1] and spikesSetMessage[1].text)
+
+local spikesDamageMessage = c:_eventMessages({ { type="spikesDamage", side="foe", damage=4, layers=3 } })
+check("Spikes has its real switch-in damage presentation message",
+  spikesDamageMessage[1] and spikesDamageMessage[1].text == ("CHARMANDER is hurt" .. string.char(10) .. "by SPIKES!"), spikesDamageMessage[1] and spikesDamageMessage[1].text)
+
+local spikesClearMessage = c:_eventMessages({ { type="spikesCleared", side="player" } })
+check("Rapid Spin has its real Spikes-clear presentation message",
+  spikesClearMessage[1] and spikesClearMessage[1].text == ("BULBASAUR blew away" .. string.char(10) .. "SPIKES!"), spikesClearMessage[1] and spikesClearMessage[1].text)
+
+local sandMessage = c:_eventMessages({ { type="weatherDamage", weather="sandstorm", side="foe" } })
+check("Sandstorm has its real weather-damage presentation message",
+  sandMessage[1] and sandMessage[1].text == ("CHARMANDER is buffeted" .. string.char(10) .. "by the sandstorm!"), sandMessage[1] and sandMessage[1].text)
+
+do
+  local messages = c:_eventMessages({
+    { type="sleep", target="foe" },
+    { type="poisonDamage", side="foe", hpRemaining=12 },
+    { type="confusionSelfHit", side="player", hpRemaining=9 },
+    { type="leechSeedDrain", side="foe", target="player", hpRemaining=8, targetHpRemaining=20 },
+    { type="ingrainHeal", side="player", hpRemaining=22 },
+  })
+  check("status application names the affected battler",
+    messages[1].text == "CHARMANDER fell asleep!", messages[1].text)
+  check("status residual damage updates the affected HP bar",
+    messages[2].text == ("CHARMANDER is hurt" .. string.char(10) .. "by poison!")
+      and messages[2].hpSide == "foe" and messages[2].hp == 12, messages[2].text)
+  check("confusion self-hit updates its own HP bar",
+    messages[3].hpSide == "player" and messages[3].hp == 9, messages[3].text)
+  check("Leech Seed updates both HP bars in event order",
+    messages[4].hpSide == "foe" and messages[4].hp == 8
+      and not messages[5].text and messages[5].hpSide == "player" and messages[5].hp == 20,
+    messages[4].text)
+  check("Ingrain healing updates its owner's HP bar",
+    messages[6].hpSide == "player" and messages[6].hp == 22, messages[6].text)
+end
+
 c.engine.player.speed = 100 -- make the presented HP-order assertion direct
 c:processInput(input(InputState.A_BUTTON))
 c:processInput(input(InputState.A_BUTTON))
@@ -104,13 +185,13 @@ check("Growl executes through the controller and spends PP",
   c:message() == "BULBASAUR used GROWL!" and c.engine.player.moves[1].pp == 39
     and c.engine.foe.statStages.attack == 5, c:message())
 
--- Other power-zero effects still fail visibly instead of fabricating rules.
+-- Unported power-zero effects still fail visibly instead of fabricating rules.
 c = controller(); c:advanceMessage(); c:advanceMessage()
-Data.moves[999] = { effect=1, power=0, type=0, accuracy=100, pp=10,
+Data.moves[999] = { effect=96, power=0, type=0, accuracy=100, pp=10,
   secondaryEffectChance=0, target=0, priority=0, flags=0 }
 c.engine.player.moves = { {move=999,pp=10}, {move=Data.MOVE_TACKLE,pp=35} }
 c:processInput(input(InputState.A_BUTTON)); c:processInput(input(InputState.A_BUTTON))
-check("unsupported status effects remain an explicit boundary",
+check("unsupported zero-power effects remain an explicit boundary",
   c:message() == "That move's effect is not available yet." and c.engine.player.moves[1].pp == 10)
 
 -- Real BAG wiring: with a bag that actually has a Poke Ball, BAG throws
@@ -189,6 +270,13 @@ end
 
 do
   local c = controller()
+  local messages = c:_eventMessages({ { type = "drain", side = "player", kind = "dreamEater", amount = 5, hpRemaining = 20 } })
+  check("Dream Eater uses its real target-dream presentation text",
+    messages[1].text == "CHARMANDER's dream\nwas eaten!", messages[1].text)
+end
+
+do
+  local c = controller()
   local messages = c:_eventMessages({ { type = "multiHit", side = "player", hits = 4 } })
   check("multiHit reports the real hit count, matching sText_HitXTimes",
     messages[1].text == "Hit 4 time(s)!", messages[1].text)
@@ -219,6 +307,48 @@ do
     messages[4].text == "Your team's REFLECT\nwore off!", messages[4].text)
   check("screenExpired on the foe side uses \"The foe's\"",
     messages[5].text == "The foe's LIGHT SCREEN\nwore off!", messages[5].text)
+end
+
+do
+  local c = controller()
+  local messages = c:_eventMessages({
+    { type="substituteSet", side="player", hpRemaining=15 },
+    { type="substituteDamage", side="foe", target="player", amount=4, substituteHP=0 },
+    { type="substituteBroken", side="player" },
+  })
+  check("Substitute events present setup, intercepted hit, and break without a false HP loss",
+    messages[1].hpSide == "player" and messages[1].hp == 15
+      and messages[2].hpSide == nil and messages[3].text == "BULBASAUR's substitute\nbroke!")
+end
+
+do
+  local c = controller()
+  local messages = c:_eventMessages({ { type="transform", side="player", target="foe" }, { type="transformFailed", side="foe", target="player" } })
+  check("Transform has success and failure presentation", messages[1].text == "BULBASAUR transformed!" and messages[2].text == "But it failed!")
+end
+
+do
+  local c = controller()
+  local messages = c:_eventMessages({
+    { type="mimic", side="player", move=Data.MOVE_TACKLE },
+    { type="sketch", side="foe", move=Data.MOVE_TACKLE },
+    { type="sleepTalkFailed", side="player" },
+  })
+  check("Mimic, Sketch, and failed Sleep Talk have move-aware presentation",
+    messages[1].text == "BULBASAUR learned\nTACKLE!"
+      and messages[2].text == "CHARMANDER sketched\nTACKLE!"
+      and messages[3].text == "But it failed!")
+end
+
+do
+  local c = controller()
+  local messages = c:_eventMessages({
+    { type="camouflage", side="player" },
+    { type="naturePower", side="foe", move=Data.MOVE_TACKLE },
+  })
+  check("Camouflage and Nature Power have live presentation",
+    messages[1].text == "BULBASAUR changed its type!"
+      and messages[2].text == "Nature Power turned into\nTACKLE!")
 end
 
 print(("%d passed, %d failed"):format(passed, failed))

@@ -26,8 +26,9 @@
 -- so removeAt here leaves a hole, matching real PC-box behavior more
 -- closely than PartyModel's shifting policy would).
 --
--- This is a lightweight in-memory container only, no save-file I/O
--- (that's the save-block handoff's territory) and no UI/scrolling.
+-- This is the in-memory container and has no UI/scrolling. Its real byte
+-- serialization lives in PokemonStorageCodec.lua; SaveFileCodec sector
+-- integration remains a separate next step.
 
 local PcBoxes = {}
 PcBoxes.__index = PcBoxes

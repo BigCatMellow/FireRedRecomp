@@ -14,6 +14,7 @@ conceptually; its Gen 1 gameplay code is not.
 
 Full plan: [`docs/roadmap.md`](docs/roadmap.md).
 Source crosswalk: [`docs/reference/source-inventory.md`](docs/reference/source-inventory.md).
+Modding foundation: [`docs/modding.md`](docs/modding.md).
 
 ## Status
 

@@ -92,6 +92,25 @@ check("MSGBOX_SIGN uses the real lockall (not the NPC body's lock+faceplayer)", 
 fast:tick(true)
 check("a press during reveal does not dismiss the box", fast.printer ~= nil)
 
+-------------------------------------------------------- paragraph paging
+
+local function pagedTokens()
+  return {
+    { type = "char", glyphId = 1 },
+    { type = "newline", kind = "paragraph" },
+    { type = "char", glyphId = 2 },
+  }
+end
+local paged = DialogueRunner.new(signInstructions, signAddrToIndex, { tokenize = pagedTokens, ticksPerChar = 1 })
+paged:tick(false)
+paged:tick(false)
+paged:tick(false)
+check("real paragraph token pauses the current message page", paged.printer.waitingForPage)
+paged:tick(true)
+check("paragraph A press advances the page without dismissing the dialogue", paged.printer ~= nil and not paged.printer.waitingForPage)
+paged:tick(false)
+check("second page reveals normally after clearing", paged.printer:revealedPageTokens()[1].glyphId == 2)
+
 --------------------------------------------- loud failure is not swallowed
 
 local badInstructions = {
@@ -119,6 +138,80 @@ local mixed = DialogueRunner.new(sideEffectInstructions, sideEffectIndex, { toke
 mixed:tick(false)
 check("unhooked real opcodes (setvar/special) run through to the message", mixed.printer ~= nil)
 check("unhooked opcodes did not record an error", mixed.error == nil, mixed.error)
+
+local healedSpecial = nil
+local special = DialogueRunner.new({
+  { op = "special", specialId = 0, addr = 0x08165220, size = 3 },
+  { op = "end", addr = 0x08165223, size = 1 },
+}, { [0x08165220] = 1, [0x08165223] = 2 }, {
+  tokenize = tokensFor,
+  onSpecial = function(id) healedSpecial = id end,
+})
+special:tick(false)
+check("an explicit special bridge receives SPECIAL_HealPlayerParty index 0", healedSpecial == 0)
+
+local choiceInstructions = {
+  { op = "yesnobox", left = 1, top = 1, addr = 0x08165220, size = 3 },
+  { op = "end", addr = 0x08165223, size = 1 },
+}
+local choice = DialogueRunner.new(choiceInstructions, { [0x08165220] = 1, [0x08165223] = 2 }, { tokenize = tokensFor })
+choice:tick(false)
+check("yesnobox pauses its real script for a choice", choice.pendingChoice and choice.pendingChoice.choices[1] == "YES")
+choice:choose(1)
+check("choosing NO writes real VAR_RESULT", choice.vm:getVar(0x800D) == 1 and choice.pendingChoice == nil)
+choice:tick(false)
+check("script resumes after a choice", choice.finished)
+
+local grantedItem, grantedQuantity = nil, nil
+local item = DialogueRunner.new({
+  { op = "additem", itemVarId = 4, quantityVarId = 2, addr = 0x08165240, size = 5 },
+  { op = "end", addr = 0x08165245, size = 1 },
+}, { [0x08165240] = 1, [0x08165245] = 2 }, {
+  tokenize = tokensFor,
+  onGiveItem = function(itemId, quantity) grantedItem, grantedQuantity = itemId, quantity; return true end,
+})
+item:tick(false)
+check("additem bridges real item and quantity arguments", grantedItem == 4 and grantedQuantity == 2)
+check("successful additem writes VAR_RESULT", item.vm:getVar(0x800D) == 1)
+
+local savedVar = nil
+local variable = DialogueRunner.new({
+  { op = "setvar", varId = 0x4001, value = 9, addr = 0x08165250, size = 5 },
+  { op = "end", addr = 0x08165255, size = 1 },
+}, { [0x08165250] = 1, [0x08165255] = 2 }, {
+  tokenize = tokensFor,
+  getVar = function(id) return id == 0x4001 and 3 end,
+  setVar = function(id, value) if id == 0x4001 then savedVar = value end end,
+})
+check("runner reads a bridged persistent script variable", variable.vm:getVar(0x4001) == 3)
+variable:tick(false)
+check("setvar writes through the persistent script-variable bridge", savedVar == 9)
+
+local flags = {}
+local flagScript = DialogueRunner.new({
+  { op = "setflag", flagId = 0x123, addr = 0x08165260, size = 3 },
+  { op = "checkflag", flagId = 0x123, addr = 0x08165263, size = 3 },
+  { op = "end", addr = 0x08165266, size = 1 },
+}, { [0x08165260] = 1, [0x08165263] = 2, [0x08165266] = 3 }, {
+  tokenize = tokensFor,
+  getFlag = function(id) return flags[id] or false end,
+  setFlag = function(id) flags[id] = true end,
+  clearFlag = function(id) flags[id] = nil end,
+})
+flagScript:tick(false)
+check("setflag persists through the runner bridge and checkflag reads it", flags[0x123] and flagScript.vm.comparisonResult == 1)
+
+local warpDestination = nil
+local warp = DialogueRunner.new({
+  { op = "warp", mapGroup = 3, mapNum = 1, warpId = 0, xVarId = 0xFFFF, yVarId = 0xFFFF, addr = 0x08165270, size = 8 },
+}, { [0x08165270] = 1 }, {
+  tokenize = tokensFor,
+  onWarp = function(destination) warpDestination = destination end,
+})
+warp:tick(false)
+check("decoded script warp reaches the live bridge with its real sentinel coordinates",
+  warpDestination and warpDestination.mapGroup == 3 and warpDestination.mapNum == 1
+    and warpDestination.x == 0xFFFF and warp.finished)
 
 ---------------------------------------------------------------- pokemart
 

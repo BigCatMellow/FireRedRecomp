@@ -271,11 +271,10 @@ Charmap.TERMINATOR = 0xFF
 Charmap.BYTE_TO_CHAR = BYTE_TO_CHAR
 
 -- Single-byte line-break control codes (charmap.txt: '\l'=scroll up window,
--- '\p'=new paragraph, '\n'=new line). All three render as a plain newline
--- here -- this project doesn't yet have a text window with a distinct
--- "scroll" vs. "paragraph" behavior, so the distinction is only meaningful
--- once one exists.
-local LINEBREAK_BYTES = { [0xFA] = true, [0xFB] = true, [0xFE] = true }
+-- '\p'=new paragraph, '\n'=new line). They share the `newline` token type
+-- for normal renderers, but retain their real kind so a bounded dialogue
+-- window can scroll or wait/clear on a paragraph break.
+local LINEBREAK_KINDS = { [0xFA] = "scroll", [0xFB] = "paragraph", [0xFE] = "line" }
 
 -- 0xFD-prefixed codes are always exactly 2 bytes (FD + subcode), no
 -- parameters -- runtime string-variable placeholders (charmap.txt).
@@ -356,7 +355,7 @@ function Charmap.decode(data, stopAtTerminator)
     if stopAtTerminator and b == Charmap.TERMINATOR then
       break
     end
-    if LINEBREAK_BYTES[b] then
+    if LINEBREAK_KINDS[b] then
       out[#out + 1] = "\n"
       i = i + 1
     elseif b == 0xFD then
@@ -398,7 +397,7 @@ end
 -- pause, newline) rather than just show them as bracketed text. Token
 -- shapes:
 --   { type = "char", glyphId = <raw byte> }     -- one printable glyph
---   { type = "newline" }
+--   { type = "newline", kind = "line"|"scroll"|"paragraph" }
 --   { type = "color", fg = n|nil, hl = n|nil, shadow = n|nil }
 --     -- from EXT_CTRL_CODE_COLOR/HIGHLIGHT/SHADOW/COLOR_HIGHLIGHT_SHADOW
 --     -- (FC 01/02/03/04); whichever role(s) that code sets are non-nil.
@@ -424,8 +423,8 @@ function Charmap.tokenize(data, stopAtTerminator)
     if stopAtTerminator and b == Charmap.TERMINATOR then
       break
     end
-    if LINEBREAK_BYTES[b] then
-      out[#out + 1] = { type = "newline" }
+    if LINEBREAK_KINDS[b] then
+      out[#out + 1] = { type = "newline", kind = LINEBREAK_KINDS[b] }
       i = i + 1
     elseif b == 0xFD then
       local sub = byte(data, i + 1)

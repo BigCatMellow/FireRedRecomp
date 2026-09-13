@@ -9,6 +9,14 @@ if ! command -v lua5.1 >/dev/null 2>&1; then
   echo "error: lua5.1 is required (install the Lua 5.1 interpreter)" >&2
   exit 127
 fi
+if ! command -v luac5.1 >/dev/null 2>&1; then
+  echo "error: luac5.1 is required (install the Lua 5.1 compiler)" >&2
+  exit 127
+fi
+
+# Tests exercise pure modules, but the live LÖVE entrypoint can still exceed
+# Lua 5.1's main-chunk local limit. Compile it in every CI/local suite.
+luac5.1 -p main.lua
 
 count=0
 for test_file in tests/*_test.lua; do

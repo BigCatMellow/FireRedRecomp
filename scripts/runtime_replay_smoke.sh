@@ -11,6 +11,14 @@ case "$replay_case" in
   house_to_pallet|route1_wild_defeat|route1_wild_win|natural_capture) ;;
   *) echo "error: unsupported replay case: ${replay_case}" >&2; exit 2 ;;
 esac
+# The capture route consumes the shared gameplay RNG for its encounter,
+# battle, and catch rolls.  Seed 5 is the recorded deterministic success
+# route used by runtime_natural_capture_replay.sh; the other smoke cases keep
+# their original seed.
+replay_seed=0
+if [[ "$replay_case" == "natural_capture" ]]; then
+  replay_seed=5
+fi
 for command in love xvfb-run timeout; do
   command -v "$command" >/dev/null 2>&1 || {
     echo "error: ${command} is required for the runtime replay smoke check" >&2
@@ -20,7 +28,7 @@ done
 
 replay_status=0
 if replay_output=$(timeout 20s xvfb-run -a env ALSOFT_DRIVERS=null \
-  POKEPORT_ROM="$POKEPORT_ROM" POKEPORT_RNG_SEED=0 POKEPORT_RUNTIME_REPLAY="$replay_case" love . 2>&1); then
+  POKEPORT_ROM="$POKEPORT_ROM" POKEPORT_RNG_SEED="$replay_seed" POKEPORT_RUNTIME_REPLAY="$replay_case" love . 2>&1); then
   :
 else
   replay_status=$?

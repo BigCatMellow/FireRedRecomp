@@ -1,4 +1,4 @@
-name: Lua tests
+name: Test
 
 on:
   push:
@@ -8,11 +8,19 @@ permissions:
   contents: read
 
 jobs:
-  test:
+  no-rom-suite:
+    name: No-ROM Lua suite
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - name: Install Lua 5.1
-        run: sudo apt-get update && sudo apt-get install -y lua5.1
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes lua5.1
+
+      - name: Check whitespace
+        run: git diff --check
+
       - name: Run no-ROM test suite
         run: bash scripts/test_all.sh

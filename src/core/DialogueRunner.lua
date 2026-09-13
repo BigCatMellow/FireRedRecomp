@@ -31,7 +31,9 @@
 -- option because a real script's UNTAKEN branches are decoded too --
 -- refusing to run any script containing a single warp opcode would rule
 -- out most real NPCs, including ones whose live path is pure dialogue.
--- What is NOT papered over: a genuinely undecodable opcode
+-- `setvar`/`copyvar` retain VM-local values so decoded control-flow can
+-- branch correctly (including menu VAR_RESULT), but are not yet persisted
+-- to a live save. What is NOT papered over: a genuinely undecodable opcode
 -- (ScriptBytecode's "unimplemented") still raises ScriptInterpreter's loud
 -- error, which :tick() catches into `self.error` and surfaces to the
 -- caller instead of crashing the game -- e.g. Pallet Town's real Sign Lady
@@ -77,6 +79,8 @@ local MAX_STEPS_PER_TICK = 256
 --   (src/scrcmd.c) both set the object's own real hide flag AND despawn its
 --   live sprite immediately, without waiting for a map reload; main.lua's
 --   hook is expected to do both (see world.removeNpcLive).
+-- opts.onSpecial(specialId): optional narrow bridge for a decoded real
+-- `special`; callers explicitly select supported IDs.
 function DialogueRunner.new(instructions, addrToIndex, opts)
   opts = opts or {}
   local self = setmetatable({
@@ -85,10 +89,25 @@ function DialogueRunner.new(instructions, addrToIndex, opts)
     onFacePlayer = opts.onFacePlayer,
     onRemoveObject = opts.onRemoveObject,
     onRemoveObjectAt = opts.onRemoveObjectAt,
+    onSpecial = opts.onSpecial,
+    onGiveItem = opts.onGiveItem,
+    onRemoveItem = opts.onRemoveItem,
+    getVar = opts.getVar,
+    setVar = opts.setVar,
+    getFlag = opts.getFlag,
+    setFlag = opts.setFlag,
+    clearFlag = opts.clearFlag,
+    onWarp = opts.onWarp,
+    onGivePokemon = opts.onGivePokemon,
+    onApplyMovement = opts.onApplyMovement,
+    isMovementDone = opts.isMovementDone,
+    waitingForMovement = false,
+    scriptVars = {}, -- VM-local vars used by menu results unless caller later bridges them
     printer = nil,          -- TextPrinterState for the currently-displayed message, or nil when no box is up
     messageTextPtr = nil,
     waitingForButton = false,
     pendingMartItemListPtr = nil, -- real u32 item-list ROM pointer while a pokemart is open, else nil
+    pendingChoice = nil, -- { choices={...}, cursor=0, ignoreBPress=bool }, or nil
     locked = false,
     finished = false,
     error = nil,
@@ -101,6 +120,40 @@ end
 function DialogueRunner:buildWorld()
   local self_ = self
   return {
+    getVar = function(varId)
+      local value = self_.scriptVars[varId]
+      if value ~= nil then return value end
+      if self_.getVar then
+        value = self_.getVar(varId)
+        if value ~= nil then return value end
+      end
+      return varId
+    end,
+    setVar = function(varId, value)
+      self_.scriptVars[varId] = value
+      if self_.setVar then self_.setVar(varId, value) end
+    end,
+    getFlag = function(flagId)
+      return self_.getFlag and self_.getFlag(flagId) or false
+    end,
+    setFlag = function(flagId)
+      if self_.setFlag then self_.setFlag(flagId) end
+    end,
+    clearFlag = function(flagId)
+      if self_.clearFlag then self_.clearFlag(flagId) end
+    end,
+    onWarp = function(destination)
+      if self_.onWarp then self_.onWarp(destination) end
+    end,
+    onGivePokemon = function(mon)
+      if self_.onGivePokemon then return self_.onGivePokemon(mon) end
+    end,
+    onApplyMovement = function(localId, scriptPtr)
+      if self_.onApplyMovement then self_.onApplyMovement(localId, scriptPtr) end
+    end,
+    onWaitMovement = function()
+      self_.waitingForMovement = true
+    end,
     onMessage = function(textPtr)
       self_.messageTextPtr = textPtr
       self_.printer = TextPrinterState.new(self_.tokenize(textPtr), self_.ticksPerChar)
@@ -132,6 +185,25 @@ function DialogueRunner:buildWorld()
     onPokemart = function(itemListPtr)
       self_.pendingMartItemListPtr = itemListPtr
     end,
+    onSpecial = function(specialId)
+      if self_.onSpecial then return self_.onSpecial(specialId) end
+    end,
+    onGiveItem = function(itemId, quantity)
+      if self_.onGiveItem then return self_.onGiveItem(itemId, quantity) end
+    end,
+    onRemoveItem = function(itemId, quantity)
+      if self_.onRemoveItem then return self_.onRemoveItem(itemId, quantity) end
+    end,
+    onYesNo = function()
+      self_.pendingChoice = { choices={"YES", "NO"}, cursor=0, ignoreBPress=false }
+    end,
+    onMultichoice = function(_, _, multichoiceId, ignoreBPress)
+      if multichoiceId ~= 0 then
+        error("DialogueRunner: multichoice list " .. tostring(multichoiceId) .. " is not imported")
+      end
+      self_.pendingChoice = { choices={"YES", "NO"}, cursor=0,
+        ignoreBPress=(ignoreBPress % 2) == 1 }
+    end,
   }
 end
 
@@ -140,7 +212,7 @@ end
 -- player movement input (a real `lock`-alike) and to know whether to draw
 -- the dialogue box.
 function DialogueRunner:isActive()
-  return not self.finished or self.printer ~= nil or self.pendingMartItemListPtr ~= nil
+  return not self.finished or self.printer ~= nil or self.pendingMartItemListPtr ~= nil or self.pendingChoice ~= nil
 end
 
 -- Called by the caller once the real mart menu it opened (driven off
@@ -154,11 +226,20 @@ function DialogueRunner:notifyMartClosed()
   self.pendingMartItemListPtr = nil
 end
 
+-- `yesnobox`/`multichoice` store their result in real VAR_RESULT.
+function DialogueRunner:choose(index)
+  assert(self.pendingChoice, "DialogueRunner has no pending choice")
+  assert(type(index) == "number" and (index == 127 or (index >= 0 and index < #self.pendingChoice.choices)),
+    "DialogueRunner choice index is invalid")
+  self.vm:setVar(0x800D, index) -- VAR_RESULT; 127 is SCR_MENU_CANCEL
+  self.pendingChoice = nil
+end
+
 -- The tokens currently revealed, for the caller to render -- nil when no
 -- message box should be drawn.
 function DialogueRunner:revealedTokens()
   if not self.printer then return nil end
-  return self.printer:revealedTokens()
+  return self.printer:revealedPageTokens()
 end
 
 -- Advances one real 60Hz tick. aButtonNewlyPressed: from the caller's
@@ -180,6 +261,10 @@ function DialogueRunner:tick(aButtonNewlyPressed)
     -- script-stepping side, exactly like repeated ticks while
     -- waitingForButton is set and no press has landed.
     return
+  end
+  if self.pendingChoice ~= nil then return end
+  if self.waitingForMovement then
+    if not self.isMovementDone or self.isMovementDone() then self.waitingForMovement = false else return end
   end
 
   local revealedBefore = self.printer and self.printer:isFullyRevealed()
@@ -218,7 +303,8 @@ function DialogueRunner:tick(aButtonNewlyPressed)
       self.finished = true
       return
     end
-    if self.waitingForButton or self.startedMessageThisTick or self.pendingMartItemListPtr ~= nil then return end
+    if self.waitingForButton or self.startedMessageThisTick or self.pendingMartItemListPtr ~= nil
+        or self.pendingChoice ~= nil or self.waitingForMovement then return end
   end
 
   self.error = ("DialogueRunner: script ran %d instructions in one tick without reaching a " ..

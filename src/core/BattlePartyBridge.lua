@@ -137,6 +137,9 @@ function BattlePartyBridge.battlerFromParty(record, speciesTable)
   local battler = BattleEngine.makeBattler({
     species=species,
     level=assertCachedStat(record, "level"),
+    friendship=decoded.substructs[0].friendship,
+    ivs=decoded.substructs[3].ivs,
+    status=record.status or 0,
     stats=stats,
     hp=assertCachedStat(record, "hp"),
     types=speciesInfo.types,
@@ -146,7 +149,6 @@ function BattlePartyBridge.battlerFromParty(record, speciesTable)
   battler.nature = decoded.personality % 25
   battler.abilityNum = decoded.substructs[3].abilityNum
   battler.ability = (speciesInfo.abilities or {})[battler.abilityNum + 1] or 0
-  battler.status = record.status or 0
   return battler, decoded
 end
 
@@ -158,6 +160,9 @@ function BattlePartyBridge.battlerFromGenerated(instance)
     species=instance.species,
     catchRate=instance.catchRate,
     level=instance.level,
+    friendship=instance.friendship,
+    ivs=instance.ivs,
+    status=instance.status,
     stats=instance.stats,
     hp=instance.hp,
     types=instance.types,
@@ -172,16 +177,19 @@ function BattlePartyBridge.battlerFromGenerated(instance)
   return battler
 end
 
--- Synchronizes the only state the current direct-damage battle mutates:
--- current HP and move PP. Re-encoding updates the real BoxPokemon checksum
--- and encryption; SaveFileCodec can then serialize the same record as-is.
+-- Synchronizes battle HP, PP, and explicitly-permanent move changes (Sketch).
+-- Re-encoding updates the real BoxPokemon checksum and encryption; SaveFileCodec
+-- can then serialize the same record as-is. Other transient battle move changes,
+-- such as Transform, remain deliberately excluded.
 function BattlePartyBridge.persistPartyBattler(record, battler)
   local decoded, reason = decodeRecord(record)
   assert(decoded, reason)
   local attacks = decoded.substructs[1]
   for i, slot in ipairs(battler.moves) do
-    assert(attacks.moves[i] == slot.move,
+    local permanent = battler.permanentMoveChanges and battler.permanentMoveChanges[i]
+    assert(attacks.moves[i] == slot.move or permanent == slot.move,
       ("battle move slot %d no longer matches party record"):format(i))
+    if permanent == slot.move then attacks.moves[i] = slot.move end
     attacks.pp[i] = math.max(0, math.floor(slot.pp or 0))
   end
   record.hp = math.max(0, math.min(record.maxHP, math.floor(battler.hp or 0)))

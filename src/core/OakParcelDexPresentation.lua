@@ -127,7 +127,14 @@ function Presentation:movementComplete(group)
     if not action then
       self.state = self.FAILED
       self.failureReason = reason or "commit_failed"
-      return command("unlock", { failed=true, reason=self.failureReason })
+      -- This terminal path follows the temporary rival's exit. A durable
+      -- write failure must still remove that live-only object, otherwise a
+      -- retry can leave a blocking duplicate in the field.
+      return command("unlock", {
+        failed=true,
+        reason=self.failureReason,
+        remove={ target="rival", localId=self.RIVAL_LOCAL_ID, preserveHideFlag=true },
+      })
     end
     self.state = self.DONE
     return command("unlock", {
@@ -138,6 +145,17 @@ function Presentation:movementComplete(group)
     })
   end
   return nil, "unexpected_movement_completion"
+end
+
+-- Runtime wiring can still fail after a valid preflight (for example, if a
+-- malformed map lacks the recorded temporary-rival template).  Terminate in
+-- the same explicit state used by a failed durable commit so field input is
+-- always released rather than leaving an active presenter with no motion.
+function Presentation:abort(reason)
+  if not self:isActive() then return nil, "not_active" end
+  self.state = self.FAILED
+  self.failureReason = reason or "runtime_failed"
+  return command("unlock", { failed=true, reason=self.failureReason })
 end
 
 function Presentation:onA(aPressed, textFullyRevealed)

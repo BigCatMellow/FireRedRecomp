@@ -297,10 +297,12 @@ function ScriptInterpreter:step()
     })
     self.pc = self:resolveAddr(nextAddr)
   elseif op == "additem" then
-    callHook(world, "onGiveItem", self:getVar(instr.itemVarId), self:getVar(instr.quantityVarId))
+    local result = callHook(world, "onGiveItem", self:getVar(instr.itemVarId), self:getVar(instr.quantityVarId))
+    if result ~= nil then self:setVar(0x800D, result and 1 or 0) end -- VAR_RESULT
     self.pc = self:resolveAddr(nextAddr)
   elseif op == "removeitem" then
-    callHook(world, "onRemoveItem", self:getVar(instr.itemVarId), self:getVar(instr.quantityVarId))
+    local result = callHook(world, "onRemoveItem", self:getVar(instr.itemVarId), self:getVar(instr.quantityVarId))
+    if result ~= nil then self:setVar(0x800D, result and 1 or 0) end -- VAR_RESULT
     self.pc = self:resolveAddr(nextAddr)
   elseif op == "pokemart" then
     -- Real ScrCmd_pokemart's ScriptContext_Stop() pauses execution until
