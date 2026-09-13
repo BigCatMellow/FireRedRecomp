@@ -1,8 +1,8 @@
 # FireRedRecomp Coordination Handoff
 
-- Status: `BLOCKED_ON_EXTERNAL_INPUT`
+- Status: `READY_FOR_WORKER`
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
-- Current task: [`../tasks/phase2-oak-reference-comparison.md`](../tasks/phase2-oak-reference-comparison.md)
+- Active task: [`../tasks/local-worker-bridge-phase4-trainer-party-no-item-route.md`](../tasks/local-worker-bridge-phase4-trainer-party-no-item-route.md)
 
 ## Published evidence
 
@@ -12,7 +12,14 @@ guarded run `34767029627` passed validation, focused/no-ROM/verified-ROM suites,
 two exact 240×160 Oak captures, two exact 240×160 Pallet captures, repeat
 self-diffs, and publication. Capture media remains outside git.
 
-## Exact blocker and resume point
+## Parallel critical path
+
+Phase 2 comparison remains blocked only on user-owned retail captures. That does
+not block independent Phase 4 work. The next bounded task is an explicit Local
+Worker Bridge route for no-item trainer-party construction (`partyFlags` `0` and
+`1`); it must pass a probe and independent review before implementation.
+
+## Phase 2 resume point
 
 The remaining input is user-owned trusted retail captures for both documented
 anchors, with FireRed revision, emulator/device, frame/timing, 240×160 crop, and

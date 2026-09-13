@@ -71,7 +71,9 @@ Phase 10 mod/release engineering
 | Phase 3C — north-facing Oak Parcel/Dex scene | `REVIEWED PASS` | [`../tasks/oak-parcel-dex-presentation-north.md`](../tasks/oak-parcel-dex-presentation-north.md) | PASS at `2d8c3221775044a54668683e500055307fe4d20b` | supports Phase 3A |
 | Phase 3D — title/new-game through Oak/identity into bedroom | `REVIEWED PASS` | [`../tasks/phase3-title-oak-entry-proof.md`](../tasks/phase3-title-oak-entry-proof.md) | PASS at `8bdbda903fb0574cb169968976d4b40ce96d3563` | supports Phase 3A |
 | Phase 3E — complete end-to-end runtime exit replay | `REVIEWED PASS` | [`../tasks/phase3-complete-runtime-exit-replay.md`](../tasks/phase3-complete-runtime-exit-replay.md) | PASS at `4f4f29ec` | Phase 3 complete |
-| Phase 4 — full Gen 3 battle engine | `IN PROGRESS` | future | general trainer battles, switching, move/effect and stress matrices | reliable trainer/story progression |
+| Phase 4 — full Gen 3 battle engine | `IN PROGRESS` | `BattleEngine`, trainer AI, capture, EXP, battle scene, and single-foe trainer path exist | general trainer battles, switching, move/effect and stress matrices | reliable trainer/story progression |
+| Phase 4A-pre — bridge route for no-item trainer-party construction | `ACTIVE` | **[`../tasks/local-worker-bridge-phase4-trainer-party-no-item-route.md`](../tasks/local-worker-bridge-phase4-trainer-party-no-item-route.md)** | explicit route + probe + independent PASS | Phase 4A eligibility |
+| Phase 4A — no-item trainer-party construction | `BLOCKED ON BRIDGE ROUTE` | [`../tasks/phase4-trainer-party-no-item-layouts.md`](../tasks/phase4-trainer-party-no-item-layouts.md) | default/custom move layout factory evidence | foe-only multi-mon orchestration |
 | Phase 5 — overworld/field systems | `IN PROGRESS` | future | Pallet→Elite Four traversal without invalid paths | credits traversal |
 | Phase 6 — menus/inventory/progression UI | `IN PROGRESS` | future | complete player UI, no dev-key fallbacks | normal completion |
 | Phase 7 — story/scripts/cutscenes | `IN PROGRESS` | future | new game→credits without manual edits/skips | credits story parity |

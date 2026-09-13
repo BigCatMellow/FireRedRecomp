@@ -2,19 +2,19 @@
   "schema_version": 1,
   "updated_utc": "2026-09-13T13:00:00Z",
   "role": "ORCHESTRATOR",
-  "status": "BLOCKED_ON_EXTERNAL_INPUT",
+  "status": "READY_FOR_WORKER",
   "current_phase": "Phase 2 — rendering, input, and scene runtime",
   "canonical_status_owner": "work/roadmaps/CAPABILITY_CHECKLIST.md",
-  "active_task": "work/tasks/phase2-oak-reference-comparison.md",
-  "objective": "Compare published deterministic Oak/Pallet implementation captures against user-owned trusted external retail references without committing media or claiming parity from self-diff.",
-  "next_role": "OWNER / EXTERNAL INPUT PROVIDER",
+  "active_task": "work/tasks/local-worker-bridge-phase4-trainer-party-no-item-route.md",
+  "objective": "Add and independently review an explicit fail-closed bridge route for bounded Phase 4 no-item trainer-party construction while Phase 2 retail comparison remains externally blocked.",
+  "next_role": "WORKER",
   "reconciliation": {
     "camera_task_status": "CLOSED — REVIEWED PASS at 4c5456f3; guarded run 34753297372",
     "oak_evidence_bridge": "CLOSED — REVIEWED PASS at ff5ff890; trusted probe run 34753855210",
     "oak_harness_status": "CLOSED — REVIEWED PASS at 0017727c; guarded run 34767029627"
   },
-  "blocker": "Trusted, user-owned retail-reference captures with provenance/timing/crop/filter details for Oak and Pallet anchors have not been supplied to the project.",
-  "next_after_success": "Independently review comparison records; then scope only measured discrepancy fixes, or reconcile Phase 2 if parity is actually proven.",
+  "phase2_external_blocker": "Trusted, user-owned retail-reference captures with provenance/timing/crop/filter details for Oak and Pallet anchors have not been supplied.",
+  "next_after_success": "After Phase 4 bridge PASS, dispatch no-item trainer-party construction; retain Phase 2 comparison task for later external input.",
   "legal_content_boundary": "Never commit ROMs, BIOS dumps, generated caches, ROM-derived reference screenshots, extracted game assets, or other prohibited content.",
   "phase_completion_rule": "Phase 2 remains IN PROGRESS until the Oak/reference screenshot discrepancy gate is evidenced and independently reviewed."
 }
