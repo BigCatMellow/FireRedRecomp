@@ -27,13 +27,11 @@ This is the project-wide status surface. Detailed history and checkboxes live in
 
 ## Dispatch order
 
-1. Prove the Phase 3 exit path with deterministic, ROM-backed evidence; see
-   [`work/tasks/phase3-exit-proof.md`](../tasks/phase3-exit-proof.md).
-2. Close the Phase 2 camera/Oak-intro parity gate only after its reference
+1. Close the Phase 2 camera/Oak-intro parity gate only after its reference
    screenshots and acceptance assertions are specified.
-3. Generalize trainer battles and move effects behind explicit Phase 4 test
+2. Generalize trainer battles and move effects behind explicit Phase 4 test
    matrices; do not add story content that depends on unverified battle rules.
-4. Expand overworld scripts/story only when their required opcode, save, menu,
+3. Expand overworld scripts/story only when their required opcode, save, menu,
    and battle gates are represented here.
 
 Run `bash scripts/test_all.sh` before every change. With a legally obtained
