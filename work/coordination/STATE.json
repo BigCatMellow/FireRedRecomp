@@ -5,15 +5,16 @@
   "status": "READY_FOR_INDEPENDENT_REVIEW",
   "current_phase": "Phase 4 — full Gen 3 battle engine",
   "canonical_status_owner": "work/roadmaps/CAPABILITY_CHECKLIST.md",
-  "active_task": "work/tasks/phase4-player-forced-replacement-ui.md",
-  "objective": "Independently review the bounded trainer-only player forced-replacement implementation while Phase 2 retail comparison remains externally blocked.",
-  "next_role": "REVIEWER",
+  "active_task": "work/roadmaps/EXECUTION_MAP.md",
+  "objective": "Select the next bounded Phase 4 battle-rule or trainer matrix leaf while Phase 2 retail comparison remains externally blocked.",
+  "next_role": "ORCHESTRATOR / DISCOVERY",
   "reconciliation": {
     "camera_task_status": "CLOSED — REVIEWED PASS at 4c5456f3; guarded run 34753297372",
     "oak_evidence_bridge": "CLOSED — REVIEWED PASS at ff5ff890; trusted probe run 34753855210",
     "oak_harness_status": "CLOSED — REVIEWED PASS at 0017727c; guarded run 34767029627",
     "phase4_no_item_party_status": "CLOSED — REVIEWED PASS at f40c4021; guarded run 34776145784",
-    "phase4_foe_multimon_status": "CLOSED — REVIEWED PASS at 8533cf6a; guarded run 34777072801"
+    "phase4_foe_multimon_status": "CLOSED — REVIEWED PASS at 8533cf6a; guarded run 34777072801",
+    "phase4_player_forced_replacement_status": "CLOSED — REVIEWED PASS at 8fd9a397; guarded run 34783304717"
   },
   "phase2_external_blocker": "Trusted, user-owned retail-reference captures with provenance/timing/crop/filter details for Oak and Pallet anchors have not been supplied.",
   "next_after_success": "After independent review and guarded publication, reconcile Phase 4C without treating voluntary switching as complete; retain Phase 2 comparison for later external input.",

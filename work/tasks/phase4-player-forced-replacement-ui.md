@@ -1,6 +1,6 @@
 # Task: scope Phase 4 player forced-replacement UI
 
-- Status: `IMPLEMENTED — AWAITING INDEPENDENT REVIEW`
+- Status: `CLOSED — REVIEWED PASS`
 - Type: `PHASE 4 / BATTLE UI / BOUNDED INTEGRATION`
 
 Implement trainer-only forced player replacement after a player faint using the
@@ -31,6 +31,13 @@ BattlePartyBridge, PartyScreen, Save codec, or add an orchestrator.
 Voluntary ACTION-menu POKEMON, field menu integration, SUMMARY/SWITCH/ITEM
 submenus, wild/Oak-rival wiring, trainers with more than two foes, items,
 doubles, trapping/Baton Pass, and retail party-menu visual parity.
+
+## Completion evidence
+
+Published `8fd9a397` after guarded run `34783304717` passed validation, focused,
+no-ROM, verified-ROM, real runtime replay, and publication. Independent review
+passed forced PARTY state, choice boundaries, persisted outgoing HP, live slot
+sync, SaveFileCodec roundtrip, and no-bench loss.
 
 ## Worker evidence
 

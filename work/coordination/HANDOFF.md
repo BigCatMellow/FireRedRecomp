@@ -1,8 +1,8 @@
 # FireRedRecomp Coordination Handoff
 
-- Status: `READY_FOR_INDEPENDENT_REVIEW`
+- Status: `READY_FOR_DISCOVERY`
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
-- Active task: [`../tasks/phase4-player-forced-replacement-ui.md`](../tasks/phase4-player-forced-replacement-ui.md)
+- Active task: [`../roadmaps/EXECUTION_MAP.md`](../roadmaps/EXECUTION_MAP.md)
 
 ## Published evidence
 
@@ -21,13 +21,11 @@ Foe-only multi-Pokémon orchestration is now independently reviewed and publishe
 at `8533cf6a` (guarded run `34777072801`): it uses the forced-switch primitive
 only after faint messages, settles EXP/EV per foe, and flags the trainer only
 after the final foe. The next separate leaf is player forced-replacement UI
-discovery; do not infer it from the foe-only path. The bounded implementation
-awaits independent review: existing engine and party bridge seams now feed a
-trainer-only forced PARTY state after a player faint. It persists the outgoing
-zero HP before a legal save-backed bench choice, then updates the active
-record/slot/name and back-sprite callback. Focused controller (7), verified-ROM
-seam (9), runtime replay, and both 132-file suites passed locally. This is not
-yet a Phase 4C completion claim: review and guarded publication remain required.
+discovery; do not infer it from the foe-only path. The bounded implementation is
+now independently reviewed and published at `8fd9a397` (guarded run
+`34783304717`), proving forced PARTY choice, persistence, state sync, and the
+no-bench loss branch. Next dispatch is Phase 4 battle-rule/trainer-matrix
+discovery, not an assumption that voluntary switching is complete.
 
 ## Phase 2 resume point
 
