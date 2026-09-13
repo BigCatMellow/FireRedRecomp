@@ -1,47 +1,49 @@
 {
   "schema_version": 1,
-  "updated_utc": "2026-09-13T12:00:00Z",
+  "updated_utc": "2026-09-13T12:03:00Z",
   "role": "ORCHESTRATOR",
   "status": "READY_FOR_WORKER",
   "current_phase": "Phase 2 — rendering, input, and scene runtime",
   "canonical_status_owner": "work/roadmaps/CAPABILITY_CHECKLIST.md",
   "active_task": "work/tasks/phase2-oak-reference-evidence-harness.md",
-  "objective": "Establish deterministic, exact 240x160 Oak/Pallet implementation capture and an honest external reference protocol without changing visual or gameplay behavior.",
+  "objective": "Correct only the observed Phase 2 Oak evidence runtime exit-status contract, then rerun the guarded harness route without changing visual or gameplay behavior.",
   "next_role": "WORKER",
   "reconciliation": {
     "phase3_result": "DONE — continuous runtime exit replay independently passed at 4f4f29ec",
     "canonical_phase3_status": "DONE",
-    "next_canonical_gate": "Phase 2 true 240x160 camera viewport, then Oak/reference screenshot parity",
+    "next_canonical_gate": "Phase 2 Oak/reference screenshot parity after the already-reviewed 240x160 camera viewport",
     "camera_task": "work/tasks/phase2-gba-camera-viewport-proof.md",
     "camera_task_status": "CLOSED — REVIEWED PASS at 4c5456f3; guarded run 34753297372",
-    "bridge_prerequisite": "CLOSED — REVIEWED PASS at 27867add; trusted probe run 34735602055",
     "oak_evidence_bridge": "CLOSED — REVIEWED PASS at ff5ff890; trusted probe run 34753855210",
-    "task_status_drift_corrected": "The camera task header still said BLOCKED ON BRIDGE ROUTE after the prerequisite PASS; corrected to READY FOR WORKER without changing implementation scope or acceptance.",
+    "oak_harness_attempt": "Guarded run 34754826666 applied the v1 patch and passed focused, no-ROM, and verified-ROM suites but failed route-specific runtime capture before publication.",
+    "oak_harness_runtime_failure": "Oak capture emitted the required 240x160 PASS marker and returned exit 0; proposed script incorrectly required exit 1 and rejected the successful capture.",
+    "published_harness_revision": null,
+    "reviewer_result_for_harness": null,
     "canonical_status_change_this_turn": false
   },
   "active_task_acceptance_summary": [
-    "Produce deterministic exact 240x160 implementation captures for static Oak and a Pallet camera anchor outside the repository.",
-    "Prove repeated implementation captures self-diff identically and record an honest external-reference/discrepancy protocol.",
-    "Preserve Oak, camera, gameplay, outer scaling, and all legal-content boundaries; independent review remains required."
+    "Correct only the supported-runner exit-status mismatch demonstrated by run 34754826666 while retaining marker/image/dimension validation.",
+    "Rerun the explicit guarded Phase 2 Oak evidence route; focused, no-ROM, verified-ROM, and route-specific runtime capture must all pass before publication.",
+    "Preserve Oak, camera, gameplay, outer scaling, legal-content boundaries, ROM verification, and independent-review requirements."
   ],
   "boundaries": {
     "may_change": [
-      "bounded capture/report script and focused tests",
-      "main.lua capture plumbing only when strictly necessary",
-      "task / coordination / review documentation"
+      "scripts/phase2_oak_reference_evidence_capture.sh exit-status handling inside the existing task boundary",
+      "focused harness test assertion only if needed to match the corrected supported-runner contract",
+      "existing task / coordination documentation"
     ],
     "must_not_change": [
       "Oak/camera/gameplay behavior, map/world simulation, or outer scaling",
       "trusted-main-only/no-public-PR policy, ROM gate, routing policy, or test order",
-      "public-PR execution policy",
       "supported-ROM policy or exact ROM SHA gate",
+      "capture output legal/content isolation or marker/image/dimension validation",
       "ROM/cache/BIOS/reference screenshots/extracted content",
       "broader repository permissions",
       "independent-review requirement"
     ]
   },
-  "blocker": null,
-  "next_after_success": "After independent PASS, scope the smallest external reference-comparison task from the protocol without claiming parity from implementation self-diffs.",
+  "blocker": "The unpublished v1 harness patch hard-coded status 1 as the only successful LÖVE screenshot-callback exit, but the supported guarded runner produced the required PASS marker with status 0. A bounded corrected patch is required.",
+  "next_after_success": "After guarded publication, route the exact published harness revision to independent Reviewer. Only after PASS may Orchestrator scope the external retail-reference comparison leaf.",
   "legal_content_boundary": "Never commit ROMs, BIOS dumps, generated caches, ROM-derived reference screenshots, extracted game assets, or other prohibited content.",
-  "phase_completion_rule": "Phase 2 remains IN PROGRESS until the true 240x160 camera viewport and the Oak/reference screenshot discrepancy gate are both evidenced and independently reviewed."
+  "phase_completion_rule": "Phase 2 remains IN PROGRESS until the Oak/reference screenshot discrepancy gate is evidenced and independently reviewed; harness self-diff cannot establish retail parity."
 }
