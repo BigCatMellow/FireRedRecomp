@@ -1,6 +1,6 @@
 # Task: Phase 4 foe-only multi-Pokémon trainer orchestration
 
-- Status: `IMPLEMENTED — PENDING INDEPENDENT REVIEW`
+- Status: `CLOSED — REVIEWED PASS`
 - Type: `PHASE 4 / BATTLE ORCHESTRATION / BOUNDED INTEGRATION`
 - Parent dependency: `phase4-trainer-party-no-item-layouts.md` (`PASS`)
 
@@ -32,4 +32,6 @@ doubles, general move effects, or unrelated story flow.
 - Ordered foe-only orchestration is implemented through the existing
   `BattleEngine:resolveForcedSwitch` boundary; no engine changes were made.
 - Focused controller and verified-ROM fixture tests accompany the implementation.
-- Independent review remains required before roadmap advancement.
+- Published `8533cf6a` after guarded run `34777072801` passed target
+  validation, focused, no-ROM, verified-ROM, main-path runtime replay, and
+  publication. Independent review passed the real Youngster Ben sequence.

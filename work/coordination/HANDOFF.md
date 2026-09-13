@@ -2,7 +2,7 @@
 
 - Status: `READY_FOR_WORKER`
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
-- Active task: [`../tasks/phase4-foe-only-multimon-trainer-orchestration.md`](../tasks/phase4-foe-only-multimon-trainer-orchestration.md)
+- Active task: [`../tasks/phase4-player-forced-replacement-ui.md`](../tasks/phase4-player-forced-replacement-ui.md)
 
 ## Published evidence
 
@@ -17,10 +17,11 @@ self-diffs, and publication. Capture media remains outside git.
 Phase 2 comparison remains blocked only on user-owned retail captures. That does
 not block independent Phase 4 work. No-item trainer-party construction is now
 published and independently reviewed at `f40c4021` (guarded run `34776145784`).
-The guarded foe-only multi-Pokémon implementation is ready for independent
-review. It uses the existing forced-switch primitive only after the faint
-message sequence, settles EXP/EV per defeated foe, and postpones the trainer
-flag until the final foe is defeated.
+Foe-only multi-Pokémon orchestration is now independently reviewed and published
+at `8533cf6a` (guarded run `34777072801`): it uses the forced-switch primitive
+only after faint messages, settles EXP/EV per foe, and flags the trainer only
+after the final foe. The next separate leaf is player forced-replacement UI
+discovery; do not infer it from the foe-only path.
 
 ## Phase 2 resume point
 
