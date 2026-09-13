@@ -25,7 +25,9 @@ discovery; do not infer it from the foe-only path. The bounded implementation is
 now independently reviewed and published at `8fd9a397` (guarded run
 `34783304717`), proving forced PARTY choice, persistence, state sync, and the
 no-bench loss branch. Next dispatch is Phase 4 battle-rule/trainer-matrix
-discovery, not an assumption that voluntary switching is complete.
+discovery, not an assumption that voluntary switching is complete. Discovery
+selected trainer-only voluntary switching as the next leaf; its explicit bridge
+route is now active.
 
 ## Phase 2 resume point
 
