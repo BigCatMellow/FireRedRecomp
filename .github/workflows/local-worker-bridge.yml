@@ -254,7 +254,11 @@ jobs:
               git add main.lua tests/phase3_complete_runtime_exit_replay_test.lua scripts/runtime_phase3_complete_exit_replay.sh work/tasks/phase3-complete-runtime-exit-replay.md work/tasks/phase3-exit-proof.md 2>/dev/null || true
               ;;
             phase2-gba-camera-viewport-proof)
-              git add main.lua src/core/CameraViewport.lua tests/camera_viewport_test.lua tests/phase2_camera_viewport_integration_test.lua scripts/runtime_camera_viewport_replay.sh work/tasks/phase2-gba-camera-viewport-proof.md work/coordination/STATE.json work/coordination/HANDOFF.md work/reviews/phase2-gba-camera-viewport-proof-review.md 2>/dev/null || true
+              for path in main.lua src/core/CameraViewport.lua tests/camera_viewport_test.lua tests/phase2_camera_viewport_integration_test.lua scripts/runtime_camera_viewport_replay.sh work/tasks/phase2-gba-camera-viewport-proof.md work/coordination/STATE.json work/coordination/HANDOFF.md work/reviews/phase2-gba-camera-viewport-proof-review.md; do
+                if [[ -e "$path" ]]; then
+                  git add -- "$path"
+                fi
+              done
               ;;
             *)
               echo "Patch execution has no publish route for '$ROUTE'." >&2
