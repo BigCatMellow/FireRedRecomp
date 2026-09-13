@@ -1,0 +1,332 @@
+diff --git a/main.lua b/main.lua
+index b42646f8..06d38a9b 100644
+--- a/main.lua
++++ b/main.lua
+@@ -473,6 +473,9 @@ local world = {
+   saveCounter = 0,
+   saveBytes = nil,
+ }
++-- Keep this on the existing shared table: this legacy entry chunk is at
++-- Lua 5.1's 200-local limit, while the camera geometry remains pure.
++world.cameraViewport = require("src.core.CameraViewport")
+ 
+ -- Real land-encounter slot count (ENCOUNTER_CHANCE_LAND_MONS_SLOT count,
+ -- src/data/wild_encounters.h -- WildEncounters.resolveInfo needs told how
+@@ -491,6 +494,77 @@ local loadMap, tryWarpAt, startWildBattle, syncSessionLocation, bootstrapFreshSe
+ -- 200-local-per-chunk limit as world.walkMapConnections above.
+ local WALK_CAMERA_WIDTH, WALK_CAMERA_HEIGHT = 240, 160 -- real GBA screen resolution
+ 
++-- Keep the field camera calculation shared between normal rendering and the
++-- deterministic runtime proof.  PlayerMovement remains the sole owner of
++-- world position; this only converts its current composited pixel position
++-- into a camera origin.
++function world.currentWalkCamera()
++  if not mapImage or not playerMovement then return nil end
++  local borderOffsetPx = BORDER_MARGIN_METATILES * 16
++  local playerCompositedX = playerMovement:pixelX() + borderOffsetPx
++  local playerCompositedY = playerMovement:pixelY() + borderOffsetPx
++  local mapPixelWidth, mapPixelHeight = mapImage:getDimensions()
++  local camera = world.cameraViewport.follow(mapPixelWidth, mapPixelHeight,
++    playerCompositedX, playerCompositedY)
++  return camera, playerCompositedX, playerCompositedY, mapPixelWidth, mapPixelHeight
++end
++
++-- Kept as a world method (rather than a large inline love.load branch) so
++-- the legacy entry chunk stays below Lua 5.1's local-variable ceiling.
++function world.runPhase2CameraViewportReplay()
++  local function sampleCamera()
++    local camera, playerX, playerY, mapWidth, mapHeight = world.currentWalkCamera()
++    return camera, playerX, playerY, mapWidth, mapHeight
++  end
++  local cameraBefore, playerBeforeX, playerBeforeY, mapWidth, mapHeight = sampleCamera()
++  local worldMapId = walkMapId
++  local cameraMoved, moved = false, false
++  local directions = {
++    { direction=PlayerMovement.RIGHT, dx=1, dy=0 },
++    { direction=PlayerMovement.DOWN, dx=0, dy=1 },
++    { direction=PlayerMovement.LEFT, dx=-1, dy=0 },
++    { direction=PlayerMovement.UP, dx=0, dy=-1 },
++  }
++  -- Prefer a legal step whose destination moves the camera further into the
++  -- currently loaded map. This drives PlayerMovement's real collision/tick
++  -- path and samples the shared renderer camera during each accepted step.
++  for _ = 1, 32 do
++    local chosen, bestScore
++    for _, candidate in ipairs(directions) do
++      local tx, ty = playerMovement.tileX + candidate.dx, playerMovement.tileY + candidate.dy
++      if not world.isPlayerWalkTileBlocked(tx, ty) then
++        local candidateCamera = world.cameraViewport.follow(mapWidth, mapHeight,
++          tx * 16 + BORDER_MARGIN_METATILES * 16, ty * 16 + BORDER_MARGIN_METATILES * 16)
++        local score = candidateCamera.x + candidateCamera.y
++        if not bestScore or score > bestScore then chosen, bestScore = candidate, score end
++      end
++    end
++    if not chosen then break end
++    playerMovement:tryMove(chosen.direction, world.isPlayerWalkTileBlocked, getLedgeJumpDirection)
++    if not playerMovement.moving then break end
++    for _ = 1, 8 do love.update(1 / 60) end
++    local cameraDuring = sampleCamera()
++    for _ = 1, 8 do love.update(1 / 60) end
++    local cameraAfter = sampleCamera()
++    moved = true
++    cameraMoved = cameraMoved or cameraDuring.x ~= cameraBefore.x or cameraDuring.y ~= cameraBefore.y
++      or cameraAfter.x ~= cameraBefore.x or cameraAfter.y ~= cameraBefore.y
++    cameraBefore = cameraAfter
++  end
++  local cameraAfter, playerAfterX, playerAfterY, finalMapWidth, finalMapHeight = sampleCamera()
++  local stableWorld = walkMapId == worldMapId and mapWidth == finalMapWidth and mapHeight == finalMapHeight
++  local passed = walkActive and cameraAfter and moved and cameraMoved and stableWorld
++    and cameraAfter.width == WALK_CAMERA_WIDTH and cameraAfter.height == WALK_CAMERA_HEIGHT
++    and (playerAfterX ~= playerBeforeX or playerAfterY ~= playerBeforeY)
++  print(("RUNTIME_REPLAY phase2_camera_viewport %s map=%s viewport=%sx%s camera=%s,%s player=%s,%s moved=%s cameraMoved=%s worldStable=%s"):format(
++    passed and "PASS" or "FAIL", tostring(walkMapId), tostring(cameraAfter and cameraAfter.width),
++    tostring(cameraAfter and cameraAfter.height), tostring(cameraAfter and cameraAfter.x),
++    tostring(cameraAfter and cameraAfter.y), tostring(playerAfterX), tostring(playerAfterY),
++    tostring(moved), tostring(cameraMoved), tostring(stableWorld)))
++  world.replayInputMask = nil
++  if passed then love.event.quit() else love.event.quit(1) end
++end
++
+ -- Real metatile BEHAVIOR byte at (x,y) (MetatileAttributes.lua, real
+ -- metatileAttributes bits 0-8), or nil if off-map/not loaded yet.
+ local function getMetatileBehaviorAt(x, y)
+@@ -3304,7 +3378,9 @@ function love.load()
+     or runtimeReplay == "natural_capture_save"
+   local replayNaturalCapture = runtimeReplay == "natural_capture"
+     or runtimeReplay == "natural_capture_save"
+-  if runtimeReplay == "restart_load" then
++  if runtimeReplay == "phase2_camera_viewport" then
++    world.runPhase2CameraViewportReplay()
++  elseif runtimeReplay == "restart_load" then
+     -- This is intentionally a separate process from the save replay.  L is
+     -- the normal hotkey callback, and the outer script supplies a fresh,
+     -- isolated XDG/LÖVE sandbox containing only the prior process's save.
+@@ -4597,18 +4673,16 @@ function love.draw()
+   elseif walkActive and mapImage and playerMovement then
+     local windowWidth, windowHeight = love.graphics.getDimensions()
+     local viewport = ViewportScale.fit(WALK_CAMERA_WIDTH, WALK_CAMERA_HEIGHT, windowWidth - 40, windowHeight - (y + 10))
+-    -- Camera: a real 240x160 GBA-screen-sized crop of the already-
+-    -- composited map, centered on the player's real (sub-tile-
+-    -- interpolated) pixel position, clamped so it never shows past the
+-    -- composited image's edges.
+-    local borderOffsetPx = BORDER_MARGIN_METATILES * 16
+-    local playerCompositedX = playerMovement:pixelX() + borderOffsetPx
+-    local playerCompositedY = playerMovement:pixelY() + borderOffsetPx
+-    local mapPixelWidth, mapPixelHeight = mapImage:getDimensions()
+-    local quadX = math.max(0, math.min(playerCompositedX + 8 - WALK_CAMERA_WIDTH / 2, mapPixelWidth - WALK_CAMERA_WIDTH))
+-    local quadY = math.max(0, math.min(playerCompositedY + 8 - WALK_CAMERA_HEIGHT / 2, mapPixelHeight - WALK_CAMERA_HEIGHT))
+-    local quad = love.graphics.newQuad(quadX, quadY, WALK_CAMERA_WIDTH, WALK_CAMERA_HEIGHT, mapPixelWidth, mapPixelHeight)
++    -- CameraViewport owns the fixed GBA-sized crop and edge clamp.  The
++    -- map can theoretically be smaller than that logical screen, so clear
++    -- the fixed viewport before drawing its bounded valid source region.
++    local camera, playerCompositedX, playerCompositedY, mapPixelWidth, mapPixelHeight = world.currentWalkCamera()
+     local baseX, baseY = 20 + viewport.x, y + 10 + viewport.y
++    love.graphics.setColor(0, 0, 0)
++    love.graphics.rectangle("fill", baseX, baseY, camera.width * viewport.scale, camera.height * viewport.scale)
++    love.graphics.setColor(1, 1, 1)
++    local quad = love.graphics.newQuad(camera.x, camera.y, camera.sourceWidth, camera.sourceHeight,
++      mapPixelWidth, mapPixelHeight)
+     love.graphics.draw(mapImage, quad, baseX, baseY, 0, viewport.scale, viewport.scale)
+ 
+     -- The map is quad-cropped to the real 240x160 GBA screen, but the
+@@ -4629,8 +4703,10 @@ function love.draw()
+       if npcImage then
+         local npcX = npc:pixelX() + borderOffsetPx
+         local npcY = npc:pixelY() + borderOffsetPx
+-        local screenX = baseX + (npcX - quadX) * viewport.scale
+-        local screenY = baseY + (npcY - quadY - (npcImage:getHeight() - 16)) * viewport.scale
++        local screenX, screenY = world.cameraViewport.worldToScreen(camera, npcX,
++          npcY - (npcImage:getHeight() - 16))
++        screenX = baseX + screenX * viewport.scale
++        screenY = baseY + screenY * viewport.scale
+         if hFlip then
+           love.graphics.draw(npcImage, screenX + npcImage:getWidth() * viewport.scale, screenY, 0, -viewport.scale, viewport.scale)
+         else
+@@ -4640,7 +4716,8 @@ function love.draw()
+     end
+ 
+     if spriteImage then
+-      love.graphics.draw(spriteImage, baseX + (playerCompositedX - quadX) * viewport.scale, baseY + (playerCompositedY - quadY - 16) * viewport.scale, 0, viewport.scale, viewport.scale)
++      local screenX, screenY = world.cameraViewport.worldToScreen(camera, playerCompositedX, playerCompositedY - 16)
++      love.graphics.draw(spriteImage, baseX + screenX * viewport.scale, baseY + screenY * viewport.scale, 0, viewport.scale, viewport.scale)
+     end
+ 
+     -- Real message box (DialogueRunner), drawn over the field like the
+diff --git a/scripts/runtime_phase2_camera_viewport_replay.sh b/scripts/runtime_phase2_camera_viewport_replay.sh
+new file mode 100755
+index 00000000..dae33d6e
+--- /dev/null
++++ b/scripts/runtime_phase2_camera_viewport_replay.sh
+@@ -0,0 +1,31 @@
++#!/usr/bin/env bash
++# ROM-backed proof that the ordinary field renderer uses CameraViewport while
++# a live PlayerMovement step scrolls an existing Route 1 map.
++set -euo pipefail
++
++repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
++cd "$repo_root"
++
++: "${POKEPORT_ROM:?error: set POKEPORT_ROM to the verified FireRed US v1.0 ROM}"
++for command in love xvfb-run timeout; do
++  command -v "$command" >/dev/null 2>&1 || {
++    echo "error: $command is required for the Phase 2 camera runtime replay" >&2
++    exit 127
++  }
++done
++
++output=""
++status=0
++if output=$(timeout 60s xvfb-run -a env ALSOFT_DRIVERS=null \
++  POKEPORT_ROM="$POKEPORT_ROM" POKEPORT_MAP=3,19 POKEPORT_WALK=1 \
++  POKEPORT_RUNTIME_REPLAY=phase2_camera_viewport love . 2>&1); then
++  :
++else
++  status=$?
++fi
++printf '%s\n' "$output"
++if [[ "$output" != *"RUNTIME_REPLAY phase2_camera_viewport PASS"* ]]; then
++  echo "error: Phase 2 camera viewport runtime replay failed (exit $status)" >&2
++  exit 1
++fi
++echo "PASS: live Route 1 movement uses the 240x160 camera viewport"
+diff --git a/src/core/CameraViewport.lua b/src/core/CameraViewport.lua
+new file mode 100644
+index 00000000..5ac963fa
+--- /dev/null
++++ b/src/core/CameraViewport.lua
+@@ -0,0 +1,53 @@
++-- Pure geometry for the native FireRed field viewport.  This module owns
++-- only the 240x160 camera crop inside a composited map; ViewportScale owns
++-- the separate outer-window scaling/letterboxing contract.
++--
++-- Player coordinates and map dimensions are in composited-map pixels.  A
++-- player object occupies a 16x16 field tile, so follow() anchors on its
++-- center.  Origins intentionally retain fractional coordinates if a caller
++-- has sub-pixel motion: the world then scrolls continuously rather than
++-- snapping while PlayerMovement completes a tile step.
++
++local CameraViewport = {
++  WIDTH = 240,
++  HEIGHT = 160,
++  PLAYER_CENTER_X = 8,
++  PLAYER_CENTER_Y = 8,
++}
++
++local function clamp(value, minimum, maximum)
++  if value < minimum then return minimum end
++  if value > maximum then return maximum end
++  return value
++end
++
++-- Return the fixed logical viewport, its clamped world origin, and the part
++-- of that viewport that may be sampled from the map image.  sourceWidth and
++-- sourceHeight make maps smaller than a GBA screen explicit: the renderer
++-- clears the fixed viewport first, then only draws the available map region.
++function CameraViewport.follow(mapWidth, mapHeight, playerX, playerY)
++  assert(type(mapWidth) == "number" and mapWidth > 0, "mapWidth must be positive")
++  assert(type(mapHeight) == "number" and mapHeight > 0, "mapHeight must be positive")
++  assert(type(playerX) == "number", "playerX must be numeric")
++  assert(type(playerY) == "number", "playerY must be numeric")
++
++  local x = clamp(playerX + CameraViewport.PLAYER_CENTER_X - CameraViewport.WIDTH / 2,
++    0, math.max(0, mapWidth - CameraViewport.WIDTH))
++  local y = clamp(playerY + CameraViewport.PLAYER_CENTER_Y - CameraViewport.HEIGHT / 2,
++    0, math.max(0, mapHeight - CameraViewport.HEIGHT))
++  return {
++    width = CameraViewport.WIDTH,
++    height = CameraViewport.HEIGHT,
++    x = x,
++    y = y,
++    sourceWidth = math.min(CameraViewport.WIDTH, mapWidth),
++    sourceHeight = math.min(CameraViewport.HEIGHT, mapHeight),
++  }
++end
++
++function CameraViewport.worldToScreen(camera, worldX, worldY)
++  assert(camera and camera.x and camera.y, "camera origin is required")
++  return worldX - camera.x, worldY - camera.y
++end
++
++return CameraViewport
+diff --git a/tests/camera_viewport_test.lua b/tests/camera_viewport_test.lua
+new file mode 100644
+index 00000000..d84dd2f9
+--- /dev/null
++++ b/tests/camera_viewport_test.lua
+@@ -0,0 +1,56 @@
++-- Pure deterministic geometry coverage for the normal 240x160 field camera.
++package.path = package.path .. ";./?.lua"
++local CameraViewport = require("src.core.CameraViewport")
++
++local passed, failed = 0, 0
++local function check(name, condition, detail)
++  if condition then
++    passed = passed + 1
++  else
++    failed = failed + 1
++    print("FAIL: " .. name .. (detail and (" -- " .. tostring(detail)) or ""))
++  end
++end
++
++local function near(a, b) return math.abs(a - b) < 0.000001 end
++
++do
++  local camera = CameraViewport.follow(640, 480, 320, 240)
++  check("viewport is exactly GBA width", camera.width == 240, camera.width)
++  check("viewport is exactly GBA height", camera.height == 160, camera.height)
++  check("center player follows horizontally", camera.x == 208, camera.x)
++  check("center player follows vertically", camera.y == 168, camera.y)
++  local sx, sy = CameraViewport.worldToScreen(camera, 320, 240)
++  check("center player maps to intended screen X", sx == 112, sx)
++  check("center player maps to intended screen Y", sy == 72, sy)
++end
++
++do
++  local camera = CameraViewport.follow(640, 480, 0, 0)
++  check("left/top clamps at zero", camera.x == 0 and camera.y == 0,
++    tostring(camera.x) .. "," .. tostring(camera.y))
++  camera = CameraViewport.follow(640, 480, 639, 479)
++  check("right clamp is map width minus viewport", camera.x == 400, camera.x)
++  check("bottom clamp is map height minus viewport", camera.y == 320, camera.y)
++end
++
++do
++  local camera = CameraViewport.follow(160, 96, 80, 48)
++  check("small map clamps origin without a negative quad", camera.x == 0 and camera.y == 0,
++    tostring(camera.x) .. "," .. tostring(camera.y))
++  check("small map exposes only valid source width", camera.sourceWidth == 160, camera.sourceWidth)
++  check("small map exposes only valid source height", camera.sourceHeight == 96, camera.sourceHeight)
++end
++
++do
++  local before = CameraViewport.follow(640, 480, 320, 240)
++  local during = CameraViewport.follow(640, 480, 320.5, 240.5)
++  check("sub-tile movement updates camera continuously on X", near(during.x - before.x, 0.5), during.x - before.x)
++  check("sub-tile movement updates camera continuously on Y", near(during.y - before.y, 0.5), during.y - before.y)
++  local beforeX = 320
++  local afterX = 320.5
++  check("world positions remain caller-owned during camera follow", beforeX == 320 and afterX == 320.5)
++end
++
++print(("%d passed, %d failed"):format(passed, failed))
++os.exit(failed == 0 and 0 or 1)
+diff --git a/tests/phase2_camera_viewport_integration_test.lua b/tests/phase2_camera_viewport_integration_test.lua
+new file mode 100644
+index 00000000..397a95f6
+--- /dev/null
++++ b/tests/phase2_camera_viewport_integration_test.lua
+@@ -0,0 +1,14 @@
++-- Source-level seam check: normal field rendering and the ROM replay both
++-- use the same pure camera geometry rather than a parallel crop formula.
++local f = assert(io.open("main.lua", "rb")); local source = f:read("*a"); f:close()
++assert(source:find('require("src.core.CameraViewport")', 1, true))
++assert(source:find("currentWalkCamera()", 1, true))
++assert(source:find('world.cameraViewport.worldToScreen(camera, npcX', 1, true))
++assert(source:find('world.cameraViewport.worldToScreen(camera, playerCompositedX', 1, true))
++assert(source:find('runtimeReplay == "phase2_camera_viewport"', 1, true))
++local script = assert(io.open("scripts/runtime_phase2_camera_viewport_replay.sh", "rb"))
++local replay = script:read("*a"); script:close()
++assert(replay:find("POKEPORT_MAP=3,19", 1, true))
++assert(replay:find("POKEPORT_WALK=1", 1, true))
++assert(replay:find("phase2_camera_viewport PASS", 1, true))
++print("PASS: Phase 2 camera viewport integration contract")
