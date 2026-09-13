@@ -5,35 +5,33 @@
   "status": "READY_FOR_WORKER",
   "current_phase": "Phase 2 — rendering, input, and scene runtime",
   "canonical_status_owner": "work/roadmaps/CAPABILITY_CHECKLIST.md",
-  "active_task": "work/tasks/phase2-gba-camera-viewport-proof.md",
-  "objective": "Implement and independently verify the bounded true-240x160 live overworld camera viewport without changing world simulation or outer-window scaling.",
+  "active_task": "work/tasks/local-worker-bridge-phase2-camera-integration-test-route.md",
+  "objective": "Correct the explicit camera bridge route so it validates, runs, and stages both independently reviewed focused camera tests before publishing the camera patch.",
   "next_role": "WORKER",
   "reconciliation": {
     "phase3_result": "DONE — continuous runtime exit replay independently passed at 4f4f29ec",
     "canonical_phase3_status": "DONE",
     "next_canonical_gate": "Phase 2 true 240x160 camera viewport, then Oak/reference screenshot parity",
     "camera_task": "work/tasks/phase2-gba-camera-viewport-proof.md",
-    "camera_task_status": "READY FOR WORKER",
+    "camera_task_status": "READY FOR WORKER — publication held for exact route correction",
     "bridge_prerequisite": "CLOSED — REVIEWED PASS at 27867add; trusted probe run 34735602055",
     "task_status_drift_corrected": "The camera task header still said BLOCKED ON BRIDGE ROUTE after the prerequisite PASS; corrected to READY FOR WORKER without changing implementation scope or acceptance.",
     "canonical_status_change_this_turn": false
   },
   "active_task_acceptance_summary": [
-    "Use a true logical 240x160 viewport for normal overworld rendering while preserving world simulation and outer ViewportScale behavior.",
-    "Prove pure geometry, live movement/clamping behavior, at least one ROM-backed runtime observation, both full suites, and independent review.",
-    "Do not claim Oak/reference parity or modify broader presentation behavior."
+    "Add only tests/phase2_camera_viewport_integration_test.lua to the exact Phase 2 camera bridge allowlist, focused commands, and explicit staging.",
+    "Preserve every existing route and security invariant; no camera or gameplay files may change.",
+    "Independent review is required before submitting the already-reviewed camera patch request."
   ],
   "boundaries": {
     "may_change": [
-      "src/core/CameraViewport.lua",
-      "main.lua camera integration only",
-      "tests/camera_viewport_test.lua",
-      "scripts/runtime_camera_viewport_replay.sh if needed",
+      ".github/workflows/local-worker-bridge.yml",
+      "work/coordination/LOCAL_RUNNER_BRIDGE.md if needed",
       "task / coordination / review documentation"
     ],
     "must_not_change": [
-      "map movement, collision, story, battle, save, or world simulation",
-      "outer ViewportScale semantics",
+      "camera/gameplay/runtime implementation or tests",
+      "trusted-main-only/no-public-PR policy, ROM gate, or explicit fail-closed routing",
       "public-PR execution policy",
       "supported-ROM policy or exact ROM SHA gate",
       "ROM/cache/BIOS/reference screenshots/extracted content",
@@ -42,7 +40,7 @@
     ]
   },
   "blocker": null,
-  "next_after_success": "After independent PASS on the camera implementation, scope and dispatch the remaining Oak/reference screenshot parity leaf; do not mark Phase 2 DONE before both exit components are proven.",
+  "next_after_success": "After independent PASS, submit the already-reviewed camera patch through the corrected route, then reconcile its guarded-runner evidence before scoping Oak/reference parity.",
   "legal_content_boundary": "Never commit ROMs, BIOS dumps, generated caches, ROM-derived reference screenshots, extracted game assets, or other prohibited content.",
   "phase_completion_rule": "Phase 2 remains IN PROGRESS until the true 240x160 camera viewport and the Oak/reference screenshot discrepancy gate are both evidenced and independently reviewed."
 }

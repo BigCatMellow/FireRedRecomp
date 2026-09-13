@@ -7,7 +7,7 @@
 - Authority: coordination state only; root `AGENTS.md` and active task contracts own authority
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
 - Completed prerequisite: [`../tasks/local-worker-bridge-phase2-camera-route.md`](../tasks/local-worker-bridge-phase2-camera-route.md)
-- Active package: [`../tasks/phase2-gba-camera-viewport-proof.md`](../tasks/phase2-gba-camera-viewport-proof.md)
+- Active route correction: [`../tasks/local-worker-bridge-phase2-camera-integration-test-route.md`](../tasks/local-worker-bridge-phase2-camera-integration-test-route.md)
 - Machine state: [`STATE.json`](STATE.json)
 
 ## Summary
@@ -22,41 +22,42 @@ said `BLOCKED ON BRIDGE ROUTE` even though that prerequisite had already passed.
 The task now explicitly says `READY FOR WORKER`; its implementation scope,
 acceptance criteria, and safety boundaries are unchanged.
 
-The sole active Worker package is the true 240×160 overworld camera viewport
-proof. It must turn the existing inline crop into tested, deterministic camera
-geometry and prove normal runtime behavior; it may not change world simulation,
-outer window scaling, Oak presentation, or reference-parity scope.
+The camera implementation at `ab8bdc71` passed independent local review, focused
+tests, both 125-file suites, and a ROM-backed Route 1 replay. Before it is sent to
+the guarded bridge, one narrow route correction must add its second focused
+integration test to the hard-coded allowlist, command, and publish staging. This
+prevents silently omitting evidence merely to fit a stale route.
 
 ## Active Worker package
 
-Execute only `work/tasks/phase2-gba-camera-viewport-proof.md`.
+Execute only `work/tasks/local-worker-bridge-phase2-camera-integration-test-route.md`.
 
 Required result:
 
 ```text
-normal live overworld
-→ logical 240×160 viewport
-→ continuous live-player camera follow
-→ deterministic edge/small-map clamp
-→ map/player/NPC/overlay alignment
-→ existing outer letterbox/scaling unchanged
+exact integration-test path
+→ hard-coded route validation
+→ explicit focused command
+→ explicit publish staging
+→ all prior bridge guardrails unchanged
 ```
 
-Require focused geometry and integration/runtime evidence, full no-ROM and
-verified-ROM suites, and independent review before changing any parent status.
+Require static/no-ROM evidence and independent review. Then submit the unchanged
+`ab8bdc71` camera package through the corrected route for guarded focused/full/
+verified-ROM/runtime evidence.
 
 ## Boundaries
 
-May change only the camera module/integration, focused test and optional runtime
-probe, plus task/coordination/review documentation. Must not change movement,
+May change only the bridge workflow/procedure and task/coordination/review
+documentation. Must not change camera/gameplay implementation or tests, movement,
 collision, story, battle, save, world simulation, `ViewportScale` semantics,
 Oak/title presentation, ROM policy, or prohibited content.
 
 ## Next after independent PASS
 
-Reconcile the camera leaf, then scope the remaining Oak/reference screenshot
-parity task from trustworthy external reference evidence. Do not mark Phase 2
-`DONE` before that second leaf is independently reviewed.
+Publish and reconcile the camera leaf, then scope the remaining Oak/reference
+screenshot parity task from trustworthy external reference evidence. Do not mark
+Phase 2 `DONE` before that second leaf is independently reviewed.
 
 ## Goal-continuity commitment
 
