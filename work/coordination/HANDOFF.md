@@ -104,3 +104,20 @@ No ROM-derived reference screenshots or extracted assets may be committed.
 ## Continuous-improvement check
 
 The previous two large-file task transitions hit the same guarded-bridge routing prerequisite. That is intentional fail-closed security behavior, not a reason to make the bridge generic. This turn anticipates the known dependency by defining the implementation task first and dispatching its explicit route prerequisite immediately, avoiding another wasted Worker turn while preserving the same security boundary.
+
+## Goal-continuity commitment
+
+The active coordinating goal is intentionally broader than the current bridge
+leaf. The Orchestrator continues autonomously through this chain without routine
+user check-ins:
+
+```text
+camera bridge route → independent bridge review → camera viewport implementation
+→ required evidence and independent review → canonical reconciliation
+→ Oak/reference parity task scoping and dispatch
+```
+
+Only a genuine authority/safety boundary, a failed required evidence gate, or a
+missing external retail-reference input may interrupt that chain. On such an
+interruption, record the first exact blocker and preserve the current bounded
+task; do not silently substitute a smaller goal or wait for a routine approval.
