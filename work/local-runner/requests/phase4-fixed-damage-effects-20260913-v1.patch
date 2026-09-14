@@ -1,0 +1,351 @@
+diff --git a/scripts/runtime_phase4_fixed_damage_replay.sh b/scripts/runtime_phase4_fixed_damage_replay.sh
+new file mode 100755
+index 00000000..29e35712
+--- /dev/null
++++ b/scripts/runtime_phase4_fixed_damage_replay.sh
+@@ -0,0 +1,10 @@
++#!/usr/bin/env bash
++set -euo pipefail
++
++ROOT=$(cd "$(dirname "$0")/.." && pwd)
++cd "$ROOT"
++: "${POKEPORT_ROM:?set POKEPORT_ROM to verified FireRed US v1.0}"
++
++lua5.1 tests/battle_engine_test.lua
++lua5.1 tests/phase4_fixed_damage_effect_rom_test.lua
++echo "RUNTIME_REPLAY phase4_fixed_damage PASS dragon-rage=40 level=attacker-level sonicboom=20 immunity=true no-crit-random=true nikolas204=true"
+diff --git a/src/core/BattleEngine.lua b/src/core/BattleEngine.lua
+index 3ab40acf..c722d115 100644
+--- a/src/core/BattleEngine.lua
++++ b/src/core/BattleEngine.lua
+@@ -562,6 +562,20 @@ BattleEngine.DRAIN_MOVES = {
+   [3] = { divisor = 2 }, -- EFFECT_ABSORB (Absorb, Mega Drain, Giga Drain, Leech Life)
+ }
+ 
++-- The three bounded fixed-damage effects. Their real scripts still run the
++-- ordinary accuracycheck -> ppreduce -> typecalc path, so type immunity is
++-- meaningful, but they do not enter Cmd_critcalc or adjustnormaldamage:
++-- Dragon Rage always deals 40 HP, SonicBoom always deals 20 HP, and the
++-- level-damage family (Night Shade / Seismic Toss) deals the attacker's
++-- level. TypeCalc's nonzero multipliers only set presentation result bits
++-- for ordinary damage; these scripts clear those bits and retain their fixed
++-- amount, while its zero multiplier still prevents HP loss.
++BattleEngine.FIXED_DAMAGE_MOVES = {
++  [41] = { amount = 40 },       -- EFFECT_DRAGON_RAGE
++  [87] = { amount = "level" },  -- EFFECT_LEVEL_DAMAGE
++  [130] = { amount = 20 },      -- EFFECT_SONICBOOM
++}
++
+ -- The real multi-hit family: a single move selection that hits the
+ -- defender multiple times in one turn. Real BattleScript_EffectMultiHit /
+ -- BattleScript_EffectDoubleHit (data/battle_scripts_1.s): attackcanceler ->
+@@ -891,6 +905,28 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
+     return
+   end
+ 
++  -- These scripts deliberately bypass critcalc/damagecalc/adjustnormaldamage
++  -- after the shared accuracy and PP work above. They nevertheless execute
++  -- the real typecalc route so immunity retains its normal no-effect result.
++  -- A nonzero effectiveness multiplier must not change a fixed amount or
++  -- produce effectiveness presentation; only zero is behaviorally relevant.
++  local fixedDamageEntry = BattleEngine.FIXED_DAMAGE_MOVES[move.effect]
++  if fixedDamageEntry then
++    local fixedDamage = fixedDamageEntry.amount == "level"
++      and attacker.level or fixedDamageEntry.amount
++    local _, flags = BattleFormulas.typeCalc(
++      fixedDamage, move.type, attacker.types, defender.types, self.typeChart
++    )
++    if flags.noEffect then
++      events[#events + 1] = { type = "noEffect", side = attackerSide, target = defenderSide }
++      return
++    end
++    flags.superEffective = false
++    flags.notVeryEffective = false
++    self:applyDamage(attackerSide, defenderSide, defender, fixedDamage, flags, events)
++    return
++  end
++
+   -- 3. critcalc (one Random()). Cmd_critcalc evaluates Random before its
+   -- FIRST_BATTLE flag check, so the roll is still consumed while criticals
+   -- are suppressed. Suppression is global until the first player damage
+diff --git a/tests/battle_engine_test.lua b/tests/battle_engine_test.lua
+index ff84f2c4..555ce6e5 100644
+--- a/tests/battle_engine_test.lua
++++ b/tests/battle_engine_test.lua
+@@ -88,6 +88,68 @@ events = battle:runTurn({ action = "move", moveSlot = 1 }, { action = "move", mo
+ check("type immunity emits noEffect and leaves HP unchanged", events[3].type == "noEffect" and battle.foe.hp == charStats.hp)
+ check("type immunity still consumes real random-damage RNG", battle.rng.draws == 6, battle.rng.draws)
+ 
++-- Fixed-damage scripts share accuracy/PP/typecalc, but deliberately do not
++-- call critcalc or adjustnormaldamage. Keep their test-only move records
++-- private so battle_test_data.lua remains a verbatim retail transcription.
++local fixedMoves = {}
++for k, v in pairs(Data.moves) do fixedMoves[k] = v end
++fixedMoves[990] = { effect = 41, power = 1, type = Data.TYPE_DRAGON, accuracy = 100, pp = 10, priority = 0 }
++fixedMoves[991] = { effect = 87, power = 1, type = Data.TYPE_GHOST, accuracy = 100, pp = 15, priority = 0 }
++fixedMoves[992] = { effect = 130, power = 1, type = Data.TYPE_NORMAL, accuracy = 90, pp = 20, priority = 0 }
++local function fixedBattle(moveId, playerTypes, foeTypes, playerLevel, foeHP, values)
++  return BattleEngine.new({
++    player = BattleEngine.makeBattler({ species = 1, level = playerLevel or 5,
++      stats = bulbaStats, types = playerTypes, moves = { { move = moveId, pp = fixedMoves[moveId].pp } } }),
++    foe = BattleEngine.makeBattler({ species = 4, level = 5, stats = charStats,
++      hp = foeHP, types = foeTypes, moves = { { move = Data.MOVE_TACKLE, pp = 1 } } }),
++    moves = fixedMoves, typeChart = Data.typeChart, rng = scriptedRng(values or { 0 }),
++  })
++end
++
++battle = fixedBattle(990, { Data.TYPE_DRAGON, Data.TYPE_DRAGON },
++  { Data.TYPE_DRAGON, Data.TYPE_DRAGON }, 5, 99, { 0 })
++events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
++check("Dragon Rage deals fixed 40 through a super-effective typecalc", events[2].type == "damage"
++  and events[2].amount == 40 and events[2].hpRemaining == 59, events[2] and events[2].amount)
++check("Dragon Rage suppresses effectiveness and skips crit/random RNG", events[2].superEffective == false
++  and events[2].notVeryEffective == false and #events == 2 and battle.rng.draws == 1, battle.rng.draws)
++
++battle = fixedBattle(991, { Data.TYPE_GHOST, Data.TYPE_GHOST },
++  { Data.TYPE_PSYCHIC, Data.TYPE_PSYCHIC }, 37, 99, { 0 })
++events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
++check("level-damage effect uses attacker level, not stats or move power", events[2].type == "damage"
++  and events[2].amount == 37 and events[2].hpRemaining == 62, events[2] and events[2].amount)
++check("level-damage suppresses a super-effective presentation and skips crit/random RNG",
++  events[2].superEffective == false and events[2].notVeryEffective == false and #events == 2 and battle.rng.draws == 1,
++  battle.rng.draws)
++
++battle = fixedBattle(992, { Data.TYPE_NORMAL, Data.TYPE_NORMAL },
++  { Data.TYPE_ROCK, Data.TYPE_ROCK }, 5, 99, { 0 })
++events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
++check("SonicBoom deals fixed 20 through a not-very-effective typecalc", events[2].type == "damage"
++  and events[2].amount == 20 and events[2].hpRemaining == 79, events[2] and events[2].amount)
++check("SonicBoom suppresses not-very-effective presentation and skips crit/random RNG",
++  events[2].superEffective == false and events[2].notVeryEffective == false and #events == 2 and battle.rng.draws == 1,
++  battle.rng.draws)
++
++battle = fixedBattle(992, { Data.TYPE_NORMAL, Data.TYPE_NORMAL },
++  { Data.TYPE_GHOST, Data.TYPE_GHOST }, 5, nil, { 0 })
++events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
++check("SonicBoom type immunity blocks HP loss without crit/random RNG", events[2].type == "noEffect"
++  and battle.foe.hp == charStats.hp and #events == 2 and battle.rng.draws == 1, battle.rng.draws)
++
++battle = fixedBattle(992, { Data.TYPE_NORMAL, Data.TYPE_NORMAL },
++  { Data.TYPE_FIRE, Data.TYPE_FIRE }, 5, nil, { 90 })
++events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
++check("fixed-damage miss spends PP but only accuracy RNG", events[2].type == "miss"
++  and battle.player.moves[1].pp == 19 and battle.rng.draws == 1, battle.rng.draws)
++
++battle = fixedBattle(992, { Data.TYPE_NORMAL, Data.TYPE_NORMAL },
++  { Data.TYPE_FIRE, Data.TYPE_FIRE }, 5, 15, { 0 })
++events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
++check("fixed damage clamps through ordinary HP application", events[2].type == "damage"
++  and events[2].amount == 15 and events[2].hpRemaining == 0, events[2] and events[2].amount)
++
+ -- A run action is hoisted ahead of any foe move. At equal-or-better speed
+ -- it succeeds with no RNG, so the foe never spends PP or attacks.
+ battle = makeBattle({}, { { move = Data.MOVE_TACKLE, pp = 1 } }, { { move = Data.MOVE_EMBER, pp = 1 } })
+diff --git a/tests/phase4_fixed_damage_effect_rom_test.lua b/tests/phase4_fixed_damage_effect_rom_test.lua
+new file mode 100644
+index 00000000..82eeb972
+--- /dev/null
++++ b/tests/phase4_fixed_damage_effect_rom_test.lua
+@@ -0,0 +1,106 @@
++-- Run: POKEPORT_ROM=/path/to/verified/pokefirered.gba lua5.1 tests/phase4_fixed_damage_effect_rom_test.lua
++--
++-- Ground the fixed-damage effect ids and the live-eligible NIKOLAS fixture
++-- directly in the supported FireRed US v1.0 ROM, then drive the pure engine
++-- with that parsed SonicBoom record. No ROM content is written or retained.
++package.path = package.path .. ";./?.lua"
++
++local BattleEngine = require("src.core.BattleEngine")
++local BattleMove = require("import.BattleMove")
++local Charmap = require("import.Charmap")
++local PokemonStats = require("src.core.PokemonStats")
++local RomAddresses = require("import.RomAddresses")
++local RomImporter = require("import.RomImporter")
++local SpeciesInfo = require("import.SpeciesInfo")
++local Trainer = require("import.Trainer")
++local TrainerParty = require("import.TrainerParty")
++local TypeChart = require("import.TypeChart")
++
++local path = os.getenv("POKEPORT_ROM")
++if not path then
++  print("SKIP phase4_fixed_damage_effect_rom_test (set POKEPORT_ROM)")
++  os.exit(0)
++end
++
++local ok, info = RomImporter.verify(path)
++if not ok then
++  print("FAIL: ROM verification -- " .. tostring(info))
++  os.exit(1)
++end
++local f = assert(io.open(path, "rb"))
++local rom = f:read("*a")
++f:close()
++local addrs = assert(RomAddresses["41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc"])
++
++local passed, failed = 0, 0
++local function check(name, condition, detail)
++  if condition then
++    passed = passed + 1
++  else
++    failed = failed + 1
++    print("FAIL: " .. name .. (detail and (" -- " .. tostring(detail)) or ""))
++  end
++end
++
++local moves = BattleMove.parseTable(rom, addrs.gBattleMoves, RomAddresses.COUNTS.MOVES_COUNT)
++local species = SpeciesInfo.parseTable(rom, addrs.gSpeciesInfo, RomAddresses.COUNTS.NUM_SPECIES)
++local trainers = Trainer.parseTable(rom, addrs.gTrainers, RomAddresses.COUNTS.NUM_TRAINERS)
++local typeChart = TypeChart.parseTable(rom, addrs.gTypeEffectiveness)
++
++-- Exact current ROM records: Dragon Rage #82, Night Shade #101 and
++-- Seismic Toss #69 share the requested effect families, while SonicBoom #49
++-- is the runnable trainer fixture below.
++check("ROM fixed-damage move records retain effect, power, accuracy and PP",
++  moves[82].effect == 41 and moves[82].power == 1 and moves[82].type == 16
++    and moves[82].accuracy == 100 and moves[82].pp == 10
++    and moves[101].effect == 87 and moves[101].power == 1 and moves[101].type == 7
++    and moves[101].accuracy == 100 and moves[101].pp == 15
++    and moves[69].effect == 87 and moves[69].power == 1 and moves[69].type == 1
++    and moves[69].accuracy == 100 and moves[69].pp == 20
++    and moves[49].effect == 130 and moves[49].power == 1 and moves[49].type == 0
++    and moves[49].accuracy == 90 and moves[49].pp == 20)
++
++local nikolas = trainers[204]
++local nikolasParty = TrainerParty.resolve(nikolas, rom)
++local first, second = nikolasParty[0], nikolasParty[1]
++check("ROM trainer #204 is NIKOLAS with two no-item custom-moves Voltorb",
++  Charmap.decode(nikolas.rawName) == "NIKOLAS" and nikolas.partyFlags == 1
++    and nikolas.partySize == 2 and first.species == 100 and first.lvl == 29
++    and second.species == 100 and second.lvl == 29)
++check("NIKOLAS custom move slots expose SonicBoom in both live-eligible foes",
++  first.moves[0] == 209 and first.moves[1] == 49 and first.moves[2] == 103 and first.moves[3] == 268
++    and second.moves[0] == 209 and second.moves[1] == 49 and second.moves[2] == 103 and second.moves[3] == 268)
++
++local function scriptedRng(values)
++  return {
++    draws = 0,
++    next16 = function(self)
++      self.draws = self.draws + 1
++      return values[self.draws] or 0
++    end,
++  }
++end
++local zero = { hp = 0, attack = 0, defense = 0, speed = 0, spAttack = 0, spDefense = 0 }
++local neutral = { attack = 0, defense = 0, speed = 0, spAttack = 0, spDefense = 0 }
++local playerStats = PokemonStats.calculateAll(species[1], 29, zero, zero, neutral)
++local foeStats = PokemonStats.calculateAll(species[100], 29, zero, zero, neutral)
++local rng = scriptedRng({ 0 }) -- passes SonicBoom's 90% accuracy; a crit would follow if requested.
++local battle = BattleEngine.new({
++  player = BattleEngine.makeBattler({ species = 1, level = 29, stats = playerStats,
++    types = species[1].types, moves = { { move = 33, pp = moves[33].pp } } }),
++  foe = BattleEngine.makeBattler({ species = first.species, level = first.lvl, stats = foeStats,
++    types = species[first.species].types, moves = { { move = first.moves[1], pp = moves[first.moves[1]].pp } } }),
++  moves = moves, typeChart = typeChart, rng = rng,
++})
++local startHP = battle.player.hp
++local events = {}
++battle:resolveMove(BattleEngine.SIDE_FOE, 1, events)
++check("parsed NIKOLAS SonicBoom record drives the engine for fixed 20 damage",
++  events[1].type == "useMove" and events[1].move == 49 and events[2].type == "damage"
++    and events[2].amount == 20 and battle.player.hp == startHP - 20, events[2] and events[2].amount)
++check("parsed SonicBoom path uses only accuracy RNG and no effectiveness presentation",
++  #events == 2 and rng.draws == 1 and events[2].superEffective == false and events[2].notVeryEffective == false,
++  rng.draws)
++
++print(("phase4_fixed_damage_effect_rom_test: %d passed, %d failed"):format(passed, failed))
++os.exit(failed == 0 and 0 or 1)
+diff --git a/work/coordination/HANDOFF.md b/work/coordination/HANDOFF.md
+index d3b6a6a8..75077a64 100644
+--- a/work/coordination/HANDOFF.md
++++ b/work/coordination/HANDOFF.md
+@@ -26,17 +26,19 @@ now independently reviewed and published at `8fd9a397` (guarded run
+ `34783304717`), proving forced PARTY choice, persistence, state sync, and the
+ no-bench loss branch. Next dispatch is Phase 4 battle-rule/trainer-matrix
+ discovery, not an assumption that voluntary switching is complete. Discovery
+-selected trainer-only voluntary switching as the next leaf. Its explicit bridge
+-probe passed; the bounded implementation now awaits independent review. Worker
+-evidence: focused controller 8/8, verified-ROM BEN89 seam 8/8, deterministic
+-runtime replay, and both 134-file no-ROM and verified-ROM suites passed. It
+-opens a selector only for a current legal save-backed bench; cancel/stale and
+-forged choices do not dispatch a turn; a legal choice invokes the existing
+-switch-before-foe engine action and preserves both party records. Do not mark
+-broader player switching or Phase 4 complete from this leaf. Voluntary switching
+-has now published at `3140e267`; the active next route is fixed-damage effects.
+-Held-item trainer layouts remain deferred because battlers do not retain or apply
+-item state.
++selected trainer-only voluntary switching as the next leaf. It is closed and
++published at `3140e267`; it opens a selector only for a current legal
++save-backed bench, rejects cancel/stale/forged choices, invokes the existing
++switch-before-foe engine action, and preserves both party records. Do not mark
++broader player switching or Phase 4 complete from that leaf. The active bounded
++task is fixed-damage effects. Its Worker patch handles Dragon Rage (40), level
++damage (attacker level), and SonicBoom (20) after the existing accuracy/PP/type
++path; type immunity remains a no-effect, while nonzero effectiveness does not
++alter fixed damage or presentation. Focused unit evidence (169 assertions in
++the verified-ROM run) and
++the verified-ROM NIKOLAS #204 fixture (5 assertions) passed locally. It awaits
++only its guarded bridge run and independent review. Held-item trainer layouts
++remain deferred because battlers do not retain or apply item state.
+ 
+ ## Phase 2 resume point
+ 
+diff --git a/work/coordination/STATE.json b/work/coordination/STATE.json
+index 3e85f245..f6c768f2 100644
+--- a/work/coordination/STATE.json
++++ b/work/coordination/STATE.json
+@@ -1,13 +1,13 @@
+ {
+   "schema_version": 1,
+-  "updated_utc": "2026-09-13T15:00:00Z",
+-  "role": "ORCHESTRATOR",
+-  "status": "IMPLEMENTED_PENDING_INDEPENDENT_REVIEW",
++  "updated_utc": "2026-09-13T16:00:00Z",
++  "role": "WORKER",
++  "status": "IMPLEMENTED_PENDING_GUARDED_RUN_AND_INDEPENDENT_REVIEW",
+   "current_phase": "Phase 4 — full Gen 3 battle engine",
+   "canonical_status_owner": "work/roadmaps/CAPABILITY_CHECKLIST.md",
+-  "active_task": "work/tasks/local-worker-bridge-phase4-fixed-damage-effects-route.md",
+-  "objective": "Add and independently review a fail-closed route for bounded Phase 4 fixed-damage move effects while Phase 2 retail comparison remains externally blocked.",
+-  "next_role": "REVIEWER",
++  "active_task": "work/tasks/phase4-fixed-damage-effects.md",
++  "objective": "Guarded-run and independently review bounded Phase 4 Dragon Rage, level-damage, and SonicBoom effects while Phase 2 retail comparison remains externally blocked.",
++  "next_role": "ORCHESTRATOR",
+   "reconciliation": {
+     "camera_task_status": "CLOSED — REVIEWED PASS at 4c5456f3; guarded run 34753297372",
+     "oak_evidence_bridge": "CLOSED — REVIEWED PASS at ff5ff890; trusted probe run 34753855210",
+@@ -17,7 +17,7 @@
+     "phase4_player_forced_replacement_status": "CLOSED — REVIEWED PASS at 8fd9a397; guarded run 34783304717"
+   },
+   "phase2_external_blocker": "Trusted, user-owned retail-reference captures with provenance/timing/crop/filter details for Oak and Pallet anchors have not been supplied.",
+-  "next_after_success": "After independent review and guarded publication, reconcile Phase 4D without treating broader player switching as complete; retain Phase 2 comparison for later external input.",
++  "next_after_success": "Submit only this task-bounded patch through the explicit fixed-damage bridge route, then independently review it; do not treat broader battle-effect or Phase 4 work as complete.",
+   "legal_content_boundary": "Never commit ROMs, BIOS dumps, generated caches, ROM-derived reference screenshots, extracted game assets, or other prohibited content.",
+   "phase_completion_rule": "Phase 2 remains IN PROGRESS until the Oak/reference screenshot discrepancy gate is evidenced and independently reviewed."
+ }
+diff --git a/work/tasks/phase4-fixed-damage-effects.md b/work/tasks/phase4-fixed-damage-effects.md
+index ed6268ff..7317ab02 100644
+--- a/work/tasks/phase4-fixed-damage-effects.md
++++ b/work/tasks/phase4-fixed-damage-effects.md
+@@ -1,6 +1,6 @@
+ # Task: Phase 4 fixed-damage move effects
+ 
+-- Status: `BLOCKED ON BRIDGE ROUTE`
++- Status: `IMPLEMENTED — PENDING GUARDED RUN / INDEPENDENT REVIEW`
+ - Type: `PHASE 4 / BATTLE RULES / BOUNDED IMPLEMENTATION`
+ 
+ ## Goal
+@@ -24,3 +24,15 @@ immunity, no-effect, and HP-application paths; do not generalize the dispatcher.
+ 
+ Status effects, Counter/Psywave/Super Fang/False Swipe, held items, trainer
+ layouts flags 2/3, admission-matrix policy, AI, doubles, UI, or main wiring.
++
++## Worker evidence
++
++The bounded implementation changes only the authorized seven surfaces. It
++routes effects 41 (Dragon Rage), 87 (level damage), and 130 (SonicBoom) after
++accuracy/PP and typecalc: immunity emits the existing noEffect event, while
++nonzero type multipliers do not alter the fixed amount or presentation flags.
++The branch consumes no crit or random-damage roll. Focused unit coverage passed
++169 assertions in the verified-ROM run; the verified-ROM fixture passed 5 assertions against FireRed
++US v1.0, including NIKOLAS #204's two custom SonicBoom slots and a parsed
++SonicBoom engine invocation. This is not a Phase 4 completion claim pending
++the guarded bridge run and independent review.
