@@ -1,0 +1,182 @@
+diff --git a/scripts/runtime_phase4_false_swipe_replay.sh b/scripts/runtime_phase4_false_swipe_replay.sh
+new file mode 100755
+index 00000000..8f903def
+--- /dev/null
++++ b/scripts/runtime_phase4_false_swipe_replay.sh
+@@ -0,0 +1,7 @@
++#!/usr/bin/env bash
++set -euo pipefail
++ROOT=$(cd "$(dirname "$0")/.." && pwd); cd "$ROOT"
++: "${POKEPORT_ROM:?set POKEPORT_ROM to verified FireRed US v1.0}"
++lua5.1 tests/battle_engine_test.lua
++lua5.1 tests/phase4_false_swipe_effect_rom_test.lua
++echo "RUNTIME_REPLAY phase4_false_swipe PASS effect101=true record=206 hp-floor=true rng=three"
+diff --git a/src/core/BattleEngine.lua b/src/core/BattleEngine.lua
+index 511437e1..c487421d 100644
+--- a/src/core/BattleEngine.lua
++++ b/src/core/BattleEngine.lua
+@@ -435,6 +435,10 @@ BattleEngine.EFFECT_DEFENSE_DOWN = 19
+ -- Cmd_critcalc's stage from 0 (1/16) to 1 (1/8). It keeps the same one RNG
+ -- draw and every other ordinary-damage step.
+ BattleEngine.EFFECT_HIGH_CRITICAL = 43
++-- Real EFFECT_FALSE_SWIPE shares the ordinary Hit script, but after final
++-- damage it leaves a living target at one HP instead of allowing a knockout.
++-- Substitute/Endure/Focus Band are separate, unrepresented stateful rules.
++BattleEngine.EFFECT_FALSE_SWIPE = 101
+ -- Real EFFECT_ALWAYS_HIT bypasses Cmd_accuracycheck's random accuracy branch
+ -- entirely (battle_script_commands.c). It is deliberately limited to this
+ -- exact effect; Vital Throw uses a related hardware condition but remains a
+@@ -997,6 +1001,10 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
+     events[#events + 1] = { type = "critical", side = attackerSide }
+   end
+ 
++  if move.effect == BattleEngine.EFFECT_FALSE_SWIPE and damage >= defender.hp then
++    damage = math.max(0, defender.hp - 1)
++  end
++
+   -- 7. datahpupdate: real HP subtraction, floored at 0.
+   damage = self:applyDamage(attackerSide, defenderSide, defender, damage, flags, events)
+ 
+diff --git a/tests/battle_engine_test.lua b/tests/battle_engine_test.lua
+index 4300f7ec..356ce902 100644
+--- a/tests/battle_engine_test.lua
++++ b/tests/battle_engine_test.lua
+@@ -207,6 +207,43 @@ events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
+ check("ordinary effect remains stage zero at the high-critical boundary", events[2].type == "damage"
+   and battle.rng.draws == 3, events[2] and events[2].type)
+ 
++-- EFFECT_FALSE_SWIPE runs the ordinary hit pipeline, then caps only a lethal
++-- final damage result at target HP - 1. Private records preserve retail data.
++local falseSwipeMoves = {}
++for k, v in pairs(Data.moves) do falseSwipeMoves[k] = v end
++falseSwipeMoves[997] = { effect = 101, power = 120, type = Data.TYPE_NORMAL, accuracy = 100, pp = 20, priority = 0 }
++falseSwipeMoves[998] = { effect = 0, power = 120, type = Data.TYPE_NORMAL, accuracy = 100, pp = 20, priority = 0 }
++local function falseSwipeBattle(moveId, foeTypes, foeHP, values)
++  return BattleEngine.new({
++    player = BattleEngine.makeBattler({ species = 1, level = 5, stats = bulbaStats,
++      types = { Data.TYPE_NORMAL, Data.TYPE_NORMAL }, moves = { { move = moveId, pp = 20 } } }),
++    foe = BattleEngine.makeBattler({ species = 4, level = 5, stats = charStats,
++      hp = foeHP, types = foeTypes, moves = { { move = Data.MOVE_TACKLE, pp = 1 } } }),
++    moves = falseSwipeMoves, typeChart = Data.typeChart, rng = scriptedRng(values),
++  })
++end
++
++battle = falseSwipeBattle(997, { Data.TYPE_FIRE, Data.TYPE_FIRE }, 1, { 0, 15, 0 })
++events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
++check("False Swipe leaves a one-HP target at one HP", events[2].type == "damage"
++  and events[2].amount == 0 and battle.foe.hp == 1 and battle.rng.draws == 3, events[2] and events[2].amount)
++check("False Swipe retains PP and ordinary three-draw hit path", battle.player.moves[1].pp == 19, battle.player.moves[1].pp)
++
++battle = falseSwipeBattle(997, { Data.TYPE_FIRE, Data.TYPE_FIRE }, 99, { 0, 15, 0 })
++events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
++check("False Swipe keeps nonlethal damage unchanged", events[2].type == "damage"
++  and events[2].amount > 0 and battle.foe.hp < 99, events[2] and events[2].amount)
++
++battle = falseSwipeBattle(997, { Data.TYPE_GHOST, Data.TYPE_GHOST }, 1, { 0, 15, 0 })
++events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
++check("False Swipe preserves type immunity", events[2].type == "noEffect"
++  and battle.foe.hp == 1 and battle.rng.draws == 3, events[2] and events[2].type)
++
++battle = falseSwipeBattle(998, { Data.TYPE_FIRE, Data.TYPE_FIRE }, 1, { 0, 15, 0 })
++events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
++check("ordinary move still faints a one-HP target", events[2].type == "damage"
++  and events[2].amount == 1 and battle.foe.hp == 0, events[2] and events[2].amount)
++
+ battle = alwaysHitBattle(993, { Data.TYPE_GHOST, Data.TYPE_GHOST }, nil, { 0, 0 })
+ events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
+ check("always-hit preserves type immunity after its no-roll accuracy branch", events[2].type == "noEffect"
+diff --git a/tests/phase4_false_swipe_effect_rom_test.lua b/tests/phase4_false_swipe_effect_rom_test.lua
+new file mode 100644
+index 00000000..3e5c6803
+--- /dev/null
++++ b/tests/phase4_false_swipe_effect_rom_test.lua
+@@ -0,0 +1,15 @@
++-- Run: POKEPORT_ROM=/path/to/verified/pokefirered.gba lua5.1 tests/phase4_false_swipe_effect_rom_test.lua
++package.path = package.path .. ";./?.lua"
++local BattleEngine=require("src.core.BattleEngine"); local BattleMove=require("import.BattleMove"); local PokemonStats=require("src.core.PokemonStats"); local RomAddresses=require("import.RomAddresses"); local RomImporter=require("import.RomImporter"); local SpeciesInfo=require("import.SpeciesInfo"); local TypeChart=require("import.TypeChart")
++local path=os.getenv("POKEPORT_ROM"); if not path then print("SKIP phase4_false_swipe_effect_rom_test (set POKEPORT_ROM)"); os.exit(0) end
++local ok,info=RomImporter.verify(path); if not ok then print("FAIL: ROM verification -- "..tostring(info)); os.exit(1) end
++local f=assert(io.open(path,"rb")); local rom=f:read("*a"); f:close(); local addrs=assert(RomAddresses["41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc"])
++local moves=BattleMove.parseTable(rom,addrs.gBattleMoves,RomAddresses.COUNTS.MOVES_COUNT); local species=SpeciesInfo.parseTable(rom,addrs.gSpeciesInfo,RomAddresses.COUNTS.NUM_SPECIES); local typeChart=TypeChart.parseTable(rom,addrs.gTypeEffectiveness)
++local passed,failed=0,0; local function check(n,c,d) if c then passed=passed+1 else failed=failed+1; print("FAIL: "..n..(d and (" -- "..tostring(d)) or "")) end end
++local count=0; for id=1,RomAddresses.COUNTS.MOVES_COUNT-1 do if moves[id].effect==101 and moves[id].power>0 then count=count+1 end end
++local m=moves[206]; check("ROM has only False Swipe as positive-power effect 101", count==1 and m.effect==101 and m.power==40 and m.accuracy==100 and m.pp==40,count)
++local function rng(v) return {draws=0,next16=function(self) self.draws=self.draws+1; return v[self.draws] or 0 end} end
++local zero={hp=0,attack=0,defense=0,speed=0,spAttack=0,spDefense=0}; local neutral={attack=0,defense=0,speed=0,spAttack=0,spDefense=0}; local ps=PokemonStats.calculateAll(species[1],20,zero,zero,neutral); local fs=PokemonStats.calculateAll(species[4],20,zero,zero,neutral); local scripted=rng({0,15,0})
++local battle=BattleEngine.new({player=BattleEngine.makeBattler({species=1,level=20,stats=ps,types=species[1].types,moves={{move=206,pp=m.pp}}}),foe=BattleEngine.makeBattler({species=4,level=20,stats=fs,hp=1,types=species[4].types,moves={{move=33,pp=moves[33].pp}}}),moves=moves,typeChart=typeChart,rng=scripted}); local events={}; battle:resolveMove(BattleEngine.SIDE_PLAYER,1,events)
++check("parsed False Swipe leaves one HP with ordinary three draws", events[2].type=="damage" and events[2].amount==0 and battle.foe.hp==1 and scripted.draws==3,scripted.draws); check("parsed False Swipe deducts PP",battle.player.moves[1].pp==m.pp-1,battle.player.moves[1].pp)
++print(("phase4_false_swipe_effect_rom_test: %d passed, %d failed"):format(passed,failed)); os.exit(failed==0 and 0 or 1)
+diff --git a/work/coordination/HANDOFF.md b/work/coordination/HANDOFF.md
+index c2cabe21..e09da6d1 100644
+--- a/work/coordination/HANDOFF.md
++++ b/work/coordination/HANDOFF.md
+@@ -55,9 +55,11 @@ HP paths. False Swipe discovery is independently reviewed PASS at `f9874ecd`:
+ its one record, #206, is ordinary Hit with a post-formula lethal-damage cap to
+ target HP minus one. It is self-contained in this stateless engine after the
+ existing immunity return and before shared HP application. The active
+-prerequisite is an exact fail-closed route and probe only for effect 101; do
+-not bundle Vital Throw, formulas, or stateful families. Held-item trainer
+-layouts remain deferred because battlers do not retain or apply item state.
++effect-101 route and probe passed. The bounded patch caps only lethal final
++damage at target HP minus one after immunity handling and before shared HP
++application; it is pending guarded execution and independent review. Do not
++bundle Vital Throw, formulas, or stateful families. Held-item trainer layouts
++remain deferred because battlers do not retain or apply item state.
+ 
+ ## Phase 2 resume point
+ 
+diff --git a/work/coordination/STATE.json b/work/coordination/STATE.json
+index c8918282..dcbe65fe 100644
+--- a/work/coordination/STATE.json
++++ b/work/coordination/STATE.json
+@@ -1,13 +1,13 @@
+ {
+   "schema_version": 1,
+-  "updated_utc": "2026-09-14T07:00:00Z",
+-  "role": "ORCHESTRATOR",
+-  "status": "BLOCKED_ON_EXPLICIT_BRIDGE_ROUTE",
++  "updated_utc": "2026-09-14T07:20:00Z",
++  "role": "WORKER",
++  "status": "IMPLEMENTED_PENDING_GUARDED_RUN_AND_INDEPENDENT_REVIEW",
+   "current_phase": "Phase 4 — full Gen 3 battle engine",
+   "canonical_status_owner": "work/roadmaps/CAPABILITY_CHECKLIST.md",
+   "active_task": "work/tasks/phase4-false-swipe-effects.md",
+-  "objective": "Create and independently review an exact fail-closed bridge route for only Phase 4 False Swipe effect 101, while Phase 2 retail comparison remains externally blocked.",
+-  "next_role": "WORKER",
++  "objective": "Guarded-run and independently review only Phase 4 False Swipe effect 101, while Phase 2 retail comparison remains externally blocked.",
++  "next_role": "ORCHESTRATOR",
+   "reconciliation": {
+     "camera_task_status": "CLOSED — REVIEWED PASS at 4c5456f3; guarded run 34753297372",
+     "oak_evidence_bridge": "CLOSED — REVIEWED PASS at ff5ff890; trusted probe run 34753855210",
+@@ -19,7 +19,7 @@
+     "phase4_move_admission_matrix_status": "CLOSED — REVIEWED PASS at 784a5188; six effect-17 accuracy-zero records selected as one next leaf"
+   },
+   "phase2_external_blocker": "Trusted, user-owned retail-reference captures with provenance/timing/crop/filter details for Oak and Pallet anchors have not been supplied.",
+-  "next_after_success": "After route probe and independent review, dispatch only the effect-101 HP-floor task; do not bundle Vital Throw or other fallback families.",
++  "next_after_success": "Submit only this task-bounded effect-101 patch through its explicit bridge route, then independently review it; select the next admission-matrix leaf only after guarded publication.",
+   "legal_content_boundary": "Never commit ROMs, BIOS dumps, generated caches, ROM-derived reference screenshots, extracted game assets, or other prohibited content.",
+   "phase_completion_rule": "Phase 2 remains IN PROGRESS until the Oak/reference screenshot discrepancy gate is evidenced and independently reviewed."
+ }
+diff --git a/work/tasks/phase4-false-swipe-effects.md b/work/tasks/phase4-false-swipe-effects.md
+index 879e1391..305a8ec5 100644
+--- a/work/tasks/phase4-false-swipe-effects.md
++++ b/work/tasks/phase4-false-swipe-effects.md
+@@ -1,6 +1,6 @@
+ # Task: Phase 4 False Swipe effect
+ 
+-- Status: `BLOCKED ON EXPLICIT BRIDGE ROUTE`
++- Status: `IMPLEMENTED — PENDING GUARDED RUN / INDEPENDENT REVIEW`
+ - Type: `PHASE 4 / BATTLE RULES / BOUNDED IMPLEMENTATION`
+ 
+ ## Goal
+@@ -28,3 +28,10 @@ The implementation route may authorize only `src/core/BattleEngine.lua`,
+ `tests/battle_engine_test.lua`, `tests/phase4_false_swipe_effect_rom_test.lua`,
+ `scripts/runtime_phase4_false_swipe_replay.sh`, this task, `STATE.json`, and
+ `HANDOFF.md`. It must remain fail-closed and receive a separate one-file probe.
++
++## Worker evidence
++
++Only effect 101 caps lethal final damage at target HP minus one after immunity
++handling and before shared application. Focused coverage proves HP=1, lethal,
++nonlethal, immunity, PP, and three draws; verified-ROM coverage proves #206.
++This is not a Phase 4 completion claim pending guarded execution and review.
