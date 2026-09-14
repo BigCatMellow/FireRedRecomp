@@ -78,11 +78,14 @@ reviewed PASS at `e7f5d779`: local simultaneous whole-team exhaustion produces
 `B_OUTCOME_DREW`, and the post-action faint handler traverses player battler 0
 then foe battler 1. The active design defines a queue-head-compatible two-sided
 state/API migration, controller handoff, persistence/reward boundaries, and
-loss-equivalent `playerDrew` settlement. No bridge route or Explosion
-implementation is authorized until that design independently passes; its later
-route must be for the state/API migration only. Do not bundle formulas or
-stateful families. Held-item trainer layouts remain deferred because battlers do
-not retain or apply item state.
+loss-equivalent `playerDrew` settlement. The design is independently reviewed
+PASS at `6ac44924`. The active next gate is a separate fail-closed Local Worker
+Bridge route plan for that exact state/API migration, with its literal
+engine/controller/orchestrator/world/test/replay surface fixed before route
+configuration. No Explosion implementation is authorized; after route-plan
+review the route still requires a separate probe before any Worker patch. Do
+not bundle formulas or stateful families. Held-item trainer layouts remain
+deferred because battlers do not retain or apply item state.
 
 ## Phase 2 resume point
 
