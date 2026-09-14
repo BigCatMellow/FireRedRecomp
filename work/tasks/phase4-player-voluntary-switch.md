@@ -1,6 +1,6 @@
 # Task: Phase 4 trainer-only voluntary player switching
 
-- Status: `IMPLEMENTED — PENDING INDEPENDENT REVIEW`
+- Status: `CLOSED — REVIEWED PASS`
 - Type: `PHASE 4 / BATTLE UI / BOUNDED INTEGRATION`
 
 ## Goal
@@ -28,6 +28,13 @@ wild/Oak paths, item UI, or AI policy.
    survive SaveFileCodec roundtrip. Forced replacement remains cancel-proof.
 5. Verified-ROM `startTrainerBattle(89)`, focused/runtime/full-suite/review
    evidence pass.
+
+## Completion evidence
+
+Published `3140e267` after guarded run `34797894161` passed validation,
+focused/no-ROM/verified-ROM suites, real voluntary-switch replay, and
+publication. Independent review verified stale-empty voluntary cancel returns
+ACTION unchanged while forced replacement stays cancel-proof.
 
 ## Worker evidence
 
