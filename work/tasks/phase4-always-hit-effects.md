@@ -1,6 +1,6 @@
 # Task: Phase 4 always-hit move effects
 
-- Status: `IMPLEMENTED — PENDING GUARDED RUN / INDEPENDENT REVIEW`
+- Status: `CLOSED — REVIEWED PASS`
 - Type: `PHASE 4 / BATTLE RULES / BOUNDED IMPLEMENTATION`
 
 ## Goal
@@ -43,4 +43,6 @@ leaves its existing PP/type/crit/damage path intact. Focused coverage passed 168
 no-ROM assertions; the verified-ROM fixture passed 3 assertions, confirming
 all six selected records and a parsed Swift invocation with only crit/random
 draws. This is not a Phase 4 completion claim pending guarded execution and
-independent review.
+independent review. Guarded run `34828443860` applied and published the
+independently reviewed patch at `89673e16`. This is not a Phase 4 completion
+claim.
