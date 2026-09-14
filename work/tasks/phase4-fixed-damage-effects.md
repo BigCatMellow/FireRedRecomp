@@ -1,6 +1,6 @@
 # Task: Phase 4 fixed-damage move effects
 
-- Status: `IMPLEMENTED — PENDING GUARDED RUN / INDEPENDENT REVIEW`
+- Status: `CLOSED — REVIEWED PASS`
 - Type: `PHASE 4 / BATTLE RULES / BOUNDED IMPLEMENTATION`
 
 ## Goal
@@ -34,5 +34,6 @@ nonzero type multipliers do not alter the fixed amount or presentation flags.
 The branch consumes no crit or random-damage roll. Focused unit coverage passed
 169 assertions in the verified-ROM run; the verified-ROM fixture passed 5 assertions against FireRed
 US v1.0, including NIKOLAS #204's two custom SonicBoom slots and a parsed
-SonicBoom engine invocation. This is not a Phase 4 completion claim pending
-the guarded bridge run and independent review.
+SonicBoom engine invocation. Guarded bridge run `34798961274` applied and
+published the independently reviewed patch at `c65cf838`. This is not a Phase
+4 completion claim.

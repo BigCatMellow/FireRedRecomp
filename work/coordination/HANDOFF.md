@@ -30,15 +30,16 @@ selected trainer-only voluntary switching as the next leaf. It is closed and
 published at `3140e267`; it opens a selector only for a current legal
 save-backed bench, rejects cancel/stale/forged choices, invokes the existing
 switch-before-foe engine action, and preserves both party records. Do not mark
-broader player switching or Phase 4 complete from that leaf. The active bounded
-task is fixed-damage effects. Its Worker patch handles Dragon Rage (40), level
-damage (attacker level), and SonicBoom (20) after the existing accuracy/PP/type
-path; type immunity remains a no-effect, while nonzero effectiveness does not
-alter fixed damage or presentation. Focused unit evidence (169 assertions in
-the verified-ROM run) and
-the verified-ROM NIKOLAS #204 fixture (5 assertions) passed locally. It awaits
-only its guarded bridge run and independent review. Held-item trainer layouts
-remain deferred because battlers do not retain or apply item state.
+broader player switching or Phase 4 complete from that leaf. Fixed-damage
+effects are now closed and published at `c65cf838` (guarded run `34798961274`):
+Dragon Rage (40), level damage (attacker level), and SonicBoom (20) reuse the
+existing accuracy/PP/type path; type immunity remains a no-effect, while
+nonzero effectiveness does not alter fixed damage or presentation. The next
+active task is a source-backed admission-matrix discovery. It must distinguish
+positive-power moves currently admitted by the engine from effect families the
+engine actually represents, before selecting one new bounded implementation
+leaf. Held-item trainer layouts remain deferred because battlers do not retain
+or apply item state.
 
 ## Phase 2 resume point
 
