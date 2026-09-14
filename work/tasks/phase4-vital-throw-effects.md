@@ -1,6 +1,6 @@
 # Task: Phase 4 Vital Throw effect
 
-- Status: `BLOCKED ON EXPLICIT BRIDGE ROUTE`
+- Status: `IMPLEMENTED — PENDING GUARDED RUN / INDEPENDENT REVIEW`
 - Type: `PHASE 4 / BATTLE RULES / BOUNDED IMPLEMENTATION`
 
 ## Goal
@@ -33,3 +33,12 @@ The implementation route may authorize only `src/core/BattleEngine.lua`,
 `tests/battle_engine_test.lua`, `tests/phase4_vital_throw_effect_rom_test.lua`,
 `scripts/runtime_phase4_vital_throw_replay.sh`, this task, `STATE.json`, and
 `HANDOFF.md`. It must remain fail-closed and receive a separate one-file probe.
+
+## Worker evidence
+
+Effect 78 alone joins the existing no-roll accuracy predicate. It retains the
+parsed move priority and ordinary PP, critical, type, random-damage, and HP
+paths. Focused coverage proves modified-stage no-roll behavior, the two
+remaining critical/damage draws, ordinary-effect regression, and priority -1;
+verified-ROM coverage proves and drives #233. This is not a Phase 4 completion
+claim pending guarded execution and review.

@@ -259,6 +259,45 @@ events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
 check("non-effect-17 zero accuracy retains the ordinary miss behavior", events[2].type == "miss"
   and battle.player.moves[1].pp == 19 and battle.rng.draws == 1, battle.rng.draws)
 
+-- EFFECT_VITAL_THROW shares the stock no-accuracy-roll command branch while
+-- retaining a distinct effect id and the imported -1 move priority. Private
+-- records preserve battle_test_data.lua as a verbatim retail transcription.
+local vitalThrowMoves = {}
+for k, v in pairs(Data.moves) do vitalThrowMoves[k] = v end
+vitalThrowMoves[1001] = { effect = 78, power = 70, type = Data.TYPE_FIGHTING, accuracy = 100, pp = 10, priority = -1 }
+vitalThrowMoves[1002] = { effect = 0, power = 70, type = Data.TYPE_FIGHTING, accuracy = 100, pp = 10, priority = -1 }
+local function vitalThrowBattle(moveId, values)
+  return BattleEngine.new({
+    player = BattleEngine.makeBattler({ species = 1, level = 5, stats = bulbaStats,
+      types = { Data.TYPE_FIGHTING, Data.TYPE_FIGHTING }, moves = { { move = moveId, pp = 10 } } }),
+    foe = BattleEngine.makeBattler({ species = 4, level = 5, stats = charStats,
+      types = { Data.TYPE_FIRE, Data.TYPE_FIRE }, moves = { { move = Data.MOVE_TACKLE, pp = 35 } } }),
+    moves = vitalThrowMoves, typeChart = Data.typeChart, rng = scriptedRng(values),
+  })
+end
+
+battle = vitalThrowBattle(1001, { 99, 0 })
+battle.player.statStages.accuracy = 0
+battle.foe.statStages.evasion = 12
+events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
+check("Vital Throw bypasses modified accuracy and evasion stages", events[1].type == "useMove"
+  and events[2].type == "damage" and battle.player.moves[1].pp == 9, events[2] and events[2].type)
+check("Vital Throw skips only accuracy RNG and retains critical/random draws", battle.rng.draws == 2, battle.rng.draws)
+
+battle = vitalThrowBattle(1002, { 99 })
+battle.player.statStages.accuracy = 0
+battle.foe.statStages.evasion = 12
+events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
+check("ordinary effect with Vital Throw fields still rolls and misses", events[2].type == "miss"
+  and battle.player.moves[1].pp == 9 and battle.rng.draws == 1, events[2] and events[2].type)
+
+battle = vitalThrowBattle(1001, { 0, 15, 0, 0, 15 })
+battle.player.speed = 99
+battle.foe.speed = 1
+events = battle:runTurn({ action = "move", moveSlot = 1 }, { action = "move", moveSlot = 1 })
+check("Vital Throw priority minus one yields to a priority-zero move", events[2].type == "useMove"
+  and events[2].side == BattleEngine.SIDE_FOE, events[2] and events[2].side)
+
 -- A run action is hoisted ahead of any foe move. At equal-or-better speed
 -- it succeeds with no RNG, so the foe never spends PP or attacks.
 battle = makeBattle({}, { { move = Data.MOVE_TACKLE, pp = 1 } }, { { move = Data.MOVE_EMBER, pp = 1 } })

@@ -439,11 +439,11 @@ BattleEngine.EFFECT_HIGH_CRITICAL = 43
 -- damage it leaves a living target at one HP instead of allowing a knockout.
 -- Substitute/Endure/Focus Band are separate, unrepresented stateful rules.
 BattleEngine.EFFECT_FALSE_SWIPE = 101
--- Real EFFECT_ALWAYS_HIT bypasses Cmd_accuracycheck's random accuracy branch
--- entirely (battle_script_commands.c). It is deliberately limited to this
--- exact effect; Vital Throw uses a related hardware condition but remains a
--- separate, unmodeled task.
+-- Real EFFECT_ALWAYS_HIT and EFFECT_VITAL_THROW bypass Cmd_accuracycheck's
+-- random accuracy branch entirely (battle_script_commands.c). They remain
+-- distinct effects so future effect-specific behavior cannot be conflated.
 BattleEngine.EFFECT_ALWAYS_HIT = 17
+BattleEngine.EFFECT_VITAL_THROW = 78
 -- EFFECT_DREAM_EATER=8: real BattleScript_EffectDreamEater
 -- (data/battle_scripts_1.s:427) jumps straight to "wasn't affected" unless
 -- the target's real status1 has STATUS1_SLEEP set -- a status-condition
@@ -840,6 +840,7 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
   local screenStatusKey = BattleEngine.SCREEN_MOVES[move.effect]
   local needsAccuracyCheck = not isSelfTargetStat and not screenStatusKey
     and move.effect ~= BattleEngine.EFFECT_ALWAYS_HIT
+    and move.effect ~= BattleEngine.EFFECT_VITAL_THROW
 
   -- The FIRST_BATTLE controller deliberately skips the first player
   -- accuracy RNG independently for a damaging move and for a (DOWN-family)
