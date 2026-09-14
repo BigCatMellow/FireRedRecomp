@@ -26,8 +26,14 @@ now independently reviewed and published at `8fd9a397` (guarded run
 `34783304717`), proving forced PARTY choice, persistence, state sync, and the
 no-bench loss branch. Next dispatch is Phase 4 battle-rule/trainer-matrix
 discovery, not an assumption that voluntary switching is complete. Discovery
-selected trainer-only voluntary switching as the next leaf; its explicit bridge
-route is now active.
+selected trainer-only voluntary switching as the next leaf. Its explicit bridge
+probe passed; the bounded implementation now awaits independent review. Worker
+evidence: focused controller 8/8, verified-ROM BEN89 seam 8/8, deterministic
+runtime replay, and both 134-file no-ROM and verified-ROM suites passed. It
+opens a selector only for a current legal save-backed bench; cancel/stale and
+forged choices do not dispatch a turn; a legal choice invokes the existing
+switch-before-foe engine action and preserves both party records. Do not mark
+broader player switching or Phase 4 complete from this leaf.
 
 ## Phase 2 resume point
 

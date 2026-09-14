@@ -1,6 +1,6 @@
 # Task: Phase 4 trainer-only voluntary player switching
 
-- Status: `BLOCKED ON BRIDGE ROUTE`
+- Status: `IMPLEMENTED — PENDING INDEPENDENT REVIEW`
 - Type: `PHASE 4 / BATTLE UI / BOUNDED INTEGRATION`
 
 ## Goal
@@ -28,3 +28,14 @@ wild/Oak paths, item UI, or AI policy.
    survive SaveFileCodec roundtrip. Forced replacement remains cancel-proof.
 5. Verified-ROM `startTrainerBattle(89)`, focused/runtime/full-suite/review
    evidence pass.
+
+## Worker evidence
+
+The bounded implementation is ready for independent review on the explicit
+bridge route. Focused controller coverage passed (8 assertions), verified-ROM
+`startTrainerBattle(89)` coverage passed (8 assertions) against the supported
+FireRed US v1.0 ROM, and the deterministic runtime replay passed. Full
+no-ROM and verified-ROM suites each passed all 134 checked-in test files. The
+change keeps `BattleEngine`, `BattlePartyBridge`, `PartyScreen`, save codec,
+wild/Oak, items, doubles, and AI untouched. This is not a Phase 4 completion
+claim pending independent review and guarded publication.

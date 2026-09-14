@@ -7,9 +7,8 @@
 -- HandleInputChooseMove in pokefirered/src/battle_controller_player.c:
 -- Left/Right xor bit 0 and Up/Down xor bit 1 when the destination exists.
 -- A chooses, B backs out of the move menu. FIGHT and RUN have live engine
--- actions; POKEMON switching deliberately still shows an unavailable
--- message (no live-scene party-select UI exists yet, even though
--- BattleEngine's "switch" action itself is real -- see BattleEngine.lua).
+-- actions. POKEMON can opt into a save-backed selector through explicit
+-- callbacks; BattleEngine's "switch" action remains the authoritative turn.
 --
 -- BAG is bounded, not fully general: this controller only knows how to
 -- throw a plain real ITEM_POKE_BALL (CaptureRules.ITEM_POKE_BALL) --
@@ -32,10 +31,8 @@ BattleSceneController.__index = BattleSceneController
 BattleSceneController.MESSAGES = "messages"
 BattleSceneController.ACTION = "action"
 BattleSceneController.MOVE = "move"
--- A forced replacement is deliberately its own state rather than the
--- ordinary ACTION-menu POKEMON item.  The latter remains unavailable until
--- its separate voluntary-switch task; this state is entered only when the
--- engine has already emitted player-side forcedSwitchNeeded after a faint.
+-- PARTY serves both a normal voluntary selector and a cancel-proof forced
+-- replacement. `partyMode` preserves their materially different semantics.
 BattleSceneController.PARTY = "party"
 BattleSceneController.COMPLETE = "complete"
 
@@ -68,6 +65,8 @@ function BattleSceneController.new(opts)
     onMessagesComplete = opts.onMessagesComplete,
     forcedSwitchChoices = opts.forcedSwitchChoices,
     onForcedSwitchChoice = opts.onForcedSwitchChoice,
+    voluntarySwitchChoices = opts.voluntarySwitchChoices,
+    onVoluntarySwitchChoice = opts.onVoluntarySwitchChoice,
     runDisabledMessage = opts.runDisabledMessage,
     bag = opts.bag,
     state = BattleSceneController.MESSAGES,
@@ -75,6 +74,7 @@ function BattleSceneController.new(opts)
     moveCursor = 0,
     partyCursor = 0,
     partyChoices = {},
+    partyMode = nil,
     messages = {},
     messageIndex = 1,
     afterMessages = BattleSceneController.ACTION,
@@ -115,9 +115,13 @@ function BattleSceneController:_setMessages(entries, afterState)
   end
   self.messageIndex = 1
   self.afterMessages = afterState
+  if afterState == BattleSceneController.PARTY and not self.partyMode then self.partyMode = "forced" end
   self.state = BattleSceneController.MESSAGES
   self:_applyInvisibleEntries()
-  if not self.messages[self.messageIndex] then self.state = afterState end
+  if not self.messages[self.messageIndex] then
+    self.state = afterState
+    if afterState ~= BattleSceneController.PARTY then self.partyMode = nil end
+  end
   self:_touch()
 end
 
@@ -141,7 +145,7 @@ function BattleSceneController:advanceMessage()
       return
     end
     self.state = self.afterMessages
-    if self.state == BattleSceneController.PARTY then self:_refreshForcedSwitchChoices() end
+    if self.state == BattleSceneController.PARTY then self:_refreshPartyChoices() else self.partyMode = nil end
   end
   self:_touch()
 end
@@ -340,14 +344,37 @@ function BattleSceneController:_runTurn(playerAction)
   self:_setMessages(self:_eventMessages(events), after)
 end
 
-function BattleSceneController:_refreshForcedSwitchChoices()
-  local choices = self.forcedSwitchChoices and self.forcedSwitchChoices() or {}
+function BattleSceneController:_refreshPartyChoices()
+  local provider = self.partyMode == "forced" and self.forcedSwitchChoices
+    or self.partyMode == "voluntary" and self.voluntarySwitchChoices
+  local choices = provider and provider() or {}
   self.partyChoices = choices or {}
   if #self.partyChoices == 0 then
     self.partyCursor = 0
   else
     self.partyCursor = math.max(0, math.min(self.partyCursor, #self.partyChoices - 1))
   end
+end
+
+function BattleSceneController:_openVoluntarySwitch()
+  -- Existing wild/developer controller callers have no save-backed bridge;
+  -- preserve their bounded unavailable behavior rather than inventing a
+  -- selector outside the trainer-only voluntary-switch contract.
+  if not self.voluntarySwitchChoices then
+    self:_setMessages({ { text = "POKEMON switching is not available yet." } }, BattleSceneController.ACTION)
+    return
+  end
+  self.partyMode = "voluntary"
+  self:_refreshPartyChoices()
+  -- No legal bench means no engine action: turn, RNG, and active battler are
+  -- unchanged. Do not show a selector that cannot make a legal choice.
+  if #self.partyChoices == 0 then
+    self.partyMode = nil
+    self:_setMessages({ { text = "There are no other POKEMON!" } }, BattleSceneController.ACTION)
+    return
+  end
+  self.state = BattleSceneController.PARTY
+  self:_touch()
 end
 
 function BattleSceneController:processInput(input)
@@ -378,17 +405,27 @@ function BattleSceneController:processInput(input)
           self:_setMessages({ { text = "You don't have any POKé BALLS!" } }, BattleSceneController.ACTION)
         end
       else
-        self:_setMessages({ { text = "POKEMON switching is not available yet." } }, BattleSceneController.ACTION)
+        self:_openVoluntarySwitch()
       end
     end
     return
   end
 
   if self.state == BattleSceneController.PARTY then
+    -- Voluntary cancellation is always available, even if a previously
+    -- displayed sole candidate became stale before this input. Forced
+    -- replacement deliberately remains below the mode guard and cannot
+    -- cancel into ACTION.
+    if self.partyMode == "voluntary" and input:isNewlyPressed(InputState.B_BUTTON) then
+      self.state = BattleSceneController.ACTION
+      self.partyMode = nil
+      self:_touch()
+      return
+    end
     -- Re-read the save-backed candidates each input.  This makes a stale,
     -- active, fainted, egg, or otherwise invalid choice unable to clear the
     -- pending engine state between the faint and the actual confirmation.
-    self:_refreshForcedSwitchChoices()
+    self:_refreshPartyChoices()
     if #self.partyChoices == 0 then
       self:_touch()
       return
@@ -400,12 +437,16 @@ function BattleSceneController:processInput(input)
       self.partyCursor = (self.partyCursor + 1) % #self.partyChoices
     end
     if self.partyCursor ~= before then self:_touch() end
-    -- B/CANCEL intentionally does nothing here.  A forced replacement may
-    -- not cancel into ACTION or the ordinary player-loss path.
-    if input:isNewlyPressed(InputState.A_BUTTON) and self.onForcedSwitchChoice then
-      local entries = self.onForcedSwitchChoice(self.partyChoices[self.partyCursor + 1])
-      if entries then
-        self:_setMessages(entries, BattleSceneController.ACTION)
+    -- B/CANCEL intentionally does nothing for a forced replacement. A
+    -- forced replacement may not cancel into ACTION or player loss.
+    if input:isNewlyPressed(InputState.A_BUTTON) then
+      local callback = self.partyMode == "forced" and self.onForcedSwitchChoice
+        or self.partyMode == "voluntary" and self.onVoluntarySwitchChoice
+      if callback then
+        -- Revalidate the UI selection at the save-backed callback. A legal
+        -- voluntary callback may call _runTurn, retaining engine ordering.
+        local entries = callback(self.partyChoices[self.partyCursor + 1])
+        if entries then self:_setMessages(entries, BattleSceneController.ACTION) end
       end
     end
     return

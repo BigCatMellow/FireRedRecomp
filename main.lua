@@ -1628,6 +1628,68 @@ world.startTrainerBattle = function(trainerId)
         end
         return { choice.name .. ", come back!\nGo! " .. controller.playerName .. "!" }
       end,
+      voluntarySwitchChoices=function()
+        -- A normal turn may not open a second selector while a faint's
+        -- mandatory replacement is pending. The current save party is read
+        -- again each time the controller asks, rather than trusting a prior
+        -- menu snapshot.
+        if engine.awaitingForcedSwitch then return {} end
+        local choices = {}
+        for _, target in ipairs(playerSwitchTargets()) do
+          local decoded = Battle.PartyBridge.decodeRecord(target.record)
+          choices[#choices + 1] = {
+            slot=target.slot, record=target.record,
+            name=decoded and Charmap.decode(decoded.nickname) or "POKEMON",
+          }
+        end
+        return choices
+      end,
+      onVoluntarySwitchChoice=function(choice)
+        -- Treat this UI object as untrusted. In particular, do not turn a
+        -- stale active/fainted/Egg record into a free turn just because it
+        -- was once displayed in the selector.
+        if engine.awaitingForcedSwitch or not choice then return nil end
+        local selected, selectedName
+        for _, target in ipairs(playerSwitchTargets()) do
+          if target.slot == choice.slot and target.record == choice.record then
+            local decoded = Battle.PartyBridge.decodeRecord(target.record)
+            local name = decoded and Charmap.decode(decoded.nickname) or "POKEMON"
+            if choice.name == name then
+              selected, selectedName = target, name
+            end
+            break
+          end
+        end
+        if not selected then return nil end
+        local activeBattle = assert(world.battle, "trainer voluntary switch has no active battle")
+        -- The outgoing record must be durable before the existing engine
+        -- runs the switch-only turn. The engine then orders the incoming
+        -- battler before the foe's normal move; it is deliberately not
+        -- reimplemented here.
+        Battle.PartyBridge.persistPartyBattler(activeBattle.partyRecord, engine.player)
+        local incoming, incomingDecoded = Battle.PartyBridge.battlerFromParty(selected.record, catalog.species)
+        activePartySlot = selected.slot
+        activeBattle.partyRecord, activeBattle.partySlot = selected.record, selected.slot
+        activeBattle.playerName = Charmap.decode(incomingDecoded.nickname)
+        controller.playerName = activeBattle.playerName
+        if not world._trainerTestMode then
+          local imageOk, composite = pcall(Battle.Assets.decodeMon, romData, romAddrs, incoming.species, true)
+          if imageOk then
+            activeBattle.playerImage = buildImage(composite)
+            activeBattle.playerImage:setFilter("nearest", "nearest")
+          else
+            addLine("Trainer voluntary-switch back sprite failed: " .. tostring(composite))
+          end
+        end
+        controller:_runTurn({ action="switch", battler=incoming })
+        -- Persist the incoming battler after the foe's same-turn action;
+        -- doing it here makes the save transition atomic even at the direct
+        -- trainer test seam (the normal frame persistence sees this turn as
+        -- already synchronized).
+        Battle.PartyBridge.persistPartyBattler(activeBattle.partyRecord, engine.player)
+        activeBattle.persistedTurn = engine.turn
+        return nil
+      end,
       runDisabledMessage="No! There's no running\nfrom a TRAINER battle!",
       introMessages={
         trainerName .. " would like to battle!",
