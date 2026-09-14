@@ -1,6 +1,6 @@
 # Task: Phase 4 False Swipe effect
 
-- Status: `IMPLEMENTED — PENDING GUARDED RUN / INDEPENDENT REVIEW`
+- Status: `CLOSED — REVIEWED PASS`
 - Type: `PHASE 4 / BATTLE RULES / BOUNDED IMPLEMENTATION`
 
 ## Goal
@@ -34,4 +34,5 @@ The implementation route may authorize only `src/core/BattleEngine.lua`,
 Only effect 101 caps lethal final damage at target HP minus one after immunity
 handling and before shared application. Focused coverage proves HP=1, lethal,
 nonlethal, immunity, PP, and three draws; verified-ROM coverage proves #206.
-This is not a Phase 4 completion claim pending guarded execution and review.
+Guarded run `34830527499` applied and published the independently reviewed
+patch at `a3e9d058`. This is not a Phase 4 completion claim.

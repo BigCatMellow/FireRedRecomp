@@ -57,9 +57,11 @@ target HP minus one. It is self-contained in this stateless engine after the
 existing immunity return and before shared HP application. The active
 effect-101 route and probe passed. The bounded patch caps only lethal final
 damage at target HP minus one after immunity handling and before shared HP
-application; it is pending guarded execution and independent review. Do not
-bundle Vital Throw, formulas, or stateful families. Held-item trainer layouts
-remain deferred because battlers do not retain or apply item state.
+application; it is now published at `a3e9d058` (guarded run `34830527499`).
+The next active task is read-only Vital Throw discovery: source-lock effect 78
+accuracy and turn-order behavior before routing code. Do not bundle formulas or
+stateful families. Held-item trainer layouts remain deferred because battlers do
+not retain or apply item state.
 
 ## Phase 2 resume point
 
