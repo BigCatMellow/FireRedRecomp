@@ -83,6 +83,9 @@ jobs:
             phase4-fixed-damage-effects*.patch|phase4-fixed-damage-effects*.probe)
               route='phase4-fixed-damage-effects'
               ;;
+            phase4-always-hit-effects*.patch|phase4-always-hit-effects*.probe)
+              route='phase4-always-hit-effects'
+              ;;
             oak-parcel-dex-presentation-north*.patch|oak-parcel-dex-presentation-north*.probe)
               route='oak-parcel-dex-presentation-north'
               ;;
@@ -176,6 +179,8 @@ jobs:
                 ;;
               phase4-fixed-damage-effects:src/core/BattleEngine.lua|phase4-fixed-damage-effects:tests/battle_engine_test.lua|phase4-fixed-damage-effects:tests/phase4_fixed_damage_effect_rom_test.lua|phase4-fixed-damage-effects:scripts/runtime_phase4_fixed_damage_replay.sh|phase4-fixed-damage-effects:work/tasks/phase4-fixed-damage-effects.md|phase4-fixed-damage-effects:work/coordination/STATE.json|phase4-fixed-damage-effects:work/coordination/HANDOFF.md)
                 ;;
+              phase4-always-hit-effects:src/core/BattleEngine.lua|phase4-always-hit-effects:tests/battle_engine_test.lua|phase4-always-hit-effects:tests/phase4_always_hit_effect_rom_test.lua|phase4-always-hit-effects:scripts/runtime_phase4_always_hit_replay.sh|phase4-always-hit-effects:work/tasks/phase4-always-hit-effects.md|phase4-always-hit-effects:work/coordination/STATE.json|phase4-always-hit-effects:work/coordination/HANDOFF.md)
+                ;;
               *)
                 echo "Patch target is not authorized for explicit route '$ROUTE': $target" >&2
                 exit 1
@@ -238,6 +243,10 @@ jobs:
             phase4-fixed-damage-effects)
               "$LUA" tests/battle_engine_test.lua
               "$LUA" tests/phase4_fixed_damage_effect_rom_test.lua
+              ;;
+            phase4-always-hit-effects)
+              "$LUA" tests/battle_engine_test.lua
+              "$LUA" tests/phase4_always_hit_effect_rom_test.lua
               ;;
             *)
               echo "Patch execution has no focused-test route for '$ROUTE'." >&2
@@ -303,6 +312,9 @@ jobs:
               ;;
             phase4-fixed-damage-effects)
               bash scripts/runtime_phase4_fixed_damage_replay.sh
+              ;;
+            phase4-always-hit-effects)
+              bash scripts/runtime_phase4_always_hit_replay.sh
               ;;
             *)
               echo "Patch execution has no runtime-replay route for '$ROUTE'." >&2
@@ -372,6 +384,13 @@ jobs:
               ;;
             phase4-fixed-damage-effects)
               for path in src/core/BattleEngine.lua tests/battle_engine_test.lua tests/phase4_fixed_damage_effect_rom_test.lua scripts/runtime_phase4_fixed_damage_replay.sh work/tasks/phase4-fixed-damage-effects.md work/coordination/STATE.json work/coordination/HANDOFF.md; do
+                if [[ -e "$path" ]]; then
+                  git add -- "$path"
+                fi
+              done
+              ;;
+            phase4-always-hit-effects)
+              for path in src/core/BattleEngine.lua tests/battle_engine_test.lua tests/phase4_always_hit_effect_rom_test.lua scripts/runtime_phase4_always_hit_replay.sh work/tasks/phase4-always-hit-effects.md work/coordination/STATE.json work/coordination/HANDOFF.md; do
                 if [[ -e "$path" ]]; then
                   git add -- "$path"
                 fi
