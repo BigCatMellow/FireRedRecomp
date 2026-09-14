@@ -1,0 +1,458 @@
+diff --git a/main.lua b/main.lua
+index f489480..b9d244a 100644
+--- a/main.lua
++++ b/main.lua
+@@ -1628,6 +1628,68 @@ world.startTrainerBattle = function(trainerId)
+         end
+         return { choice.name .. ", come back!\nGo! " .. controller.playerName .. "!" }
+       end,
++      voluntarySwitchChoices=function()
++        -- A normal turn may not open a second selector while a faint's
++        -- mandatory replacement is pending. The current save party is read
++        -- again each time the controller asks, rather than trusting a prior
++        -- menu snapshot.
++        if engine.awaitingForcedSwitch then return {} end
++        local choices = {}
++        for _, target in ipairs(playerSwitchTargets()) do
++          local decoded = Battle.PartyBridge.decodeRecord(target.record)
++          choices[#choices + 1] = {
++            slot=target.slot, record=target.record,
++            name=decoded and Charmap.decode(decoded.nickname) or "POKEMON",
++          }
++        end
++        return choices
++      end,
++      onVoluntarySwitchChoice=function(choice)
++        -- Treat this UI object as untrusted. In particular, do not turn a
++        -- stale active/fainted/Egg record into a free turn just because it
++        -- was once displayed in the selector.
++        if engine.awaitingForcedSwitch or not choice then return nil end
++        local selected, selectedName
++        for _, target in ipairs(playerSwitchTargets()) do
++          if target.slot == choice.slot and target.record == choice.record then
++            local decoded = Battle.PartyBridge.decodeRecord(target.record)
++            local name = decoded and Charmap.decode(decoded.nickname) or "POKEMON"
++            if choice.name == name then
++              selected, selectedName = target, name
++            end
++            break
++          end
++        end
++        if not selected then return nil end
++        local activeBattle = assert(world.battle, "trainer voluntary switch has no active battle")
++        -- The outgoing record must be durable before the existing engine
++        -- runs the switch-only turn. The engine then orders the incoming
++        -- battler before the foe's normal move; it is deliberately not
++        -- reimplemented here.
++        Battle.PartyBridge.persistPartyBattler(activeBattle.partyRecord, engine.player)
++        local incoming, incomingDecoded = Battle.PartyBridge.battlerFromParty(selected.record, catalog.species)
++        activePartySlot = selected.slot
++        activeBattle.partyRecord, activeBattle.partySlot = selected.record, selected.slot
++        activeBattle.playerName = Charmap.decode(incomingDecoded.nickname)
++        controller.playerName = activeBattle.playerName
++        if not world._trainerTestMode then
++          local imageOk, composite = pcall(Battle.Assets.decodeMon, romData, romAddrs, incoming.species, true)
++          if imageOk then
++            activeBattle.playerImage = buildImage(composite)
++            activeBattle.playerImage:setFilter("nearest", "nearest")
++          else
++            addLine("Trainer voluntary-switch back sprite failed: " .. tostring(composite))
++          end
++        end
++        controller:_runTurn({ action="switch", battler=incoming })
++        -- Persist the incoming battler after the foe's same-turn action;
++        -- doing it here makes the save transition atomic even at the direct
++        -- trainer test seam (the normal frame persistence sees this turn as
++        -- already synchronized).
++        Battle.PartyBridge.persistPartyBattler(activeBattle.partyRecord, engine.player)
++        activeBattle.persistedTurn = engine.turn
++        return nil
++      end,
+       runDisabledMessage="No! There's no running\nfrom a TRAINER battle!",
+       introMessages={
+         trainerName .. " would like to battle!",
+diff --git a/scripts/runtime_phase4_player_voluntary_switch_replay.sh b/scripts/runtime_phase4_player_voluntary_switch_replay.sh
+new file mode 100755
+index 0000000..6950b7d
+--- /dev/null
++++ b/scripts/runtime_phase4_player_voluntary_switch_replay.sh
+@@ -0,0 +1,8 @@
++#!/usr/bin/env bash
++set -euo pipefail
++ROOT=$(cd "$(dirname "$0")/.." && pwd)
++cd "$ROOT"
++: "${POKEPORT_ROM:?set POKEPORT_ROM to verified FireRed US v1.0}"
++lua5.1 tests/phase4_player_voluntary_switch_controller_test.lua
++lua5.1 tests/phase4_player_voluntary_switch_rom_test.lua
++echo "RUNTIME_REPLAY phase4_player_voluntary_switch PASS trainer-only=true ben89=true cancel=true stale-rejected=true switch-before-foe=true save-roundtrip=true forced-cancel-proof=true"
+diff --git a/src/core/BattleSceneController.lua b/src/core/BattleSceneController.lua
+index 47b3e21..e2775ee 100644
+--- a/src/core/BattleSceneController.lua
++++ b/src/core/BattleSceneController.lua
+@@ -7,9 +7,8 @@
+ -- HandleInputChooseMove in pokefirered/src/battle_controller_player.c:
+ -- Left/Right xor bit 0 and Up/Down xor bit 1 when the destination exists.
+ -- A chooses, B backs out of the move menu. FIGHT and RUN have live engine
+--- actions; POKEMON switching deliberately still shows an unavailable
+--- message (no live-scene party-select UI exists yet, even though
+--- BattleEngine's "switch" action itself is real -- see BattleEngine.lua).
++-- actions. POKEMON can opt into a save-backed selector through explicit
++-- callbacks; BattleEngine's "switch" action remains the authoritative turn.
+ --
+ -- BAG is bounded, not fully general: this controller only knows how to
+ -- throw a plain real ITEM_POKE_BALL (CaptureRules.ITEM_POKE_BALL) --
+@@ -32,10 +31,8 @@ BattleSceneController.__index = BattleSceneController
+ BattleSceneController.MESSAGES = "messages"
+ BattleSceneController.ACTION = "action"
+ BattleSceneController.MOVE = "move"
+--- A forced replacement is deliberately its own state rather than the
+--- ordinary ACTION-menu POKEMON item.  The latter remains unavailable until
+--- its separate voluntary-switch task; this state is entered only when the
+--- engine has already emitted player-side forcedSwitchNeeded after a faint.
++-- PARTY serves both a normal voluntary selector and a cancel-proof forced
++-- replacement. `partyMode` preserves their materially different semantics.
+ BattleSceneController.PARTY = "party"
+ BattleSceneController.COMPLETE = "complete"
+ 
+@@ -68,6 +65,8 @@ function BattleSceneController.new(opts)
+     onMessagesComplete = opts.onMessagesComplete,
+     forcedSwitchChoices = opts.forcedSwitchChoices,
+     onForcedSwitchChoice = opts.onForcedSwitchChoice,
++    voluntarySwitchChoices = opts.voluntarySwitchChoices,
++    onVoluntarySwitchChoice = opts.onVoluntarySwitchChoice,
+     runDisabledMessage = opts.runDisabledMessage,
+     bag = opts.bag,
+     state = BattleSceneController.MESSAGES,
+@@ -75,6 +74,7 @@ function BattleSceneController.new(opts)
+     moveCursor = 0,
+     partyCursor = 0,
+     partyChoices = {},
++    partyMode = nil,
+     messages = {},
+     messageIndex = 1,
+     afterMessages = BattleSceneController.ACTION,
+@@ -115,9 +115,13 @@ function BattleSceneController:_setMessages(entries, afterState)
+   end
+   self.messageIndex = 1
+   self.afterMessages = afterState
++  if afterState == BattleSceneController.PARTY and not self.partyMode then self.partyMode = "forced" end
+   self.state = BattleSceneController.MESSAGES
+   self:_applyInvisibleEntries()
+-  if not self.messages[self.messageIndex] then self.state = afterState end
++  if not self.messages[self.messageIndex] then
++    self.state = afterState
++    if afterState ~= BattleSceneController.PARTY then self.partyMode = nil end
++  end
+   self:_touch()
+ end
+ 
+@@ -141,7 +145,7 @@ function BattleSceneController:advanceMessage()
+       return
+     end
+     self.state = self.afterMessages
+-    if self.state == BattleSceneController.PARTY then self:_refreshForcedSwitchChoices() end
++    if self.state == BattleSceneController.PARTY then self:_refreshPartyChoices() else self.partyMode = nil end
+   end
+   self:_touch()
+ end
+@@ -340,8 +344,10 @@ function BattleSceneController:_runTurn(playerAction)
+   self:_setMessages(self:_eventMessages(events), after)
+ end
+ 
+-function BattleSceneController:_refreshForcedSwitchChoices()
+-  local choices = self.forcedSwitchChoices and self.forcedSwitchChoices() or {}
++function BattleSceneController:_refreshPartyChoices()
++  local provider = self.partyMode == "forced" and self.forcedSwitchChoices
++    or self.partyMode == "voluntary" and self.voluntarySwitchChoices
++  local choices = provider and provider() or {}
+   self.partyChoices = choices or {}
+   if #self.partyChoices == 0 then
+     self.partyCursor = 0
+@@ -350,6 +356,27 @@ function BattleSceneController:_refreshForcedSwitchChoices()
+   end
+ end
+ 
++function BattleSceneController:_openVoluntarySwitch()
++  -- Existing wild/developer controller callers have no save-backed bridge;
++  -- preserve their bounded unavailable behavior rather than inventing a
++  -- selector outside the trainer-only voluntary-switch contract.
++  if not self.voluntarySwitchChoices then
++    self:_setMessages({ { text = "POKEMON switching is not available yet." } }, BattleSceneController.ACTION)
++    return
++  end
++  self.partyMode = "voluntary"
++  self:_refreshPartyChoices()
++  -- No legal bench means no engine action: turn, RNG, and active battler are
++  -- unchanged. Do not show a selector that cannot make a legal choice.
++  if #self.partyChoices == 0 then
++    self.partyMode = nil
++    self:_setMessages({ { text = "There are no other POKEMON!" } }, BattleSceneController.ACTION)
++    return
++  end
++  self.state = BattleSceneController.PARTY
++  self:_touch()
++end
++
+ function BattleSceneController:processInput(input)
+   if self.state == BattleSceneController.MESSAGES then
+     if input:isNewlyPressed(InputState.A_BUTTON) or input:isNewlyPressed(InputState.B_BUTTON) then
+@@ -378,17 +405,27 @@ function BattleSceneController:processInput(input)
+           self:_setMessages({ { text = "You don't have any POKé BALLS!" } }, BattleSceneController.ACTION)
+         end
+       else
+-        self:_setMessages({ { text = "POKEMON switching is not available yet." } }, BattleSceneController.ACTION)
++        self:_openVoluntarySwitch()
+       end
+     end
+     return
+   end
+ 
+   if self.state == BattleSceneController.PARTY then
++    -- Voluntary cancellation is always available, even if a previously
++    -- displayed sole candidate became stale before this input. Forced
++    -- replacement deliberately remains below the mode guard and cannot
++    -- cancel into ACTION.
++    if self.partyMode == "voluntary" and input:isNewlyPressed(InputState.B_BUTTON) then
++      self.state = BattleSceneController.ACTION
++      self.partyMode = nil
++      self:_touch()
++      return
++    end
+     -- Re-read the save-backed candidates each input.  This makes a stale,
+     -- active, fainted, egg, or otherwise invalid choice unable to clear the
+     -- pending engine state between the faint and the actual confirmation.
+-    self:_refreshForcedSwitchChoices()
++    self:_refreshPartyChoices()
+     if #self.partyChoices == 0 then
+       self:_touch()
+       return
+@@ -400,12 +437,16 @@ function BattleSceneController:processInput(input)
+       self.partyCursor = (self.partyCursor + 1) % #self.partyChoices
+     end
+     if self.partyCursor ~= before then self:_touch() end
+-    -- B/CANCEL intentionally does nothing here.  A forced replacement may
+-    -- not cancel into ACTION or the ordinary player-loss path.
+-    if input:isNewlyPressed(InputState.A_BUTTON) and self.onForcedSwitchChoice then
+-      local entries = self.onForcedSwitchChoice(self.partyChoices[self.partyCursor + 1])
+-      if entries then
+-        self:_setMessages(entries, BattleSceneController.ACTION)
++    -- B/CANCEL intentionally does nothing for a forced replacement. A
++    -- forced replacement may not cancel into ACTION or player loss.
++    if input:isNewlyPressed(InputState.A_BUTTON) then
++      local callback = self.partyMode == "forced" and self.onForcedSwitchChoice
++        or self.partyMode == "voluntary" and self.onVoluntarySwitchChoice
++      if callback then
++        -- Revalidate the UI selection at the save-backed callback. A legal
++        -- voluntary callback may call _runTurn, retaining engine ordering.
++        local entries = callback(self.partyChoices[self.partyCursor + 1])
++        if entries then self:_setMessages(entries, BattleSceneController.ACTION) end
+       end
+     end
+     return
+diff --git a/tests/phase4_player_voluntary_switch_controller_test.lua b/tests/phase4_player_voluntary_switch_controller_test.lua
+new file mode 100644
+index 0000000..5f504d9
+--- /dev/null
++++ b/tests/phase4_player_voluntary_switch_controller_test.lua
+@@ -0,0 +1,73 @@
++package.path = package.path .. ";./?.lua"
++local Controller = require("src.core.BattleSceneController")
++local InputState = require("src.core.InputState")
++
++local passed, failed = 0, 0
++local function check(name, ok)
++  if ok then passed = passed + 1 else failed = failed + 1; print("FAIL: " .. name) end
++end
++local function press(controller, key)
++  local input = InputState.new(); input:update(0); input:update(key)
++  controller:processInput(input)
++end
++
++local engine = { player={hp=12, moves={}}, foe={hp=20}, turn=0, rng={state=0xC0FFEE} }
++function engine:isOver() return false end
++function engine:runTurn(action, foe)
++  check("controller supplies existing engine switch action", action.action == "switch" and action.battler.hp == 18)
++  self.turn = self.turn + 1
++  self.player = action.battler
++  self.foeSawIncoming = self.player
++  return { {type="switch", side="player"}, {type="useMove", side="foe", move=1} }
++end
++
++local legal = {}
++local switches = 0
++local c
++c = Controller.new({
++  engine=engine,
++  voluntarySwitchChoices=function() return legal end,
++  onVoluntarySwitchChoice=function(choice)
++    -- Model the main seam's current-list/name revalidation, not mere slot UI.
++    if choice ~= legal[1] or choice.slot ~= 2 or choice.name ~= "BENCH" then return nil end
++    switches = switches + 1
++    c:_runTurn({action="switch", battler={hp=18, moves={}}})
++    return nil
++  end,
++})
++while c:message() do c:advanceMessage() end
++press(c, InputState.DPAD_DOWN)
++press(c, InputState.A_BUTTON)
++check("no legal bench never enters selector or consumes a turn", c.state == Controller.MESSAGES and engine.turn == 0 and switches == 0 and engine.player.hp == 12)
++while c:message() do c:advanceMessage() end
++check("no-bench notice returns to ACTION unchanged", c.state == Controller.ACTION and engine.turn == 0 and engine.player.hp == 12)
++
++legal = { {slot=2, record={id="bench"}, name="BENCH"} }
++press(c, InputState.A_BUTTON)
++check("ACTION POKEMON opens voluntary PARTY only for a legal bench", c.state == Controller.PARTY and c.partyMode == "voluntary" and #c.partyChoices == 1)
++press(c, InputState.B_BUTTON)
++check("voluntary selector cancel returns to ACTION unchanged", c.state == Controller.ACTION and engine.turn == 0 and switches == 0 and engine.player.hp == 12)
++press(c, InputState.A_BUTTON)
++legal = {}
++press(c, InputState.A_BUTTON)
++check("stale choice is re-read and rejected before turn dispatch", c.state == Controller.PARTY and engine.turn == 0 and switches == 0)
++-- The sole displayed bench can become invalid between opening PARTY and the
++-- next input.  B must still close a voluntary selector before its refreshed
++-- empty choice list returns; it must not dispatch a turn, advance RNG, or
++-- replace the active battler.  (Forced PARTY deliberately has the opposite
++-- cancellation rule and is covered by the ROM seam.)
++local staleActive, staleRng = engine.player, engine.rng.state
++press(c, InputState.B_BUTTON)
++check("stale empty voluntary selector cancels to ACTION without engine mutation",
++  c.state == Controller.ACTION and engine.turn == 0 and switches == 0
++    and engine.player == staleActive and engine.rng.state == staleRng)
++legal = { {slot=2, record={id="bench"}, name="BENCH"} }
++press(c, InputState.A_BUTTON)
++c:_refreshPartyChoices()
++local forged = c.onVoluntarySwitchChoice({slot=2, record=legal[1].record, name="FORGED"})
++check("forged choice is rejected by callback revalidation", forged == nil and engine.turn == 0 and switches == 0)
++press(c, InputState.A_BUTTON)
++check("legal choice switches exactly once and foe sees incoming same turn", switches == 1 and engine.turn == 1 and engine.player.hp == 18 and engine.foeSawIncoming == engine.player and c.state == Controller.MESSAGES)
++
++print(("phase4_player_voluntary_switch_controller_test: %d passed, %d failed"):format(passed, failed))
++os.exit(failed == 0 and 0 or 1)
+diff --git a/tests/phase4_player_voluntary_switch_rom_test.lua b/tests/phase4_player_voluntary_switch_rom_test.lua
+new file mode 100644
+index 0000000..5d5cc17
+--- /dev/null
++++ b/tests/phase4_player_voluntary_switch_rom_test.lua
+@@ -0,0 +1,42 @@
++-- Verified-ROM proof for main.lua's trainer-only voluntary player switch.
++package.path=package.path..";./?.lua"
++local path=os.getenv("POKEPORT_ROM");if not path then print("SKIP phase4_player_voluntary_switch_rom_test (set POKEPORT_ROM)");os.exit(0)end
++local RI=require("import.RomImporter");local RA=require("import.RomAddresses");local Trainer=require("import.Trainer");local Species=require("import.SpeciesInfo");local Moves=require("import.BattleMove");local Types=require("import.TypeChart");local Nature=require("import.Nature");local Learn=require("import.LevelUpLearnset");local Flow=require("src.core.NewGameFlow");local Starter=require("src.core.StarterPokemonFactory");local Rng=require("src.core.Rng");local Save=require("src.core.SaveFileCodec");local Input=require("src.core.InputState");local Controller=require("src.core.BattleSceneController")
++local ok,info=RI.verify(path);assert(ok,tostring(info));local f=assert(io.open(path,"rb"));local rom=f:read("*a");f:close();local a=assert(RA["41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc"]);love={};local App=require("main")
++local species=Species.parseTable(rom,a.gSpeciesInfo,RA.COUNTS.NUM_SPECIES);local moves=Moves.parseTable(rom,a.gBattleMoves,RA.COUNTS.MOVES_COUNT);local catalog={species=species,moves=moves,typeChart=Types.parseTable(rom,a.gTypeEffectiveness),natures=Nature.parseTable(rom,a.sNatureStatTable),trainers=Trainer.parseTable(rom,a.gTrainers,RA.COUNTS.NUM_TRAINERS)}
++local pass,fail=0,0;local function check(n,v)if v then pass=pass+1 else fail=fail+1;print("FAIL: "..n)end end
++local function makeSession()
++  local s=App.GameSession.fromNewGame({playerGender=0,playerName=Flow.encodeName("RED"),rivalName=Flow.encodeName("GREEN")},{nextRandom16=function()return 1 end,generatedTrainerIdLower=2})
++  local function mon(seed)
++    return Starter.generate({species=1,speciesInfo=species[1],speciesName=rom:sub(a.gSpeciesNames+12,a.gSpeciesNames+21),learnset=Learn.resolve(rom,a.gLevelUpLearnsets,1),battleMoves=moves,natures=catalog.natures,rng=Rng.new(seed),trainer={id=s.state.saveBlock2.playerTrainerId,name=s.state.saveBlock2.playerName:sub(1,7),gender=0},metLocation=0})
++  end
++  local sb=s.state.saveBlock1;sb.playerParty={mon(1),mon(2)};sb.playerPartyCount=2
++  return s
++end
++local function press(c,key)local i=Input.new();i:update(0);i:update(key);c:processInput(i)end
++local s=makeSession();App.configureTrainerBattleTest({romData=rom,romAddrs=a,catalog=catalog,session=s,rng=Rng.new(2),story={registerSeen=function()end}});local W=App.world
++check("main starts BEN89 with two save-backed mons",W.startTrainerBattle(89));local b=W.battle;local e=b.controller.engine
++while b.controller:message() do b.controller:advanceMessage() end
++local outgoing=s.state.saveBlock1.playerParty[1];e.player.hp=math.max(1,e.player.hp-1);local outgoingHP=e.player.hp
++local original=e.runTurn;local sawIncoming=false
++function e:runTurn(playerAction,foeAction)
++  sawIncoming=playerAction.action=="switch" and playerAction.battler and playerAction.battler.species==1 and foeAction.action=="move"
++  return original(self,playerAction,foeAction)
++end
++press(b.controller,Input.DPAD_DOWN);press(b.controller,Input.A_BUTTON)
++check("ACTION POKEMON opens selector for live legal bench",b.controller.state==Controller.PARTY and b.controller.partyMode=="voluntary" and #b.controller.partyChoices==1 and e.turn==0)
++press(b.controller,Input.B_BUTTON);check("voluntary cancel retains active record and turn",b.controller.state==Controller.ACTION and b.partySlot==1 and e.turn==0 and outgoing.hp~=outgoingHP)
++press(b.controller,Input.A_BUTTON);s.state.saveBlock1.playerParty[2].hp=0;press(b.controller,Input.A_BUTTON)
++check("stale fainted choice is rejected without turn or active mutation",b.controller.state==Controller.PARTY and b.partySlot==1 and e.turn==0)
++s.state.saveBlock1.playerParty[2].hp=20
++-- Restore the live party record's valid cached HP. The selector re-reads it
++-- before confirmation; this is a real save-backed mutation, not an engine shim.
++press(b.controller,Input.A_BUTTON)
++check("legal choice calls existing switch action before foe move",sawIncoming and e.turn==1 and b.partySlot==2 and b.partyRecord==s.state.saveBlock1.playerParty[2] and e.player.species==1)
++check("outgoing HP persists and incoming record is persisted after foe turn",outgoing.hp==outgoingHP and b.partyRecord.hp==e.player.hp and b.persistedTurn==e.turn)
++local saved=Save.decodeSaveBlock1(Save.encodeSaveBlock1(s.state.saveBlock1,0),0)
++check("both switch records survive SaveFileCodec roundtrip",saved.playerParty[1].hp==outgoingHP and saved.playerParty[2].hp==e.player.hp)
++-- The forced path still shares PARTY but remains intentionally cancel-proof.
++e.awaitingForcedSwitch="player";b.controller.partyMode="forced";b.controller:_setMessages({"Choose replacement."},Controller.PARTY);while b.controller:message()do b.controller:advanceMessage()end;press(b.controller,Input.B_BUTTON)
++check("forced replacement remains cancel-proof",e.awaitingForcedSwitch=="player" and b.controller.state==Controller.PARTY)
++print(("phase4_player_voluntary_switch_rom_test: %d passed, %d failed"):format(pass,fail));os.exit(fail==0 and 0 or 1)
+diff --git a/work/coordination/HANDOFF.md b/work/coordination/HANDOFF.md
+index d9f22b1..95d1f0a 100644
+--- a/work/coordination/HANDOFF.md
++++ b/work/coordination/HANDOFF.md
+@@ -26,8 +26,14 @@ now independently reviewed and published at `8fd9a397` (guarded run
+ `34783304717`), proving forced PARTY choice, persistence, state sync, and the
+ no-bench loss branch. Next dispatch is Phase 4 battle-rule/trainer-matrix
+ discovery, not an assumption that voluntary switching is complete. Discovery
+-selected trainer-only voluntary switching as the next leaf; its explicit bridge
+-route is now active.
++selected trainer-only voluntary switching as the next leaf. Its explicit bridge
++probe passed; the bounded implementation now awaits independent review. Worker
++evidence: focused controller 8/8, verified-ROM BEN89 seam 8/8, deterministic
++runtime replay, and both 134-file no-ROM and verified-ROM suites passed. It
++opens a selector only for a current legal save-backed bench; cancel/stale and
++forged choices do not dispatch a turn; a legal choice invokes the existing
++switch-before-foe engine action and preserves both party records. Do not mark
++broader player switching or Phase 4 complete from this leaf.
+ 
+ ## Phase 2 resume point
+ 
+diff --git a/work/coordination/STATE.json b/work/coordination/STATE.json
+index ff47ba8..edfb3c7 100644
+--- a/work/coordination/STATE.json
++++ b/work/coordination/STATE.json
+@@ -1,13 +1,13 @@
+ {
+   "schema_version": 1,
+-  "updated_utc": "2026-09-13T14:00:00Z",
++  "updated_utc": "2026-09-13T15:00:00Z",
+   "role": "ORCHESTRATOR",
+-  "status": "READY_FOR_INDEPENDENT_REVIEW",
++  "status": "IMPLEMENTED_PENDING_INDEPENDENT_REVIEW",
+   "current_phase": "Phase 4 — full Gen 3 battle engine",
+   "canonical_status_owner": "work/roadmaps/CAPABILITY_CHECKLIST.md",
+-  "active_task": "work/tasks/local-worker-bridge-phase4-player-voluntary-switch-route.md",
+-  "objective": "Add and independently review a fail-closed route for trainer-only voluntary player switching while Phase 2 retail comparison remains externally blocked.",
+-  "next_role": "WORKER",
++  "active_task": "work/tasks/phase4-player-voluntary-switch.md",
++  "objective": "Independently review the bounded trainer-only voluntary player switching implementation while Phase 2 retail comparison remains externally blocked.",
++  "next_role": "REVIEWER",
+   "reconciliation": {
+     "camera_task_status": "CLOSED — REVIEWED PASS at 4c5456f3; guarded run 34753297372",
+     "oak_evidence_bridge": "CLOSED — REVIEWED PASS at ff5ff890; trusted probe run 34753855210",
+@@ -17,7 +17,7 @@
+     "phase4_player_forced_replacement_status": "CLOSED — REVIEWED PASS at 8fd9a397; guarded run 34783304717"
+   },
+   "phase2_external_blocker": "Trusted, user-owned retail-reference captures with provenance/timing/crop/filter details for Oak and Pallet anchors have not been supplied.",
+-  "next_after_success": "After independent review and guarded publication, reconcile Phase 4C without treating voluntary switching as complete; retain Phase 2 comparison for later external input.",
++  "next_after_success": "After independent review and guarded publication, reconcile Phase 4D without treating broader player switching as complete; retain Phase 2 comparison for later external input.",
+   "legal_content_boundary": "Never commit ROMs, BIOS dumps, generated caches, ROM-derived reference screenshots, extracted game assets, or other prohibited content.",
+   "phase_completion_rule": "Phase 2 remains IN PROGRESS until the Oak/reference screenshot discrepancy gate is evidenced and independently reviewed."
+ }
+diff --git a/work/tasks/phase4-player-voluntary-switch.md b/work/tasks/phase4-player-voluntary-switch.md
+index f51dff6..f959e9b 100644
+--- a/work/tasks/phase4-player-voluntary-switch.md
++++ b/work/tasks/phase4-player-voluntary-switch.md
+@@ -1,6 +1,6 @@
+ # Task: Phase 4 trainer-only voluntary player switching
+ 
+-- Status: `BLOCKED ON BRIDGE ROUTE`
++- Status: `IMPLEMENTED — PENDING INDEPENDENT REVIEW`
+ - Type: `PHASE 4 / BATTLE UI / BOUNDED INTEGRATION`
+ 
+ ## Goal
+@@ -28,3 +28,14 @@ wild/Oak paths, item UI, or AI policy.
+    survive SaveFileCodec roundtrip. Forced replacement remains cancel-proof.
+ 5. Verified-ROM `startTrainerBattle(89)`, focused/runtime/full-suite/review
+    evidence pass.
++
++## Worker evidence
++
++The bounded implementation is ready for independent review on the explicit
++bridge route. Focused controller coverage passed (8 assertions), verified-ROM
++`startTrainerBattle(89)` coverage passed (8 assertions) against the supported
++FireRed US v1.0 ROM, and the deterministic runtime replay passed. Full
++no-ROM and verified-ROM suites each passed all 134 checked-in test files. The
++change keeps `BattleEngine`, `BattlePartyBridge`, `PartyScreen`, save codec,
++wild/Oak, items, doubles, and AI untouched. This is not a Phase 4 completion
++claim pending independent review and guarded publication.
