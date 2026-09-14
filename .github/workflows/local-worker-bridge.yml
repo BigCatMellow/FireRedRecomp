@@ -92,6 +92,9 @@ jobs:
             phase4-false-swipe-effects*.patch|phase4-false-swipe-effects*.probe)
               route='phase4-false-swipe-effects'
               ;;
+            phase4-vital-throw-effects*.patch|phase4-vital-throw-effects*.probe)
+              route='phase4-vital-throw-effects'
+              ;;
             oak-parcel-dex-presentation-north*.patch|oak-parcel-dex-presentation-north*.probe)
               route='oak-parcel-dex-presentation-north'
               ;;
@@ -191,6 +194,8 @@ jobs:
                 ;;
               phase4-false-swipe-effects:src/core/BattleEngine.lua|phase4-false-swipe-effects:tests/battle_engine_test.lua|phase4-false-swipe-effects:tests/phase4_false_swipe_effect_rom_test.lua|phase4-false-swipe-effects:scripts/runtime_phase4_false_swipe_replay.sh|phase4-false-swipe-effects:work/tasks/phase4-false-swipe-effects.md|phase4-false-swipe-effects:work/coordination/STATE.json|phase4-false-swipe-effects:work/coordination/HANDOFF.md)
                 ;;
+              phase4-vital-throw-effects:src/core/BattleEngine.lua|phase4-vital-throw-effects:tests/battle_engine_test.lua|phase4-vital-throw-effects:tests/phase4_vital_throw_effect_rom_test.lua|phase4-vital-throw-effects:scripts/runtime_phase4_vital_throw_replay.sh|phase4-vital-throw-effects:work/tasks/phase4-vital-throw-effects.md|phase4-vital-throw-effects:work/coordination/STATE.json|phase4-vital-throw-effects:work/coordination/HANDOFF.md)
+                ;;
               *)
                 echo "Patch target is not authorized for explicit route '$ROUTE': $target" >&2
                 exit 1
@@ -266,6 +271,10 @@ jobs:
               "$LUA" tests/battle_engine_test.lua
               "$LUA" tests/phase4_false_swipe_effect_rom_test.lua
               ;;
+            phase4-vital-throw-effects)
+              "$LUA" tests/battle_engine_test.lua
+              "$LUA" tests/phase4_vital_throw_effect_rom_test.lua
+              ;;
             *)
               echo "Patch execution has no focused-test route for '$ROUTE'." >&2
               exit 1
@@ -339,6 +348,9 @@ jobs:
               ;;
             phase4-false-swipe-effects)
               bash scripts/runtime_phase4_false_swipe_replay.sh
+              ;;
+            phase4-vital-throw-effects)
+              bash scripts/runtime_phase4_vital_throw_replay.sh
               ;;
             *)
               echo "Patch execution has no runtime-replay route for '$ROUTE'." >&2
@@ -429,6 +441,13 @@ jobs:
               ;;
             phase4-false-swipe-effects)
               for path in src/core/BattleEngine.lua tests/battle_engine_test.lua tests/phase4_false_swipe_effect_rom_test.lua scripts/runtime_phase4_false_swipe_replay.sh work/tasks/phase4-false-swipe-effects.md work/coordination/STATE.json work/coordination/HANDOFF.md; do
+                if [[ -e "$path" ]]; then
+                  git add -- "$path"
+                fi
+              done
+              ;;
+            phase4-vital-throw-effects)
+              for path in src/core/BattleEngine.lua tests/battle_engine_test.lua tests/phase4_vital_throw_effect_rom_test.lua scripts/runtime_phase4_vital_throw_replay.sh work/tasks/phase4-vital-throw-effects.md work/coordination/STATE.json work/coordination/HANDOFF.md; do
                 if [[ -e "$path" ]]; then
                   git add -- "$path"
                 fi
