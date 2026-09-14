@@ -34,20 +34,17 @@ broader player switching or Phase 4 complete from that leaf. Fixed-damage
 effects are now closed and published at `c65cf838` (guarded run `34798961274`):
 Dragon Rage (40), level damage (attacker level), and SonicBoom (20) reuse the
 existing accuracy/PP/type path; type immunity remains a no-effect, while
-nonzero effectiveness does not alter fixed damage or presentation. The next
-active task is a source-backed admission-matrix discovery. It must distinguish
-positive-power moves currently admitted by the engine from effect families the
-engine actually represents, before selecting one new bounded implementation
-leaf. Discovery is complete pending independent review: the verified ROM has
-216 positive-power records; 75 are explicitly represented, Dream Eater is
-explicitly rejected, and 140 currently use the broad positive-power fallback.
-The selected smallest next leaf is EFFECT_ALWAYS_HIT (17): six positive-power,
-accuracy-zero retail records require the stock accuracy command's no-roll
-branch, not this engine's ordinary 0%-accuracy check. High-critical, Vital
-Throw, False Swipe, formulas, and stateful families remain explicitly deferred
-or prerequisite-blocked in the discovery task; do not bundle them. Held-item
-trainer layouts remain deferred because battlers do not retain or apply item
-state.
+nonzero effectiveness does not alter fixed damage or presentation. The
+admission-matrix discovery is independently reviewed PASS at `784a5188`: the
+verified ROM has 216 positive-power records, 75 explicitly represented, one
+explicit rejection, and 140 broad-fallback records classified. The active next
+leaf is only EFFECT_ALWAYS_HIT (17): Swift #129, Faint Attack #185, Shadow
+Punch #325, Aerial Ace #332, Magical Leaf #345, and Shock Wave #351 have
+positive power and accuracy zero, so the stock accuracy command takes a no-roll
+branch that this engine does not yet represent. The active prerequisite is an
+exact fail-closed bridge route and one-file probe. Do not bundle Vital Throw,
+high-critical, False Swipe, formulas, or stateful families. Held-item trainer
+layouts remain deferred because battlers do not retain or apply item state.
 
 ## Phase 2 resume point
 
