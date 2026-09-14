@@ -80,6 +80,9 @@ jobs:
             phase4-player-voluntary-switch*.patch|phase4-player-voluntary-switch*.probe)
               route='phase4-player-voluntary-switch'
               ;;
+            phase4-fixed-damage-effects*.patch|phase4-fixed-damage-effects*.probe)
+              route='phase4-fixed-damage-effects'
+              ;;
             oak-parcel-dex-presentation-north*.patch|oak-parcel-dex-presentation-north*.probe)
               route='oak-parcel-dex-presentation-north'
               ;;
@@ -171,6 +174,8 @@ jobs:
                 ;;
               phase4-player-voluntary-switch:main.lua|phase4-player-voluntary-switch:src/core/BattleSceneController.lua|phase4-player-voluntary-switch:tests/phase4_player_voluntary_switch_controller_test.lua|phase4-player-voluntary-switch:tests/phase4_player_voluntary_switch_rom_test.lua|phase4-player-voluntary-switch:scripts/runtime_phase4_player_voluntary_switch_replay.sh|phase4-player-voluntary-switch:work/tasks/phase4-player-voluntary-switch.md|phase4-player-voluntary-switch:work/coordination/STATE.json|phase4-player-voluntary-switch:work/coordination/HANDOFF.md)
                 ;;
+              phase4-fixed-damage-effects:src/core/BattleEngine.lua|phase4-fixed-damage-effects:tests/battle_engine_test.lua|phase4-fixed-damage-effects:tests/phase4_fixed_damage_effect_rom_test.lua|phase4-fixed-damage-effects:scripts/runtime_phase4_fixed_damage_replay.sh|phase4-fixed-damage-effects:work/tasks/phase4-fixed-damage-effects.md|phase4-fixed-damage-effects:work/coordination/STATE.json|phase4-fixed-damage-effects:work/coordination/HANDOFF.md)
+                ;;
               *)
                 echo "Patch target is not authorized for explicit route '$ROUTE': $target" >&2
                 exit 1
@@ -229,6 +234,10 @@ jobs:
             phase4-player-voluntary-switch)
               "$LUA" tests/phase4_player_voluntary_switch_controller_test.lua
               "$LUA" tests/phase4_player_voluntary_switch_rom_test.lua
+              ;;
+            phase4-fixed-damage-effects)
+              "$LUA" tests/battle_engine_test.lua
+              "$LUA" tests/phase4_fixed_damage_effect_rom_test.lua
               ;;
             *)
               echo "Patch execution has no focused-test route for '$ROUTE'." >&2
@@ -292,6 +301,9 @@ jobs:
             phase4-player-voluntary-switch)
               bash scripts/runtime_phase4_player_voluntary_switch_replay.sh
               ;;
+            phase4-fixed-damage-effects)
+              bash scripts/runtime_phase4_fixed_damage_replay.sh
+              ;;
             *)
               echo "Patch execution has no runtime-replay route for '$ROUTE'." >&2
               exit 1
@@ -353,6 +365,13 @@ jobs:
               ;;
             phase4-player-voluntary-switch)
               for path in main.lua src/core/BattleSceneController.lua tests/phase4_player_voluntary_switch_controller_test.lua tests/phase4_player_voluntary_switch_rom_test.lua scripts/runtime_phase4_player_voluntary_switch_replay.sh work/tasks/phase4-player-voluntary-switch.md work/coordination/STATE.json work/coordination/HANDOFF.md; do
+                if [[ -e "$path" ]]; then
+                  git add -- "$path"
+                fi
+              done
+              ;;
+            phase4-fixed-damage-effects)
+              for path in src/core/BattleEngine.lua tests/battle_engine_test.lua tests/phase4_fixed_damage_effect_rom_test.lua scripts/runtime_phase4_fixed_damage_replay.sh work/tasks/phase4-fixed-damage-effects.md work/coordination/STATE.json work/coordination/HANDOFF.md; do
                 if [[ -e "$path" ]]; then
                   git add -- "$path"
                 fi
