@@ -88,6 +88,68 @@ events = battle:runTurn({ action = "move", moveSlot = 1 }, { action = "move", mo
 check("type immunity emits noEffect and leaves HP unchanged", events[3].type == "noEffect" and battle.foe.hp == charStats.hp)
 check("type immunity still consumes real random-damage RNG", battle.rng.draws == 6, battle.rng.draws)
 
+-- Fixed-damage scripts share accuracy/PP/typecalc, but deliberately do not
+-- call critcalc or adjustnormaldamage. Keep their test-only move records
+-- private so battle_test_data.lua remains a verbatim retail transcription.
+local fixedMoves = {}
+for k, v in pairs(Data.moves) do fixedMoves[k] = v end
+fixedMoves[990] = { effect = 41, power = 1, type = Data.TYPE_DRAGON, accuracy = 100, pp = 10, priority = 0 }
+fixedMoves[991] = { effect = 87, power = 1, type = Data.TYPE_GHOST, accuracy = 100, pp = 15, priority = 0 }
+fixedMoves[992] = { effect = 130, power = 1, type = Data.TYPE_NORMAL, accuracy = 90, pp = 20, priority = 0 }
+local function fixedBattle(moveId, playerTypes, foeTypes, playerLevel, foeHP, values)
+  return BattleEngine.new({
+    player = BattleEngine.makeBattler({ species = 1, level = playerLevel or 5,
+      stats = bulbaStats, types = playerTypes, moves = { { move = moveId, pp = fixedMoves[moveId].pp } } }),
+    foe = BattleEngine.makeBattler({ species = 4, level = 5, stats = charStats,
+      hp = foeHP, types = foeTypes, moves = { { move = Data.MOVE_TACKLE, pp = 1 } } }),
+    moves = fixedMoves, typeChart = Data.typeChart, rng = scriptedRng(values or { 0 }),
+  })
+end
+
+battle = fixedBattle(990, { Data.TYPE_DRAGON, Data.TYPE_DRAGON },
+  { Data.TYPE_DRAGON, Data.TYPE_DRAGON }, 5, 99, { 0 })
+events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
+check("Dragon Rage deals fixed 40 through a super-effective typecalc", events[2].type == "damage"
+  and events[2].amount == 40 and events[2].hpRemaining == 59, events[2] and events[2].amount)
+check("Dragon Rage suppresses effectiveness and skips crit/random RNG", events[2].superEffective == false
+  and events[2].notVeryEffective == false and #events == 2 and battle.rng.draws == 1, battle.rng.draws)
+
+battle = fixedBattle(991, { Data.TYPE_GHOST, Data.TYPE_GHOST },
+  { Data.TYPE_PSYCHIC, Data.TYPE_PSYCHIC }, 37, 99, { 0 })
+events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
+check("level-damage effect uses attacker level, not stats or move power", events[2].type == "damage"
+  and events[2].amount == 37 and events[2].hpRemaining == 62, events[2] and events[2].amount)
+check("level-damage suppresses a super-effective presentation and skips crit/random RNG",
+  events[2].superEffective == false and events[2].notVeryEffective == false and #events == 2 and battle.rng.draws == 1,
+  battle.rng.draws)
+
+battle = fixedBattle(992, { Data.TYPE_NORMAL, Data.TYPE_NORMAL },
+  { Data.TYPE_ROCK, Data.TYPE_ROCK }, 5, 99, { 0 })
+events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
+check("SonicBoom deals fixed 20 through a not-very-effective typecalc", events[2].type == "damage"
+  and events[2].amount == 20 and events[2].hpRemaining == 79, events[2] and events[2].amount)
+check("SonicBoom suppresses not-very-effective presentation and skips crit/random RNG",
+  events[2].superEffective == false and events[2].notVeryEffective == false and #events == 2 and battle.rng.draws == 1,
+  battle.rng.draws)
+
+battle = fixedBattle(992, { Data.TYPE_NORMAL, Data.TYPE_NORMAL },
+  { Data.TYPE_GHOST, Data.TYPE_GHOST }, 5, nil, { 0 })
+events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
+check("SonicBoom type immunity blocks HP loss without crit/random RNG", events[2].type == "noEffect"
+  and battle.foe.hp == charStats.hp and #events == 2 and battle.rng.draws == 1, battle.rng.draws)
+
+battle = fixedBattle(992, { Data.TYPE_NORMAL, Data.TYPE_NORMAL },
+  { Data.TYPE_FIRE, Data.TYPE_FIRE }, 5, nil, { 90 })
+events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
+check("fixed-damage miss spends PP but only accuracy RNG", events[2].type == "miss"
+  and battle.player.moves[1].pp == 19 and battle.rng.draws == 1, battle.rng.draws)
+
+battle = fixedBattle(992, { Data.TYPE_NORMAL, Data.TYPE_NORMAL },
+  { Data.TYPE_FIRE, Data.TYPE_FIRE }, 5, 15, { 0 })
+events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
+check("fixed damage clamps through ordinary HP application", events[2].type == "damage"
+  and events[2].amount == 15 and events[2].hpRemaining == 0, events[2] and events[2].amount)
+
 -- A run action is hoisted ahead of any foe move. At equal-or-better speed
 -- it succeeds with no RNG, so the foe never spends PP or attacks.
 battle = makeBattle({}, { { move = Data.MOVE_TACKLE, pp = 1 } }, { { move = Data.MOVE_EMBER, pp = 1 } })

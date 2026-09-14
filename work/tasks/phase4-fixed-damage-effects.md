@@ -1,6 +1,6 @@
 # Task: Phase 4 fixed-damage move effects
 
-- Status: `BLOCKED ON BRIDGE ROUTE`
+- Status: `IMPLEMENTED — PENDING GUARDED RUN / INDEPENDENT REVIEW`
 - Type: `PHASE 4 / BATTLE RULES / BOUNDED IMPLEMENTATION`
 
 ## Goal
@@ -24,3 +24,15 @@ immunity, no-effect, and HP-application paths; do not generalize the dispatcher.
 
 Status effects, Counter/Psywave/Super Fang/False Swipe, held items, trainer
 layouts flags 2/3, admission-matrix policy, AI, doubles, UI, or main wiring.
+
+## Worker evidence
+
+The bounded implementation changes only the authorized seven surfaces. It
+routes effects 41 (Dragon Rage), 87 (level damage), and 130 (SonicBoom) after
+accuracy/PP and typecalc: immunity emits the existing noEffect event, while
+nonzero type multipliers do not alter the fixed amount or presentation flags.
+The branch consumes no crit or random-damage roll. Focused unit coverage passed
+169 assertions in the verified-ROM run; the verified-ROM fixture passed 5 assertions against FireRed
+US v1.0, including NIKOLAS #204's two custom SonicBoom slots and a parsed
+SonicBoom engine invocation. This is not a Phase 4 completion claim pending
+the guarded bridge run and independent review.

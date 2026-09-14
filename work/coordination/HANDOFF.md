@@ -26,17 +26,19 @@ now independently reviewed and published at `8fd9a397` (guarded run
 `34783304717`), proving forced PARTY choice, persistence, state sync, and the
 no-bench loss branch. Next dispatch is Phase 4 battle-rule/trainer-matrix
 discovery, not an assumption that voluntary switching is complete. Discovery
-selected trainer-only voluntary switching as the next leaf. Its explicit bridge
-probe passed; the bounded implementation now awaits independent review. Worker
-evidence: focused controller 8/8, verified-ROM BEN89 seam 8/8, deterministic
-runtime replay, and both 134-file no-ROM and verified-ROM suites passed. It
-opens a selector only for a current legal save-backed bench; cancel/stale and
-forged choices do not dispatch a turn; a legal choice invokes the existing
-switch-before-foe engine action and preserves both party records. Do not mark
-broader player switching or Phase 4 complete from this leaf. Voluntary switching
-has now published at `3140e267`; the active next route is fixed-damage effects.
-Held-item trainer layouts remain deferred because battlers do not retain or apply
-item state.
+selected trainer-only voluntary switching as the next leaf. It is closed and
+published at `3140e267`; it opens a selector only for a current legal
+save-backed bench, rejects cancel/stale/forged choices, invokes the existing
+switch-before-foe engine action, and preserves both party records. Do not mark
+broader player switching or Phase 4 complete from that leaf. The active bounded
+task is fixed-damage effects. Its Worker patch handles Dragon Rage (40), level
+damage (attacker level), and SonicBoom (20) after the existing accuracy/PP/type
+path; type immunity remains a no-effect, while nonzero effectiveness does not
+alter fixed damage or presentation. Focused unit evidence (169 assertions in
+the verified-ROM run) and
+the verified-ROM NIKOLAS #204 fixture (5 assertions) passed locally. It awaits
+only its guarded bridge run and independent review. Held-item trainer layouts
+remain deferred because battlers do not retain or apply item state.
 
 ## Phase 2 resume point
 

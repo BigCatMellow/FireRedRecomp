@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
-  "updated_utc": "2026-09-13T15:00:00Z",
-  "role": "ORCHESTRATOR",
-  "status": "IMPLEMENTED_PENDING_INDEPENDENT_REVIEW",
+  "updated_utc": "2026-09-13T16:00:00Z",
+  "role": "WORKER",
+  "status": "IMPLEMENTED_PENDING_GUARDED_RUN_AND_INDEPENDENT_REVIEW",
   "current_phase": "Phase 4 — full Gen 3 battle engine",
   "canonical_status_owner": "work/roadmaps/CAPABILITY_CHECKLIST.md",
-  "active_task": "work/tasks/local-worker-bridge-phase4-fixed-damage-effects-route.md",
-  "objective": "Add and independently review a fail-closed route for bounded Phase 4 fixed-damage move effects while Phase 2 retail comparison remains externally blocked.",
-  "next_role": "REVIEWER",
+  "active_task": "work/tasks/phase4-fixed-damage-effects.md",
+  "objective": "Guarded-run and independently review bounded Phase 4 Dragon Rage, level-damage, and SonicBoom effects while Phase 2 retail comparison remains externally blocked.",
+  "next_role": "ORCHESTRATOR",
   "reconciliation": {
     "camera_task_status": "CLOSED — REVIEWED PASS at 4c5456f3; guarded run 34753297372",
     "oak_evidence_bridge": "CLOSED — REVIEWED PASS at ff5ff890; trusted probe run 34753855210",
@@ -17,7 +17,7 @@
     "phase4_player_forced_replacement_status": "CLOSED — REVIEWED PASS at 8fd9a397; guarded run 34783304717"
   },
   "phase2_external_blocker": "Trusted, user-owned retail-reference captures with provenance/timing/crop/filter details for Oak and Pallet anchors have not been supplied.",
-  "next_after_success": "After independent review and guarded publication, reconcile Phase 4D without treating broader player switching as complete; retain Phase 2 comparison for later external input.",
+  "next_after_success": "Submit only this task-bounded patch through the explicit fixed-damage bridge route, then independently review it; do not treat broader battle-effect or Phase 4 work as complete.",
   "legal_content_boundary": "Never commit ROMs, BIOS dumps, generated caches, ROM-derived reference screenshots, extracted game assets, or other prohibited content.",
   "phase_completion_rule": "Phase 2 remains IN PROGRESS until the Oak/reference screenshot discrepancy gate is evidenced and independently reviewed."
 }

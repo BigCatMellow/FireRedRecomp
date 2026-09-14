@@ -562,6 +562,20 @@ BattleEngine.DRAIN_MOVES = {
   [3] = { divisor = 2 }, -- EFFECT_ABSORB (Absorb, Mega Drain, Giga Drain, Leech Life)
 }
 
+-- The three bounded fixed-damage effects. Their real scripts still run the
+-- ordinary accuracycheck -> ppreduce -> typecalc path, so type immunity is
+-- meaningful, but they do not enter Cmd_critcalc or adjustnormaldamage:
+-- Dragon Rage always deals 40 HP, SonicBoom always deals 20 HP, and the
+-- level-damage family (Night Shade / Seismic Toss) deals the attacker's
+-- level. TypeCalc's nonzero multipliers only set presentation result bits
+-- for ordinary damage; these scripts clear those bits and retain their fixed
+-- amount, while its zero multiplier still prevents HP loss.
+BattleEngine.FIXED_DAMAGE_MOVES = {
+  [41] = { amount = 40 },       -- EFFECT_DRAGON_RAGE
+  [87] = { amount = "level" },  -- EFFECT_LEVEL_DAMAGE
+  [130] = { amount = 20 },      -- EFFECT_SONICBOOM
+}
+
 -- The real multi-hit family: a single move selection that hits the
 -- defender multiple times in one turn. Real BattleScript_EffectMultiHit /
 -- BattleScript_EffectDoubleHit (data/battle_scripts_1.s): attackcanceler ->
@@ -888,6 +902,28 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
   local multiHitEntry = BattleEngine.MULTI_HIT_MOVES[move.effect]
   if multiHitEntry then
     self:resolveMultiHit(attackerSide, attacker, defenderSide, defender, move, multiHitEntry, events)
+    return
+  end
+
+  -- These scripts deliberately bypass critcalc/damagecalc/adjustnormaldamage
+  -- after the shared accuracy and PP work above. They nevertheless execute
+  -- the real typecalc route so immunity retains its normal no-effect result.
+  -- A nonzero effectiveness multiplier must not change a fixed amount or
+  -- produce effectiveness presentation; only zero is behaviorally relevant.
+  local fixedDamageEntry = BattleEngine.FIXED_DAMAGE_MOVES[move.effect]
+  if fixedDamageEntry then
+    local fixedDamage = fixedDamageEntry.amount == "level"
+      and attacker.level or fixedDamageEntry.amount
+    local _, flags = BattleFormulas.typeCalc(
+      fixedDamage, move.type, attacker.types, defender.types, self.typeChart
+    )
+    if flags.noEffect then
+      events[#events + 1] = { type = "noEffect", side = attackerSide, target = defenderSide }
+      return
+    end
+    flags.superEffective = false
+    flags.notVeryEffective = false
+    self:applyDamage(attackerSide, defenderSide, defender, fixedDamage, flags, events)
     return
   end
 
