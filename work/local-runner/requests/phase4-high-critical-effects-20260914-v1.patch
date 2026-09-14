@@ -1,0 +1,187 @@
+diff --git a/scripts/runtime_phase4_high_critical_replay.sh b/scripts/runtime_phase4_high_critical_replay.sh
+new file mode 100755
+index 00000000..a801f518
+--- /dev/null
++++ b/scripts/runtime_phase4_high_critical_replay.sh
+@@ -0,0 +1,8 @@
++#!/usr/bin/env bash
++set -euo pipefail
++ROOT=$(cd "$(dirname "$0")/.." && pwd)
++cd "$ROOT"
++: "${POKEPORT_ROM:?set POKEPORT_ROM to verified FireRed US v1.0}"
++lua5.1 tests/battle_engine_test.lua
++lua5.1 tests/phase4_high_critical_effect_rom_test.lua
++echo "RUNTIME_REPLAY phase4_high_critical PASS effect43=true records=8 stage=1 crit-rng=one"
+diff --git a/src/core/BattleEngine.lua b/src/core/BattleEngine.lua
+index d1b0a976..511437e1 100644
+--- a/src/core/BattleEngine.lua
++++ b/src/core/BattleEngine.lua
+@@ -431,6 +431,10 @@ BattleEngine.SIDE_PLAYER = "player"
+ BattleEngine.SIDE_FOE = "foe"
+ BattleEngine.EFFECT_ATTACK_DOWN = 18
+ BattleEngine.EFFECT_DEFENSE_DOWN = 19
++-- Real EFFECT_HIGH_CRITICAL enters the ordinary hit script but advances only
++-- Cmd_critcalc's stage from 0 (1/16) to 1 (1/8). It keeps the same one RNG
++-- draw and every other ordinary-damage step.
++BattleEngine.EFFECT_HIGH_CRITICAL = 43
+ -- Real EFFECT_ALWAYS_HIT bypasses Cmd_accuracycheck's random accuracy branch
+ -- entirely (battle_script_commands.c). It is deliberately limited to this
+ -- exact effect; Vital Throw uses a related hardware condition but remains a
+@@ -937,7 +941,8 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
+   -- FIRST_BATTLE flag check, so the roll is still consumed while criticals
+   -- are suppressed. Suppression is global until the first player damage
+   -- message flips Oak's state flag, including a foe that attacks first.
+-  local rolledCrit = BattleFormulas.critRoll(self.rng, 0)
++  local critStage = move.effect == BattleEngine.EFFECT_HIGH_CRITICAL and 1 or 0
++  local rolledCrit = BattleFormulas.critRoll(self.rng, critStage)
+   local isCrit = rolledCrit and not (self.firstBattle and not self.tutorialPlayerDamageDone)
+ 
+   -- 4. damagecalc: base damage, then the real x2 crit multiply, which
+diff --git a/tests/battle_engine_test.lua b/tests/battle_engine_test.lua
+index 498b4f83..4300f7ec 100644
+--- a/tests/battle_engine_test.lua
++++ b/tests/battle_engine_test.lua
+@@ -178,6 +178,35 @@ events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
+ check("always-hit preserves the ordinary critical branch", events[2].type == "critical"
+   and events[3].type == "damage" and battle.rng.draws == 2, battle.rng.draws)
+ 
++-- EFFECT_HIGH_CRITICAL keeps the ordinary hit pipeline but passes critcalc
++-- stage 1 (1/8) instead of ordinary stage 0 (1/16). Private records keep the
++-- shared retail transcription untouched. RNG values are accuracy, crit, random.
++local highCritMoves = {}
++for k, v in pairs(Data.moves) do highCritMoves[k] = v end
++highCritMoves[995] = { effect = 43, power = 60, type = Data.TYPE_NORMAL, accuracy = 100, pp = 20, priority = 0 }
++highCritMoves[996] = { effect = 0, power = 60, type = Data.TYPE_NORMAL, accuracy = 100, pp = 20, priority = 0 }
++local function highCritBattle(moveId, values)
++  return BattleEngine.new({
++    player = BattleEngine.makeBattler({ species = 1, level = 5, stats = bulbaStats,
++      types = { Data.TYPE_NORMAL, Data.TYPE_NORMAL }, moves = { { move = moveId, pp = 20 } } }),
++    foe = BattleEngine.makeBattler({ species = 4, level = 5, stats = charStats,
++      types = { Data.TYPE_FIRE, Data.TYPE_FIRE }, moves = { { move = Data.MOVE_TACKLE, pp = 1 } } }),
++    moves = highCritMoves, typeChart = Data.typeChart, rng = scriptedRng(values),
++  })
++end
++
++battle = highCritBattle(995, { 0, 8, 0 })
++events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
++check("high-critical stage one crits at the 1/8 boundary", events[2].type == "critical"
++  and events[3].type == "damage" and battle.rng.draws == 3, battle.rng.draws)
++check("high-critical keeps ordinary PP and random-damage paths", battle.player.moves[1].pp == 19
++  and events[3].amount > 0, events[3] and events[3].amount)
++
++battle = highCritBattle(996, { 0, 8, 0 })
++events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
++check("ordinary effect remains stage zero at the high-critical boundary", events[2].type == "damage"
++  and battle.rng.draws == 3, events[2] and events[2].type)
++
+ battle = alwaysHitBattle(993, { Data.TYPE_GHOST, Data.TYPE_GHOST }, nil, { 0, 0 })
+ events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
+ check("always-hit preserves type immunity after its no-roll accuracy branch", events[2].type == "noEffect"
+diff --git a/tests/phase4_high_critical_effect_rom_test.lua b/tests/phase4_high_critical_effect_rom_test.lua
+new file mode 100644
+index 00000000..1ceeba05
+--- /dev/null
++++ b/tests/phase4_high_critical_effect_rom_test.lua
+@@ -0,0 +1,34 @@
++-- Run: POKEPORT_ROM=/path/to/verified/pokefirered.gba lua5.1 tests/phase4_high_critical_effect_rom_test.lua
++package.path = package.path .. ";./?.lua"
++local BattleEngine = require("src.core.BattleEngine")
++local BattleMove = require("import.BattleMove")
++local PokemonStats = require("src.core.PokemonStats")
++local RomAddresses = require("import.RomAddresses")
++local RomImporter = require("import.RomImporter")
++local SpeciesInfo = require("import.SpeciesInfo")
++local TypeChart = require("import.TypeChart")
++local path = os.getenv("POKEPORT_ROM")
++if not path then print("SKIP phase4_high_critical_effect_rom_test (set POKEPORT_ROM)"); os.exit(0) end
++local ok, info = RomImporter.verify(path)
++if not ok then print("FAIL: ROM verification -- " .. tostring(info)); os.exit(1) end
++local f = assert(io.open(path, "rb")); local rom = f:read("*a"); f:close()
++local addrs = assert(RomAddresses["41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc"])
++local moves = BattleMove.parseTable(rom, addrs.gBattleMoves, RomAddresses.COUNTS.MOVES_COUNT)
++local species = SpeciesInfo.parseTable(rom, addrs.gSpeciesInfo, RomAddresses.COUNTS.NUM_SPECIES)
++local typeChart = TypeChart.parseTable(rom, addrs.gTypeEffectiveness)
++local ids = { 2, 75, 152, 163, 177, 238, 314, 348 }
++local expected = { [2]={50,100}, [75]={55,95}, [152]={90,85}, [163]={70,100}, [177]={100,95}, [238]={100,80}, [314]={55,95}, [348]={70,100} }
++local passed, failed = 0, 0
++local function check(name, condition, detail) if condition then passed=passed+1 else failed=failed+1; print("FAIL: "..name..(detail and (" -- "..tostring(detail)) or "")) end end
++local exact, count = true, 0
++for id = 1, RomAddresses.COUNTS.MOVES_COUNT - 1 do if moves[id].effect == 43 and moves[id].power > 0 then count=count+1 end end
++for _, id in ipairs(ids) do local m=moves[id]; exact=exact and m.effect==43 and m.power==expected[id][1] and m.accuracy==expected[id][2] end
++check("ROM has exactly eight expected positive-power effect-43 records", exact and count==#ids, count)
++local function rng(values) return { draws=0, next16=function(self) self.draws=self.draws+1; return values[self.draws] or 0 end } end
++local zero={hp=0,attack=0,defense=0,speed=0,spAttack=0,spDefense=0}; local neutral={attack=0,defense=0,speed=0,spAttack=0,spDefense=0}
++local playerStats=PokemonStats.calculateAll(species[1],20,zero,zero,neutral); local foeStats=PokemonStats.calculateAll(species[4],20,zero,zero,neutral); local scripted=rng({0,8,0})
++local battle=BattleEngine.new({player=BattleEngine.makeBattler({species=1,level=20,stats=playerStats,types=species[1].types,moves={{move=163,pp=moves[163].pp}}}),foe=BattleEngine.makeBattler({species=4,level=20,stats=foeStats,types=species[4].types,moves={{move=33,pp=moves[33].pp}}}),moves=moves,typeChart=typeChart,rng=scripted})
++local events={}; battle:resolveMove(BattleEngine.SIDE_PLAYER,1,events)
++check("parsed Slash uses stage one and preserves three ordinary draws", events[2].type=="critical" and events[3].type=="damage" and scripted.draws==3, scripted.draws)
++check("parsed Slash still deducts PP", battle.player.moves[1].pp==moves[163].pp-1, battle.player.moves[1].pp)
++print(("phase4_high_critical_effect_rom_test: %d passed, %d failed"):format(passed,failed)); os.exit(failed==0 and 0 or 1)
+diff --git a/work/coordination/HANDOFF.md b/work/coordination/HANDOFF.md
+index 06fcfc77..8c17b7b9 100644
+--- a/work/coordination/HANDOFF.md
++++ b/work/coordination/HANDOFF.md
+@@ -49,10 +49,12 @@ effect 43 routes through ordinary Hit but advances only the existing critical
+ stage from 0 (1/16) to 1 (1/8), with the same single critical RNG draw. The
+ eight records are Karate Chop #2, Razor Leaf #75, Crabhammer #152, Slash #163,
+ Aeroblast #177, Cross Chop #238, Air Cutter #314, and Leaf Blade #348. The
+-active prerequisite is an exact fail-closed route and probe for only that
+-effect-43 stage selection; do not bundle Vital Throw, False Swipe, formulas,
+-or stateful families. Held-item trainer layouts remain deferred because
+-battlers do not retain or apply item state.
++effect-43 stage selection has a verified route and probe. The bounded patch
++selects only critical stage 1, preserving one crit RNG draw, PP, type, normal
++damage, and HP paths; it is pending guarded execution and independent review.
++Do not bundle Vital Throw, False Swipe, formulas, or stateful families.
++Held-item trainer layouts remain deferred because battlers do not retain or
++apply item state.
+ 
+ ## Phase 2 resume point
+ 
+diff --git a/work/coordination/STATE.json b/work/coordination/STATE.json
+index 568a8db0..03caa110 100644
+--- a/work/coordination/STATE.json
++++ b/work/coordination/STATE.json
+@@ -1,13 +1,13 @@
+ {
+   "schema_version": 1,
+-  "updated_utc": "2026-09-14T05:40:00Z",
+-  "role": "ORCHESTRATOR",
+-  "status": "BLOCKED_ON_EXPLICIT_BRIDGE_ROUTE",
++  "updated_utc": "2026-09-14T06:00:00Z",
++  "role": "WORKER",
++  "status": "IMPLEMENTED_PENDING_GUARDED_RUN_AND_INDEPENDENT_REVIEW",
+   "current_phase": "Phase 4 — full Gen 3 battle engine",
+   "canonical_status_owner": "work/roadmaps/CAPABILITY_CHECKLIST.md",
+   "active_task": "work/tasks/phase4-high-critical-effects.md",
+-  "objective": "Create and independently review an exact fail-closed bridge route for only Phase 4 high-critical effect 43, while Phase 2 retail comparison remains externally blocked.",
+-  "next_role": "WORKER",
++  "objective": "Guarded-run and independently review only Phase 4 high-critical effect 43, while Phase 2 retail comparison remains externally blocked.",
++  "next_role": "ORCHESTRATOR",
+   "reconciliation": {
+     "camera_task_status": "CLOSED — REVIEWED PASS at 4c5456f3; guarded run 34753297372",
+     "oak_evidence_bridge": "CLOSED — REVIEWED PASS at ff5ff890; trusted probe run 34753855210",
+diff --git a/work/tasks/phase4-high-critical-effects.md b/work/tasks/phase4-high-critical-effects.md
+index 4f667c43..7e57ef40 100644
+--- a/work/tasks/phase4-high-critical-effects.md
++++ b/work/tasks/phase4-high-critical-effects.md
+@@ -1,6 +1,6 @@
+ # Task: Phase 4 high-critical move effects
+ 
+-- Status: `BLOCKED ON EXPLICIT BRIDGE ROUTE`
++- Status: `IMPLEMENTED — PENDING GUARDED RUN / INDEPENDENT REVIEW`
+ - Type: `PHASE 4 / BATTLE RULES / BOUNDED IMPLEMENTATION`
+ 
+ ## Goal
+@@ -32,3 +32,11 @@ The implementation route may authorize only `src/core/BattleEngine.lua`,
+ `scripts/runtime_phase4_high_critical_replay.sh`, this task, `STATE.json`, and
+ `HANDOFF.md`. It must be fail-closed and receive a separate one-file probe
+ before any implementation patch is accepted.
++
++## Worker evidence
++
++Only effect 43 selects the existing stage-1 critical table entry. Focused
++coverage proves the 1/8 boundary, ordinary stage-0 regression, PP, and the
++unchanged three-draw hit path. The verified-ROM fixture proves the eight
++records and parsed Slash behavior. This is not a Phase 4 completion claim
++pending guarded execution and independent review.
