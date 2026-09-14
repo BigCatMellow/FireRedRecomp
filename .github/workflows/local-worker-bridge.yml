@@ -95,6 +95,9 @@ jobs:
             phase4-vital-throw-effects*.patch|phase4-vital-throw-effects*.probe)
               route='phase4-vital-throw-effects'
               ;;
+            phase4-two-sided-replacement-state-api*.patch|phase4-two-sided-replacement-state-api*.probe)
+              route='phase4-two-sided-replacement-state-api'
+              ;;
             oak-parcel-dex-presentation-north*.patch|oak-parcel-dex-presentation-north*.probe)
               route='oak-parcel-dex-presentation-north'
               ;;
@@ -196,6 +199,8 @@ jobs:
                 ;;
               phase4-vital-throw-effects:src/core/BattleEngine.lua|phase4-vital-throw-effects:tests/battle_engine_test.lua|phase4-vital-throw-effects:tests/phase4_vital_throw_effect_rom_test.lua|phase4-vital-throw-effects:scripts/runtime_phase4_vital_throw_replay.sh|phase4-vital-throw-effects:work/tasks/phase4-vital-throw-effects.md|phase4-vital-throw-effects:work/coordination/STATE.json|phase4-vital-throw-effects:work/coordination/HANDOFF.md)
                 ;;
+              phase4-two-sided-replacement-state-api:src/core/BattleEngine.lua|phase4-two-sided-replacement-state-api:src/core/BattleSceneController.lua|phase4-two-sided-replacement-state-api:src/core/TrainerBattleOrchestrator.lua|phase4-two-sided-replacement-state-api:main.lua|phase4-two-sided-replacement-state-api:tests/battle_engine_test.lua|phase4-two-sided-replacement-state-api:tests/battle_scene_controller_test.lua|phase4-two-sided-replacement-state-api:tests/phase4_two_sided_replacement_state_test.lua|phase4-two-sided-replacement-state-api:tests/phase4_two_sided_replacement_state_rom_test.lua|phase4-two-sided-replacement-state-api:scripts/runtime_phase4_two_sided_replacement_replay.sh|phase4-two-sided-replacement-state-api:work/tasks/phase4-two-sided-replacement-state-api-design.md|phase4-two-sided-replacement-state-api:work/coordination/STATE.json|phase4-two-sided-replacement-state-api:work/coordination/HANDOFF.md)
+                ;;
               *)
                 echo "Patch target is not authorized for explicit route '$ROUTE': $target" >&2
                 exit 1
@@ -275,6 +280,12 @@ jobs:
               "$LUA" tests/battle_engine_test.lua
               "$LUA" tests/phase4_vital_throw_effect_rom_test.lua
               ;;
+            phase4-two-sided-replacement-state-api)
+              "$LUA" tests/battle_engine_test.lua
+              "$LUA" tests/battle_scene_controller_test.lua
+              "$LUA" tests/phase4_two_sided_replacement_state_test.lua
+              "$LUA" tests/phase4_two_sided_replacement_state_rom_test.lua
+              ;;
             *)
               echo "Patch execution has no focused-test route for '$ROUTE'." >&2
               exit 1
@@ -351,6 +362,9 @@ jobs:
               ;;
             phase4-vital-throw-effects)
               bash scripts/runtime_phase4_vital_throw_replay.sh
+              ;;
+            phase4-two-sided-replacement-state-api)
+              bash scripts/runtime_phase4_two_sided_replacement_replay.sh
               ;;
             *)
               echo "Patch execution has no runtime-replay route for '$ROUTE'." >&2
@@ -448,6 +462,13 @@ jobs:
               ;;
             phase4-vital-throw-effects)
               for path in src/core/BattleEngine.lua tests/battle_engine_test.lua tests/phase4_vital_throw_effect_rom_test.lua scripts/runtime_phase4_vital_throw_replay.sh work/tasks/phase4-vital-throw-effects.md work/coordination/STATE.json work/coordination/HANDOFF.md; do
+                if [[ -e "$path" ]]; then
+                  git add -- "$path"
+                fi
+              done
+              ;;
+            phase4-two-sided-replacement-state-api)
+              for path in src/core/BattleEngine.lua src/core/BattleSceneController.lua src/core/TrainerBattleOrchestrator.lua main.lua tests/battle_engine_test.lua tests/battle_scene_controller_test.lua tests/phase4_two_sided_replacement_state_test.lua tests/phase4_two_sided_replacement_state_rom_test.lua scripts/runtime_phase4_two_sided_replacement_replay.sh work/tasks/phase4-two-sided-replacement-state-api-design.md work/coordination/STATE.json work/coordination/HANDOFF.md; do
                 if [[ -e "$path" ]]; then
                   git add -- "$path"
                 fi

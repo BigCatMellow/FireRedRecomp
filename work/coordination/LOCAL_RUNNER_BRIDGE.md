@@ -38,6 +38,9 @@ Current supported request/probe prefixes are:
 - `phase4-player-voluntary-switch...` — bounded trainer-only voluntary player
   switch route, including legal-bench selection, save-backed active-party
   replacement, and same-turn foe response;
+- `phase4-two-sided-replacement-state-api...` — bounded ordered post-faint
+  queue/state migration route for both-side replacement, draw settlement, and
+  existing single-faint compatibility; it explicitly excludes Explosion;
 - `runner-online...probe` — non-patch runner-readiness probe only.
 
 Adding a new route requires a bounded task that authorizes bridge maintenance. Do not add a generic fallback route.

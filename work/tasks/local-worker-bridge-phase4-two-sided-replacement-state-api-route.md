@@ -1,6 +1,6 @@
 # Task: add Local Worker Bridge route for Phase 4 two-sided replacement state
 
-- Status: `ACTIVE`
+- Status: `PENDING INDEPENDENT REVIEW`
 - Type: `INFRASTRUCTURE / EXECUTION SUBSTRATE`
 
 ## Goal
@@ -40,3 +40,11 @@ probe before Worker eligibility.
 No gameplay implementation, tests, move effect, state API, UI behavior, AI,
 trainer layouts, or Phase-completion status. Do not add a generic fallback
 route or broaden another task's route.
+
+## Configured route
+
+The workflow has an exact `phase4-two-sided-replacement-state-api` selector,
+literal target allowlist, four focused-test commands, exact runtime replay, and
+literal publish staging list matching the required later-worker surface. The
+next gate is independent review, then a separate one-file probe; no patch is
+authorized by configuration alone.
