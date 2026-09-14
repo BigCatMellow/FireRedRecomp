@@ -4292,7 +4292,7 @@ world.settleOakLabRivalBattle = function(battle)
       messages[#messages + 1] = "OAK: Hm! Excellent! If you win,\nyour POKEMON will grow!"
       messages[#messages + 1] = ("%s got $%d for winning!")
         :format(Charmap.decode(newGame.session.state.saveBlock2.playerName), Battle.RivalRewards.PRIZE_MONEY)
-    elseif outcome == "playerLost" then
+    elseif outcome == "playerLost" or outcome == "playerDrew" then
       Battle.RivalRewards.applyLoss(battle.partyRecord)
       messages[#messages + 1] = battle.rivalName .. ": Yeah! Am I great or what?"
       messages[#messages + 1] = "OAK: Hm... How disappointing..."
@@ -4327,7 +4327,8 @@ world.finishOakLabRivalBattle = function(battle)
     -- PalletTown_ProfessorOaksLab_EventScript_EndRivalBattle begins with
     -- HealPlayerParty and reaches this same progression on either outcome.
     Battle.RivalRewards.healParty(newGame.session.state.saveBlock1, world.battleCatalog.moves)
-    return newGame.story:completeRivalBattle(outcome, battle.trainerId)
+    return newGame.story:completeRivalBattle(
+      outcome == "playerDrew" and "playerLost" or outcome, battle.trainerId)
   end)
   if not ok then
     addLine("Rival-battle story continuation failed: " .. tostring(result))
@@ -4341,7 +4342,7 @@ world.finishOakLabRivalBattle = function(battle)
   world.npcs = kept
   -- The rival-exit movement ends by turning the player south in place on
   -- the original scene-3 trigger tile.
-  playerMovement.facingDirection = PlayerMovement.DOWN
+  if playerMovement then playerMovement.facingDirection = PlayerMovement.DOWN end
   syncSessionLocation()
   addLine(("Oak-lab rival battle %s: party healed, scene 4/trainer/story flags persisted, rival departed%s.")
     :format(outcome == "playerWon" and "won" or "lost",
@@ -4391,7 +4392,7 @@ world.finishTrainerBattle = function(battle)
     if newGame.session then
       newGame.session:setFlag(Battle.EarlyStory.TRAINER_FLAGS_START + battle.trainerId)
     end
-  elseif outcome == "playerLost" then
+  elseif outcome == "playerLost" or outcome == "playerDrew" then
     local sb1 = newGame.session.state.saveBlock1
     local topLevel = Battle.WhiteoutRules.highestPartyLevel(sb1.playerParty, sb1.playerPartyCount)
     local badgeCount = Battle.WhiteoutRules.countBadges(function(id) return newGame.session:getFlag(id) end)
@@ -4468,7 +4469,7 @@ function love.update(dt)
           world.finishOakLabRivalBattle(battle)
         elseif battle.kind == "trainer" then
           world.finishTrainerBattle(battle)
-        elseif outcome == "playerLost" then
+        elseif outcome == "playerLost" or outcome == "playerDrew" then
           local sb1 = newGame.session.state.saveBlock1
           local topLevel = Battle.WhiteoutRules.highestPartyLevel(sb1.playerParty, sb1.playerPartyCount)
           local badgeCount = Battle.WhiteoutRules.countBadges(function(id) return newGame.session:getFlag(id) end)

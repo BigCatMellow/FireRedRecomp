@@ -728,6 +728,10 @@ function BattleEngine.new(opts)
     -- its top assert) -- the real analogue of real FireRed blocking on the
     -- party-select menu before HandleTurnActionSelectionState can run again.
     awaitingForcedSwitch = nil,
+    -- Authoritative post-faint state. awaitingForcedSwitch remains the
+    -- compatibility view for existing controller/orchestrator callers.
+    pendingForcedSwitches = {},
+    faintSequence = nil,
   }, BattleEngine)
 end
 
@@ -743,6 +747,62 @@ end
 
 function BattleEngine:isOver()
   return self.outcome ~= nil
+end
+
+function BattleEngine:_syncForcedSwitchHead()
+  self.awaitingForcedSwitch = self.pendingForcedSwitches[1]
+end
+
+function BattleEngine:beginFaintSequence()
+  assert(not self.faintSequence, "a faint sequence is already active")
+  self.faintSequence = {}
+end
+
+function BattleEngine:recordFaint(side, events)
+  local battler = self:battler(side)
+  if battler.hp > 0 then return false end
+  assert(self.faintSequence, "recordFaint needs beginFaintSequence")
+  battler.hp = 0
+  for _, recorded in ipairs(self.faintSequence) do
+    if recorded == side then return false end
+  end
+  self.faintSequence[#self.faintSequence + 1] = side
+  events[#events + 1] = { type = "faint", side = side }
+  return true
+end
+
+function BattleEngine:finalizeFaintSequence(events)
+  local fainted = assert(self.faintSequence, "finalizeFaintSequence needs beginFaintSequence")
+  self.faintSequence = nil
+  if #fainted == 0 then return false end
+  local playerAlive = self.hasReplacement and self.hasReplacement(BattleEngine.SIDE_PLAYER)
+  local foeAlive = self.hasReplacement and self.hasReplacement(BattleEngine.SIDE_FOE)
+  local playerFainted, foeFainted = false, false
+  for _, side in ipairs(fainted) do
+    playerFainted = playerFainted or side == BattleEngine.SIDE_PLAYER
+    foeFainted = foeFainted or side == BattleEngine.SIDE_FOE
+  end
+  if playerFainted and not playerAlive and foeFainted and not foeAlive then
+    self.outcome = "playerDrew"
+  elseif playerFainted and not playerAlive then
+    self.outcome = "playerLost"
+  elseif foeFainted and not foeAlive then
+    self.outcome = "playerWon"
+  end
+  if self.outcome then
+    events[#events + 1] = { type = "battleEnd", outcome = self.outcome }
+    return true
+  end
+  for _, side in ipairs({ BattleEngine.SIDE_PLAYER, BattleEngine.SIDE_FOE }) do
+    for _, recorded in ipairs(fainted) do
+      if recorded == side then
+        self.pendingForcedSwitches[#self.pendingForcedSwitches + 1] = side
+        events[#events + 1] = { type = "forcedSwitchNeeded", side = side }
+      end
+    end
+  end
+  self:_syncForcedSwitchHead()
+  return self.awaitingForcedSwitch ~= nil
 end
 
 function BattleEngine:supportsMove(move)
@@ -1298,20 +1358,9 @@ end
 function BattleEngine:checkFaint(side, events)
   local battler = self:battler(side)
   if battler.hp > 0 then return false end
-  battler.hp = 0
-  events[#events + 1] = { type = "faint", side = side }
-  if self.hasReplacement and self.hasReplacement(side) then
-    self.awaitingForcedSwitch = side
-    events[#events + 1] = { type = "forcedSwitchNeeded", side = side }
-    return true
-  end
-  if side == BattleEngine.SIDE_PLAYER then
-    self.outcome = "playerLost"
-  else
-    self.outcome = "playerWon"
-  end
-  events[#events + 1] = { type = "battleEnd", outcome = self.outcome }
-  return true
+  self:beginFaintSequence()
+  self:recordFaint(side, events)
+  return self:finalizeFaintSequence(events)
 end
 
 -- Supplies the caller-built replacement for a pending forced switch (see
@@ -1333,7 +1382,8 @@ function BattleEngine:resolveForcedSwitch(side, newBattler)
   else
     self.foe = newBattler
   end
-  self.awaitingForcedSwitch = nil
+  table.remove(self.pendingForcedSwitches, 1)
+  self:_syncForcedSwitchHead()
   return { { type = "forcedSwitchResolved", side = side } }
 end
 
