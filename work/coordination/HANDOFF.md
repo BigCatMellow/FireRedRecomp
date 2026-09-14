@@ -64,10 +64,12 @@ Effect 78 uses ordinary Hit but takes `Cmd_accuracycheck`'s no-random-accuracy
 branch, so it ignores accuracy/evasion and does not consume an accuracy RNG
 draw. Its -1 priority is already represented by the engine's normal move-order
 comparison. The effect-78 route and one-file probe passed (run `34902016950`).
-The bounded patch adds only effect 78 to the existing no-roll predicate,
-preserving the imported priority -1 order and ordinary PP, critical, type,
-random-damage, and HP paths; it is pending guarded execution and independent
-review. Do not bundle formulas or stateful families. Held-item trainer layouts
+The bounded patch is published and independently reviewed at `37f1f22e`
+(guarded run `34903062946`): effect 78 alone joins the no-roll predicate while
+preserving priority -1 and ordinary PP, critical, type, random-damage, and HP
+paths. The next active task is read-only Explosion discovery: source-lock
+effect 7 record inventory and attacker/target faint ordering before routing
+code. Do not bundle formulas or stateful families. Held-item trainer layouts
 remain deferred because battlers do not retain or apply item state.
 
 ## Phase 2 resume point

@@ -92,8 +92,9 @@ Phase 10 mod/release engineering
 | Phase 4K-pre — bridge route for False Swipe | `REVIEWED PASS` | [`../tasks/phase4-false-swipe-effects.md`](../tasks/phase4-false-swipe-effects.md) | PASS at `b5107709`; trusted probe `34830196033` | Phase 4K eligibility |
 | Phase 4K — False Swipe effect | `REVIEWED PASS` | [`../tasks/phase4-false-swipe-effects.md`](../tasks/phase4-false-swipe-effects.md) | PASS at `a3e9d058`; guarded run `34830527499` | Vital Throw discovery |
 | Phase 4L — Vital Throw effect discovery | `REVIEWED PASS` | [`../tasks/phase4-vital-throw-effect-discovery.md`](../tasks/phase4-vital-throw-effect-discovery.md) | PASS at `c872c16c`; effect-78 #233 ordinary-Hit/no-roll/priority semantics source-locked | effect-78 route only |
-| Phase 4M-pre — bridge route for Vital Throw | `ACTIVE` | **[`../tasks/phase4-vital-throw-effects.md`](../tasks/phase4-vital-throw-effects.md)** | exact fail-closed seven-surface route + one-file probe + independent PASS | Phase 4M eligibility |
-| Phase 4M — Vital Throw effect | `BLOCKED ON ROUTE` | [`../tasks/phase4-vital-throw-effects.md`](../tasks/phase4-vital-throw-effects.md) | effect-78 no-roll accuracy/RNG proof with existing priority -1 | next admission-matrix leaf |
+| Phase 4M-pre — bridge route for Vital Throw | `REVIEWED PASS` | [`../tasks/phase4-vital-throw-effects.md`](../tasks/phase4-vital-throw-effects.md) | PASS at `0af27341`; trusted probe `34902016950` | Phase 4M eligibility |
+| Phase 4M — Vital Throw effect | `REVIEWED PASS` | [`../tasks/phase4-vital-throw-effects.md`](../tasks/phase4-vital-throw-effects.md) | PASS at `37f1f22e`; guarded run `34903062946` | Explosion discovery |
+| Phase 4N — Explosion effect discovery | `ACTIVE` | **[`../tasks/phase4-explosion-effect-discovery.md`](../tasks/phase4-explosion-effect-discovery.md)** | source-locked effect-7 record inventory and self-KO/faint ordering | bounded next effect decision |
 | Phase 5 — overworld/field systems | `IN PROGRESS` | future | Pallet→Elite Four traversal without invalid paths | credits traversal |
 | Phase 6 — menus/inventory/progression UI | `IN PROGRESS` | future | complete player UI, no dev-key fallbacks | normal completion |
 | Phase 7 — story/scripts/cutscenes | `IN PROGRESS` | future | new game→credits without manual edits/skips | credits story parity |

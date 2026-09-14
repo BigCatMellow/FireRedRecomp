@@ -1,6 +1,6 @@
 # Task: Phase 4 Vital Throw effect
 
-- Status: `IMPLEMENTED — PENDING GUARDED RUN / INDEPENDENT REVIEW`
+- Status: `CLOSED — REVIEWED PASS`
 - Type: `PHASE 4 / BATTLE RULES / BOUNDED IMPLEMENTATION`
 
 ## Goal
@@ -41,4 +41,5 @@ parsed move priority and ordinary PP, critical, type, random-damage, and HP
 paths. Focused coverage proves modified-stage no-roll behavior, the two
 remaining critical/damage draws, ordinary-effect regression, and priority -1;
 verified-ROM coverage proves and drives #233. This is not a Phase 4 completion
-claim pending guarded execution and review.
+claim. Guarded run `34903062946` published `37f1f22e` after focused, no-ROM,
+verified-ROM, and replay evidence; independent review passed.
