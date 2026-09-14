@@ -49,12 +49,12 @@ effect 43 routes through ordinary Hit but advances only the existing critical
 stage from 0 (1/16) to 1 (1/8), with the same single critical RNG draw. The
 eight records are Karate Chop #2, Razor Leaf #75, Crabhammer #152, Slash #163,
 Aeroblast #177, Cross Chop #238, Air Cutter #314, and Leaf Blade #348. The
-effect-43 stage selection has a verified route and probe. The bounded patch
-selects only critical stage 1, preserving one crit RNG draw, PP, type, normal
-damage, and HP paths; it is pending guarded execution and independent review.
-Do not bundle Vital Throw, False Swipe, formulas, or stateful families.
-Held-item trainer layouts remain deferred because battlers do not retain or
-apply item state.
+effect-43 stage selection is now closed and published at `a4b02e35` (guarded
+run `34829358780`), preserving one crit RNG draw, PP, type, normal damage, and
+HP paths. The next active task is read-only False Swipe discovery: source-lock
+effect 101's HP-floor behavior and record inventory before routing any code.
+Do not bundle Vital Throw, formulas, or stateful families. Held-item trainer
+layouts remain deferred because battlers do not retain or apply item state.
 
 ## Phase 2 resume point
 

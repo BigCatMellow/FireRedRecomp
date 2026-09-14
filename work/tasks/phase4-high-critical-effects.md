@@ -1,6 +1,6 @@
 # Task: Phase 4 high-critical move effects
 
-- Status: `IMPLEMENTED — PENDING GUARDED RUN / INDEPENDENT REVIEW`
+- Status: `CLOSED — REVIEWED PASS`
 - Type: `PHASE 4 / BATTLE RULES / BOUNDED IMPLEMENTATION`
 
 ## Goal
@@ -39,4 +39,6 @@ Only effect 43 selects the existing stage-1 critical table entry. Focused
 coverage proves the 1/8 boundary, ordinary stage-0 regression, PP, and the
 unchanged three-draw hit path. The verified-ROM fixture proves the eight
 records and parsed Slash behavior. This is not a Phase 4 completion claim
-pending guarded execution and independent review.
+pending guarded execution and independent review. Guarded run `34829358780`
+applied and published the independently reviewed patch at `a4b02e35`. This is
+not a Phase 4 completion claim.

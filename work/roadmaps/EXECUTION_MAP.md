@@ -86,8 +86,9 @@ Phase 10 mod/release engineering
 | Phase 4G-pre — bridge route for always-hit effects | `REVIEWED PASS` | [`../tasks/phase4-always-hit-effects.md`](../tasks/phase4-always-hit-effects.md) | PASS at `7571f61`; trusted probe run `34799768448` | Phase 4G eligibility |
 | Phase 4G — always-hit effects | `REVIEWED PASS` | [`../tasks/phase4-always-hit-effects.md`](../tasks/phase4-always-hit-effects.md) | PASS at `89673e16`; guarded run `34828443860` | high-critical discovery |
 | Phase 4H — high-critical effect discovery | `REVIEWED PASS` | [`../tasks/phase4-high-critical-effect-discovery.md`](../tasks/phase4-high-critical-effect-discovery.md) | PASS at `47f3748e`; eight records and stage-1 semantics source-locked | effect-43 route only |
-| Phase 4I-pre — bridge route for high-critical effects | `ACTIVE` | **[`../tasks/phase4-high-critical-effects.md`](../tasks/phase4-high-critical-effects.md)** | exact fail-closed seven-surface route + one-file probe + independent PASS | Phase 4I eligibility |
-| Phase 4I — high-critical effects | `BLOCKED ON ROUTE` | [`../tasks/phase4-high-critical-effects.md`](../tasks/phase4-high-critical-effects.md) | effect-43 stage-1 source/engine/ROM/RNG proof | next admission-matrix leaf |
+| Phase 4I-pre — bridge route for high-critical effects | `REVIEWED PASS` | [`../tasks/phase4-high-critical-effects.md`](../tasks/phase4-high-critical-effects.md) | PASS at `19ca9eb9`; trusted probe `34829092960` | Phase 4I eligibility |
+| Phase 4I — high-critical effects | `REVIEWED PASS` | [`../tasks/phase4-high-critical-effects.md`](../tasks/phase4-high-critical-effects.md) | PASS at `a4b02e35`; guarded run `34829358780` | False Swipe discovery |
+| Phase 4J — False Swipe effect discovery | `ACTIVE` | **[`../tasks/phase4-false-swipe-effect-discovery.md`](../tasks/phase4-false-swipe-effect-discovery.md)** | source-locked effect-101 HP-floor semantics and ROM inventory | bounded next effect decision |
 | Phase 5 — overworld/field systems | `IN PROGRESS` | future | Pallet→Elite Four traversal without invalid paths | credits traversal |
 | Phase 6 — menus/inventory/progression UI | `IN PROGRESS` | future | complete player UI, no dev-key fallbacks | normal completion |
 | Phase 7 — story/scripts/cutscenes | `IN PROGRESS` | future | new game→credits without manual edits/skips | credits story parity |
