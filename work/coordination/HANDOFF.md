@@ -33,7 +33,10 @@ runtime replay, and both 134-file no-ROM and verified-ROM suites passed. It
 opens a selector only for a current legal save-backed bench; cancel/stale and
 forged choices do not dispatch a turn; a legal choice invokes the existing
 switch-before-foe engine action and preserves both party records. Do not mark
-broader player switching or Phase 4 complete from this leaf.
+broader player switching or Phase 4 complete from this leaf. Voluntary switching
+has now published at `3140e267`; the active next route is fixed-damage effects.
+Held-item trainer layouts remain deferred because battlers do not retain or apply
+item state.
 
 ## Phase 2 resume point
 
