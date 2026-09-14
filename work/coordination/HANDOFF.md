@@ -68,15 +68,15 @@ The bounded patch is published and independently reviewed at `37f1f22e`
 (guarded run `34903062946`): effect 78 alone joins the no-roll predicate while
 preserving priority -1 and ordinary PP, critical, type, random-damage, and HP
 paths. Explosion discovery is independently reviewed PASS at `61b2c60f`.
-Effect 7 sets attacker HP to zero before accuracy, rolls critical and random
-damage before that accuracy check, and handles target faint before attacker
-faint; misses still self-KO after those draws. Damp blocks it, but the engine
-has no ability state. The next active task is source-backed self-KO/faint/RNG
-order design, which must reconcile those rules with forced replacement while
-keeping ordinary moves and recoil/drain behavior unchanged. No implementation
-route is authorized yet. Do not bundle formulas or stateful families. Held-item
-trainer layouts remain deferred because battlers do not retain or apply item
-state.
+Explosion self-KO/faint/RNG-order design is complete and awaiting independent
+review: retail requires all target-then-attacker faint events before
+replacement/outcome handling, but the engine has only one pending forced-switch
+slot. A future effect-specific resolver must preserve normal/recoil ordering,
+run crit/damage/type/random before accuracy, and stage an ordered faint sequence
+before a multi-side replacement policy is applied. The next prerequisite is an
+ordered replacement-state design (or another independent leaf), not an
+Explosion route. Do not bundle formulas or stateful families. Held-item trainer
+layouts remain deferred because battlers do not retain or apply item state.
 
 ## Phase 2 resume point
 

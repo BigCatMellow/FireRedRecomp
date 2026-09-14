@@ -95,7 +95,7 @@ Phase 10 mod/release engineering
 | Phase 4M-pre — bridge route for Vital Throw | `REVIEWED PASS` | [`../tasks/phase4-vital-throw-effects.md`](../tasks/phase4-vital-throw-effects.md) | PASS at `0af27341`; trusted probe `34902016950` | Phase 4M eligibility |
 | Phase 4M — Vital Throw effect | `REVIEWED PASS` | [`../tasks/phase4-vital-throw-effects.md`](../tasks/phase4-vital-throw-effects.md) | PASS at `37f1f22e`; guarded run `34903062946` | Explosion discovery |
 | Phase 4N — Explosion effect discovery | `REVIEWED PASS` | [`../tasks/phase4-explosion-effect-discovery.md`](../tasks/phase4-explosion-effect-discovery.md) | PASS at `61b2c60f`; effect-7 source semantics and ordering prerequisite locked | self-KO/faint-order design only |
-| Phase 4O — Explosion self-KO/faint-order design | `ACTIVE` | **[`../tasks/phase4-explosion-self-ko-order-design.md`](../tasks/phase4-explosion-self-ko-order-design.md)** | source-backed minimal engine event/order contract | effect-7 route decision after PASS |
+| Phase 4O — Explosion self-KO/faint-order design | `PENDING INDEPENDENT REVIEW` | **[`../tasks/phase4-explosion-self-ko-order-design.md`](../tasks/phase4-explosion-self-ko-order-design.md)** | ordered faint sequence and dual-replacement-state prerequisite designed | replacement-state design or another leaf after PASS |
 | Phase 5 — overworld/field systems | `IN PROGRESS` | future | Pallet→Elite Four traversal without invalid paths | credits traversal |
 | Phase 6 — menus/inventory/progression UI | `IN PROGRESS` | future | complete player UI, no dev-key fallbacks | normal completion |
 | Phase 7 — story/scripts/cutscenes | `IN PROGRESS` | future | new game→credits without manual edits/skips | credits story parity |
