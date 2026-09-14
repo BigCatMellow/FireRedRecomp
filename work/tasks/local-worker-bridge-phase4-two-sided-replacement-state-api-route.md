@@ -1,6 +1,6 @@
 # Task: add Local Worker Bridge route for Phase 4 two-sided replacement state
 
-- Status: `PENDING INDEPENDENT REVIEW`
+- Status: `CLOSED — REVIEWED PASS; PROBE PASSED`
 - Type: `INFRASTRUCTURE / EXECUTION SUBSTRATE`
 
 ## Goal
@@ -46,5 +46,9 @@ route or broaden another task's route.
 The workflow has an exact `phase4-two-sided-replacement-state-api` selector,
 literal target allowlist, four focused-test commands, exact runtime replay, and
 literal publish staging list matching the required later-worker surface. The
-next gate is independent review, then a separate one-file probe; no patch is
-authorized by configuration alone.
+configuration independently passed at `b6f63284`. Separate one-file probe
+`4630aad4` passed guarded Local Worker Bridge run `34906202097` on
+`firered-mint`: trusted checkout, explicit route selection, Lua toolchain, and
+private-ROM SHA gate all passed; patch application, tests, replay, and publish
+were correctly skipped. The implementation task below is now Worker-eligible;
+no patch was authorized by configuration alone.

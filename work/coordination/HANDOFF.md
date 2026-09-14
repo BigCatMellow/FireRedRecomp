@@ -79,13 +79,14 @@ reviewed PASS at `e7f5d779`: local simultaneous whole-team exhaustion produces
 then foe battler 1. The active design defines a queue-head-compatible two-sided
 state/API migration, controller handoff, persistence/reward boundaries, and
 loss-equivalent `playerDrew` settlement. The design is independently reviewed
-PASS at `6ac44924`. The active next gate is a separate fail-closed Local Worker
-Bridge route plan for that exact state/API migration, with its literal
-engine/controller/orchestrator/world/test/replay surface fixed before route
-configuration. No Explosion implementation is authorized; after route-plan
-review the route still requires a separate probe before any Worker patch. Do
-not bundle formulas or stateful families. Held-item trainer layouts remain
-deferred because battlers do not retain or apply item state.
+PASS at `6ac44924`. The exact route configuration passed review at `b6f63284`,
+and its one-file probe `4630aad4` passed guarded run `34906202097` on
+`firered-mint`, including trusted checkout, route selection, Lua, and private
+ROM verification. The two-sided state/API implementation is now READY FOR
+WORKER, using only its reviewed engine/controller/orchestrator/world/test/replay
+surface. No Explosion implementation is authorized; do not bundle formulas or
+stateful families. Held-item trainer layouts remain deferred because battlers do
+not retain or apply item state.
 
 ## Phase 2 resume point
 
