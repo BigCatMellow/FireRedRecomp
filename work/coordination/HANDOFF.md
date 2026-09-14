@@ -71,15 +71,16 @@ paths. Explosion discovery is independently reviewed PASS at `61b2c60f`.
 Explosion self-KO/faint/RNG-order design is independently reviewed PASS at
 `ac15cba9`: retail completes target-then-attacker faint scripts before later
 replacement/outcome handling, while the engine has one pending forced-switch
-slot. The next active task is ordered replacement-state design: source-lock a
-pending-side/outcome contract that preserves ordinary single-faint behavior and
-can represent both sides pending. Design evidence confirms retail emits all
-faint scripts before `checkteamslost`; the engine needs a two-phase
-record-faints/finalize-sequence API, not merely a replacement queue. Simultaneous
-team-loss outcome and both-sides local replacement policy remain source-lock
-prerequisites, so no Explosion route is authorized yet. Do not bundle formulas
-or stateful families. Held-item trainer layouts remain deferred because battlers
-do not retain or apply item state.
+slot. Ordered replacement-state design is independently reviewed PASS at
+`f407b775`: the engine needs a two-phase record-faints/finalize-sequence API,
+not merely a replacement queue. The successor source-lock discovery establishes
+that local simultaneous whole-team exhaustion produces `B_OUTCOME_DREW` and
+that the post-action faint handler traverses player battler 0 then foe battler
+1. The engine still has only one `awaitingForcedSwitch` side and no draw
+completion contract, so no Explosion route is authorized. The next step after
+independent PASS is a bounded state/API migration design and test matrix; do
+not bundle formulas or stateful families. Held-item trainer layouts remain
+deferred because battlers do not retain or apply item state.
 
 ## Phase 2 resume point
 

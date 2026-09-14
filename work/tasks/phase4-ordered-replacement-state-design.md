@@ -1,6 +1,6 @@
 # Task: Phase 4 ordered replacement-state design
 
-- Status: `ACTIVE`
+- Status: `CLOSED — REVIEWED PASS at f407b775`
 - Type: `PHASE 4 / BATTLE RULES / READ-ONLY DESIGN DISCOVERY`
 
 ## Goal
@@ -58,3 +58,9 @@ and both-sides local replacement policy are not yet source-locked in this
 project's party/controller model. This design task therefore identifies a
 further terminal-outcome/replacement-policy discovery prerequisite; it does not
 authorize code, a bridge route, or Explosion implementation.
+
+## Review closure
+
+Independent review passed at `f407b775`. The successor discovery owns the
+remaining terminal-outcome/replacement-policy evidence; this task is closed and
+does not authorize a route or implementation.
