@@ -89,6 +89,9 @@ jobs:
             phase4-high-critical-effects*.patch|phase4-high-critical-effects*.probe)
               route='phase4-high-critical-effects'
               ;;
+            phase4-false-swipe-effects*.patch|phase4-false-swipe-effects*.probe)
+              route='phase4-false-swipe-effects'
+              ;;
             oak-parcel-dex-presentation-north*.patch|oak-parcel-dex-presentation-north*.probe)
               route='oak-parcel-dex-presentation-north'
               ;;
@@ -186,6 +189,8 @@ jobs:
                 ;;
               phase4-high-critical-effects:src/core/BattleEngine.lua|phase4-high-critical-effects:tests/battle_engine_test.lua|phase4-high-critical-effects:tests/phase4_high_critical_effect_rom_test.lua|phase4-high-critical-effects:scripts/runtime_phase4_high_critical_replay.sh|phase4-high-critical-effects:work/tasks/phase4-high-critical-effects.md|phase4-high-critical-effects:work/coordination/STATE.json|phase4-high-critical-effects:work/coordination/HANDOFF.md)
                 ;;
+              phase4-false-swipe-effects:src/core/BattleEngine.lua|phase4-false-swipe-effects:tests/battle_engine_test.lua|phase4-false-swipe-effects:tests/phase4_false_swipe_effect_rom_test.lua|phase4-false-swipe-effects:scripts/runtime_phase4_false_swipe_replay.sh|phase4-false-swipe-effects:work/tasks/phase4-false-swipe-effects.md|phase4-false-swipe-effects:work/coordination/STATE.json|phase4-false-swipe-effects:work/coordination/HANDOFF.md)
+                ;;
               *)
                 echo "Patch target is not authorized for explicit route '$ROUTE': $target" >&2
                 exit 1
@@ -257,6 +262,10 @@ jobs:
               "$LUA" tests/battle_engine_test.lua
               "$LUA" tests/phase4_high_critical_effect_rom_test.lua
               ;;
+            phase4-false-swipe-effects)
+              "$LUA" tests/battle_engine_test.lua
+              "$LUA" tests/phase4_false_swipe_effect_rom_test.lua
+              ;;
             *)
               echo "Patch execution has no focused-test route for '$ROUTE'." >&2
               exit 1
@@ -327,6 +336,9 @@ jobs:
               ;;
             phase4-high-critical-effects)
               bash scripts/runtime_phase4_high_critical_replay.sh
+              ;;
+            phase4-false-swipe-effects)
+              bash scripts/runtime_phase4_false_swipe_replay.sh
               ;;
             *)
               echo "Patch execution has no runtime-replay route for '$ROUTE'." >&2
@@ -410,6 +422,13 @@ jobs:
               ;;
             phase4-high-critical-effects)
               for path in src/core/BattleEngine.lua tests/battle_engine_test.lua tests/phase4_high_critical_effect_rom_test.lua scripts/runtime_phase4_high_critical_replay.sh work/tasks/phase4-high-critical-effects.md work/coordination/STATE.json work/coordination/HANDOFF.md; do
+                if [[ -e "$path" ]]; then
+                  git add -- "$path"
+                fi
+              done
+              ;;
+            phase4-false-swipe-effects)
+              for path in src/core/BattleEngine.lua tests/battle_engine_test.lua tests/phase4_false_swipe_effect_rom_test.lua scripts/runtime_phase4_false_swipe_replay.sh work/tasks/phase4-false-swipe-effects.md work/coordination/STATE.json work/coordination/HANDOFF.md; do
                 if [[ -e "$path" ]]; then
                   git add -- "$path"
                 fi
