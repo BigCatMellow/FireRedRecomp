@@ -58,15 +58,16 @@ existing immunity return and before shared HP application. The active
 effect-101 route and probe passed. The bounded patch caps only lethal final
 damage at target HP minus one after immunity handling and before shared HP
 application; it is now published at `a3e9d058` (guarded run `34830527499`).
-Vital Throw discovery is complete and awaiting independent review. Its sole
+Vital Throw discovery is independently reviewed PASS at `c872c16c`. Its sole
 record is #233 (Fighting, 70 power, 100 stored accuracy, PP 10, priority -1).
 Effect 78 uses ordinary Hit but takes `Cmd_accuracycheck`'s no-random-accuracy
 branch, so it ignores accuracy/evasion and does not consume an accuracy RNG
 draw. Its -1 priority is already represented by the engine's normal move-order
-comparison; only effect-78's missing no-roll predicate is eligible next. After
-review PASS, route only that bounded implementation and its proof; do not
-bundle formulas or stateful families. Held-item trainer layouts remain deferred
-because battlers do not retain or apply item state.
+comparison. The active prerequisite is an exact fail-closed route and
+one-file probe only for effect 78; afterward, route only that bounded no-roll
+predicate and proof. Do not bundle formulas or stateful families. Held-item
+trainer layouts remain deferred because battlers do not retain or apply item
+state.
 
 ## Phase 2 resume point
 
