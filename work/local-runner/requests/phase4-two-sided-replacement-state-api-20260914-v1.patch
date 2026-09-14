@@ -1,0 +1,264 @@
+diff --git a/main.lua b/main.lua
+index b9d244a2..0833795b 100644
+--- a/main.lua
++++ b/main.lua
+@@ -4292,7 +4292,7 @@ world.settleOakLabRivalBattle = function(battle)
+       messages[#messages + 1] = "OAK: Hm! Excellent! If you win,\nyour POKEMON will grow!"
+       messages[#messages + 1] = ("%s got $%d for winning!")
+         :format(Charmap.decode(newGame.session.state.saveBlock2.playerName), Battle.RivalRewards.PRIZE_MONEY)
+-    elseif outcome == "playerLost" then
++    elseif outcome == "playerLost" or outcome == "playerDrew" then
+       Battle.RivalRewards.applyLoss(battle.partyRecord)
+       messages[#messages + 1] = battle.rivalName .. ": Yeah! Am I great or what?"
+       messages[#messages + 1] = "OAK: Hm... How disappointing..."
+@@ -4327,7 +4327,8 @@ world.finishOakLabRivalBattle = function(battle)
+     -- PalletTown_ProfessorOaksLab_EventScript_EndRivalBattle begins with
+     -- HealPlayerParty and reaches this same progression on either outcome.
+     Battle.RivalRewards.healParty(newGame.session.state.saveBlock1, world.battleCatalog.moves)
+-    return newGame.story:completeRivalBattle(outcome, battle.trainerId)
++    return newGame.story:completeRivalBattle(
++      outcome == "playerDrew" and "playerLost" or outcome, battle.trainerId)
+   end)
+   if not ok then
+     addLine("Rival-battle story continuation failed: " .. tostring(result))
+@@ -4341,7 +4342,7 @@ world.finishOakLabRivalBattle = function(battle)
+   world.npcs = kept
+   -- The rival-exit movement ends by turning the player south in place on
+   -- the original scene-3 trigger tile.
+-  playerMovement.facingDirection = PlayerMovement.DOWN
++  if playerMovement then playerMovement.facingDirection = PlayerMovement.DOWN end
+   syncSessionLocation()
+   addLine(("Oak-lab rival battle %s: party healed, scene 4/trainer/story flags persisted, rival departed%s.")
+     :format(outcome == "playerWon" and "won" or "lost",
+@@ -4391,7 +4392,7 @@ world.finishTrainerBattle = function(battle)
+     if newGame.session then
+       newGame.session:setFlag(Battle.EarlyStory.TRAINER_FLAGS_START + battle.trainerId)
+     end
+-  elseif outcome == "playerLost" then
++  elseif outcome == "playerLost" or outcome == "playerDrew" then
+     local sb1 = newGame.session.state.saveBlock1
+     local topLevel = Battle.WhiteoutRules.highestPartyLevel(sb1.playerParty, sb1.playerPartyCount)
+     local badgeCount = Battle.WhiteoutRules.countBadges(function(id) return newGame.session:getFlag(id) end)
+@@ -4468,7 +4469,7 @@ function love.update(dt)
+           world.finishOakLabRivalBattle(battle)
+         elseif battle.kind == "trainer" then
+           world.finishTrainerBattle(battle)
+-        elseif outcome == "playerLost" then
++        elseif outcome == "playerLost" or outcome == "playerDrew" then
+           local sb1 = newGame.session.state.saveBlock1
+           local topLevel = Battle.WhiteoutRules.highestPartyLevel(sb1.playerParty, sb1.playerPartyCount)
+           local badgeCount = Battle.WhiteoutRules.countBadges(function(id) return newGame.session:getFlag(id) end)
+diff --git a/scripts/runtime_phase4_two_sided_replacement_replay.sh b/scripts/runtime_phase4_two_sided_replacement_replay.sh
+new file mode 100755
+index 00000000..b159b302
+--- /dev/null
++++ b/scripts/runtime_phase4_two_sided_replacement_replay.sh
+@@ -0,0 +1,10 @@
++#!/usr/bin/env bash
++set -euo pipefail
++ROOT=$(cd "$(dirname "$0")/.." && pwd)
++cd "$ROOT"
++: "${POKEPORT_ROM:?set POKEPORT_ROM to verified FireRed US v1.0}"
++lua5.1 tests/battle_engine_test.lua
++lua5.1 tests/battle_scene_controller_test.lua
++lua5.1 tests/phase4_two_sided_replacement_state_test.lua
++lua5.1 tests/phase4_two_sided_replacement_state_rom_test.lua
++echo "RUNTIME_REPLAY phase4_two_sided_replacement_state PASS queue=player-foe draw=playerDrew"
+diff --git a/src/core/BattleEngine.lua b/src/core/BattleEngine.lua
+index fb93a3d9..a2d80665 100644
+--- a/src/core/BattleEngine.lua
++++ b/src/core/BattleEngine.lua
+@@ -728,6 +728,10 @@ function BattleEngine.new(opts)
+     -- its top assert) -- the real analogue of real FireRed blocking on the
+     -- party-select menu before HandleTurnActionSelectionState can run again.
+     awaitingForcedSwitch = nil,
++    -- Authoritative post-faint state. awaitingForcedSwitch remains the
++    -- compatibility view for existing controller/orchestrator callers.
++    pendingForcedSwitches = {},
++    faintSequence = nil,
+   }, BattleEngine)
+ end
+ 
+@@ -745,6 +749,62 @@ function BattleEngine:isOver()
+   return self.outcome ~= nil
+ end
+ 
++function BattleEngine:_syncForcedSwitchHead()
++  self.awaitingForcedSwitch = self.pendingForcedSwitches[1]
++end
++
++function BattleEngine:beginFaintSequence()
++  assert(not self.faintSequence, "a faint sequence is already active")
++  self.faintSequence = {}
++end
++
++function BattleEngine:recordFaint(side, events)
++  local battler = self:battler(side)
++  if battler.hp > 0 then return false end
++  assert(self.faintSequence, "recordFaint needs beginFaintSequence")
++  battler.hp = 0
++  for _, recorded in ipairs(self.faintSequence) do
++    if recorded == side then return false end
++  end
++  self.faintSequence[#self.faintSequence + 1] = side
++  events[#events + 1] = { type = "faint", side = side }
++  return true
++end
++
++function BattleEngine:finalizeFaintSequence(events)
++  local fainted = assert(self.faintSequence, "finalizeFaintSequence needs beginFaintSequence")
++  self.faintSequence = nil
++  if #fainted == 0 then return false end
++  local playerAlive = self.hasReplacement and self.hasReplacement(BattleEngine.SIDE_PLAYER)
++  local foeAlive = self.hasReplacement and self.hasReplacement(BattleEngine.SIDE_FOE)
++  local playerFainted, foeFainted = false, false
++  for _, side in ipairs(fainted) do
++    playerFainted = playerFainted or side == BattleEngine.SIDE_PLAYER
++    foeFainted = foeFainted or side == BattleEngine.SIDE_FOE
++  end
++  if playerFainted and not playerAlive and foeFainted and not foeAlive then
++    self.outcome = "playerDrew"
++  elseif playerFainted and not playerAlive then
++    self.outcome = "playerLost"
++  elseif foeFainted and not foeAlive then
++    self.outcome = "playerWon"
++  end
++  if self.outcome then
++    events[#events + 1] = { type = "battleEnd", outcome = self.outcome }
++    return true
++  end
++  for _, side in ipairs({ BattleEngine.SIDE_PLAYER, BattleEngine.SIDE_FOE }) do
++    for _, recorded in ipairs(fainted) do
++      if recorded == side then
++        self.pendingForcedSwitches[#self.pendingForcedSwitches + 1] = side
++        events[#events + 1] = { type = "forcedSwitchNeeded", side = side }
++      end
++    end
++  end
++  self:_syncForcedSwitchHead()
++  return self.awaitingForcedSwitch ~= nil
++end
++
+ function BattleEngine:supportsMove(move)
+   if not move then return false end
+   if move.effect == BattleEngine.EFFECT_DREAM_EATER then return false end
+@@ -1298,20 +1358,9 @@ end
+ function BattleEngine:checkFaint(side, events)
+   local battler = self:battler(side)
+   if battler.hp > 0 then return false end
+-  battler.hp = 0
+-  events[#events + 1] = { type = "faint", side = side }
+-  if self.hasReplacement and self.hasReplacement(side) then
+-    self.awaitingForcedSwitch = side
+-    events[#events + 1] = { type = "forcedSwitchNeeded", side = side }
+-    return true
+-  end
+-  if side == BattleEngine.SIDE_PLAYER then
+-    self.outcome = "playerLost"
+-  else
+-    self.outcome = "playerWon"
+-  end
+-  events[#events + 1] = { type = "battleEnd", outcome = self.outcome }
+-  return true
++  self:beginFaintSequence()
++  self:recordFaint(side, events)
++  return self:finalizeFaintSequence(events)
+ end
+ 
+ -- Supplies the caller-built replacement for a pending forced switch (see
+@@ -1333,7 +1382,8 @@ function BattleEngine:resolveForcedSwitch(side, newBattler)
+   else
+     self.foe = newBattler
+   end
+-  self.awaitingForcedSwitch = nil
++  table.remove(self.pendingForcedSwitches, 1)
++  self:_syncForcedSwitchHead()
+   return { { type = "forcedSwitchResolved", side = side } }
+ end
+ 
+diff --git a/tests/phase4_two_sided_replacement_state_rom_test.lua b/tests/phase4_two_sided_replacement_state_rom_test.lua
+new file mode 100644
+index 00000000..1ead32b1
+--- /dev/null
++++ b/tests/phase4_two_sided_replacement_state_rom_test.lua
+@@ -0,0 +1,19 @@
++-- Verified-ROM main.lua draw-settlement seam for the bounded state migration.
++package.path=package.path..";./?.lua"
++local path=os.getenv("POKEPORT_ROM");if not path then print("SKIP phase4_two_sided_replacement_state_rom_test (set POKEPORT_ROM)");os.exit(0)end
++local RI=require("import.RomImporter");local RA=require("import.RomAddresses");local Trainer=require("import.Trainer");local Species=require("import.SpeciesInfo");local Moves=require("import.BattleMove");local Types=require("import.TypeChart");local Nature=require("import.Nature");local Learn=require("import.LevelUpLearnset");local Flow=require("src.core.NewGameFlow");local Story=require("src.core.EarlyStory");local Starter=require("src.core.StarterPokemonFactory");local Rng=require("src.core.Rng")
++local ok,info=RI.verify(path);assert(ok,tostring(info));local f=assert(io.open(path,"rb"));local rom=f:read("*a");f:close();local a=assert(RA["41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc"]);love={keyboard={isDown=function()return false end},image={newImageData=function()return{setPixel=function()end}end},graphics={newImage=function()return{setFilter=function()end}end}};local App=require("main")
++local species=Species.parseTable(rom,a.gSpeciesInfo,RA.COUNTS.NUM_SPECIES);local moves=Moves.parseTable(rom,a.gBattleMoves,RA.COUNTS.MOVES_COUNT);local catalog={species=species,moves=moves,typeChart=Types.parseTable(rom,a.gTypeEffectiveness),natures=Nature.parseTable(rom,a.sNatureStatTable),trainers=Trainer.parseTable(rom,a.gTrainers,RA.COUNTS.NUM_TRAINERS)}
++local pass,fail=0,0;local function check(n,v)if v then pass=pass+1 else fail=fail+1;print("FAIL: "..n)end end
++local s=App.GameSession.fromNewGame({playerGender=0,playerName=Flow.encodeName("RED"),rivalName=Flow.encodeName("GREEN")},{nextRandom16=function()return 1 end,generatedTrainerIdLower=2});local story=Story.new(s);s:setLocation(Story.MAP_PALLET_TOWN,12,1,"north");story:onStep(Story.MAP_PALLET_TOWN,12,1,{[0]={x=12,y=1,trigger=Story.VAR_PALLET_OAK_SCENE,index=0}});local choice=assert(story:beginStarterChoice(Story.MAP_OAKS_LAB,5)).choice
++local starter=Starter.generate({species=choice.species,speciesInfo=species[choice.species],speciesName=rom:sub(a.gSpeciesNames+choice.species*11+1,a.gSpeciesNames+choice.species*11+10),learnset=Learn.resolve(rom,a.gLevelUpLearnsets,choice.species),battleMoves=moves,natures=catalog.natures,rng=Rng.new(1),trainer={id=s.state.saveBlock2.playerTrainerId,name=s.state.saveBlock2.playerName:sub(1,7),gender=0},metLocation=0});story:acceptStarter(starter,1)
++App.configureTrainerBattleTest({romData=rom,romAddrs=a,catalog=catalog,session=s,rng=Rng.new(2),story=story});local W=App.world;check("starts verified two-foe fixture",W.startTrainerBattle(89));local b=W.battle;local e=b.controller.engine;b.orchestrator.index=#b.orchestrator.foes;e.player.hp,e.foe.hp=0,0;local ev={};e:beginFaintSequence();e:recordFaint("player",ev);e:recordFaint("foe",ev);e:finalizeFaintSequence(ev)
++local flag=Story.TRAINER_FLAGS_START+89;local before=s.money or s.state.saveBlock1.money;check("verified fixture produces draw terminal without pending replacement",e.outcome=="playerDrew"and e.awaitingForcedSwitch==nil);pcall(W.finishTrainerBattle,b);check("draw uses loss settlement with no trainer win/reward",not s:getFlag(flag)and not b.orchestrator.rewarded[1]and not b.orchestrator.rewarded[2]and (s.state.saveBlock1.money or 0)<=before)
++-- Exercise both Oak-lab draw branches without inventing a battle result:
++-- story is in real scene 3 after acceptStarter, so finish must normalize draw
++-- to the existing loss completion accepted by EarlyStory.
++local oak={kind="oakLabRival",trainerId=choice.rivalTrainerId,partyRecord=starter,rivalName="GREEN",settled=false,textImages={},controller={engine={outcome="playerDrew"},appendMessages=function()end}}
++W.battle=oak;W.settleOakLabRivalBattle(oak);check("Oak draw uses loss settlement without error",oak.settled and not oak.settlementError);W.finishOakLabRivalBattle(oak);check("Oak draw normalizes to loss story completion",s:getVar(Story.VAR_OAKS_LAB_SCENE)==4);if s:getVar(Story.VAR_OAKS_LAB_SCENE)~=4 then print("Oak draw scene="..tostring(s:getVar(Story.VAR_OAKS_LAB_SCENE)).." id="..tostring(choice.rivalTrainerId))end
++-- Drive the actual love.update wild completion branch with a draw outcome.
++local wildBefore=s.state.saveBlock1.money or 0;W.battle={controller={engine={outcome="playerDrew"},processInput=function()end,isComplete=function()return true end},partyRecord=starter,persistedTurn=0,textImages={}};love.update(1/60);check("wild draw uses whiteout loss branch",W.battle==nil and (s.state.saveBlock1.money or 0)<=wildBefore)
++print(("phase4_two_sided_replacement_state_rom_test: %d passed, %d failed"):format(pass,fail));os.exit(fail==0 and 0 or 1)
+diff --git a/tests/phase4_two_sided_replacement_state_test.lua b/tests/phase4_two_sided_replacement_state_test.lua
+new file mode 100644
+index 00000000..b67169cd
+--- /dev/null
++++ b/tests/phase4_two_sided_replacement_state_test.lua
+@@ -0,0 +1,54 @@
++package.path = package.path .. ";./?.lua"
++local Engine = require("src.core.BattleEngine")
++local Controller = require("src.core.BattleSceneController")
++local InputState = require("src.core.InputState")
++local Data = require("tests.battle_test_data")
++
++local pass, fail = 0, 0
++local function check(name, ok)
++  if ok then pass = pass + 1 else fail = fail + 1; print("FAIL: " .. name) end
++end
++local stats = {hp=10,attack=5,defense=5,speed=5,spAttack=5,spDefense=5}
++local function battle(replacements)
++  return Engine.new({
++    player=Engine.makeBattler({species=1,level=5,stats=stats,types={12},moves={}}),
++    foe=Engine.makeBattler({species=4,level=5,stats=stats,types={10},moves={}}),
++    moves=Data.moves,typeChart=Data.typeChart,rng={next16=function() return 0 end},
++    hasReplacement=function(side) return replacements[side] end,
++  })
++end
++local b, e = battle({player=true,foe=true}), {}
++b.player.hp, b.foe.hp = 0, 0
++b:beginFaintSequence(); b:recordFaint("foe",e); b:recordFaint("player",e); b:finalizeFaintSequence(e)
++check("records ordered faint events before requests", e[1].type == "faint" and e[2].type == "faint" and e[3].type == "forcedSwitchNeeded")
++check("queues retail player then foe order", b.awaitingForcedSwitch == "player" and b.pendingForcedSwitches[2] == "foe")
++local fresh = Engine.makeBattler({species=1,level=5,stats=stats,types={12},moves={}})
++b:resolveForcedSwitch("player",fresh)
++check("resolution advances scalar compatibility head", b.awaitingForcedSwitch == "foe")
++b = battle({player=false,foe=false}); e = {}; b.player.hp,b.foe.hp=0,0
++b:beginFaintSequence(); b:recordFaint("player",e); b:recordFaint("foe",e); b:finalizeFaintSequence(e)
++check("simultaneous exhaustion is one draw terminal", b.outcome == "playerDrew" and #b.pendingForcedSwitches == 0 and e[#e].type == "battleEnd")
++for _, case in ipairs({{"player", "playerLost"}, {"foe", "playerWon"}}) do
++  b, e = battle({player=false,foe=false}), {}
++  b:battler(case[1]).hp = 0; b:beginFaintSequence(); b:recordFaint(case[1],e); b:finalizeFaintSequence(e)
++  check("one-side exhaustion emits " .. case[2], b.outcome == case[2] and #b.pendingForcedSwitches == 0)
++end
++b, e = battle({player=true,foe=true}), {}
++b.player.hp,b.foe.hp=0,0; b:beginFaintSequence(); b:recordFaint("player",e); b:recordFaint("foe",e); b:finalizeFaintSequence(e)
++local playerIncoming = Engine.makeBattler({species=1,level=5,stats=stats,types={12},moves={}})
++local foeIncoming = Engine.makeBattler({species=4,level=5,stats=stats,types={10},moves={}})
++local c = Controller.new({engine=b, introMessages={}, forcedSwitchChoices=function() return {{slot=2}} end,
++  onForcedSwitchChoice=function() b:resolveForcedSwitch("player",playerIncoming); return {"player switched"} end,
++  onMessagesComplete=function()
++    if b.awaitingForcedSwitch == "foe" then b:resolveForcedSwitch("foe",foeIncoming); return {"foe switched"} end
++  end})
++c:_setMessages({"faints"}, Controller.PARTY); c:advanceMessage()
++check("queue opens forced player selector first", c.state == Controller.PARTY and b.awaitingForcedSwitch == "player")
++c:processInput({isNewlyPressed=function(_, key) return key == InputState.A_BUTTON end})
++check("player choice keeps foe queue pending during messages", c.state == Controller.MESSAGES and b.awaitingForcedSwitch == "foe")
++c:advanceMessage()
++check("foe replacement is automatic before action", c.state == Controller.MESSAGES and b.awaitingForcedSwitch == nil)
++c:advanceMessage()
++check("queue reaches action only after both replacements", c.state == Controller.ACTION and b.player == playerIncoming and b.foe == foeIncoming)
++print(("phase4_two_sided_replacement_state_test: %d passed, %d failed"):format(pass,fail))
++os.exit(fail == 0 and 0 or 1)
+
