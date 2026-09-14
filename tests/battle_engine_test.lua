@@ -150,6 +150,49 @@ events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
 check("fixed damage clamps through ordinary HP application", events[2].type == "damage"
   and events[2].amount == 15 and events[2].hpRemaining == 0, events[2] and events[2].amount)
 
+-- EFFECT_ALWAYS_HIT uses the stock no-accuracy-roll branch. These private
+-- records keep battle_test_data.lua a verbatim retail transcription.
+local alwaysHitMoves = {}
+for k, v in pairs(Data.moves) do alwaysHitMoves[k] = v end
+alwaysHitMoves[993] = { effect = 17, power = 60, type = Data.TYPE_NORMAL, accuracy = 0, pp = 20, priority = 0 }
+alwaysHitMoves[994] = { effect = 0, power = 60, type = Data.TYPE_NORMAL, accuracy = 0, pp = 20, priority = 0 }
+local function alwaysHitBattle(moveId, foeTypes, foeHP, values)
+  return BattleEngine.new({
+    player = BattleEngine.makeBattler({ species = 1, level = 5, stats = bulbaStats,
+      types = { Data.TYPE_NORMAL, Data.TYPE_NORMAL }, moves = { { move = moveId, pp = 20 } } }),
+    foe = BattleEngine.makeBattler({ species = 4, level = 5, stats = charStats,
+      hp = foeHP, types = foeTypes, moves = { { move = Data.MOVE_TACKLE, pp = 1 } } }),
+    moves = alwaysHitMoves, typeChart = Data.typeChart, rng = scriptedRng(values),
+  })
+end
+
+battle = alwaysHitBattle(993, { Data.TYPE_FIRE, Data.TYPE_FIRE }, 99, { 15, 0 })
+events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
+check("always-hit effect lands with zero accuracy and still deducts PP", events[1].type == "useMove"
+  and events[2].type == "damage" and battle.player.moves[1].pp == 19, events[2] and events[2].type)
+check("always-hit skips only accuracy RNG and retains crit/random rolls", #events == 2
+  and battle.rng.draws == 2, battle.rng.draws)
+
+battle = alwaysHitBattle(993, { Data.TYPE_FIRE, Data.TYPE_FIRE }, 99, { 0, 0 })
+events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
+check("always-hit preserves the ordinary critical branch", events[2].type == "critical"
+  and events[3].type == "damage" and battle.rng.draws == 2, battle.rng.draws)
+
+battle = alwaysHitBattle(993, { Data.TYPE_GHOST, Data.TYPE_GHOST }, nil, { 0, 0 })
+events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
+check("always-hit preserves type immunity after its no-roll accuracy branch", events[2].type == "noEffect"
+  and battle.foe.hp == charStats.hp and battle.rng.draws == 2, battle.rng.draws)
+
+battle = alwaysHitBattle(993, { Data.TYPE_FIRE, Data.TYPE_FIRE }, 1, { 15, 0 })
+events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
+check("always-hit still clamps through ordinary HP application", events[2].type == "damage"
+  and events[2].amount == 1 and events[2].hpRemaining == 0, events[2] and events[2].amount)
+
+battle = alwaysHitBattle(994, { Data.TYPE_FIRE, Data.TYPE_FIRE }, nil, { 0 })
+events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
+check("non-effect-17 zero accuracy retains the ordinary miss behavior", events[2].type == "miss"
+  and battle.player.moves[1].pp == 19 and battle.rng.draws == 1, battle.rng.draws)
+
 -- A run action is hoisted ahead of any foe move. At equal-or-better speed
 -- it succeeds with no RNG, so the foe never spends PP or attacks.
 battle = makeBattle({}, { { move = Data.MOVE_TACKLE, pp = 1 } }, { { move = Data.MOVE_EMBER, pp = 1 } })

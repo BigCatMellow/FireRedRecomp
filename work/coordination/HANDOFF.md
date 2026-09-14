@@ -42,9 +42,14 @@ leaf is only EFFECT_ALWAYS_HIT (17): Swift #129, Faint Attack #185, Shadow
 Punch #325, Aerial Ace #332, Magical Leaf #345, and Shock Wave #351 have
 positive power and accuracy zero, so the stock accuracy command takes a no-roll
 branch that this engine does not yet represent. The active prerequisite is an
-exact fail-closed bridge route and one-file probe. Do not bundle Vital Throw,
-high-critical, False Swipe, formulas, or stateful families. Held-item trainer
-layouts remain deferred because battlers do not retain or apply item state.
+exact fail-closed bridge route and one-file probe. The bounded effect-17
+implementation is ready for guarded execution: it skips only the accuracy RNG
+for the six selected accuracy-zero records while retaining PP, type immunity,
+crit, normal random damage, and HP application. Focused no-ROM coverage passed
+168 assertions and the verified-ROM fixture passed 3 assertions. Do not bundle
+Vital Throw, high-critical, False Swipe, formulas, or stateful families.
+Held-item trainer layouts remain deferred because battlers do not retain or
+apply item state.
 
 ## Phase 2 resume point
 

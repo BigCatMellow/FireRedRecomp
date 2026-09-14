@@ -1,6 +1,6 @@
 # Task: Phase 4 always-hit move effects
 
-- Status: `BLOCKED ON EXPLICIT BRIDGE ROUTE`
+- Status: `IMPLEMENTED — PENDING GUARDED RUN / INDEPENDENT REVIEW`
 - Type: `PHASE 4 / BATTLE RULES / BOUNDED IMPLEMENTATION`
 
 ## Goal
@@ -35,3 +35,12 @@ The implementation route may authorize only `src/core/BattleEngine.lua`,
 `scripts/runtime_phase4_always_hit_replay.sh`, this task, `STATE.json`, and
 `HANDOFF.md`. It must remain fail-closed and receive a separate one-file probe
 before any implementation patch is accepted.
+
+## Worker evidence
+
+The bounded implementation bypasses the accuracy roll only for effect 17 and
+leaves its existing PP/type/crit/damage path intact. Focused coverage passed 168
+no-ROM assertions; the verified-ROM fixture passed 3 assertions, confirming
+all six selected records and a parsed Swift invocation with only crit/random
+draws. This is not a Phase 4 completion claim pending guarded execution and
+independent review.

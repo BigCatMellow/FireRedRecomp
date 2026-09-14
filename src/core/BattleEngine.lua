@@ -431,6 +431,11 @@ BattleEngine.SIDE_PLAYER = "player"
 BattleEngine.SIDE_FOE = "foe"
 BattleEngine.EFFECT_ATTACK_DOWN = 18
 BattleEngine.EFFECT_DEFENSE_DOWN = 19
+-- Real EFFECT_ALWAYS_HIT bypasses Cmd_accuracycheck's random accuracy branch
+-- entirely (battle_script_commands.c). It is deliberately limited to this
+-- exact effect; Vital Throw uses a related hardware condition but remains a
+-- separate, unmodeled task.
+BattleEngine.EFFECT_ALWAYS_HIT = 17
 -- EFFECT_DREAM_EATER=8: real BattleScript_EffectDreamEater
 -- (data/battle_scripts_1.s:427) jumps straight to "wasn't affected" unless
 -- the target's real status1 has STATUS1_SLEEP set -- a status-condition
@@ -826,6 +831,7 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
   -- has no accuracycheck step at all -- see SCREEN_MOVES' own comment.
   local screenStatusKey = BattleEngine.SCREEN_MOVES[move.effect]
   local needsAccuracyCheck = not isSelfTargetStat and not screenStatusKey
+    and move.effect ~= BattleEngine.EFFECT_ALWAYS_HIT
 
   -- The FIRST_BATTLE controller deliberately skips the first player
   -- accuracy RNG independently for a damaging move and for a (DOWN-family)
