@@ -435,6 +435,10 @@ BattleEngine.EFFECT_DEFENSE_DOWN = 19
 -- Cmd_critcalc's stage from 0 (1/16) to 1 (1/8). It keeps the same one RNG
 -- draw and every other ordinary-damage step.
 BattleEngine.EFFECT_HIGH_CRITICAL = 43
+-- Real EFFECT_FALSE_SWIPE shares the ordinary Hit script, but after final
+-- damage it leaves a living target at one HP instead of allowing a knockout.
+-- Substitute/Endure/Focus Band are separate, unrepresented stateful rules.
+BattleEngine.EFFECT_FALSE_SWIPE = 101
 -- Real EFFECT_ALWAYS_HIT bypasses Cmd_accuracycheck's random accuracy branch
 -- entirely (battle_script_commands.c). It is deliberately limited to this
 -- exact effect; Vital Throw uses a related hardware condition but remains a
@@ -995,6 +999,10 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
 
   if isCrit then
     events[#events + 1] = { type = "critical", side = attackerSide }
+  end
+
+  if move.effect == BattleEngine.EFFECT_FALSE_SWIPE and damage >= defender.hp then
+    damage = math.max(0, defender.hp - 1)
   end
 
   -- 7. datahpupdate: real HP subtraction, floored at 0.

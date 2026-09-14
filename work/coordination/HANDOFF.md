@@ -55,9 +55,11 @@ HP paths. False Swipe discovery is independently reviewed PASS at `f9874ecd`:
 its one record, #206, is ordinary Hit with a post-formula lethal-damage cap to
 target HP minus one. It is self-contained in this stateless engine after the
 existing immunity return and before shared HP application. The active
-prerequisite is an exact fail-closed route and probe only for effect 101; do
-not bundle Vital Throw, formulas, or stateful families. Held-item trainer
-layouts remain deferred because battlers do not retain or apply item state.
+effect-101 route and probe passed. The bounded patch caps only lethal final
+damage at target HP minus one after immunity handling and before shared HP
+application; it is pending guarded execution and independent review. Do not
+bundle Vital Throw, formulas, or stateful families. Held-item trainer layouts
+remain deferred because battlers do not retain or apply item state.
 
 ## Phase 2 resume point
 

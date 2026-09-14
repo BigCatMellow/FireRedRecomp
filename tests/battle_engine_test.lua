@@ -207,6 +207,43 @@ events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
 check("ordinary effect remains stage zero at the high-critical boundary", events[2].type == "damage"
   and battle.rng.draws == 3, events[2] and events[2].type)
 
+-- EFFECT_FALSE_SWIPE runs the ordinary hit pipeline, then caps only a lethal
+-- final damage result at target HP - 1. Private records preserve retail data.
+local falseSwipeMoves = {}
+for k, v in pairs(Data.moves) do falseSwipeMoves[k] = v end
+falseSwipeMoves[997] = { effect = 101, power = 120, type = Data.TYPE_NORMAL, accuracy = 100, pp = 20, priority = 0 }
+falseSwipeMoves[998] = { effect = 0, power = 120, type = Data.TYPE_NORMAL, accuracy = 100, pp = 20, priority = 0 }
+local function falseSwipeBattle(moveId, foeTypes, foeHP, values)
+  return BattleEngine.new({
+    player = BattleEngine.makeBattler({ species = 1, level = 5, stats = bulbaStats,
+      types = { Data.TYPE_NORMAL, Data.TYPE_NORMAL }, moves = { { move = moveId, pp = 20 } } }),
+    foe = BattleEngine.makeBattler({ species = 4, level = 5, stats = charStats,
+      hp = foeHP, types = foeTypes, moves = { { move = Data.MOVE_TACKLE, pp = 1 } } }),
+    moves = falseSwipeMoves, typeChart = Data.typeChart, rng = scriptedRng(values),
+  })
+end
+
+battle = falseSwipeBattle(997, { Data.TYPE_FIRE, Data.TYPE_FIRE }, 1, { 0, 15, 0 })
+events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
+check("False Swipe leaves a one-HP target at one HP", events[2].type == "damage"
+  and events[2].amount == 0 and battle.foe.hp == 1 and battle.rng.draws == 3, events[2] and events[2].amount)
+check("False Swipe retains PP and ordinary three-draw hit path", battle.player.moves[1].pp == 19, battle.player.moves[1].pp)
+
+battle = falseSwipeBattle(997, { Data.TYPE_FIRE, Data.TYPE_FIRE }, 99, { 0, 15, 0 })
+events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
+check("False Swipe keeps nonlethal damage unchanged", events[2].type == "damage"
+  and events[2].amount > 0 and battle.foe.hp < 99, events[2] and events[2].amount)
+
+battle = falseSwipeBattle(997, { Data.TYPE_GHOST, Data.TYPE_GHOST }, 1, { 0, 15, 0 })
+events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
+check("False Swipe preserves type immunity", events[2].type == "noEffect"
+  and battle.foe.hp == 1 and battle.rng.draws == 3, events[2] and events[2].type)
+
+battle = falseSwipeBattle(998, { Data.TYPE_FIRE, Data.TYPE_FIRE }, 1, { 0, 15, 0 })
+events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
+check("ordinary move still faints a one-HP target", events[2].type == "damage"
+  and events[2].amount == 1 and battle.foe.hp == 0, events[2] and events[2].amount)
+
 battle = alwaysHitBattle(993, { Data.TYPE_GHOST, Data.TYPE_GHOST }, nil, { 0, 0 })
 events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
 check("always-hit preserves type immunity after its no-roll accuracy branch", events[2].type == "noEffect"
