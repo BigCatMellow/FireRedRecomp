@@ -178,6 +178,35 @@ events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
 check("always-hit preserves the ordinary critical branch", events[2].type == "critical"
   and events[3].type == "damage" and battle.rng.draws == 2, battle.rng.draws)
 
+-- EFFECT_HIGH_CRITICAL keeps the ordinary hit pipeline but passes critcalc
+-- stage 1 (1/8) instead of ordinary stage 0 (1/16). Private records keep the
+-- shared retail transcription untouched. RNG values are accuracy, crit, random.
+local highCritMoves = {}
+for k, v in pairs(Data.moves) do highCritMoves[k] = v end
+highCritMoves[995] = { effect = 43, power = 60, type = Data.TYPE_NORMAL, accuracy = 100, pp = 20, priority = 0 }
+highCritMoves[996] = { effect = 0, power = 60, type = Data.TYPE_NORMAL, accuracy = 100, pp = 20, priority = 0 }
+local function highCritBattle(moveId, values)
+  return BattleEngine.new({
+    player = BattleEngine.makeBattler({ species = 1, level = 5, stats = bulbaStats,
+      types = { Data.TYPE_NORMAL, Data.TYPE_NORMAL }, moves = { { move = moveId, pp = 20 } } }),
+    foe = BattleEngine.makeBattler({ species = 4, level = 5, stats = charStats,
+      types = { Data.TYPE_FIRE, Data.TYPE_FIRE }, moves = { { move = Data.MOVE_TACKLE, pp = 1 } } }),
+    moves = highCritMoves, typeChart = Data.typeChart, rng = scriptedRng(values),
+  })
+end
+
+battle = highCritBattle(995, { 0, 8, 0 })
+events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
+check("high-critical stage one crits at the 1/8 boundary", events[2].type == "critical"
+  and events[3].type == "damage" and battle.rng.draws == 3, battle.rng.draws)
+check("high-critical keeps ordinary PP and random-damage paths", battle.player.moves[1].pp == 19
+  and events[3].amount > 0, events[3] and events[3].amount)
+
+battle = highCritBattle(996, { 0, 8, 0 })
+events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
+check("ordinary effect remains stage zero at the high-critical boundary", events[2].type == "damage"
+  and battle.rng.draws == 3, events[2] and events[2].type)
+
 battle = alwaysHitBattle(993, { Data.TYPE_GHOST, Data.TYPE_GHOST }, nil, { 0, 0 })
 events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
 check("always-hit preserves type immunity after its no-roll accuracy branch", events[2].type == "noEffect"

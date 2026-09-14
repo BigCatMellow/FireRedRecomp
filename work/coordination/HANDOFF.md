@@ -49,10 +49,12 @@ effect 43 routes through ordinary Hit but advances only the existing critical
 stage from 0 (1/16) to 1 (1/8), with the same single critical RNG draw. The
 eight records are Karate Chop #2, Razor Leaf #75, Crabhammer #152, Slash #163,
 Aeroblast #177, Cross Chop #238, Air Cutter #314, and Leaf Blade #348. The
-active prerequisite is an exact fail-closed route and probe for only that
-effect-43 stage selection; do not bundle Vital Throw, False Swipe, formulas,
-or stateful families. Held-item trainer layouts remain deferred because
-battlers do not retain or apply item state.
+effect-43 stage selection has a verified route and probe. The bounded patch
+selects only critical stage 1, preserving one crit RNG draw, PP, type, normal
+damage, and HP paths; it is pending guarded execution and independent review.
+Do not bundle Vital Throw, False Swipe, formulas, or stateful families.
+Held-item trainer layouts remain deferred because battlers do not retain or
+apply item state.
 
 ## Phase 2 resume point
 

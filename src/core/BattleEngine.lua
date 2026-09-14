@@ -431,6 +431,10 @@ BattleEngine.SIDE_PLAYER = "player"
 BattleEngine.SIDE_FOE = "foe"
 BattleEngine.EFFECT_ATTACK_DOWN = 18
 BattleEngine.EFFECT_DEFENSE_DOWN = 19
+-- Real EFFECT_HIGH_CRITICAL enters the ordinary hit script but advances only
+-- Cmd_critcalc's stage from 0 (1/16) to 1 (1/8). It keeps the same one RNG
+-- draw and every other ordinary-damage step.
+BattleEngine.EFFECT_HIGH_CRITICAL = 43
 -- Real EFFECT_ALWAYS_HIT bypasses Cmd_accuracycheck's random accuracy branch
 -- entirely (battle_script_commands.c). It is deliberately limited to this
 -- exact effect; Vital Throw uses a related hardware condition but remains a
@@ -937,7 +941,8 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
   -- FIRST_BATTLE flag check, so the roll is still consumed while criticals
   -- are suppressed. Suppression is global until the first player damage
   -- message flips Oak's state flag, including a foe that attacks first.
-  local rolledCrit = BattleFormulas.critRoll(self.rng, 0)
+  local critStage = move.effect == BattleEngine.EFFECT_HIGH_CRITICAL and 1 or 0
+  local rolledCrit = BattleFormulas.critRoll(self.rng, critStage)
   local isCrit = rolledCrit and not (self.firstBattle and not self.tutorialPlayerDamageDone)
 
   -- 4. damagecalc: base damage, then the real x2 crit multiply, which

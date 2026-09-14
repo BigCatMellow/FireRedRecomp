@@ -1,6 +1,6 @@
 # Task: Phase 4 high-critical move effects
 
-- Status: `BLOCKED ON EXPLICIT BRIDGE ROUTE`
+- Status: `IMPLEMENTED — PENDING GUARDED RUN / INDEPENDENT REVIEW`
 - Type: `PHASE 4 / BATTLE RULES / BOUNDED IMPLEMENTATION`
 
 ## Goal
@@ -32,3 +32,11 @@ The implementation route may authorize only `src/core/BattleEngine.lua`,
 `scripts/runtime_phase4_high_critical_replay.sh`, this task, `STATE.json`, and
 `HANDOFF.md`. It must be fail-closed and receive a separate one-file probe
 before any implementation patch is accepted.
+
+## Worker evidence
+
+Only effect 43 selects the existing stage-1 critical table entry. Focused
+coverage proves the 1/8 boundary, ordinary stage-0 regression, PP, and the
+unchanged three-draw hit path. The verified-ROM fixture proves the eight
+records and parsed Slash behavior. This is not a Phase 4 completion claim
+pending guarded execution and independent review.
