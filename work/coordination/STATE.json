@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
-  "updated_utc": "2026-09-14T02:20:00Z",
-  "role": "ORCHESTRATOR",
-  "status": "READY_FOR_DISCOVERY",
+  "updated_utc": "2026-09-14T03:00:00Z",
+  "role": "WORKER",
+  "status": "DISCOVERY_PENDING_INDEPENDENT_REVIEW",
   "current_phase": "Phase 4 — full Gen 3 battle engine",
   "canonical_status_owner": "work/roadmaps/CAPABILITY_CHECKLIST.md",
   "active_task": "work/tasks/phase4-move-admission-matrix-discovery.md",
-  "objective": "Build a source-backed move admission matrix before selecting the next bounded Phase 4 effect family, while Phase 2 retail comparison remains externally blocked.",
-  "next_role": "WORKER",
+  "objective": "Independently review the source-backed admission matrix, then route only the selected Phase 4 always-hit effect leaf while Phase 2 retail comparison remains externally blocked.",
+  "next_role": "REVIEWER",
   "reconciliation": {
     "camera_task_status": "CLOSED — REVIEWED PASS at 4c5456f3; guarded run 34753297372",
     "oak_evidence_bridge": "CLOSED — REVIEWED PASS at ff5ff890; trusted probe run 34753855210",
@@ -18,7 +18,7 @@
     "phase4_fixed_damage_status": "CLOSED — REVIEWED PASS at c65cf838; guarded run 34798961274"
   },
   "phase2_external_blocker": "Trusted, user-owned retail-reference captures with provenance/timing/crop/filter details for Oak and Pallet anchors have not been supplied.",
-  "next_after_success": "Complete the read-only admission-matrix discovery, then select and route one source-backed effect-family leaf; do not treat broader battle-effect or Phase 4 work as complete.",
+  "next_after_success": "After independent review, create an explicit fail-closed bridge route for only EFFECT_ALWAYS_HIT (17); do not silently reject or implement other fallback families.",
   "legal_content_boundary": "Never commit ROMs, BIOS dumps, generated caches, ROM-derived reference screenshots, extracted game assets, or other prohibited content.",
   "phase_completion_rule": "Phase 2 remains IN PROGRESS until the Oak/reference screenshot discrepancy gate is evidenced and independently reviewed."
 }

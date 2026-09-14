@@ -38,8 +38,16 @@ nonzero effectiveness does not alter fixed damage or presentation. The next
 active task is a source-backed admission-matrix discovery. It must distinguish
 positive-power moves currently admitted by the engine from effect families the
 engine actually represents, before selecting one new bounded implementation
-leaf. Held-item trainer layouts remain deferred because battlers do not retain
-or apply item state.
+leaf. Discovery is complete pending independent review: the verified ROM has
+216 positive-power records; 75 are explicitly represented, Dream Eater is
+explicitly rejected, and 140 currently use the broad positive-power fallback.
+The selected smallest next leaf is EFFECT_ALWAYS_HIT (17): six positive-power,
+accuracy-zero retail records require the stock accuracy command's no-roll
+branch, not this engine's ordinary 0%-accuracy check. High-critical, Vital
+Throw, False Swipe, formulas, and stateful families remain explicitly deferred
+or prerequisite-blocked in the discovery task; do not bundle them. Held-item
+trainer layouts remain deferred because battlers do not retain or apply item
+state.
 
 ## Phase 2 resume point
 
