@@ -44,14 +44,15 @@ positive power and accuracy zero, so the stock accuracy command takes a no-roll
 branch. Always-hit effects are now closed and published at `89673e16` (guarded
 run `34828443860`): effect 17 skips only accuracy RNG while retaining PP, type
 immunity, crit, normal random damage, and HP application. The next active task
-is high-critical discovery, now pending independent review. Stock effect 43
-routes through ordinary Hit but advances only the existing critical stage from
-0 (1/16) to 1 (1/8), with the same single critical RNG draw. The eight records
-are Karate Chop #2, Razor Leaf #75, Crabhammer #152, Slash #163, Aeroblast
-#177, Cross Chop #238, Air Cutter #314, and Leaf Blade #348. If review passes,
-route only that effect-43 stage selection; do not bundle Vital Throw, False
-Swipe, formulas, or stateful families. Held-item trainer layouts remain
-deferred because battlers do not retain or apply item state.
+high-critical discovery is independently reviewed PASS at `47f3748e`. Stock
+effect 43 routes through ordinary Hit but advances only the existing critical
+stage from 0 (1/16) to 1 (1/8), with the same single critical RNG draw. The
+eight records are Karate Chop #2, Razor Leaf #75, Crabhammer #152, Slash #163,
+Aeroblast #177, Cross Chop #238, Air Cutter #314, and Leaf Blade #348. The
+active prerequisite is an exact fail-closed route and probe for only that
+effect-43 stage selection; do not bundle Vital Throw, False Swipe, formulas,
+or stateful families. Held-item trainer layouts remain deferred because
+battlers do not retain or apply item state.
 
 ## Phase 2 resume point
 
