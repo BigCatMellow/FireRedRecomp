@@ -51,11 +51,12 @@ eight records are Karate Chop #2, Razor Leaf #75, Crabhammer #152, Slash #163,
 Aeroblast #177, Cross Chop #238, Air Cutter #314, and Leaf Blade #348. The
 effect-43 stage selection is now closed and published at `a4b02e35` (guarded
 run `34829358780`), preserving one crit RNG draw, PP, type, normal damage, and
-HP paths. False Swipe discovery is pending independent review: its one record,
-#206, is ordinary Hit with a post-formula lethal-damage cap to target HP minus
-one. It is self-contained in this stateless engine after the existing immunity
-return and before shared HP application. On review PASS, route only effect 101;
-do not bundle Vital Throw, formulas, or stateful families. Held-item trainer
+HP paths. False Swipe discovery is independently reviewed PASS at `f9874ecd`:
+its one record, #206, is ordinary Hit with a post-formula lethal-damage cap to
+target HP minus one. It is self-contained in this stateless engine after the
+existing immunity return and before shared HP application. The active
+prerequisite is an exact fail-closed route and probe only for effect 101; do
+not bundle Vital Throw, formulas, or stateful families. Held-item trainer
 layouts remain deferred because battlers do not retain or apply item state.
 
 ## Phase 2 resume point
