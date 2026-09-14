@@ -1,6 +1,6 @@
 # Task: Phase 4 terminal-outcome and replacement-policy discovery
 
-- Status: `ACTIVE`
+- Status: `CLOSED — REVIEWED PASS at e7f5d779`
 - Type: `PHASE 4 / BATTLE RULES / READ-ONLY SOURCE-LOCK DISCOVERY`
 
 ## Goal
@@ -77,3 +77,9 @@ authorize an Explosion route: the current party/controller APIs lack the
 two-sided queued replacement integration and draw completion contract. The
 next bounded work, if independently reviewed PASS, is an implementation design
 for that state/API migration and its tests—not Explosion itself.
+
+## Review closure
+
+Independent review passed at `e7f5d779`. The successor task owns the required
+two-sided state/API migration design; this source-lock task authorizes neither
+implementation nor an Explosion route.

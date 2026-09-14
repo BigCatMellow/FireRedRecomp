@@ -73,14 +73,16 @@ Explosion self-KO/faint/RNG-order design is independently reviewed PASS at
 replacement/outcome handling, while the engine has one pending forced-switch
 slot. Ordered replacement-state design is independently reviewed PASS at
 `f407b775`: the engine needs a two-phase record-faints/finalize-sequence API,
-not merely a replacement queue. The successor source-lock discovery establishes
-that local simultaneous whole-team exhaustion produces `B_OUTCOME_DREW` and
-that the post-action faint handler traverses player battler 0 then foe battler
-1. The engine still has only one `awaitingForcedSwitch` side and no draw
-completion contract, so no Explosion route is authorized. The next step after
-independent PASS is a bounded state/API migration design and test matrix; do
-not bundle formulas or stateful families. Held-item trainer layouts remain
-deferred because battlers do not retain or apply item state.
+not merely a replacement queue. The terminal-policy source lock is independently
+reviewed PASS at `e7f5d779`: local simultaneous whole-team exhaustion produces
+`B_OUTCOME_DREW`, and the post-action faint handler traverses player battler 0
+then foe battler 1. The active design defines a queue-head-compatible two-sided
+state/API migration, controller handoff, persistence/reward boundaries, and
+loss-equivalent `playerDrew` settlement. No bridge route or Explosion
+implementation is authorized until that design independently passes; its later
+route must be for the state/API migration only. Do not bundle formulas or
+stateful families. Held-item trainer layouts remain deferred because battlers do
+not retain or apply item state.
 
 ## Phase 2 resume point
 
