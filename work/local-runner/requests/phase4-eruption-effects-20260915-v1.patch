@@ -1,0 +1,113 @@
+diff --git a/scripts/runtime_phase4_eruption_replay.sh b/scripts/runtime_phase4_eruption_replay.sh
+new file mode 100755
+index 00000000..a2f29f9d
+--- /dev/null
++++ b/scripts/runtime_phase4_eruption_replay.sh
+@@ -0,0 +1,7 @@
++#!/usr/bin/env bash
++set -euo pipefail
++ROOT=$(cd "$(dirname "$0")/.." && pwd); cd "$ROOT"
++: "${POKEPORT_ROM:?set POKEPORT_ROM to verified FireRed US v1.0}"
++lua5.1 tests/battle_engine_test.lua
++lua5.1 tests/phase4_eruption_effect_rom_test.lua
++echo "RUNTIME_REPLAY phase4_eruption PASS effect=190 current-hp=true singles=true"
+diff --git a/src/core/BattleEngine.lua b/src/core/BattleEngine.lua
+index c0ad1666..cec1ac9d 100644
+--- a/src/core/BattleEngine.lua
++++ b/src/core/BattleEngine.lua
+@@ -445,6 +445,7 @@ BattleEngine.EFFECT_FALSE_SWIPE = 101
+ BattleEngine.EFFECT_ALWAYS_HIT = 17
+ BattleEngine.EFFECT_VITAL_THROW = 78
+ BattleEngine.EFFECT_FLAIL = 99
++BattleEngine.EFFECT_ERUPTION = 190
+ 
+ -- Real Cmd_remaininghptopower: scale the attacker's remaining HP to 48,
+ -- promote a positive underflow to one, then choose Flail/Reversal's dynamic
+@@ -459,6 +460,13 @@ function BattleEngine.flailPowerFromHP(hp, maxHP)
+   if scaled <= 32 then return 40 end
+   return 20
+ end
++
++-- Real Cmd_scaledamagebyhealthratio for the bounded singles path. The ROM
++-- command's gDynamicBasePower preseed guard has no counterpart in this engine;
++-- this helper derives the effect-190 transient power without mutating move data.
++function BattleEngine.eruptionPowerFromHP(hp, maxHP, storedPower)
++  return math.max(1, math.floor(hp * storedPower / maxHP))
++end
+ -- EFFECT_DREAM_EATER=8: real BattleScript_EffectDreamEater
+ -- (data/battle_scripts_1.s:427) jumps straight to "wasn't affected" unless
+ -- the target's real status1 has STATUS1_SLEEP set -- a status-condition
+@@ -898,6 +906,12 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
+     dynamicMove.power = BattleEngine.flailPowerFromHP(attacker.hp, attacker.maxHP)
+     move = dynamicMove
+   end
++  if move.effect == BattleEngine.EFFECT_ERUPTION then
++    local dynamicMove = {}
++    for k, v in pairs(move) do dynamicMove[k] = v end
++    dynamicMove.power = BattleEngine.eruptionPowerFromHP(attacker.hp, attacker.maxHP, move.power)
++    move = dynamicMove
++  end
+ 
+   -- Defensive path only, real-game-unreachable: the caller selected a
+   -- specific 0-PP slot while at least one OTHER slot of this battler still
+diff --git a/tests/battle_engine_test.lua b/tests/battle_engine_test.lua
+index b8649cf7..b35bc3a2 100644
+--- a/tests/battle_engine_test.lua
++++ b/tests/battle_engine_test.lua
+@@ -1317,6 +1317,43 @@ check("the still-healthy foe does not get to act this same turn while the forced
+ 
+ -- Optional ROM check: exact real parser output equals the no-ROM fixture.
+ local romPath = os.getenv("POKEPORT_ROM")
++-- EFFECT_ERUPTION (190): current HP scales the stored power before ordinary Hit.
++check("Eruption real HP scaling uses floor and positive minimum", BattleEngine.eruptionPowerFromHP(100,100,150)==150
++  and BattleEngine.eruptionPowerFromHP(50,100,150)==75 and BattleEngine.eruptionPowerFromHP(1,100,150)==1
++  and BattleEngine.eruptionPowerFromHP(1,3,150)==50 and BattleEngine.eruptionPowerFromHP(1,4,150)==37)
++local eruptionId, plain150Id = 992, 991
++Data.moves[eruptionId] = { effect=190,power=150,type=0,accuracy=100,pp=5,secondaryEffectChance=0,target=0,priority=0,flags=0 }
++Data.moves[plain150Id] = { effect=0,power=150,type=0,accuracy=100,pp=5,secondaryEffectChance=0,target=0,priority=0,flags=0 }
++battle = makeBattle({0,1,0}, {{move=eruptionId,pp=5}}, {{move=Data.MOVE_TACKLE,pp=1}})
++battle.player.hp = 1; events={}; battle:resolveMove(BattleEngine.SIDE_PLAYER,1,events)
++local eruptionDamage=events[2].amount
++battle = makeBattle({0,1,0}, {{move=plain150Id,pp=5}}, {{move=Data.MOVE_TACKLE,pp=1}})
++battle.player.hp = 1; events={}; battle:resolveMove(BattleEngine.SIDE_PLAYER,1,events)
++check("Eruption uses transient low-HP power while other 150-power moves stay unchanged", eruptionDamage < events[2].amount and Data.moves[eruptionId].power==150)
++Data.moves[eruptionId]=nil; Data.moves[plain150Id]=nil
++-- Both real effect-190 record shapes; target=both is retained in data but this
++-- bounded engine resolves only its one opposing battler.
++Data.moves[284]={effect=190,power=150,type=10,accuracy=100,pp=5,secondaryEffectChance=0,target=8,priority=0,flags=0}
++Data.moves[323]={effect=190,power=150,type=11,accuracy=100,pp=5,secondaryEffectChance=0,target=8,priority=0,flags=0}
++battle=makeBattle({0,1,0},{{move=284,pp=5}},{{move=Data.MOVE_TACKLE,pp=1}});battle.player.hp=1;events={};battle:resolveMove(BattleEngine.SIDE_PLAYER,1,events)
++check("parsed-shape Eruption #284 uses one-opponent ordinary dynamic Hit",events[1].move==284 and events[2].type=="damage" and battle.player.moves[1].pp==4 and battle.rng.draws==3)
++battle=makeBattle({0,1,0},{{move=323,pp=5}},{{move=Data.MOVE_TACKLE,pp=1}});battle.player.hp=1;events={};battle:resolveMove(BattleEngine.SIDE_PLAYER,1,events)
++check("parsed-shape Water Spout #323 uses one-opponent ordinary dynamic Hit",events[1].move==323 and events[2].type=="damage" and battle.player.moves[1].pp==4 and battle.rng.draws==3)
++local eruptionAccuracy=Data.moves[284].accuracy;Data.moves[284].accuracy=85
++battle=makeBattle({99},{{move=284,pp=5}},{{move=Data.MOVE_TACKLE,pp=1}});events={};battle:resolveMove(BattleEngine.SIDE_PLAYER,1,events)
++check("Eruption miss preserves ordinary PP and no later RNG",events[#events].type=="miss" and battle.player.moves[1].pp==4 and battle.rng.draws==1)
++Data.moves[284].accuracy=eruptionAccuracy
++Data.moves[eruptionId]={effect=190,power=150,type=0,accuracy=100,pp=5,secondaryEffectChance=0,target=0,priority=0,flags=0}
++battle=makeBattle({0,1,0},{{move=eruptionId,pp=5}},{{move=Data.MOVE_TACKLE,pp=1}});battle.foe.types={Data.TYPE_GHOST,Data.TYPE_GHOST};events={};battle:resolveMove(BattleEngine.SIDE_PLAYER,1,events)
++check("Eruption immunity preserves ordinary no-effect RNG path",events[#events].type=="noEffect" and battle.rng.draws==3)
++Data.moves[eruptionId]=nil
++battle=makeBattle({0,0,0},{{move=284,pp=5}},{{move=Data.MOVE_TACKLE,pp=1}});battle.player.hp=1;events={};battle:resolveMove(BattleEngine.SIDE_PLAYER,1,events)
++check("Eruption retains ordinary critical branch",events[2].type=="critical" and events[3].type=="damage" and battle.rng.draws==3)
++battle=makeBattle({0,1,0},{{move=284,pp=5}},{{move=Data.MOVE_TACKLE,pp=1}});battle.player.hp=1;battle.player.speed=999;battle.foe.hp=1;events=battle:runTurn({action="move",moveSlot=1},{action="move",moveSlot=1})
++local sawEruptionFaint=false
++for _,event in ipairs(events) do sawEruptionFaint=sawEruptionFaint or(event.type=="faint" and event.side=="foe") end
++check("Eruption retains shared lethal HP and faint handling",battle.foe.hp==0 and sawEruptionFaint)
++Data.moves[284]=nil;Data.moves[323]=nil
+ -- EFFECT_FLAIL (99): transient dynamic base power comes from the real scaled
+ -- remaining-HP table before ordinary Hit, without changing stored move data.
+ check("Flail real scaled-HP power bands cover both sides of every transition",
+diff --git a/tests/phase4_eruption_effect_rom_test.lua b/tests/phase4_eruption_effect_rom_test.lua
+new file mode 100644
+index 00000000..0dd84588
+--- /dev/null
++++ b/tests/phase4_eruption_effect_rom_test.lua
+@@ -0,0 +1,7 @@
++package.path=package.path..";./?.lua"
++local B=require("import.BattleMove");local A=require("import.RomAddresses");local R=require("import.RomImporter")
++local p=os.getenv("POKEPORT_ROM");if not p then print("SKIP phase4_eruption_effect_rom_test (set POKEPORT_ROM)");os.exit(0)end
++local ok,i=R.verify(p);if not ok then print("FAIL: ROM verification -- "..tostring(i));os.exit(1)end
++local f=assert(io.open(p,"rb"));local rom=f:read("*a");f:close();local a=assert(A["41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc"]);local m=B.parseTable(rom,a.gBattleMoves,A.COUNTS.MOVES_COUNT)
++if not(m[284].effect==190 and m[284].power==150 and m[284].type==10 and m[284].accuracy==100 and m[284].pp==5 and m[284].target==8 and m[323].effect==190 and m[323].power==150 and m[323].type==11 and m[323].accuracy==100 and m[323].pp==5 and m[323].target==8)then print("FAIL: Eruption/Water Spout ROM records changed");os.exit(1)end
++print("phase4_eruption_effect_rom_test: 1 passed, 0 failed")
