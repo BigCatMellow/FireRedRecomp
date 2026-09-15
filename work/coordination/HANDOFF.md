@@ -82,11 +82,13 @@ loss-equivalent `playerDrew` settlement. The design is independently reviewed
 PASS at `6ac44924`. The exact route configuration passed review at `b6f63284`,
 and its one-file probe `4630aad4` passed guarded run `34906202097` on
 `firered-mint`, including trusted checkout, route selection, Lua, and private
-ROM verification. The two-sided state/API implementation is now READY FOR
-WORKER, using only its reviewed engine/controller/orchestrator/world/test/replay
-surface. No Explosion implementation is authorized; do not bundle formulas or
-stateful families. Held-item trainer layouts remain deferred because battlers do
-not retain or apply item state.
+ROM verification. The two-sided state/API implementation is now closed and
+independently reviewed at `4a583b6a` after guarded run `34907113705`: it has
+ordered queue-head-compatible replacement state, `playerDrew`, and validated
+trainer/Oak/wild loss settlement. Explosion is therefore eligible only for the
+next separate gate: a fail-closed Worker Bridge route plan. It may not bundle
+formulas or other stateful families. Held-item trainer layouts remain deferred
+because battlers do not retain or apply item state.
 
 ## Phase 2 resume point
 

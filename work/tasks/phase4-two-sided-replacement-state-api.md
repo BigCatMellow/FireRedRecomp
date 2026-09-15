@@ -1,6 +1,6 @@
 # Task: Phase 4 two-sided replacement-state/API migration
 
-- Status: `READY FOR WORKER`
+- Status: `CLOSED — REVIEWED PASS at 4a583b6a`
 - Type: `PHASE 4 / BATTLE RULES / BOUNDED IMPLEMENTATION`
 
 ## Goal
@@ -52,3 +52,12 @@ The exact fail-closed route passed review at `b6f63284`; probe `4630aad4`
 passed guarded run `34906202097`. Worker must submit one unified patch request
 using the `phase4-two-sided-replacement-state-api` filename prefix. Publication
 requires the route's focused, no-ROM, verified-ROM, and replay gates.
+
+## Worker and review closure
+
+Request `66a37d10` passed guarded Local Worker Bridge run `34907113705` on
+`firered-mint`: target validation, apply, focused tests, full no-ROM suite,
+verified-ROM suite, runtime replay, and publication all passed. The resulting
+canonical implementation `4a583b6a` independently passed post-publication
+review. It adds ordered queue-head-compatible replacement state, explicit draw
+outcome, and tested local settlement seams only. Explosion remains separate.
