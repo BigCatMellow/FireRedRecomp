@@ -73,14 +73,25 @@ never accidentally select a stat branch.
 ## Negative scope
 
 The following are acceptance checks for every later implementation slice, not
-editable package inputs:
+editable package inputs. Their target owners are explicit:
 
-- no trainer (`battleTrainers`), encounter, AI, economy, or species-stat data;
-- no TM compatibility or item acquisition change; item 307 remains the one-copy
-  TM19 resource and move 202 retains the frozen CSV values only;
+- trainer data: `import/Trainer.lua:parseTable` at
+  `RomAddresses.gTrainers`, decoded in `main.lua:loadBattleSceneAssets` and
+  exposed as `battleTrainers`; neither its namespace nor trainer-party data
+  may be patched;
+- encounter data: `import/WildEncounters.lua:findHeader/resolveInfo` at
+  `RomAddresses.gWildMonHeaders`, loaded by `main.lua` lines 1671–1678; no
+  encounter header/slot/level data may be patched;
+- TM/item data: `import/Item.lua:parseTable` at `RomAddresses.gItems`, exposed
+  as `battleItems`. The target has no TM compatibility implementation seam;
+  therefore item 307's one-copy acquisition/compatibility is an immutable
+  non-claim, not a missing feature to add. Move 202 retains only the frozen
+  CSV values;
+- AI/economy/species data: `src/core/TrainerAI.lua`, `src/core/PokemonMart.lua`,
+  and the unpatched `battleSpecies` namespace remain outside the package;
 - no held candidate promotion: Aerodactyl Rock Slide, Kingler Crabhammer 45,
   Dragonite Outrage 56, and Omastar AncientPower 49 stay absent from the
-  package;
+  package and from every `battleMoves`/learnset overlay operation;
 - no package CSV or source-pin change.
 
 ## Baseline and post-change evidence
@@ -88,6 +99,13 @@ editable package inputs:
 Baseline: `bash scripts/test_all.sh` passed on the target revision in no-ROM
 mode (140 test files; ROM-dependent checks skipped cleanly). The verified-ROM
 suite and any gameplay replay are not evidence for this planning task.
+
+Reproducible manifest check:
+
+```text
+bash scripts/validate_pokemon_firered_balance_manifest.sh \
+  /home/mellow/Pilot_Projects/pokemon-firered-balance/data/integrated_player_package_v1.csv
+```
 
 Before implementation, snapshot hashes of decoded move records, resolved
 learnsets, trainers, encounters, item 307, and compatibility data must be
