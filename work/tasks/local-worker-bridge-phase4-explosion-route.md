@@ -1,6 +1,6 @@
 # Task: plan Local Worker Bridge route for Phase 4 Explosion
 
-- Status: `PENDING INDEPENDENT REVIEW`
+- Status: `CLOSED — REVIEWED PASS; PROBE PASSED`
 - Type: `INFRASTRUCTURE / EXECUTION SUBSTRATE / PLAN`
 
 ## Goal
@@ -64,3 +64,8 @@ The workflow has the exact selector, literal allowlist, focused commands,
 runtime replay, and literal publication list specified above. Configuration
 does not authorize code; it requires independent review, then its separate
 one-file probe.
+
+Configuration independently passed at `2355a194`. Probe `8e5ed551` passed
+guarded Local Worker Bridge run `34952628535` on `firered-mint`: trusted
+checkout, explicit route selection, Lua toolchain, and private-ROM SHA gate all
+passed; all patch/test/replay/publish steps were correctly skipped.

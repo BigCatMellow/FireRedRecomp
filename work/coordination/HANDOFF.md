@@ -86,9 +86,12 @@ ROM verification. The two-sided state/API implementation is now closed and
 independently reviewed at `4a583b6a` after guarded run `34907113705`: it has
 ordered queue-head-compatible replacement state, `playerDrew`, and validated
 trainer/Oak/wild loss settlement. Explosion is therefore eligible only for the
-next separate gate: a fail-closed Worker Bridge route plan. It may not bundle
-formulas or other stateful families. Held-item trainer layouts remain deferred
-because battlers do not retain or apply item state.
+next separate gate: a fail-closed Worker Bridge route plan. That route passed
+review at `2355a194` and probe `8e5ed551` passed guarded run `34952628535`.
+The effect-7-only Explosion task is now READY FOR WORKER, limited to
+Damp/self-KO/defense/RNG/faint-order behavior and its focused evidence. It may
+not bundle formulas or other stateful families. Held-item trainer layouts remain
+deferred because battlers do not retain or apply item state.
 
 ## Phase 2 resume point
 
