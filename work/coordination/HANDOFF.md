@@ -1,8 +1,8 @@
 # FireRedRecomp Coordination Handoff
 
-- Status: `READY_FOR_INDEPENDENT_REVIEW`
+- Status: `READY_FOR_NEXT_DISCOVERY`
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
-- Active task: [`../tasks/local-worker-bridge-phase4-psywave-route.md`](../tasks/local-worker-bridge-phase4-psywave-route.md)
+- Active task: select one next bounded, source-locked Phase 4 effect discovery
 
 ## Published evidence
 
@@ -121,9 +121,13 @@ path is therefore wrong for effect 88. The literal route plan independently
 passed and its seven-path selector/allowlist/focused-test/replay/staging
 configuration independently passed review. Require one separate probe before
 any request. Probe `2e69f25c` passed guarded run `35026144931`; the active task
-is now only Psywave effect 88 through that route. It must preserve shared
-accuracy/PP/type/no-effect, sample after typecalc even on immunity, and avoid
-ordinary critical/base/random damage. No broad random-formula support,
+was Psywave effect 88 through that route. It is now closed and independently
+reviewed at `40cfdffe` after guarded run `35026622346`; canonical range
+`79c31598..40cfdffe` passed post-publication review with 219/0 no-ROM checks,
+226/0 SHA-verified-ROM checks, the focused record test, and replay passing.
+It preserves shared accuracy/PP/type/no-effect, samples after typecalc even on
+immunity, and avoids ordinary critical/base/random damage. Select the next
+source-locked family separately; no broad random-formula support,
 held-item/endure state, or Phase 4 completion is authorized.
 
 Super Fang effect 40 discovery independently passed: it is a single

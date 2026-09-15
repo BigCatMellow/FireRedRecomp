@@ -1,6 +1,6 @@
 # Task: Phase 4 Psywave effect
 
-- Status: `READY FOR WORKER`
+- Status: `CLOSED — REVIEWED PASS`
 - Type: `PHASE 4 / BATTLE RULES / BOUNDED IMPLEMENTATION`
 
 ## Goal
@@ -35,3 +35,14 @@ Only the seven paths in `local-worker-bridge-phase4-psywave-route.md`.
 Other formulas, generic admission, item/endure/ability/status/UI/main,
 doubles/links, Phase 2's external-reference blocker, or Phase 4 completion
 status.
+
+## Closure evidence
+
+The guarded Worker applied and published the independently reviewed request at
+`40cfdffe` after successful run `35026622346`. The actual canonical range
+`79c31598..40cfdffe` independently passed review. Evidence: focused/no-ROM
+suite `219 passed, 0 failed`; SHA-verified retail-ROM suite `226 passed, 0
+failed`; and `phase4_psywave_effect_rom_test` plus the required runtime replay
+passed. This closes only effect 88 in the existing one-opponent engine; it does
+not authorize broader random formulas, held-item/endure state, abilities,
+doubles/links, or Phase 4 completion.
