@@ -444,6 +444,21 @@ BattleEngine.EFFECT_FALSE_SWIPE = 101
 -- distinct effects so future effect-specific behavior cannot be conflated.
 BattleEngine.EFFECT_ALWAYS_HIT = 17
 BattleEngine.EFFECT_VITAL_THROW = 78
+BattleEngine.EFFECT_FLAIL = 99
+
+-- Real Cmd_remaininghptopower: scale the attacker's remaining HP to 48,
+-- promote a positive underflow to one, then choose Flail/Reversal's dynamic
+-- base power table before BattleScript_EffectHit begins.
+function BattleEngine.flailPowerFromHP(hp, maxHP)
+  local scaled = math.floor(hp * 48 / maxHP)
+  if scaled == 0 and hp > 0 then scaled = 1 end
+  if scaled <= 1 then return 200 end
+  if scaled <= 4 then return 150 end
+  if scaled <= 9 then return 100 end
+  if scaled <= 16 then return 80 end
+  if scaled <= 32 then return 40 end
+  return 20
+end
 -- EFFECT_DREAM_EATER=8: real BattleScript_EffectDreamEater
 -- (data/battle_scripts_1.s:427) jumps straight to "wasn't affected" unless
 -- the target's real status1 has STATUS1_SLEEP set -- a status-condition
@@ -873,6 +888,15 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
   if not self:supportsMove(move) then
     error(("unsupported move effect %d for non-damaging move %d")
       :format(move.effect or -1, slot and slot.move or BattleEngine.MOVE_STRUGGLE))
+  end
+
+  if move.effect == BattleEngine.EFFECT_FLAIL then
+    -- Do not mutate shared ROM move data: stock writes a transient dynamic
+    -- base power before entering the otherwise ordinary Hit script.
+    local dynamicMove = {}
+    for k, v in pairs(move) do dynamicMove[k] = v end
+    dynamicMove.power = BattleEngine.flailPowerFromHP(attacker.hp, attacker.maxHP)
+    move = dynamicMove
   end
 
   -- Defensive path only, real-game-unreachable: the caller selected a
