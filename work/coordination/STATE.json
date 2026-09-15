@@ -1,12 +1,12 @@
 {
   "schema_version": 1,
-  "updated_utc": "2026-09-15T06:00:00Z",
+  "updated_utc": "2026-09-15T07:00:00Z",
   "role": "ORCHESTRATOR",
   "status": "READY_FOR_INDEPENDENT_REVIEW",
   "current_phase": "Phase 4 — full Gen 3 battle engine",
   "canonical_status_owner": "work/roadmaps/CAPABILITY_CHECKLIST.md",
-  "active_task": "work/tasks/phase4-flail-effect-discovery.md",
-  "objective": "Independently review the bounded Phase 4 Flail/Reversal effect discovery after Super Fang closure, while Phase 2 retail comparison remains externally blocked.",
+  "active_task": "work/tasks/local-worker-bridge-phase4-flail-route.md",
+  "objective": "Independently review the fail-closed Worker Bridge route plan for bounded Phase 4 Flail/Reversal effects, while Phase 2 retail comparison remains externally blocked.",
   "next_role": "REVIEWER",
   "reconciliation": {
     "camera_task_status": "CLOSED — REVIEWED PASS at 4c5456f3; guarded run 34753297372",

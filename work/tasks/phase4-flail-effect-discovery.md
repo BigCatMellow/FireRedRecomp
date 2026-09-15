@@ -1,6 +1,6 @@
 # Task: Phase 4 Flail/Reversal effect discovery
 
-- Status: `READY FOR INDEPENDENT REVIEW`
+- Status: `REVIEWED PASS`
 - Type: `PHASE 4 / BATTLE RULES / READ-ONLY DISCOVERY`
 
 ## Goal
@@ -33,3 +33,8 @@ moves. It needs its own bridge route and review before any implementation.
 
 No gameplay code, tests, workflow, bridge route/request, move admission, UI,
 AI, items, or Phase 4 completion status.
+
+## Review
+
+Independent source review passed at `f0654e14`. A separate fail-closed Worker
+route plan is the next gate; this discovery authorizes no implementation.
