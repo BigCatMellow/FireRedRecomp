@@ -88,9 +88,12 @@ ordered queue-head-compatible replacement state, `playerDrew`, and validated
 trainer/Oak/wild loss settlement. Explosion is therefore eligible only for the
 next separate gate: a fail-closed Worker Bridge route plan. That route passed
 review at `2355a194` and probe `8e5ed551` passed guarded run `34952628535`.
-The effect-7-only Explosion task is now READY FOR WORKER, limited to
-Damp/self-KO/defense/RNG/faint-order behavior and its focused evidence. It may
-not bundle formulas or other stateful families. Held-item trainer layouts remain
+The effect-7-only Explosion task is closed and independently reviewed at
+`507b5ac0` after guarded run `34953677822`: it is limited to
+Damp/self-KO/defense/RNG/faint-order behavior and focused evidence. The
+canonical range `1ee658a9..507b5ac0` independently passed review after
+publication. Select the next source-locked effect family separately; do not
+bundle formulas or other stateful families. Held-item trainer layouts remain
 deferred because battlers do not retain or apply item state.
 
 ## Phase 2 resume point

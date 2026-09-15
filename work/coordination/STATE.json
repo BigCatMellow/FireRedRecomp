@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
-  "updated_utc": "2026-09-15T01:00:00Z",
+  "updated_utc": "2026-09-15T02:00:00Z",
   "role": "ORCHESTRATOR",
-  "status": "READY_FOR_WORKER",
+  "status": "READY_FOR_DISCOVERY",
   "current_phase": "Phase 4 — full Gen 3 battle engine",
   "canonical_status_owner": "work/roadmaps/CAPABILITY_CHECKLIST.md",
-  "active_task": "work/tasks/phase4-explosion-effects.md",
-  "objective": "Execute only the bounded Phase 4 Explosion effect through the reviewed, probed Local Worker Bridge route, while Phase 2 retail comparison remains externally blocked.",
-  "next_role": "WORKER",
+  "active_task": "work/roadmaps/CAPABILITY_CHECKLIST.md",
+  "objective": "Select and source-lock the next bounded Phase 4 move-effect family after the independently reviewed Explosion closure, while Phase 2 retail comparison remains externally blocked.",
+  "next_role": "ORCHESTRATOR",
   "reconciliation": {
     "camera_task_status": "CLOSED — REVIEWED PASS at 4c5456f3; guarded run 34753297372",
     "oak_evidence_bridge": "CLOSED — REVIEWED PASS at ff5ff890; trusted probe run 34753855210",
@@ -19,7 +19,7 @@
     "phase4_move_admission_matrix_status": "CLOSED — REVIEWED PASS at 784a5188; six effect-17 accuracy-zero records selected as one next leaf"
   },
   "phase2_external_blocker": "Trusted, user-owned retail-reference captures with provenance/timing/crop/filter details for Oak and Pallet anchors have not been supplied.",
-  "next_after_success": "After guarded Worker publication and independent PASS, select the next source-locked effect family separately.",
+  "next_after_success": "Select the next source-locked effect family separately; do not infer broader self-KO, ability, doubles/link, held-item, or Phase 4 completion from effect 7.",
   "legal_content_boundary": "Never commit ROMs, BIOS dumps, generated caches, ROM-derived reference screenshots, extracted game assets, or other prohibited content.",
   "phase_completion_rule": "Phase 2 remains IN PROGRESS until the Oak/reference screenshot discrepancy gate is evidenced and independently reviewed."
 }

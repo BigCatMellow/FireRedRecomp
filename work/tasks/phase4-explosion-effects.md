@@ -1,6 +1,6 @@
 # Task: Phase 4 Explosion effects
 
-- Status: `READY FOR WORKER`
+- Status: `CLOSED — REVIEWED PASS`
 - Type: `PHASE 4 / BATTLE RULES / BOUNDED IMPLEMENTATION`
 
 ## Goal
@@ -39,3 +39,17 @@ recoil/drain; move admission; trainer/UI/main wiring; or phase-completion status
 Route config passed at `2355a194`; probe `8e5ed551` passed guarded run
 `34952628535`. Submit exactly one `phase4-explosion-effects` request after
 independent patch review.
+
+## Closure evidence
+
+The reviewed request `1ee658a9` was applied only by the guarded Local Worker
+Bridge and published as `507b5ac0`. Guarded run `34953677822` passed trusted
+checkout, explicit route selection, private-ROM SHA verification, target and
+patch validation, focused/no-ROM/verified-ROM suites, replay, and publication.
+The ordinary Lua run `34953677991` also passed. Independent post-publication
+review of `1ee658a9..507b5ac0` passed: the canonical four-file implementation
+preserves effect 7's PP → Damp → attacker-zero → crit/damage/type/random →
+accuracy order, defense halving, immunity/miss self-faint, target-then-attacker
+hit finalization, and parsed #120/#153 evidence. This closes only effect 7;
+it does not claim broader self-KO, ability, doubles/link, held-item, or Phase 4
+completion.
