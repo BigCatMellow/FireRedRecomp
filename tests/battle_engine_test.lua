@@ -1317,6 +1317,43 @@ check("the still-healthy foe does not get to act this same turn while the forced
 
 -- Optional ROM check: exact real parser output equals the no-ROM fixture.
 local romPath = os.getenv("POKEPORT_ROM")
+-- EFFECT_ERUPTION (190): current HP scales the stored power before ordinary Hit.
+check("Eruption real HP scaling uses floor and positive minimum", BattleEngine.eruptionPowerFromHP(100,100,150)==150
+  and BattleEngine.eruptionPowerFromHP(50,100,150)==75 and BattleEngine.eruptionPowerFromHP(1,100,150)==1
+  and BattleEngine.eruptionPowerFromHP(1,3,150)==50 and BattleEngine.eruptionPowerFromHP(1,4,150)==37)
+local eruptionId, plain150Id = 992, 991
+Data.moves[eruptionId] = { effect=190,power=150,type=0,accuracy=100,pp=5,secondaryEffectChance=0,target=0,priority=0,flags=0 }
+Data.moves[plain150Id] = { effect=0,power=150,type=0,accuracy=100,pp=5,secondaryEffectChance=0,target=0,priority=0,flags=0 }
+battle = makeBattle({0,1,0}, {{move=eruptionId,pp=5}}, {{move=Data.MOVE_TACKLE,pp=1}})
+battle.player.hp = 1; events={}; battle:resolveMove(BattleEngine.SIDE_PLAYER,1,events)
+local eruptionDamage=events[2].amount
+battle = makeBattle({0,1,0}, {{move=plain150Id,pp=5}}, {{move=Data.MOVE_TACKLE,pp=1}})
+battle.player.hp = 1; events={}; battle:resolveMove(BattleEngine.SIDE_PLAYER,1,events)
+check("Eruption uses transient low-HP power while other 150-power moves stay unchanged", eruptionDamage < events[2].amount and Data.moves[eruptionId].power==150)
+Data.moves[eruptionId]=nil; Data.moves[plain150Id]=nil
+-- Both real effect-190 record shapes; target=both is retained in data but this
+-- bounded engine resolves only its one opposing battler.
+Data.moves[284]={effect=190,power=150,type=10,accuracy=100,pp=5,secondaryEffectChance=0,target=8,priority=0,flags=0}
+Data.moves[323]={effect=190,power=150,type=11,accuracy=100,pp=5,secondaryEffectChance=0,target=8,priority=0,flags=0}
+battle=makeBattle({0,1,0},{{move=284,pp=5}},{{move=Data.MOVE_TACKLE,pp=1}});battle.player.hp=1;events={};battle:resolveMove(BattleEngine.SIDE_PLAYER,1,events)
+check("parsed-shape Eruption #284 uses one-opponent ordinary dynamic Hit",events[1].move==284 and events[2].type=="damage" and battle.player.moves[1].pp==4 and battle.rng.draws==3)
+battle=makeBattle({0,1,0},{{move=323,pp=5}},{{move=Data.MOVE_TACKLE,pp=1}});battle.player.hp=1;events={};battle:resolveMove(BattleEngine.SIDE_PLAYER,1,events)
+check("parsed-shape Water Spout #323 uses one-opponent ordinary dynamic Hit",events[1].move==323 and events[2].type=="damage" and battle.player.moves[1].pp==4 and battle.rng.draws==3)
+local eruptionAccuracy=Data.moves[284].accuracy;Data.moves[284].accuracy=85
+battle=makeBattle({99},{{move=284,pp=5}},{{move=Data.MOVE_TACKLE,pp=1}});events={};battle:resolveMove(BattleEngine.SIDE_PLAYER,1,events)
+check("Eruption miss preserves ordinary PP and no later RNG",events[#events].type=="miss" and battle.player.moves[1].pp==4 and battle.rng.draws==1)
+Data.moves[284].accuracy=eruptionAccuracy
+Data.moves[eruptionId]={effect=190,power=150,type=0,accuracy=100,pp=5,secondaryEffectChance=0,target=0,priority=0,flags=0}
+battle=makeBattle({0,1,0},{{move=eruptionId,pp=5}},{{move=Data.MOVE_TACKLE,pp=1}});battle.foe.types={Data.TYPE_GHOST,Data.TYPE_GHOST};events={};battle:resolveMove(BattleEngine.SIDE_PLAYER,1,events)
+check("Eruption immunity preserves ordinary no-effect RNG path",events[#events].type=="noEffect" and battle.rng.draws==3)
+Data.moves[eruptionId]=nil
+battle=makeBattle({0,0,0},{{move=284,pp=5}},{{move=Data.MOVE_TACKLE,pp=1}});battle.player.hp=1;events={};battle:resolveMove(BattleEngine.SIDE_PLAYER,1,events)
+check("Eruption retains ordinary critical branch",events[2].type=="critical" and events[3].type=="damage" and battle.rng.draws==3)
+battle=makeBattle({0,1,0},{{move=284,pp=5}},{{move=Data.MOVE_TACKLE,pp=1}});battle.player.hp=1;battle.player.speed=999;battle.foe.hp=1;events=battle:runTurn({action="move",moveSlot=1},{action="move",moveSlot=1})
+local sawEruptionFaint=false
+for _,event in ipairs(events) do sawEruptionFaint=sawEruptionFaint or(event.type=="faint" and event.side=="foe") end
+check("Eruption retains shared lethal HP and faint handling",battle.foe.hp==0 and sawEruptionFaint)
+Data.moves[284]=nil;Data.moves[323]=nil
 -- EFFECT_FLAIL (99): transient dynamic base power comes from the real scaled
 -- remaining-HP table before ordinary Hit, without changing stored move data.
 check("Flail real scaled-HP power bands cover both sides of every transition",

@@ -445,6 +445,7 @@ BattleEngine.EFFECT_FALSE_SWIPE = 101
 BattleEngine.EFFECT_ALWAYS_HIT = 17
 BattleEngine.EFFECT_VITAL_THROW = 78
 BattleEngine.EFFECT_FLAIL = 99
+BattleEngine.EFFECT_ERUPTION = 190
 
 -- Real Cmd_remaininghptopower: scale the attacker's remaining HP to 48,
 -- promote a positive underflow to one, then choose Flail/Reversal's dynamic
@@ -458,6 +459,13 @@ function BattleEngine.flailPowerFromHP(hp, maxHP)
   if scaled <= 16 then return 80 end
   if scaled <= 32 then return 40 end
   return 20
+end
+
+-- Real Cmd_scaledamagebyhealthratio for the bounded singles path. The ROM
+-- command's gDynamicBasePower preseed guard has no counterpart in this engine;
+-- this helper derives the effect-190 transient power without mutating move data.
+function BattleEngine.eruptionPowerFromHP(hp, maxHP, storedPower)
+  return math.max(1, math.floor(hp * storedPower / maxHP))
 end
 -- EFFECT_DREAM_EATER=8: real BattleScript_EffectDreamEater
 -- (data/battle_scripts_1.s:427) jumps straight to "wasn't affected" unless
@@ -896,6 +904,12 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
     local dynamicMove = {}
     for k, v in pairs(move) do dynamicMove[k] = v end
     dynamicMove.power = BattleEngine.flailPowerFromHP(attacker.hp, attacker.maxHP)
+    move = dynamicMove
+  end
+  if move.effect == BattleEngine.EFFECT_ERUPTION then
+    local dynamicMove = {}
+    for k, v in pairs(move) do dynamicMove[k] = v end
+    dynamicMove.power = BattleEngine.eruptionPowerFromHP(attacker.hp, attacker.maxHP, move.power)
     move = dynamicMove
   end
 
