@@ -1,0 +1,4 @@
+phase4-psywave-effects route readiness probe
+
+Non-gameplay readiness probe for the independently reviewed Psywave Worker
+Bridge route. It authorizes no patch, test, replay, or gameplay publication.
