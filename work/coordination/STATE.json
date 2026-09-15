@@ -1,12 +1,12 @@
 {
   "schema_version": 1,
-  "updated_utc": "2026-09-15T17:10:00Z",
+  "updated_utc": "2026-09-15T17:20:00Z",
   "role": "ORCHESTRATOR",
-  "status": "READY_FOR_ROUTE_CONFIGURATION",
+  "status": "READY_FOR_ROUTE_PROBE",
   "current_phase": "Phase 4 — full Gen 3 battle engine",
   "canonical_status_owner": "work/roadmaps/CAPABILITY_CHECKLIST.md",
   "active_task": "work/tasks/local-worker-bridge-phase4-psywave-route.md",
-  "objective": "Configure only the independently reviewed literal Phase 4 Psywave Worker route, then review configuration and separately probe it while Phase 2 retail comparison remains externally blocked.",
+  "objective": "Run the separate one-file probe for the independently reviewed literal Phase 4 Psywave Worker route while Phase 2 retail comparison remains externally blocked.",
   "next_role": "ORCHESTRATOR",
   "reconciliation": {
     "camera_task_status": "CLOSED — REVIEWED PASS at 4c5456f3; guarded run 34753297372",
@@ -19,7 +19,7 @@
     "phase4_move_admission_matrix_status": "CLOSED — REVIEWED PASS at 784a5188; six effect-17 accuracy-zero records selected as one next leaf"
   },
   "phase2_external_blocker": "Trusted, user-owned retail-reference captures with provenance/timing/crop/filter details for Oak and Pallet anchors have not been supplied.",
-  "next_after_success": "If the Psywave Worker route plan independently passes, configure its literal selector/allowlist/focused test/replay/staging surfaces, then independently review configuration and run a separate one-file probe before any Worker request.",
+  "next_after_success": "If the Psywave Worker-route configuration independently passes, run and independently review one separate phase4-psywave-effects route probe before any Worker request; do not infer broader random-formula, held-item/endure, ability, doubles/link, or Phase 4 completion.",
   "legal_content_boundary": "Never commit ROMs, BIOS dumps, generated caches, ROM-derived reference screenshots, extracted game assets, or other prohibited content.",
   "phase_completion_rule": "Phase 2 remains IN PROGRESS until the Oak/reference screenshot discrepancy gate is evidenced and independently reviewed."
 }

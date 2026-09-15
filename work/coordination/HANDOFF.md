@@ -118,10 +118,10 @@ after ordinary accuracy/PP/type it rejection-samples `Random() % 16` until
 critical/base/random-damage commands. Type immunity still consumes its full
 post-typecalc rejection sample before suppressing HP. The current generic Hit
 path is therefore wrong for effect 88. The literal route plan independently
-passed. Configure its seven literal implementation, test, replay, task, and
-coordination paths next, then independently review configuration and require
-one probe before any request. No behavior, broad random-formula support,
-held-item/endure state, or Worker implementation is authorized yet.
+passed and its seven-path selector/allowlist/focused-test/replay/staging
+configuration independently passed review. Require one separate probe before
+any request. No behavior, broad random-formula support, held-item/endure state,
+or Worker implementation is authorized yet.
 
 Super Fang effect 40 discovery independently passed: it is a single
 current-target-HP-halving formula record. The next gate is a separate
