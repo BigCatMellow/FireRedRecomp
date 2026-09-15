@@ -100,6 +100,10 @@ Super Fang effect 40 discovery independently passed: it is a single
 current-target-HP-halving formula record. The next gate is a separate
 fail-closed Worker Bridge route plan; no implementation is authorized yet.
 
+That route is now independently reviewed and probed: config `4b62344d`, probe
+`ce50565f`, guarded run `34954489129`. The active task is only Super Fang
+effect 40 through this route; it may not bundle fixed damage or other formulas.
+
 ## Phase 2 resume point
 
 The remaining input is user-owned trusted retail captures for both documented

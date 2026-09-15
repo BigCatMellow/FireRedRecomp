@@ -1,6 +1,6 @@
 # Task: plan Local Worker Bridge route for Phase 4 Super Fang
 
-- Status: `READY FOR INDEPENDENT REVIEW`
+- Status: `CLOSED — REVIEWED PASS; PROBE PASSED`
 - Type: `INFRASTRUCTURE / EXECUTION SUBSTRATE / PLAN`
 
 ## Goal
@@ -46,3 +46,12 @@ post-publication review.
 
 No workflow configuration, gameplay code, tests, bridge request, or behavior in
 this planning task. Configuration and probe require their own later gates.
+
+## Configured route and probe
+
+The exact route configuration independently passed at `4b62344d`. The one-file
+probe `ce50565f` passed guarded Local Worker Bridge run `34954489129` on
+`firered-mint`: trusted checkout, explicit route selection, Lua toolchain, and
+private-ROM SHA verification passed; patch/test/replay/publication steps were
+correctly skipped. The bounded effect-40 task is now eligible for one reviewed
+Worker request.
