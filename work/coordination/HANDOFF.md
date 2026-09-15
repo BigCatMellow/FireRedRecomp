@@ -96,6 +96,10 @@ publication. Select the next source-locked effect family separately; do not
 bundle formulas or other stateful families. Held-item trainer layouts remain
 deferred because battlers do not retain or apply item state.
 
+The next separate discovery candidate is Super Fang effect 40: a single
+current-target-HP-halving formula record. It is awaiting independent review;
+no implementation or route is authorized until that review passes.
+
 ## Phase 2 resume point
 
 The remaining input is user-owned trusted retail captures for both documented
