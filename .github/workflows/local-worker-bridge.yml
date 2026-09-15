@@ -101,6 +101,9 @@ jobs:
             phase4-explosion-effects*.patch|phase4-explosion-effects*.probe)
               route='phase4-explosion-effects'
               ;;
+            phase4-super-fang-effects*.patch|phase4-super-fang-effects*.probe)
+              route='phase4-super-fang-effects'
+              ;;
             oak-parcel-dex-presentation-north*.patch|oak-parcel-dex-presentation-north*.probe)
               route='oak-parcel-dex-presentation-north'
               ;;
@@ -206,6 +209,8 @@ jobs:
                 ;;
               phase4-explosion-effects:src/core/BattleEngine.lua|phase4-explosion-effects:tests/battle_engine_test.lua|phase4-explosion-effects:tests/phase4_explosion_effect_rom_test.lua|phase4-explosion-effects:scripts/runtime_phase4_explosion_replay.sh|phase4-explosion-effects:work/tasks/phase4-explosion-effects.md|phase4-explosion-effects:work/coordination/STATE.json|phase4-explosion-effects:work/coordination/HANDOFF.md)
                 ;;
+              phase4-super-fang-effects:src/core/BattleEngine.lua|phase4-super-fang-effects:tests/battle_engine_test.lua|phase4-super-fang-effects:tests/phase4_super_fang_effect_rom_test.lua|phase4-super-fang-effects:scripts/runtime_phase4_super_fang_replay.sh|phase4-super-fang-effects:work/tasks/phase4-super-fang-effects.md|phase4-super-fang-effects:work/coordination/STATE.json|phase4-super-fang-effects:work/coordination/HANDOFF.md)
+                ;;
               *)
                 echo "Patch target is not authorized for explicit route '$ROUTE': $target" >&2
                 exit 1
@@ -295,6 +300,10 @@ jobs:
               "$LUA" tests/battle_engine_test.lua
               "$LUA" tests/phase4_explosion_effect_rom_test.lua
               ;;
+            phase4-super-fang-effects)
+              "$LUA" tests/battle_engine_test.lua
+              "$LUA" tests/phase4_super_fang_effect_rom_test.lua
+              ;;
             *)
               echo "Patch execution has no focused-test route for '$ROUTE'." >&2
               exit 1
@@ -377,6 +386,9 @@ jobs:
               ;;
             phase4-explosion-effects)
               bash scripts/runtime_phase4_explosion_replay.sh
+              ;;
+            phase4-super-fang-effects)
+              bash scripts/runtime_phase4_super_fang_replay.sh
               ;;
             *)
               echo "Patch execution has no runtime-replay route for '$ROUTE'." >&2
@@ -488,6 +500,13 @@ jobs:
               ;;
             phase4-explosion-effects)
               for path in src/core/BattleEngine.lua tests/battle_engine_test.lua tests/phase4_explosion_effect_rom_test.lua scripts/runtime_phase4_explosion_replay.sh work/tasks/phase4-explosion-effects.md work/coordination/STATE.json work/coordination/HANDOFF.md; do
+                if [[ -e "$path" ]]; then
+                  git add -- "$path"
+                fi
+              done
+              ;;
+            phase4-super-fang-effects)
+              for path in src/core/BattleEngine.lua tests/battle_engine_test.lua tests/phase4_super_fang_effect_rom_test.lua scripts/runtime_phase4_super_fang_replay.sh work/tasks/phase4-super-fang-effects.md work/coordination/STATE.json work/coordination/HANDOFF.md; do
                 if [[ -e "$path" ]]; then
                   git add -- "$path"
                 fi
