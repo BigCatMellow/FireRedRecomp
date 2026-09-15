@@ -1,0 +1,116 @@
+diff --git a/scripts/runtime_phase4_super_fang_replay.sh b/scripts/runtime_phase4_super_fang_replay.sh
+new file mode 100755
+index 00000000..6a3b0bb5
+--- /dev/null
++++ b/scripts/runtime_phase4_super_fang_replay.sh
+@@ -0,0 +1,8 @@
++#!/usr/bin/env bash
++set -euo pipefail
++ROOT=$(cd "$(dirname "$0")/.." && pwd)
++cd "$ROOT"
++: "${POKEPORT_ROM:?set POKEPORT_ROM to verified FireRed US v1.0}"
++lua5.1 tests/battle_engine_test.lua
++lua5.1 tests/phase4_super_fang_effect_rom_test.lua
++echo "RUNTIME_REPLAY phase4_super_fang PASS effect=40 half-current-hp=true immunity=true no-crit-random=true"
+diff --git a/src/core/BattleEngine.lua b/src/core/BattleEngine.lua
+index 3ec26e54..b91fc73a 100644
+--- a/src/core/BattleEngine.lua
++++ b/src/core/BattleEngine.lua
+@@ -591,6 +591,12 @@ BattleEngine.FIXED_DAMAGE_MOVES = {
+   [130] = { amount = 20 },      -- EFFECT_SONICBOOM
+ }
+ 
++-- Super Fang is separate from fixed damage: its real command derives the
++-- amount from the defender's current HP after typecalc.
++BattleEngine.CURRENT_HP_DAMAGE_MOVES = {
++  [40] = true, -- EFFECT_SUPER_FANG
++}
++
+ -- The real multi-hit family: a single move selection that hits the
+ -- defender multiple times in one turn. Real BattleScript_EffectMultiHit /
+ -- BattleScript_EffectDoubleHit (data/battle_scripts_1.s): attackcanceler ->
+@@ -1060,6 +1066,21 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
+     return
+   end
+ 
++  if BattleEngine.CURRENT_HP_DAMAGE_MOVES[move.effect] then
++    local _, flags = BattleFormulas.typeCalc(
++      1, move.type, attacker.types, defender.types, self.typeChart
++    )
++    if flags.noEffect then
++      events[#events + 1] = { type = "noEffect", side = attackerSide, target = defenderSide }
++      return
++    end
++    flags.superEffective = false
++    flags.notVeryEffective = false
++    local damage = math.max(1, math.floor(defender.hp / 2))
++    self:applyDamage(attackerSide, defenderSide, defender, damage, flags, events)
++    return
++  end
++
+   -- 3. critcalc (one Random()). Cmd_critcalc evaluates Random before its
+   -- FIRST_BATTLE flag check, so the roll is still consumed while criticals
+   -- are suppressed. Suppression is global until the first player damage
+diff --git a/tests/battle_engine_test.lua b/tests/battle_engine_test.lua
+index 59f565ee..522b9910 100644
+--- a/tests/battle_engine_test.lua
++++ b/tests/battle_engine_test.lua
+@@ -1317,6 +1317,36 @@ check("the still-healthy foe does not get to act this same turn while the forced
+ 
+ -- Optional ROM check: exact real parser output equals the no-ROM fixture.
+ local romPath = os.getenv("POKEPORT_ROM")
++-- EFFECT_SUPER_FANG (40): after shared accuracy/PP/type work it bypasses
++-- ordinary crit/base/random damage and removes half the target's current HP.
++local superFangId = 996
++Data.moves[superFangId] = { effect=40,power=1,type=0,accuracy=90,pp=10,secondaryEffectChance=0,target=0,priority=0,flags=0 }
++battle = makeBattle({0}, {{move=superFangId,pp=10}}, {{move=Data.MOVE_TACKLE,pp=1}})
++battle.foe.hp = 9; events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
++check("Super Fang halves odd current HP (9 -> 5) with no crit/random draws", battle.foe.hp == 5 and battle.rng.draws == 1)
++battle = makeBattle({0}, {{move=superFangId,pp=10}}, {{move=Data.MOVE_TACKLE,pp=1}})
++battle.foe.hp = 10; events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
++check("Super Fang halves even current HP (10 -> 5)", battle.foe.hp == 5)
++battle = makeBattle({0}, {{move=superFangId,pp=10}}, {{move=Data.MOVE_TACKLE,pp=1}})
++battle.foe.hp = 1; events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
++check("Super Fang deals its real minimum one at 1 HP", battle.foe.hp == 0)
++battle = makeBattle({99}, {{move=superFangId,pp=10}}, {{move=Data.MOVE_TACKLE,pp=1}})
++events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
++check("Super Fang miss uses shared accuracy and still deducts PP", events[#events].type == "miss" and battle.player.moves[1].pp == 9 and battle.rng.draws == 1)
++battle = makeBattle({0}, {{move=superFangId,pp=10}}, {{move=Data.MOVE_TACKLE,pp=1}})
++battle.foe.types = { Data.TYPE_GHOST, Data.TYPE_GHOST }; events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
++check("Super Fang immunity is no-effect after accuracy with no formula RNG", battle.foe.hp == battle.foe.maxHP and events[#events].type == "noEffect" and battle.rng.draws == 1)
++battle = makeBattle({0}, {{move=superFangId,pp=10}}, {{move=Data.MOVE_TACKLE,pp=1}})
++battle.foe.hp = 10; battle.foe.types = { Data.TYPE_ROCK, Data.TYPE_ROCK }; events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
++check("Super Fang clears resisted-effectiveness presentation without changing half-current-HP damage",
++  battle.foe.hp == 5 and events[2].superEffective == false and events[2].notVeryEffective == false, events[2])
++local fixedId = 995
++Data.moves[fixedId] = { effect=41,power=1,type=0,accuracy=100,pp=10,secondaryEffectChance=0,target=0,priority=0,flags=0 }
++battle = makeBattle({0}, {{move=fixedId,pp=10}}, {{move=Data.MOVE_TACKLE,pp=1}})
++battle.foe.hp = 100; events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
++check("Super Fang path does not alter existing Dragon Rage fixed 40 damage", battle.foe.hp == 60 and battle.rng.draws == 1)
++Data.moves[fixedId] = nil
++Data.moves[superFangId] = nil
+ -- EFFECT_EXPLOSION (7): PP/Damp/self-KO precede accuracy, while target then
+ -- attacker faint records are finalized together after the hit path.
+ local explosionId = 999
+diff --git a/tests/phase4_super_fang_effect_rom_test.lua b/tests/phase4_super_fang_effect_rom_test.lua
+new file mode 100644
+index 00000000..2627b70b
+--- /dev/null
++++ b/tests/phase4_super_fang_effect_rom_test.lua
+@@ -0,0 +1,16 @@
++package.path = package.path .. ";./?.lua"
++local BattleMove = require("import.BattleMove")
++local RomAddresses = require("import.RomAddresses")
++local RomImporter = require("import.RomImporter")
++local path = os.getenv("POKEPORT_ROM")
++if not path then print("SKIP phase4_super_fang_effect_rom_test (set POKEPORT_ROM)"); os.exit(0) end
++local ok, info = RomImporter.verify(path)
++if not ok then print("FAIL: ROM verification -- " .. tostring(info)); os.exit(1) end
++local f=assert(io.open(path,"rb")); local rom=f:read("*a"); f:close()
++local a=assert(RomAddresses["41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc"])
++local moves=BattleMove.parseTable(rom,a.gBattleMoves,RomAddresses.COUNTS.MOVES_COUNT)
++local m=moves[162]
++if m.effect ~= 40 or m.power ~= 1 or m.type ~= 0 or m.accuracy ~= 90 or m.pp ~= 10 or m.priority ~= 0 then
++  print("FAIL: Super Fang #162 ROM record changed"); os.exit(1)
++end
++print("phase4_super_fang_effect_rom_test: 1 passed, 0 failed")
