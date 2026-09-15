@@ -41,6 +41,9 @@ Current supported request/probe prefixes are:
 - `phase4-two-sided-replacement-state-api...` — bounded ordered post-faint
   queue/state migration route for both-side replacement, draw settlement, and
   existing single-faint compatibility; it explicitly excludes Explosion;
+- `phase4-explosion-effects...` — bounded effect-7 Self-Destruct/Explosion
+  path only, including its source-locked self-KO, Damp, defense, RNG, and
+  ordered-faint sequence; it excludes every other self-KO family;
 - `runner-online...probe` — non-patch runner-readiness probe only.
 
 Adding a new route requires a bounded task that authorizes bridge maintenance. Do not add a generic fallback route.

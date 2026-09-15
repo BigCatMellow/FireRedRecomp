@@ -1,6 +1,6 @@
 # Task: plan Local Worker Bridge route for Phase 4 Explosion
 
-- Status: `ACTIVE`
+- Status: `PENDING INDEPENDENT REVIEW`
 - Type: `INFRASTRUCTURE / EXECUTION SUBSTRATE / PLAN`
 
 ## Goal
@@ -57,3 +57,10 @@ links, held items, and move admission work.
 
 No workflow configuration, code, tests, bridge request, or gameplay behavior
 in this planning task. No generic route.
+
+## Configured route
+
+The workflow has the exact selector, literal allowlist, focused commands,
+runtime replay, and literal publication list specified above. Configuration
+does not authorize code; it requires independent review, then its separate
+one-file probe.
