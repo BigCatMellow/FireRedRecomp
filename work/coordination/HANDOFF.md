@@ -1,8 +1,8 @@
 # FireRedRecomp Coordination Handoff
 
-- Status: `READY_FOR_INDEPENDENT_REVIEW`
+- Status: `READY_FOR_NEXT_DISCOVERY`
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
-- Active task: [`../tasks/local-worker-bridge-phase4-eruption-route.md`](../tasks/local-worker-bridge-phase4-eruption-route.md)
+- Active task: select one next bounded, source-locked Phase 4 effect discovery
 
 ## Published evidence
 
@@ -102,11 +102,14 @@ Flail #175 and Reversal #179 effect-99 is closed and independently reviewed at
 source-locked effect family separately; do not infer broader dynamic-formula or
 Phase 4 completion.
 
-Eruption #284 and Water Spout #323 effect-190 discovery passed. Its exact
-Worker-route plan is awaiting independent review; after PASS the next gate is
-literal route configuration followed by a separate one-file probe. It is
-bounded to the existing singles target; multi-target/doubles and pre-seeded
-dynamic-power interactions are not authorized.
+Eruption #284 and Water Spout #323 effect 190 are closed and independently
+reviewed at `89cf1dae` after guarded Worker run `34997543211`. The published
+canonical range `53d78236..89cf1dae` passed post-publication review, with
+213/0 no-ROM checks, 220/0 SHA-verified-ROM checks, the focused ROM-record
+test, and the required replay passing. The implementation remains bounded to
+the existing singles target; multi-target/doubles and pre-seeded dynamic-power
+interactions remain unauthorized. Select the next source-locked effect family
+separately; do not infer broader dynamic-formula or Phase 4 completion.
 
 Super Fang effect 40 discovery independently passed: it is a single
 current-target-HP-halving formula record. The next gate is a separate
