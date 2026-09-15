@@ -591,6 +591,12 @@ BattleEngine.FIXED_DAMAGE_MOVES = {
   [130] = { amount = 20 },      -- EFFECT_SONICBOOM
 }
 
+-- Super Fang is separate from fixed damage: its real command derives the
+-- amount from the defender's current HP after typecalc.
+BattleEngine.CURRENT_HP_DAMAGE_MOVES = {
+  [40] = true, -- EFFECT_SUPER_FANG
+}
+
 -- The real multi-hit family: a single move selection that hits the
 -- defender multiple times in one turn. Real BattleScript_EffectMultiHit /
 -- BattleScript_EffectDoubleHit (data/battle_scripts_1.s): attackcanceler ->
@@ -1057,6 +1063,21 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
     flags.superEffective = false
     flags.notVeryEffective = false
     self:applyDamage(attackerSide, defenderSide, defender, fixedDamage, flags, events)
+    return
+  end
+
+  if BattleEngine.CURRENT_HP_DAMAGE_MOVES[move.effect] then
+    local _, flags = BattleFormulas.typeCalc(
+      1, move.type, attacker.types, defender.types, self.typeChart
+    )
+    if flags.noEffect then
+      events[#events + 1] = { type = "noEffect", side = attackerSide, target = defenderSide }
+      return
+    end
+    flags.superEffective = false
+    flags.notVeryEffective = false
+    local damage = math.max(1, math.floor(defender.hp / 2))
+    self:applyDamage(attackerSide, defenderSide, defender, damage, flags, events)
     return
   end
 

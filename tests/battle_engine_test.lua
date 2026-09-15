@@ -1317,6 +1317,36 @@ check("the still-healthy foe does not get to act this same turn while the forced
 
 -- Optional ROM check: exact real parser output equals the no-ROM fixture.
 local romPath = os.getenv("POKEPORT_ROM")
+-- EFFECT_SUPER_FANG (40): after shared accuracy/PP/type work it bypasses
+-- ordinary crit/base/random damage and removes half the target's current HP.
+local superFangId = 996
+Data.moves[superFangId] = { effect=40,power=1,type=0,accuracy=90,pp=10,secondaryEffectChance=0,target=0,priority=0,flags=0 }
+battle = makeBattle({0}, {{move=superFangId,pp=10}}, {{move=Data.MOVE_TACKLE,pp=1}})
+battle.foe.hp = 9; events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
+check("Super Fang halves odd current HP (9 -> 5) with no crit/random draws", battle.foe.hp == 5 and battle.rng.draws == 1)
+battle = makeBattle({0}, {{move=superFangId,pp=10}}, {{move=Data.MOVE_TACKLE,pp=1}})
+battle.foe.hp = 10; events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
+check("Super Fang halves even current HP (10 -> 5)", battle.foe.hp == 5)
+battle = makeBattle({0}, {{move=superFangId,pp=10}}, {{move=Data.MOVE_TACKLE,pp=1}})
+battle.foe.hp = 1; events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
+check("Super Fang deals its real minimum one at 1 HP", battle.foe.hp == 0)
+battle = makeBattle({99}, {{move=superFangId,pp=10}}, {{move=Data.MOVE_TACKLE,pp=1}})
+events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
+check("Super Fang miss uses shared accuracy and still deducts PP", events[#events].type == "miss" and battle.player.moves[1].pp == 9 and battle.rng.draws == 1)
+battle = makeBattle({0}, {{move=superFangId,pp=10}}, {{move=Data.MOVE_TACKLE,pp=1}})
+battle.foe.types = { Data.TYPE_GHOST, Data.TYPE_GHOST }; events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
+check("Super Fang immunity is no-effect after accuracy with no formula RNG", battle.foe.hp == battle.foe.maxHP and events[#events].type == "noEffect" and battle.rng.draws == 1)
+battle = makeBattle({0}, {{move=superFangId,pp=10}}, {{move=Data.MOVE_TACKLE,pp=1}})
+battle.foe.hp = 10; battle.foe.types = { Data.TYPE_ROCK, Data.TYPE_ROCK }; events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
+check("Super Fang clears resisted-effectiveness presentation without changing half-current-HP damage",
+  battle.foe.hp == 5 and events[2].superEffective == false and events[2].notVeryEffective == false, events[2])
+local fixedId = 995
+Data.moves[fixedId] = { effect=41,power=1,type=0,accuracy=100,pp=10,secondaryEffectChance=0,target=0,priority=0,flags=0 }
+battle = makeBattle({0}, {{move=fixedId,pp=10}}, {{move=Data.MOVE_TACKLE,pp=1}})
+battle.foe.hp = 100; events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
+check("Super Fang path does not alter existing Dragon Rage fixed 40 damage", battle.foe.hp == 60 and battle.rng.draws == 1)
+Data.moves[fixedId] = nil
+Data.moves[superFangId] = nil
 -- EFFECT_EXPLOSION (7): PP/Damp/self-KO precede accuracy, while target then
 -- attacker faint records are finalized together after the hit path.
 local explosionId = 999
