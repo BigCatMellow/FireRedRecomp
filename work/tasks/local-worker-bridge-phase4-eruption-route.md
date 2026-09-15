@@ -23,16 +23,17 @@ Selector `phase4-eruption-effects` must allow only:
 Focused execution is exactly `lua5.1 tests/battle_engine_test.lua`, then
 `lua5.1 tests/phase4_eruption_effect_rom_test.lua`; full no-ROM is
 `env -u POKEPORT_ROM bash scripts/test_all.sh`; verified-ROM is
-`bash scripts/test_all.sh` with verified ROM; replay is
+`bash scripts/test_all.sh` with the SHA-verified `POKEPORT_ROM`; replay is
 `bash scripts/runtime_phase4_eruption_replay.sh`. Publication stages the same
 seven literal paths individually when present. Require a separate one-file
 probe `work/local-runner/probes/phase4-eruption-effects-route-YYYYMMDD.probe`.
 
 ## Acceptance and exclusions
 
-Effect 190 alone must clone transient dynamic power only when no engine dynamic
-power is preseeded, calculate floor(HP*storedPower/maxHP) minimum one before
-ordinary Hit, and preserve data. Tests cover both ROM records, full/partial/
+Effect 190 alone must clone transient dynamic power and calculate
+floor(HP*storedPower/maxHP) minimum one before ordinary Hit, preserving data.
+Do not add a generic/preseed dynamic-power state: stock's preseed guard is an
+excluded interaction because this engine has no such state. Tests cover both ROM records, full/partial/
 underflow HP, ordinary RNG/immunity, power-150 no leakage, and singles-only
 targeting. Exclude all doubles/multi-target behavior, other formulas, generic
 admission, status/items/UI/controller/main. Preserve trusted-main-only dispatch,
