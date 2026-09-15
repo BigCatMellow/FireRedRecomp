@@ -12,12 +12,15 @@ form the next bounded dynamic-base-power leaf. Do not implement it.
 
 Effect 99 routes to `BattleScript_EffectFlail` (`data/battle_scripts_1.s:123,
 1341-1343`), which first runs `remaininghptopower` then the ordinary Hit script.
-The two records are Flail and Reversal, both stored power 1, accuracy 100, PP
-15, priority 0, Normal and Fighting respectively (`src/data/battle_moves.h:
-2278-2289,2330-2341`). `Cmd_remaininghptopower`
+The two records are Flail #175 and Reversal #179, both stored power 1, accuracy
+100, PP 15, priority 0, Normal and Fighting respectively
+(`src/data/battle_moves.h:2278-2289,2330-2341`). `Cmd_remaininghptopower`
 (`src/battle_script_commands.c:7929-7941`) scales attacker current/max HP to
 48 and maps it to dynamic power: <=1:200, <=4:150, <=9:100, <=16:80,
-<=32:40, otherwise 20 (`sFlailHpScaleToPowerTable:731-739`).
+<=32:40, <=48:20 (`sFlailHpScaleToPowerTable:731-739`). The scale is exact:
+`GetScaledHPFraction` computes integer `floor(hp * 48 / maxHP)`, except a
+positive HP result that floors to zero becomes 1 (`src/battle_interface.c:
+2155-2162`).
 
 This is a bounded candidate because attacker HP and maxHP already exist. It
 must set dynamic base power before the ordinary accuracy/PP/crit/type/random/

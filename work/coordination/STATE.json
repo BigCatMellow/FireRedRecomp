@@ -2,7 +2,7 @@
   "schema_version": 1,
   "updated_utc": "2026-09-15T06:00:00Z",
   "role": "ORCHESTRATOR",
-  "status": "READY_FOR_DISCOVERY",
+  "status": "READY_FOR_INDEPENDENT_REVIEW",
   "current_phase": "Phase 4 — full Gen 3 battle engine",
   "canonical_status_owner": "work/roadmaps/CAPABILITY_CHECKLIST.md",
   "active_task": "work/tasks/phase4-flail-effect-discovery.md",
