@@ -1,6 +1,6 @@
 # Task: plan Local Worker Bridge route for Phase 4 OHKO
 
-- Status: `PENDING INDEPENDENT REVIEW`
+- Status: `CLOSED — REVIEWED PASS`
 - Type: `INFRASTRUCTURE / EXECUTION SUBSTRATE / PLAN`
 
 ## Goal
@@ -46,3 +46,9 @@ and staging, and independent publication review.
 ## MUST NOT CHANGE
 
 No configuration, code, tests, bridge request, or behavior in this plan.
+
+## Review
+
+Independent route-plan review passed. Configure the literal route next, then
+independently review configuration and run its separate probe before any Worker
+request.
