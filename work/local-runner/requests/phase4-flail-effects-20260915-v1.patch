@@ -1,0 +1,140 @@
+diff --git a/scripts/runtime_phase4_flail_replay.sh b/scripts/runtime_phase4_flail_replay.sh
+new file mode 100755
+index 00000000..05c0925e
+--- /dev/null
++++ b/scripts/runtime_phase4_flail_replay.sh
+@@ -0,0 +1,8 @@
++#!/usr/bin/env bash
++set -euo pipefail
++ROOT=$(cd "$(dirname "$0")/.." && pwd)
++cd "$ROOT"
++: "${POKEPORT_ROM:?set POKEPORT_ROM to verified FireRed US v1.0}"
++lua5.1 tests/battle_engine_test.lua
++lua5.1 tests/phase4_flail_effect_rom_test.lua
++echo "RUNTIME_REPLAY phase4_flail PASS effect=99 scaled-hp=true ordinary-hit=true"
+diff --git a/src/core/BattleEngine.lua b/src/core/BattleEngine.lua
+index b91fc73a..c0ad1666 100644
+--- a/src/core/BattleEngine.lua
++++ b/src/core/BattleEngine.lua
+@@ -444,6 +444,21 @@ BattleEngine.EFFECT_FALSE_SWIPE = 101
+ -- distinct effects so future effect-specific behavior cannot be conflated.
+ BattleEngine.EFFECT_ALWAYS_HIT = 17
+ BattleEngine.EFFECT_VITAL_THROW = 78
++BattleEngine.EFFECT_FLAIL = 99
++
++-- Real Cmd_remaininghptopower: scale the attacker's remaining HP to 48,
++-- promote a positive underflow to one, then choose Flail/Reversal's dynamic
++-- base power table before BattleScript_EffectHit begins.
++function BattleEngine.flailPowerFromHP(hp, maxHP)
++  local scaled = math.floor(hp * 48 / maxHP)
++  if scaled == 0 and hp > 0 then scaled = 1 end
++  if scaled <= 1 then return 200 end
++  if scaled <= 4 then return 150 end
++  if scaled <= 9 then return 100 end
++  if scaled <= 16 then return 80 end
++  if scaled <= 32 then return 40 end
++  return 20
++end
+ -- EFFECT_DREAM_EATER=8: real BattleScript_EffectDreamEater
+ -- (data/battle_scripts_1.s:427) jumps straight to "wasn't affected" unless
+ -- the target's real status1 has STATUS1_SLEEP set -- a status-condition
+@@ -875,6 +890,15 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
+       :format(move.effect or -1, slot and slot.move or BattleEngine.MOVE_STRUGGLE))
+   end
+ 
++  if move.effect == BattleEngine.EFFECT_FLAIL then
++    -- Do not mutate shared ROM move data: stock writes a transient dynamic
++    -- base power before entering the otherwise ordinary Hit script.
++    local dynamicMove = {}
++    for k, v in pairs(move) do dynamicMove[k] = v end
++    dynamicMove.power = BattleEngine.flailPowerFromHP(attacker.hp, attacker.maxHP)
++    move = dynamicMove
++  end
++
+   -- Defensive path only, real-game-unreachable: the caller selected a
+   -- specific 0-PP slot while at least one OTHER slot of this battler still
+   -- has PP (allMovesUnusable is false, so `slot` is set here, not Struggle).
+diff --git a/tests/battle_engine_test.lua b/tests/battle_engine_test.lua
+index 522b9910..b8649cf7 100644
+--- a/tests/battle_engine_test.lua
++++ b/tests/battle_engine_test.lua
+@@ -1317,6 +1317,61 @@ check("the still-healthy foe does not get to act this same turn while the forced
+ 
+ -- Optional ROM check: exact real parser output equals the no-ROM fixture.
+ local romPath = os.getenv("POKEPORT_ROM")
++-- EFFECT_FLAIL (99): transient dynamic base power comes from the real scaled
++-- remaining-HP table before ordinary Hit, without changing stored move data.
++check("Flail real scaled-HP power bands cover both sides of every transition",
++  BattleEngine.flailPowerFromHP(1, 100) == 200 and BattleEngine.flailPowerFromHP(2, 48) == 150
++    and BattleEngine.flailPowerFromHP(4, 48) == 150 and BattleEngine.flailPowerFromHP(5, 48) == 100
++    and BattleEngine.flailPowerFromHP(9, 48) == 100 and BattleEngine.flailPowerFromHP(10, 48) == 80
++    and BattleEngine.flailPowerFromHP(16, 48) == 80 and BattleEngine.flailPowerFromHP(17, 48) == 40
++    and BattleEngine.flailPowerFromHP(32, 48) == 40 and BattleEngine.flailPowerFromHP(33, 48) == 20
++    and BattleEngine.flailPowerFromHP(48, 48) == 20)
++check("Flail positive scaled-HP underflow is promoted to one after integer floor",
++  BattleEngine.flailPowerFromHP(1, 100) == 200 and BattleEngine.flailPowerFromHP(3, 100) == 200
++    and BattleEngine.flailPowerFromHP(2, 20) == 150)
++local flailId, plainPowerOneId = 994, 993
++Data.moves[flailId] = { effect=99,power=1,type=0,accuracy=100,pp=15,secondaryEffectChance=0,target=0,priority=0,flags=0 }
++Data.moves[plainPowerOneId] = { effect=0,power=1,type=0,accuracy=100,pp=15,secondaryEffectChance=0,target=0,priority=0,flags=0 }
++battle = makeBattle({0,1,0}, {{move=flailId,pp=15}}, {{move=Data.MOVE_TACKLE,pp=1}})
++battle.player.hp = 1; events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
++local flailDamage = events[2].amount
++battle = makeBattle({0,1,0}, {{move=plainPowerOneId,pp=15}}, {{move=Data.MOVE_TACKLE,pp=1}})
++battle.player.hp = 1; events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
++check("Flail dynamic power is used while an ordinary stored-power-1 move remains ordinary",
++  flailDamage > events[2].amount and Data.moves[flailId].power == 1)
++Data.moves[flailId] = nil; Data.moves[plainPowerOneId] = nil
++-- Exercise both actual fixture records through the effect path. Flail is
++-- Normal; Reversal is Fighting, so the latter also confirms move type remains
++-- the parsed record while only its transient power changes.
++Data.moves[175] = { effect=99,power=1,type=0,accuracy=100,pp=15,secondaryEffectChance=0,target=0,priority=0,flags=0 }
++Data.moves[179] = { effect=99,power=1,type=1,accuracy=100,pp=15,secondaryEffectChance=0,target=0,priority=0,flags=0 }
++battle = makeBattle({0,1,0}, {{move=175,pp=Data.moves[175].pp}}, {{move=Data.MOVE_TACKLE,pp=1}})
++battle.player.hp = 1; events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
++check("parsed Flail #175 uses dynamic power and ordinary accuracy/crit/random/HP path",
++  events[1].move == 175 and events[2].type == "damage" and battle.player.moves[1].pp == 14 and battle.rng.draws == 3)
++battle = makeBattle({0,0,0}, {{move=175,pp=15}}, {{move=Data.MOVE_TACKLE,pp=1}})
++battle.player.hp = 1; events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
++check("Flail retains the ordinary critical branch after dynamic power selection",
++  events[2].type == "critical" and events[3].type == "damage" and battle.foe.hp < battle.foe.maxHP and battle.rng.draws == 3)
++battle = makeBattle({0,1,0}, {{move=175,pp=15}}, {{move=Data.MOVE_TACKLE,pp=1}})
++battle.player.hp = 1; battle.player.speed = 999; battle.foe.hp = 1; events = battle:runTurn({action="move",moveSlot=1}, {action="move",moveSlot=1})
++local sawFlailFaint = false
++for _, event in ipairs(events) do sawFlailFaint = sawFlailFaint or (event.type == "faint" and event.side == "foe") end
++check("Flail retains shared lethal HP and faint handling", battle.foe.hp == 0 and sawFlailFaint)
++battle = makeBattle({0,1,0}, {{move=179,pp=Data.moves[179].pp}}, {{move=Data.MOVE_TACKLE,pp=1}})
++battle.player.hp = 1; events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
++check("parsed Reversal #179 uses the same dynamic path with its own type record",
++  events[1].move == 179 and events[2].type == "damage" and battle.player.moves[1].pp == 14 and battle.rng.draws == 3)
++local flailAccuracy = Data.moves[175].accuracy
++Data.moves[175].accuracy = 85
++battle = makeBattle({99}, {{move=175,pp=15}}, {{move=Data.MOVE_TACKLE,pp=1}})
++events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
++check("Flail miss stays on ordinary accuracy/PP path and consumes no later RNG", events[#events].type == "miss" and battle.player.moves[1].pp == 14 and battle.rng.draws == 1)
++Data.moves[175].accuracy = flailAccuracy
++battle = makeBattle({0,1,0}, {{move=175,pp=15}}, {{move=Data.MOVE_TACKLE,pp=1}})
++battle.foe.types = { Data.TYPE_GHOST, Data.TYPE_GHOST }; events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
++check("Flail immunity preserves ordinary type/no-effect and RNG behavior", events[#events].type == "noEffect" and battle.foe.hp == battle.foe.maxHP and battle.rng.draws == 3)
++Data.moves[175] = nil; Data.moves[179] = nil
+ -- EFFECT_SUPER_FANG (40): after shared accuracy/PP/type work it bypasses
+ -- ordinary crit/base/random damage and removes half the target's current HP.
+ local superFangId = 996
+diff --git a/tests/phase4_flail_effect_rom_test.lua b/tests/phase4_flail_effect_rom_test.lua
+new file mode 100644
+index 00000000..10074410
+--- /dev/null
++++ b/tests/phase4_flail_effect_rom_test.lua
+@@ -0,0 +1,12 @@
++package.path = package.path .. ";./?.lua"
++local BattleMove = require("import.BattleMove")
++local RomAddresses = require("import.RomAddresses")
++local RomImporter = require("import.RomImporter")
++local path=os.getenv("POKEPORT_ROM")
++if not path then print("SKIP phase4_flail_effect_rom_test (set POKEPORT_ROM)");os.exit(0) end
++local ok,info=RomImporter.verify(path);if not ok then print("FAIL: ROM verification -- "..tostring(info));os.exit(1)end
++local f=assert(io.open(path,"rb"));local rom=f:read("*a");f:close()
++local a=assert(RomAddresses["41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc"])
++local m=BattleMove.parseTable(rom,a.gBattleMoves,RomAddresses.COUNTS.MOVES_COUNT)
++if not (m[175].effect==99 and m[175].power==1 and m[175].type==0 and m[175].accuracy==100 and m[175].pp==15 and m[179].effect==99 and m[179].power==1 and m[179].type==1 and m[179].accuracy==100 and m[179].pp==15) then print("FAIL: Flail/Reversal ROM records changed");os.exit(1) end
++print("phase4_flail_effect_rom_test: 1 passed, 0 failed")
