@@ -547,6 +547,8 @@ BattleEngine.RECOIL_MOVES = {
 -- gBattleMons[].moves never contains it); a caller's `moves` table needs
 -- an entry keyed by this id for the trigger to have anything to resolve.
 BattleEngine.MOVE_STRUGGLE = 165
+BattleEngine.EFFECT_EXPLOSION = 7
+BattleEngine.ABILITY_DAMP = 6
 
 -- The real drain family: EFFECT_ABSORB (Absorb, Mega Drain, Giga Drain,
 -- Leech Life -- confirmed against src/data/battle_moves.h) heals the
@@ -882,6 +884,62 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
 
   local moveId = slot and slot.move or BattleEngine.MOVE_STRUGGLE
   events[#events + 1] = { type = "useMove", side = attackerSide, move = moveId }
+  local isExplosion = move.effect == BattleEngine.EFFECT_EXPLOSION
+  if isExplosion then
+    -- Real EffectExplosion reaches ppreduce before tryexplosion. Damp scans
+    -- every active battler; this bounded singles engine has these two only.
+    slot.pp = slot.pp - 1
+    if attacker.ability == BattleEngine.ABILITY_DAMP
+        or defender.ability == BattleEngine.ABILITY_DAMP then
+      events[#events + 1] = { type = "damp", side = attackerSide }
+      return
+    end
+    -- Real tryexplosion sets the user's HP to 0 before accuracycheck, but
+    -- faint scripts are deferred until the script reaches tryfaintmon.
+    attacker.hp = 0
+    events[#events + 1] = { type = "selfDestruct", side = attackerSide }
+
+    local function settleExplosion(recordDefender)
+      self:beginFaintSequence()
+      if recordDefender then self:recordFaint(defenderSide, events) end
+      self:recordFaint(attackerSide, events)
+      self:finalizeFaintSequence(events)
+    end
+
+    -- EffectExplosion's stock script performs critcalc, damagecalc,
+    -- typecalc, and adjustnormaldamage before accuracycheck. Their critical
+    -- and random draws are therefore consumed before accuracy, including
+    -- on the miss path.
+    local rolledCrit = BattleFormulas.critRoll(self.rng, 0)
+    local isCrit = rolledCrit and not (self.firstBattle and not self.tutorialPlayerDamageDone)
+    local explosionDefender = {}
+    for k, v in pairs(defender) do explosionDefender[k] = v end
+    explosionDefender.defense = math.max(1, math.floor(defender.defense / 2))
+    local damage = BattleFormulas.calculateBaseDamage(
+      attacker, explosionDefender, move, isCrit, self.sideStatus[defenderSide])
+    if isCrit then damage = damage * BattleFormulas.CRIT_MULTIPLIER end
+    local flags
+    damage, flags = BattleFormulas.typeCalc(
+      damage, move.type, attacker.types, defender.types, self.typeChart)
+    damage = BattleFormulas.applyRandomDamageMultiplier(damage, self.rng)
+    local hit = BattleFormulas.accuracyCheck(
+      move.accuracy, attacker.statStages.accuracy,
+      defender.statStages.evasion, self.rng)
+    if not hit then
+      events[#events + 1] = { type = "miss", side = attackerSide }
+      settleExplosion(false)
+      return
+    end
+    if flags.noEffect then
+      events[#events + 1] = { type = "noEffect", side = attackerSide, target = defenderSide }
+      settleExplosion(false)
+      return
+    end
+    if isCrit then events[#events + 1] = { type = "critical", side = attackerSide } end
+    self:applyDamage(attackerSide, defenderSide, defender, damage, flags, events)
+    settleExplosion(true)
+    return
+  end
 
   -- Real BattleScript_EffectStatUp (every self-target UP/UP_2 effect) has
   -- NO accuracycheck step at all: attackcanceler -> attackstring ->

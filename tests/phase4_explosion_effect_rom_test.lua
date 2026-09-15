@@ -1,0 +1,10 @@
+package.path = package.path .. ";./?.lua"
+local Engine=require("src.core.BattleEngine");local RI=require("import.RomImporter");local RA=require("import.RomAddresses");local Moves=require("import.BattleMove");local Species=require("import.SpeciesInfo");local Types=require("import.TypeChart");local Stats=require("src.core.PokemonStats")
+local path=os.getenv("POKEPORT_ROM");if not path then print("SKIP phase4_explosion_effect_rom_test (set POKEPORT_ROM)");os.exit(0)end
+local ok,info=RI.verify(path);assert(ok,tostring(info));local f=assert(io.open(path,"rb"));local rom=f:read("*a");f:close();local a=assert(RA["41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc"]);local moves=Moves.parseTable(rom,a.gBattleMoves,RA.COUNTS.MOVES_COUNT);local species=Species.parseTable(rom,a.gSpeciesInfo,RA.COUNTS.NUM_SPECIES);local types=Types.parseTable(rom,a.gTypeEffectiveness)
+local pass,fail=0,0;local function check(n,v)if v then pass=pass+1 else fail=fail+1;print("FAIL: "..n)end end
+check("ROM records Self-Destruct and Explosion as effect 7",moves[120].effect==7 and moves[120].power==200 and moves[153].effect==7 and moves[153].power==250)
+local z={hp=0,attack=0,defense=0,speed=0,spAttack=0,spDefense=0};local n={attack=0,defense=0,speed=0,spAttack=0,spDefense=0};local as=Stats.calculateAll(species[137],50,z,z,n);local ds=Stats.calculateAll(species[1],5,z,z,n);local rng={draws=0,next16=function(self)self.draws=self.draws+1;return 0 end}
+local b=Engine.new({player=Engine.makeBattler({species=137,level=50,stats=as,types=species[137].types,moves={{move=153,pp=moves[153].pp}}}),foe=Engine.makeBattler({species=1,level=5,stats=ds,types=species[1].types,moves={{move=33,pp=moves[33].pp}}}),moves=moves,typeChart=types,rng=rng})
+local e={};b:resolveMove("player",1,e);check("parsed Explosion drives self-KO target-then-attacker sequence",b.player.hp==0 and b.foe.hp==0 and e[#e-2].side=="foe" and e[#e-1].side=="player")
+print(("phase4_explosion_effect_rom_test: %d passed, %d failed"):format(pass,fail));os.exit(fail==0 and 0 or 1)

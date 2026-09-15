@@ -1317,6 +1317,66 @@ check("the still-healthy foe does not get to act this same turn while the forced
 
 -- Optional ROM check: exact real parser output equals the no-ROM fixture.
 local romPath = os.getenv("POKEPORT_ROM")
+-- EFFECT_EXPLOSION (7): PP/Damp/self-KO precede accuracy, while target then
+-- attacker faint records are finalized together after the hit path.
+local explosionId = 999
+local ordinaryId = 998
+Data.moves[explosionId] = { effect=7,power=250,type=0,accuracy=100,pp=5,secondaryEffectChance=0,target=0,priority=0,flags=0 }
+Data.moves[ordinaryId] = { effect=0,power=250,type=0,accuracy=100,pp=5,secondaryEffectChance=0,target=0,priority=0,flags=0 }
+local function damageFrom(events)
+  for _, event in ipairs(events) do
+    if event.type == "damage" then return event.amount end
+  end
+end
+local ordinaryBattle = makeBattle({0,1,0}, {{move=ordinaryId,pp=5}}, {{move=Data.MOVE_TACKLE,pp=1}})
+ordinaryBattle.foe.hp = 999
+local ordinaryEvents = {}; ordinaryBattle:resolveMove(BattleEngine.SIDE_PLAYER, 1, ordinaryEvents)
+local halfDefenseBattle = makeBattle({0,1,0}, {{move=explosionId,pp=5}}, {{move=Data.MOVE_TACKLE,pp=1}})
+halfDefenseBattle.foe.hp = 999
+local halfDefenseEvents = {}; halfDefenseBattle:resolveMove(BattleEngine.SIDE_PLAYER, 1, halfDefenseEvents)
+check("Explosion's effect-specific half-defense damage exceeds the same ordinary physical move",
+  damageFrom(halfDefenseEvents) > damageFrom(ordinaryEvents), { explosion=damageFrom(halfDefenseEvents), ordinary=damageFrom(ordinaryEvents) })
+battle = makeBattle({0,1,0}, {{move=explosionId,pp=5}}, {{move=Data.MOVE_TACKLE,pp=1}})
+battle.player.hp, battle.foe.hp = 19, 1
+events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
+check("Explosion self-KOs after target damage and records target then attacker", battle.player.hp == 0 and battle.foe.hp == 0
+  and events[#events-2].type == "faint" and events[#events-2].side == "foe"
+  and events[#events-1].type == "faint" and events[#events-1].side == "player", events[#events-1] and events[#events-1].side)
+check("Explosion halves defense and finishes a simultaneous exhaustion as draw", battle.outcome == "playerDrew" and battle.rng.draws == 3)
+battle = makeBattle({}, {{move=explosionId,pp=5}}, {{move=Data.MOVE_TACKLE,pp=1}})
+battle.player.ability = BattleEngine.ABILITY_DAMP; events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
+check("Damp cancels Explosion after PP but before self-KO or RNG", battle.player.hp == battle.player.maxHP
+  and battle.player.moves[1].pp == 4 and battle.rng.draws == 0 and events[#events].type == "damp")
+battle = makeBattle({}, {{move=explosionId,pp=5}}, {{move=Data.MOVE_TACKLE,pp=1}})
+battle.foe.ability = BattleEngine.ABILITY_DAMP; events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
+check("defender Damp also cancels Explosion before self-KO", battle.player.hp == battle.player.maxHP
+  and battle.player.moves[1].pp == 4 and battle.rng.draws == 0 and events[#events].type == "damp")
+Data.moves[explosionId].accuracy = 85
+battle = makeBattle({1,0,0}, {{move=explosionId,pp=5}}, {{move=Data.MOVE_TACKLE,pp=1}})
+events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
+local sawCritical = false
+for _, event in ipairs(events) do sawCritical = sawCritical or event.type == "critical" end
+check("Explosion consumes crit then random before accuracy: [1,0,0] is a non-critical hit",
+  not sawCritical and battle.foe.hp < battle.foe.maxHP and battle.rng.draws == 3, events)
+battle = makeBattle({1,0,99}, {{move=explosionId,pp=5}}, {{move=Data.MOVE_TACKLE,pp=1}})
+events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
+check("Explosion consumes crit then random before accuracy: [1,0,99] misses after both draws",
+  events[#events-2].type == "miss" and battle.foe.hp == battle.foe.maxHP
+    and battle.player.hp == 0 and battle.rng.draws == 3, events)
+Data.moves[explosionId].accuracy = 0
+battle = makeBattle({0,1,0}, {{move=explosionId,pp=5}}, {{move=Data.MOVE_TACKLE,pp=1}})
+events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
+check("Explosion miss still consumes accuracy crit and damage RNG then faints user", battle.player.hp == 0
+  and battle.foe.hp == battle.foe.maxHP and battle.rng.draws == 3 and battle.outcome == "playerLost")
+Data.moves[explosionId].accuracy = 100
+battle = makeBattle({0,1,0}, {{move=explosionId,pp=5}}, {{move=Data.MOVE_TACKLE,pp=1}})
+battle.foe.types = { Data.TYPE_GHOST, Data.TYPE_GHOST }
+events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
+check("an immunity still lets Explosion faint its user after normal RNG", battle.player.hp == 0
+  and battle.foe.hp == battle.foe.maxHP and battle.rng.draws == 3 and battle.outcome == "playerLost")
+Data.moves[explosionId] = nil
+Data.moves[ordinaryId] = nil
+
 if romPath then
   local RomImporter = require("import.RomImporter")
   local RomAddresses = require("import.RomAddresses")
