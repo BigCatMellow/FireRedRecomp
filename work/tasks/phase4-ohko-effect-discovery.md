@@ -1,6 +1,6 @@
 # Task: Phase 4 OHKO effect discovery
 
-- Status: `DISCOVERY COMPLETE — PENDING INDEPENDENT REVIEW`
+- Status: `CLOSED — REVIEWED PASS`
 - Type: `PHASE 4 / BATTLE RULES / READ-ONLY DISCOVERY`
 
 ## Goal
@@ -47,3 +47,9 @@ requires its own route, review, probe, Worker request, and canonical review.
 Battle behavior, admission policy, UI, AI, trainer layouts, held items,
 abilities, main wiring, generated data, bridge configuration, Phase 2's
 external-reference blocker, or Phase 4 completion status.
+
+## Review
+
+Independent review passed after confirming the lower-level RNG order, Protect,
+Destiny Bond, and `tryKO` branch-order exclusions. The next gate is only the
+separate literal Local Worker Bridge route plan.

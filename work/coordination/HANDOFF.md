@@ -2,7 +2,7 @@
 
 - Status: `READY_FOR_INDEPENDENT_REVIEW`
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
-- Active task: [`../tasks/phase4-ohko-effect-discovery.md`](../tasks/phase4-ohko-effect-discovery.md)
+- Active task: [`../tasks/local-worker-bridge-phase4-ohko-route.md`](../tasks/local-worker-bridge-phase4-ohko-route.md)
 
 ## Published evidence
 
@@ -138,6 +138,10 @@ Focus Band, Endure, Destiny Bond, abilities, and held items remain explicitly
 excluded. A lower-level ordinary attempt still consumes its single KO roll;
 only type immunity branches before it. It is pending independent review only;
 no implementation is authorized.
+
+The active task is the OHKO fail-closed Worker-route plan: seven literal later
+implementation, test, replay, task, and coordination paths only; one probe
+must pass before any request.
 
 Super Fang effect 40 discovery independently passed: it is a single
 current-target-HP-halving formula record. The next gate is a separate
