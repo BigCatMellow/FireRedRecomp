@@ -1,6 +1,6 @@
 # Task: plan Local Worker Bridge route for Phase 4 Flail/Reversal
 
-- Status: `READY FOR INDEPENDENT REVIEW`
+- Status: `REVIEWED PASS — READY FOR CONFIGURATION`
 - Type: `INFRASTRUCTURE / EXECUTION SUBSTRATE / PLAN`
 
 ## Goal
@@ -43,3 +43,9 @@ allowlist/staging, and independent post-publication review.
 ## MUST NOT CHANGE
 
 No workflow configuration, code, tests, bridge request, or behavior here.
+
+## Review
+
+Independent route-plan review passed at `db6f7cb5`. Configure the literal route
+next, then independently review configuration and run its separate probe before
+any Worker request.
