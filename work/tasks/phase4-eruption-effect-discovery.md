@@ -1,6 +1,6 @@
 # Task: Phase 4 Eruption/Water Spout effect discovery
 
-- Status: `READY FOR INDEPENDENT REVIEW`
+- Status: `REVIEWED PASS`
 - Type: `PHASE 4 / BATTLE RULES / READ-ONLY DISCOVERY`
 
 ## Goal
@@ -35,3 +35,8 @@ a separate route and review before code.
 
 No gameplay code, tests, workflow, bridge configuration/request, generic move
 admission, UI, AI, items, or Phase 4 completion status.
+
+## Review
+
+Independent source review passed at `8c318243`. The next gate is a separate
+fail-closed Worker-route plan; no implementation is authorized.
