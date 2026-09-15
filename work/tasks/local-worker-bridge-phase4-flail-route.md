@@ -21,8 +21,12 @@ Selector `phase4-flail-effects` must allow only:
 6. `work/coordination/STATE.json`
 7. `work/coordination/HANDOFF.md`
 
-Focused order is battle-engine test then Flail ROM test, then existing full
-no-ROM/verified-ROM suites and replay. Require one separate one-file probe at
+Focused execution is exactly `lua5.1 tests/battle_engine_test.lua`, then
+`lua5.1 tests/phase4_flail_effect_rom_test.lua`; full no-ROM is
+`env -u POKEPORT_ROM bash scripts/test_all.sh`; verified-ROM is
+`bash scripts/test_all.sh` with the SHA-verified `POKEPORT_ROM`; replay is
+`bash scripts/runtime_phase4_flail_replay.sh`. Publish staging must individually
+add the same seven literal paths only when present. Require one separate one-file probe at
 `work/local-runner/probes/phase4-flail-effects-route-YYYYMMDD.probe`.
 
 ## Acceptance and exclusions

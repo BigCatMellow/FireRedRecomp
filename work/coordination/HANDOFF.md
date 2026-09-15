@@ -1,8 +1,8 @@
 # FireRedRecomp Coordination Handoff
 
-- Status: `READY_FOR_DISCOVERY`
+- Status: `READY_FOR_INDEPENDENT_REVIEW`
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
-- Active task: [`../roadmaps/EXECUTION_MAP.md`](../roadmaps/EXECUTION_MAP.md)
+- Active task: [`../tasks/local-worker-bridge-phase4-flail-route.md`](../tasks/local-worker-bridge-phase4-flail-route.md)
 
 ## Published evidence
 
@@ -95,6 +95,11 @@ canonical range `1ee658a9..507b5ac0` independently passed review after
 publication. Select the next source-locked effect family separately; do not
 bundle formulas or other stateful families. Held-item trainer layouts remain
 deferred because battlers do not retain or apply item state.
+
+Flail #175 and Reversal #179 effect-99 discovery is source-locked and awaits
+the independent review of its exact Worker route plan. That plan permits no
+workflow configuration or gameplay code yet; after review PASS its next gate is
+literal route configuration followed by a separate one-file probe.
 
 Super Fang effect 40 discovery independently passed: it is a single
 current-target-HP-halving formula record. The next gate is a separate
