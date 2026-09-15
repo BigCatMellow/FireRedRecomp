@@ -1,6 +1,6 @@
 # Task: Phase 4 Super Fang effect
 
-- Status: `READY FOR WORKER`
+- Status: `CLOSED — REVIEWED PASS`
 - Type: `PHASE 4 / BATTLE RULES / BOUNDED IMPLEMENTATION`
 
 ## Goal
@@ -30,3 +30,12 @@ Only the seven paths listed by `local-worker-bridge-phase4-super-fang-route.md`.
 
 Effects 7/41/87/130 or any other formula; generic move admission; status,
 ability, item, UI/controller/main wiring; doubles/links; or Phase 4 status.
+
+## Closure evidence
+
+The independently reviewed request `21f89f38` was applied only by the guarded
+Local Worker Bridge and published as `2671c5de`. Guarded run `34954873576`
+passed trusted checkout, explicit route, private-ROM SHA, target validation,
+apply, focused/no-ROM/verified-ROM suites, replay, and publication. Independent
+post-publication review of `21f89f38..2671c5de` passed. This closes effect 40
+only, not general formula, item, ability, doubles/link, or Phase 4 work.

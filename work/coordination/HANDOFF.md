@@ -104,6 +104,10 @@ That route is now independently reviewed and probed: config `4b62344d`, probe
 `ce50565f`, guarded run `34954489129`. The active task is only Super Fang
 effect 40 through this route; it may not bundle fixed damage or other formulas.
 
+Super Fang is now closed and independently reviewed at `2671c5de` after guarded
+run `34954873576`. Select the next source-locked effect family separately; do
+not infer broader formula or Phase 4 completion.
+
 ## Phase 2 resume point
 
 The remaining input is user-owned trusted retail captures for both documented
