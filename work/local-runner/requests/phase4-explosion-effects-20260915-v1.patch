@@ -1,0 +1,177 @@
+diff --git a/scripts/runtime_phase4_explosion_replay.sh b/scripts/runtime_phase4_explosion_replay.sh
+new file mode 100755
+index 00000000..628afeff
+--- /dev/null
++++ b/scripts/runtime_phase4_explosion_replay.sh
+@@ -0,0 +1,8 @@
++#!/usr/bin/env bash
++set -euo pipefail
++ROOT=$(cd "$(dirname "$0")/.." && pwd)
++cd "$ROOT"
++: "${POKEPORT_ROM:?set POKEPORT_ROM to verified FireRed US v1.0}"
++lua5.1 tests/battle_engine_test.lua
++lua5.1 tests/phase4_explosion_effect_rom_test.lua
++echo "RUNTIME_REPLAY phase4_explosion_effect PASS effect=7 damp=true selfko=true"
+diff --git a/src/core/BattleEngine.lua b/src/core/BattleEngine.lua
+index a2d80665..3ec26e54 100644
+--- a/src/core/BattleEngine.lua
++++ b/src/core/BattleEngine.lua
+@@ -547,6 +547,8 @@ BattleEngine.RECOIL_MOVES = {
+ -- gBattleMons[].moves never contains it); a caller's `moves` table needs
+ -- an entry keyed by this id for the trigger to have anything to resolve.
+ BattleEngine.MOVE_STRUGGLE = 165
++BattleEngine.EFFECT_EXPLOSION = 7
++BattleEngine.ABILITY_DAMP = 6
+ 
+ -- The real drain family: EFFECT_ABSORB (Absorb, Mega Drain, Giga Drain,
+ -- Leech Life -- confirmed against src/data/battle_moves.h) heals the
+@@ -882,6 +884,62 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
+ 
+   local moveId = slot and slot.move or BattleEngine.MOVE_STRUGGLE
+   events[#events + 1] = { type = "useMove", side = attackerSide, move = moveId }
++  local isExplosion = move.effect == BattleEngine.EFFECT_EXPLOSION
++  if isExplosion then
++    -- Real EffectExplosion reaches ppreduce before tryexplosion. Damp scans
++    -- every active battler; this bounded singles engine has these two only.
++    slot.pp = slot.pp - 1
++    if attacker.ability == BattleEngine.ABILITY_DAMP
++        or defender.ability == BattleEngine.ABILITY_DAMP then
++      events[#events + 1] = { type = "damp", side = attackerSide }
++      return
++    end
++    -- Real tryexplosion sets the user's HP to 0 before accuracycheck, but
++    -- faint scripts are deferred until the script reaches tryfaintmon.
++    attacker.hp = 0
++    events[#events + 1] = { type = "selfDestruct", side = attackerSide }
++
++    local function settleExplosion(recordDefender)
++      self:beginFaintSequence()
++      if recordDefender then self:recordFaint(defenderSide, events) end
++      self:recordFaint(attackerSide, events)
++      self:finalizeFaintSequence(events)
++    end
++
++    -- EffectExplosion's stock script performs critcalc, damagecalc,
++    -- typecalc, and adjustnormaldamage before accuracycheck. Their critical
++    -- and random draws are therefore consumed before accuracy, including
++    -- on the miss path.
++    local rolledCrit = BattleFormulas.critRoll(self.rng, 0)
++    local isCrit = rolledCrit and not (self.firstBattle and not self.tutorialPlayerDamageDone)
++    local explosionDefender = {}
++    for k, v in pairs(defender) do explosionDefender[k] = v end
++    explosionDefender.defense = math.max(1, math.floor(defender.defense / 2))
++    local damage = BattleFormulas.calculateBaseDamage(
++      attacker, explosionDefender, move, isCrit, self.sideStatus[defenderSide])
++    if isCrit then damage = damage * BattleFormulas.CRIT_MULTIPLIER end
++    local flags
++    damage, flags = BattleFormulas.typeCalc(
++      damage, move.type, attacker.types, defender.types, self.typeChart)
++    damage = BattleFormulas.applyRandomDamageMultiplier(damage, self.rng)
++    local hit = BattleFormulas.accuracyCheck(
++      move.accuracy, attacker.statStages.accuracy,
++      defender.statStages.evasion, self.rng)
++    if not hit then
++      events[#events + 1] = { type = "miss", side = attackerSide }
++      settleExplosion(false)
++      return
++    end
++    if flags.noEffect then
++      events[#events + 1] = { type = "noEffect", side = attackerSide, target = defenderSide }
++      settleExplosion(false)
++      return
++    end
++    if isCrit then events[#events + 1] = { type = "critical", side = attackerSide } end
++    self:applyDamage(attackerSide, defenderSide, defender, damage, flags, events)
++    settleExplosion(true)
++    return
++  end
+ 
+   -- Real BattleScript_EffectStatUp (every self-target UP/UP_2 effect) has
+   -- NO accuracycheck step at all: attackcanceler -> attackstring ->
+diff --git a/tests/battle_engine_test.lua b/tests/battle_engine_test.lua
+index a5784c9e..59f565ee 100644
+--- a/tests/battle_engine_test.lua
++++ b/tests/battle_engine_test.lua
+@@ -1317,6 +1317,66 @@ check("the still-healthy foe does not get to act this same turn while the forced
+ 
+ -- Optional ROM check: exact real parser output equals the no-ROM fixture.
+ local romPath = os.getenv("POKEPORT_ROM")
++-- EFFECT_EXPLOSION (7): PP/Damp/self-KO precede accuracy, while target then
++-- attacker faint records are finalized together after the hit path.
++local explosionId = 999
++local ordinaryId = 998
++Data.moves[explosionId] = { effect=7,power=250,type=0,accuracy=100,pp=5,secondaryEffectChance=0,target=0,priority=0,flags=0 }
++Data.moves[ordinaryId] = { effect=0,power=250,type=0,accuracy=100,pp=5,secondaryEffectChance=0,target=0,priority=0,flags=0 }
++local function damageFrom(events)
++  for _, event in ipairs(events) do
++    if event.type == "damage" then return event.amount end
++  end
++end
++local ordinaryBattle = makeBattle({0,1,0}, {{move=ordinaryId,pp=5}}, {{move=Data.MOVE_TACKLE,pp=1}})
++ordinaryBattle.foe.hp = 999
++local ordinaryEvents = {}; ordinaryBattle:resolveMove(BattleEngine.SIDE_PLAYER, 1, ordinaryEvents)
++local halfDefenseBattle = makeBattle({0,1,0}, {{move=explosionId,pp=5}}, {{move=Data.MOVE_TACKLE,pp=1}})
++halfDefenseBattle.foe.hp = 999
++local halfDefenseEvents = {}; halfDefenseBattle:resolveMove(BattleEngine.SIDE_PLAYER, 1, halfDefenseEvents)
++check("Explosion's effect-specific half-defense damage exceeds the same ordinary physical move",
++  damageFrom(halfDefenseEvents) > damageFrom(ordinaryEvents), { explosion=damageFrom(halfDefenseEvents), ordinary=damageFrom(ordinaryEvents) })
++battle = makeBattle({0,1,0}, {{move=explosionId,pp=5}}, {{move=Data.MOVE_TACKLE,pp=1}})
++battle.player.hp, battle.foe.hp = 19, 1
++events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
++check("Explosion self-KOs after target damage and records target then attacker", battle.player.hp == 0 and battle.foe.hp == 0
++  and events[#events-2].type == "faint" and events[#events-2].side == "foe"
++  and events[#events-1].type == "faint" and events[#events-1].side == "player", events[#events-1] and events[#events-1].side)
++check("Explosion halves defense and finishes a simultaneous exhaustion as draw", battle.outcome == "playerDrew" and battle.rng.draws == 3)
++battle = makeBattle({}, {{move=explosionId,pp=5}}, {{move=Data.MOVE_TACKLE,pp=1}})
++battle.player.ability = BattleEngine.ABILITY_DAMP; events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
++check("Damp cancels Explosion after PP but before self-KO or RNG", battle.player.hp == battle.player.maxHP
++  and battle.player.moves[1].pp == 4 and battle.rng.draws == 0 and events[#events].type == "damp")
++battle = makeBattle({}, {{move=explosionId,pp=5}}, {{move=Data.MOVE_TACKLE,pp=1}})
++battle.foe.ability = BattleEngine.ABILITY_DAMP; events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
++check("defender Damp also cancels Explosion before self-KO", battle.player.hp == battle.player.maxHP
++  and battle.player.moves[1].pp == 4 and battle.rng.draws == 0 and events[#events].type == "damp")
++Data.moves[explosionId].accuracy = 85
++battle = makeBattle({1,0,0}, {{move=explosionId,pp=5}}, {{move=Data.MOVE_TACKLE,pp=1}})
++events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
++local sawCritical = false
++for _, event in ipairs(events) do sawCritical = sawCritical or event.type == "critical" end
++check("Explosion consumes crit then random before accuracy: [1,0,0] is a non-critical hit",
++  not sawCritical and battle.foe.hp < battle.foe.maxHP and battle.rng.draws == 3, events)
++battle = makeBattle({1,0,99}, {{move=explosionId,pp=5}}, {{move=Data.MOVE_TACKLE,pp=1}})
++events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
++check("Explosion consumes crit then random before accuracy: [1,0,99] misses after both draws",
++  events[#events-2].type == "miss" and battle.foe.hp == battle.foe.maxHP
++    and battle.player.hp == 0 and battle.rng.draws == 3, events)
++Data.moves[explosionId].accuracy = 0
++battle = makeBattle({0,1,0}, {{move=explosionId,pp=5}}, {{move=Data.MOVE_TACKLE,pp=1}})
++events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
++check("Explosion miss still consumes accuracy crit and damage RNG then faints user", battle.player.hp == 0
++  and battle.foe.hp == battle.foe.maxHP and battle.rng.draws == 3 and battle.outcome == "playerLost")
++Data.moves[explosionId].accuracy = 100
++battle = makeBattle({0,1,0}, {{move=explosionId,pp=5}}, {{move=Data.MOVE_TACKLE,pp=1}})
++battle.foe.types = { Data.TYPE_GHOST, Data.TYPE_GHOST }
++events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
++check("an immunity still lets Explosion faint its user after normal RNG", battle.player.hp == 0
++  and battle.foe.hp == battle.foe.maxHP and battle.rng.draws == 3 and battle.outcome == "playerLost")
++Data.moves[explosionId] = nil
++Data.moves[ordinaryId] = nil
++
+ if romPath then
+   local RomImporter = require("import.RomImporter")
+   local RomAddresses = require("import.RomAddresses")
+diff --git a/tests/phase4_explosion_effect_rom_test.lua b/tests/phase4_explosion_effect_rom_test.lua
+new file mode 100644
+index 00000000..c965b4c7
+--- /dev/null
++++ b/tests/phase4_explosion_effect_rom_test.lua
+@@ -0,0 +1,10 @@
++package.path = package.path .. ";./?.lua"
++local Engine=require("src.core.BattleEngine");local RI=require("import.RomImporter");local RA=require("import.RomAddresses");local Moves=require("import.BattleMove");local Species=require("import.SpeciesInfo");local Types=require("import.TypeChart");local Stats=require("src.core.PokemonStats")
++local path=os.getenv("POKEPORT_ROM");if not path then print("SKIP phase4_explosion_effect_rom_test (set POKEPORT_ROM)");os.exit(0)end
++local ok,info=RI.verify(path);assert(ok,tostring(info));local f=assert(io.open(path,"rb"));local rom=f:read("*a");f:close();local a=assert(RA["41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc"]);local moves=Moves.parseTable(rom,a.gBattleMoves,RA.COUNTS.MOVES_COUNT);local species=Species.parseTable(rom,a.gSpeciesInfo,RA.COUNTS.NUM_SPECIES);local types=Types.parseTable(rom,a.gTypeEffectiveness)
++local pass,fail=0,0;local function check(n,v)if v then pass=pass+1 else fail=fail+1;print("FAIL: "..n)end end
++check("ROM records Self-Destruct and Explosion as effect 7",moves[120].effect==7 and moves[120].power==200 and moves[153].effect==7 and moves[153].power==250)
++local z={hp=0,attack=0,defense=0,speed=0,spAttack=0,spDefense=0};local n={attack=0,defense=0,speed=0,spAttack=0,spDefense=0};local as=Stats.calculateAll(species[137],50,z,z,n);local ds=Stats.calculateAll(species[1],5,z,z,n);local rng={draws=0,next16=function(self)self.draws=self.draws+1;return 0 end}
++local b=Engine.new({player=Engine.makeBattler({species=137,level=50,stats=as,types=species[137].types,moves={{move=153,pp=moves[153].pp}}}),foe=Engine.makeBattler({species=1,level=5,stats=ds,types=species[1].types,moves={{move=33,pp=moves[33].pp}}}),moves=moves,typeChart=types,rng=rng})
++local e={};b:resolveMove("player",1,e);check("parsed Explosion drives self-KO target-then-attacker sequence",b.player.hp==0 and b.foe.hp==0 and e[#e-2].side=="foe" and e[#e-1].side=="player")
++print(("phase4_explosion_effect_rom_test: %d passed, %d failed"):format(pass,fail));os.exit(fail==0 and 0 or 1)
