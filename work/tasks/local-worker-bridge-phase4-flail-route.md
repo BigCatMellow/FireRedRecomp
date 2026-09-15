@@ -1,6 +1,6 @@
 # Task: plan Local Worker Bridge route for Phase 4 Flail/Reversal
 
-- Status: `REVIEWED PASS — READY FOR CONFIGURATION`
+- Status: `CLOSED — REVIEWED PASS; PROBE PASSED`
 - Type: `INFRASTRUCTURE / EXECUTION SUBSTRATE / PLAN`
 
 ## Goal
@@ -49,3 +49,11 @@ No workflow configuration, code, tests, bridge request, or behavior here.
 Independent route-plan review passed at `db6f7cb5`. Configure the literal route
 next, then independently review configuration and run its separate probe before
 any Worker request.
+
+## Configured route and probe
+
+Configuration independently passed at `d0e151e2`; probe `883536b0` passed
+guarded Local Worker Bridge run `34994516318`, including trusted checkout,
+explicit route selection, Lua toolchain, and private-ROM SHA verification.
+Patch/test/replay/publication steps were correctly skipped. One reviewed
+effect-99 Worker request is now eligible.
