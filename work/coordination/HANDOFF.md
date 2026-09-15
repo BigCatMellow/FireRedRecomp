@@ -1,8 +1,8 @@
 # FireRedRecomp Coordination Handoff
 
-- Status: `READY_FOR_NEXT_DISCOVERY`
+- Status: `READY_FOR_INDEPENDENT_REVIEW`
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
-- Active task: select one next bounded, source-locked Phase 4 effect discovery
+- Active task: [`../tasks/phase4-ohko-effect-discovery.md`](../tasks/phase4-ohko-effect-discovery.md)
 
 ## Published evidence
 
@@ -129,6 +129,15 @@ It preserves shared accuracy/PP/type/no-effect, samples after typecalc even on
 immunity, and avoids ordinary critical/base/random damage. Select the next
 source-locked family separately; no broad random-formula support,
 held-item/endure state, or Phase 4 completion is authorized.
+
+OHKO effect 38 is the next read-only source-lock discovery. Guillotine #12,
+Horn Drill #32, Fissure #90, and Sheer Cold #329 share a special level-based
+KO roll rather than ordinary accuracy/damage. The candidate is restricted to
+the engine's represented state: Lock-On, Protect, invulnerability, Sturdy,
+Focus Band, Endure, Destiny Bond, abilities, and held items remain explicitly
+excluded. A lower-level ordinary attempt still consumes its single KO roll;
+only type immunity branches before it. It is pending independent review only;
+no implementation is authorized.
 
 Super Fang effect 40 discovery independently passed: it is a single
 current-target-HP-halving formula record. The next gate is a separate
