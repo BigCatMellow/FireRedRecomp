@@ -52,3 +52,9 @@ No configuration, code, tests, bridge request, or behavior in this plan.
 Independent route-plan review passed. Configure the literal route next, then
 independently review configuration and run its separate probe before any Worker
 request.
+
+## Configured route
+
+The literal selector, allowlist, focused execution, replay, and individual
+publication staging configuration independently passed review. Run the separate
+one-file probe next; no Worker patch is eligible until that probe passes.

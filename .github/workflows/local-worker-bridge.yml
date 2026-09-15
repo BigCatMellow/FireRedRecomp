@@ -113,6 +113,9 @@ jobs:
             phase4-psywave-effects*.patch|phase4-psywave-effects*.probe)
               route='phase4-psywave-effects'
               ;;
+            phase4-ohko-effects*.patch|phase4-ohko-effects*.probe)
+              route='phase4-ohko-effects'
+              ;;
             oak-parcel-dex-presentation-north*.patch|oak-parcel-dex-presentation-north*.probe)
               route='oak-parcel-dex-presentation-north'
               ;;
@@ -226,6 +229,8 @@ jobs:
                 ;;
               phase4-psywave-effects:src/core/BattleEngine.lua|phase4-psywave-effects:tests/battle_engine_test.lua|phase4-psywave-effects:tests/phase4_psywave_effect_rom_test.lua|phase4-psywave-effects:scripts/runtime_phase4_psywave_replay.sh|phase4-psywave-effects:work/tasks/phase4-psywave-effects.md|phase4-psywave-effects:work/coordination/STATE.json|phase4-psywave-effects:work/coordination/HANDOFF.md)
                 ;;
+              phase4-ohko-effects:src/core/BattleEngine.lua|phase4-ohko-effects:tests/battle_engine_test.lua|phase4-ohko-effects:tests/phase4_ohko_effect_rom_test.lua|phase4-ohko-effects:scripts/runtime_phase4_ohko_replay.sh|phase4-ohko-effects:work/tasks/phase4-ohko-effects.md|phase4-ohko-effects:work/coordination/STATE.json|phase4-ohko-effects:work/coordination/HANDOFF.md)
+                ;;
               *)
                 echo "Patch target is not authorized for explicit route '$ROUTE': $target" >&2
                 exit 1
@@ -331,6 +336,10 @@ jobs:
               "$LUA" tests/battle_engine_test.lua
               "$LUA" tests/phase4_psywave_effect_rom_test.lua
               ;;
+            phase4-ohko-effects)
+              "$LUA" tests/battle_engine_test.lua
+              "$LUA" tests/phase4_ohko_effect_rom_test.lua
+              ;;
             *)
               echo "Patch execution has no focused-test route for '$ROUTE'." >&2
               exit 1
@@ -425,6 +434,9 @@ jobs:
               ;;
             phase4-psywave-effects)
               bash scripts/runtime_phase4_psywave_replay.sh
+              ;;
+            phase4-ohko-effects)
+              bash scripts/runtime_phase4_ohko_replay.sh
               ;;
             *)
               echo "Patch execution has no runtime-replay route for '$ROUTE'." >&2
@@ -564,6 +576,13 @@ jobs:
               ;;
             phase4-psywave-effects)
               for path in src/core/BattleEngine.lua tests/battle_engine_test.lua tests/phase4_psywave_effect_rom_test.lua scripts/runtime_phase4_psywave_replay.sh work/tasks/phase4-psywave-effects.md work/coordination/STATE.json work/coordination/HANDOFF.md; do
+                if [[ -e "$path" ]]; then
+                  git add -- "$path"
+                fi
+              done
+              ;;
+            phase4-ohko-effects)
+              for path in src/core/BattleEngine.lua tests/battle_engine_test.lua tests/phase4_ohko_effect_rom_test.lua scripts/runtime_phase4_ohko_replay.sh work/tasks/phase4-ohko-effects.md work/coordination/STATE.json work/coordination/HANDOFF.md; do
                 if [[ -e "$path" ]]; then
                   git add -- "$path"
                 fi

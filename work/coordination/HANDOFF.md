@@ -143,6 +143,8 @@ The active task is the OHKO fail-closed Worker-route plan: seven literal later
 implementation, test, replay, task, and coordination paths only; one probe
 must pass before any request. The route plan independently passed; configure
 those literal workflow surfaces next, then independently review configuration.
+The seven-path configuration is now pending that review; no Worker request is
+authorized until its separate probe passes.
 
 Super Fang effect 40 discovery independently passed: it is a single
 current-target-HP-halving formula record. The next gate is a separate
