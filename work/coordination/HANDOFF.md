@@ -2,7 +2,7 @@
 
 - Status: `READY_FOR_INDEPENDENT_REVIEW`
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
-- Active task: [`../tasks/phase4-psywave-effect-discovery.md`](../tasks/phase4-psywave-effect-discovery.md)
+- Active task: [`../tasks/local-worker-bridge-phase4-psywave-route.md`](../tasks/local-worker-bridge-phase4-psywave-route.md)
 
 ## Published evidence
 
@@ -111,7 +111,7 @@ the existing singles target; multi-target/doubles and pre-seeded dynamic-power
 interactions remain unauthorized. Select the next source-locked effect family
 separately; do not infer broader dynamic-formula or Phase 4 completion.
 
-Psywave #149 effect 88 is the next read-only source-lock discovery. It is one
+Psywave #149 effect 88 source-lock discovery independently passed. It is one
 80-accuracy Psychic record whose stored power is not ordinary base power:
 after ordinary accuracy/PP/type it rejection-samples `Random() % 16` until
 0..10, then deals floor(level × 50..150% in 10% steps), without ordinary
@@ -119,8 +119,10 @@ critical/base/random-damage commands. Type immunity still consumes its full
 post-typecalc rejection sample before suppressing HP. The current generic Hit
 path is therefore wrong for effect 88. This is pending independent review
 only; no behavior, broad random-formula support, held-item/endure state, or
-Worker implementation is authorized until a literal route is separately
-reviewed and probed.
+Worker implementation is authorized until its literal route is separately
+reviewed and probed. The active task is that route plan: seven literal
+implementation, test, replay, task, and coordination paths only; one probe
+must pass before any request.
 
 Super Fang effect 40 discovery independently passed: it is a single
 current-target-HP-halving formula record. The next gate is a separate

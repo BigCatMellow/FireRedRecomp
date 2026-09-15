@@ -1,6 +1,6 @@
 # Task: Phase 4 Psywave effect discovery
 
-- Status: `DISCOVERY COMPLETE — PENDING INDEPENDENT REVIEW`
+- Status: `CLOSED — REVIEWED PASS`
 - Type: `PHASE 4 / BATTLE RULES / READ-ONLY DISCOVERY`
 
 ## Goal
@@ -59,3 +59,9 @@ request, and post-publication review.
 Battle behavior, admission policy, UI, AI, trainer layouts, held items, main
 wiring, generated data, bridge configuration, Phase 2's external-reference
 blocker, or Phase 4 completion status.
+
+## Review
+
+Independent review passed after explicitly confirming the immune-target sampling
+order and the generic-Hit engine mismatch. The next gate is only the separate
+literal Local Worker Bridge route plan.
