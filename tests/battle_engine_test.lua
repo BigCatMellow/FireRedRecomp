@@ -1354,6 +1354,27 @@ local sawEruptionFaint=false
 for _,event in ipairs(events) do sawEruptionFaint=sawEruptionFaint or(event.type=="faint" and event.side=="foe") end
 check("Eruption retains shared lethal HP and faint handling",battle.foe.hp==0 and sawEruptionFaint)
 Data.moves[284]=nil;Data.moves[323]=nil
+-- EFFECT_PSYWAVE (88): post-typecalc rejection sampling replaces ordinary
+-- crit/base/random damage. The stored move power is only the ROM placeholder.
+check("Psywave accepted rolls use source floor percentages", BattleEngine.psywaveDamageFromLevel(5, scriptedRng({0})) == 2
+  and BattleEngine.psywaveDamageFromLevel(5, scriptedRng({10})) == 7)
+local psywaveId = 149
+Data.moves[psywaveId]={effect=88,power=1,type=Data.TYPE_PSYCHIC,accuracy=80,pp=15,secondaryEffectChance=0,target=0,priority=0,flags=50}
+battle=makeBattle({0,10},{{move=psywaveId,pp=15}},{{move=Data.MOVE_TACKLE,pp=1}});events={};battle:resolveMove(BattleEngine.SIDE_PLAYER,1,events)
+check("Psywave #149 uses post-accuracy high accepted sample without ordinary draws",events[2].type=="damage" and events[2].amount==7 and battle.player.moves[1].pp==14 and battle.rng.draws==2)
+battle=makeBattle({0,15,0},{{move=psywaveId,pp=15}},{{move=Data.MOVE_TACKLE,pp=1}});events={};battle:resolveMove(BattleEngine.SIDE_PLAYER,1,events)
+check("Psywave retries rejected 11..15 samples",events[2].type=="damage" and events[2].amount==2 and battle.rng.draws==3)
+local psywaveAccuracy=Data.moves[psywaveId].accuracy;Data.moves[psywaveId].accuracy=80
+battle=makeBattle({99},{{move=psywaveId,pp=15}},{{move=Data.MOVE_TACKLE,pp=1}});events={};battle:resolveMove(BattleEngine.SIDE_PLAYER,1,events)
+check("Psywave miss preserves ordinary PP and skips sampling",events[#events].type=="miss" and battle.player.moves[1].pp==14 and battle.rng.draws==1)
+Data.moves[psywaveId].accuracy=psywaveAccuracy
+battle=makeBattle({0,15,10},{{move=psywaveId,pp=15}},{{move=Data.MOVE_TACKLE,pp=1}});battle.foe.types={Data.TYPE_DARK,Data.TYPE_DARK};events={};battle:resolveMove(BattleEngine.SIDE_PLAYER,1,events)
+check("Psywave immunity still consumes full post-typecalc sample",events[#events].type=="noEffect" and battle.player.moves[1].pp==14 and battle.rng.draws==3)
+battle=makeBattle({0,10},{{move=psywaveId,pp=15}},{{move=Data.MOVE_TACKLE,pp=1}});battle.player.speed=999;battle.foe.hp=1;events=battle:runTurn({action="move",moveSlot=1},{action="move",moveSlot=1})
+local sawPsywaveFaint=false
+for _,event in ipairs(events) do sawPsywaveFaint=sawPsywaveFaint or(event.type=="faint" and event.side=="foe") end
+check("Psywave retains shared lethal HP and faint handling",battle.foe.hp==0 and sawPsywaveFaint and battle.rng.draws==2)
+Data.moves[psywaveId]=nil
 -- EFFECT_FLAIL (99): transient dynamic base power comes from the real scaled
 -- remaining-HP table before ordinary Hit, without changing stored move data.
 check("Flail real scaled-HP power bands cover both sides of every transition",

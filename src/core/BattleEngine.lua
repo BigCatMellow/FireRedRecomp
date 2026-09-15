@@ -446,6 +446,7 @@ BattleEngine.EFFECT_ALWAYS_HIT = 17
 BattleEngine.EFFECT_VITAL_THROW = 78
 BattleEngine.EFFECT_FLAIL = 99
 BattleEngine.EFFECT_ERUPTION = 190
+BattleEngine.EFFECT_PSYWAVE = 88
 
 -- Real Cmd_remaininghptopower: scale the attacker's remaining HP to 48,
 -- promote a positive underflow to one, then choose Flail/Reversal's dynamic
@@ -466,6 +467,15 @@ end
 -- this helper derives the effect-190 transient power without mutating move data.
 function BattleEngine.eruptionPowerFromHP(hp, maxHP, storedPower)
   return math.max(1, math.floor(hp * storedPower / maxHP))
+end
+
+-- Real Cmd_psywavedamageeffect: discard 11..15 from Random() % 16, then
+-- scale the attacker's level by the accepted 50..150% value. This is a
+-- distinct post-typecalc damage command, not ordinary base/random damage.
+function BattleEngine.psywaveDamageFromLevel(level, rng)
+  local roll
+  repeat roll = rng:next16() % 16 until roll <= 10
+  return math.floor(level * (roll * 10 + 50) / 100)
 end
 -- EFFECT_DREAM_EATER=8: real BattleScript_EffectDreamEater
 -- (data/battle_scripts_1.s:427) jumps straight to "wasn't affected" unless
@@ -1115,6 +1125,23 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
     flags.superEffective = false
     flags.notVeryEffective = false
     local damage = math.max(1, math.floor(defender.hp / 2))
+    self:applyDamage(attackerSide, defenderSide, defender, damage, flags, events)
+    return
+  end
+
+  if move.effect == BattleEngine.EFFECT_PSYWAVE then
+    -- Stock runs typecalc before psywavedamageeffect, clears only nonzero
+    -- effectiveness presentation, then samples even if typecalc was immune.
+    local _, flags = BattleFormulas.typeCalc(
+      1, move.type, attacker.types, defender.types, self.typeChart
+    )
+    flags.superEffective = false
+    flags.notVeryEffective = false
+    local damage = BattleEngine.psywaveDamageFromLevel(attacker.level, self.rng)
+    if flags.noEffect then
+      events[#events + 1] = { type = "noEffect", side = attackerSide, target = defenderSide }
+      return
+    end
     self:applyDamage(attackerSide, defenderSide, defender, damage, flags, events)
     return
   end
