@@ -1,6 +1,6 @@
 # Task: plan Local Worker Bridge route for Phase 4 Eruption/Water Spout
 
-- Status: `READY FOR INDEPENDENT REVIEW`
+- Status: `REVIEWED PASS — READY FOR CONFIGURATION`
 - Type: `INFRASTRUCTURE / EXECUTION SUBSTRATE / PLAN`
 
 ## Goal
@@ -43,3 +43,9 @@ review.
 ## MUST NOT CHANGE
 
 No configuration, code, tests, bridge request, or behavior in this plan.
+
+## Review
+
+Independent route-plan review passed at `ad56217c`. Configure the literal route
+next, then independently review configuration and run its separate probe before
+any Worker request.
