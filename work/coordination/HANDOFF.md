@@ -2,7 +2,7 @@
 
 - Status: `READY_FOR_INDEPENDENT_REVIEW`
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
-- Active task: [`../tasks/local-worker-bridge-phase4-flail-route.md`](../tasks/local-worker-bridge-phase4-flail-route.md)
+- Active task: [`../tasks/phase4-eruption-effect-discovery.md`](../tasks/phase4-eruption-effect-discovery.md)
 
 ## Published evidence
 
@@ -101,6 +101,10 @@ Flail #175 and Reversal #179 effect-99 is closed and independently reviewed at
 `d0e151e2` and probed by `883536b0` (run `34994516318`). Select the next
 source-locked effect family separately; do not infer broader dynamic-formula or
 Phase 4 completion.
+
+Eruption #284 and Water Spout #323 effect-190 discovery is awaiting independent
+review. It is bounded to the existing singles target; multi-target/doubles and
+pre-seeded dynamic-power interactions are not authorized.
 
 Super Fang effect 40 discovery independently passed: it is a single
 current-target-HP-halving formula record. The next gate is a separate
