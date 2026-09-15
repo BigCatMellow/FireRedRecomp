@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
-  "updated_utc": "2026-09-15T17:05:00Z",
+  "updated_utc": "2026-09-15T17:10:00Z",
   "role": "ORCHESTRATOR",
-  "status": "READY_FOR_INDEPENDENT_REVIEW",
+  "status": "READY_FOR_ROUTE_CONFIGURATION",
   "current_phase": "Phase 4 — full Gen 3 battle engine",
   "canonical_status_owner": "work/roadmaps/CAPABILITY_CHECKLIST.md",
   "active_task": "work/tasks/local-worker-bridge-phase4-psywave-route.md",
-  "objective": "Independently review the literal fail-closed Phase 4 Psywave Worker route plan while Phase 2 retail comparison remains externally blocked.",
-  "next_role": "INDEPENDENT_REVIEWER",
+  "objective": "Configure only the independently reviewed literal Phase 4 Psywave Worker route, then review configuration and separately probe it while Phase 2 retail comparison remains externally blocked.",
+  "next_role": "ORCHESTRATOR",
   "reconciliation": {
     "camera_task_status": "CLOSED — REVIEWED PASS at 4c5456f3; guarded run 34753297372",
     "oak_evidence_bridge": "CLOSED — REVIEWED PASS at ff5ff890; trusted probe run 34753855210",
