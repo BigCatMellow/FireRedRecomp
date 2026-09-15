@@ -1,12 +1,12 @@
 {
   "schema_version": 1,
-  "updated_utc": "2026-09-15T02:00:00Z",
+  "updated_utc": "2026-09-15T03:00:00Z",
   "role": "ORCHESTRATOR",
-  "status": "READY_FOR_DISCOVERY",
+  "status": "READY_FOR_ROUTE_PLAN",
   "current_phase": "Phase 4 — full Gen 3 battle engine",
   "canonical_status_owner": "work/roadmaps/CAPABILITY_CHECKLIST.md",
   "active_task": "work/tasks/phase4-super-fang-effect-discovery.md",
-  "objective": "Independently review the bounded Phase 4 Super Fang effect discovery after the reviewed Explosion closure, while Phase 2 retail comparison remains externally blocked.",
+  "objective": "Plan a separate fail-closed Worker Bridge route for the independently reviewed Phase 4 Super Fang effect, while Phase 2 retail comparison remains externally blocked.",
   "next_role": "ORCHESTRATOR",
   "reconciliation": {
     "camera_task_status": "CLOSED — REVIEWED PASS at 4c5456f3; guarded run 34753297372",
