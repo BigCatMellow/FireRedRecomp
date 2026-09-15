@@ -1,0 +1,4 @@
+phase4-flail-effects route readiness probe
+
+Non-gameplay readiness probe for the independently reviewed Flail/Reversal
+Worker Bridge route. It authorizes no patch, test, replay, or gameplay publish.
