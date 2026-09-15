@@ -120,8 +120,11 @@ post-typecalc rejection sample before suppressing HP. The current generic Hit
 path is therefore wrong for effect 88. The literal route plan independently
 passed and its seven-path selector/allowlist/focused-test/replay/staging
 configuration independently passed review. Require one separate probe before
-any request. No behavior, broad random-formula support, held-item/endure state,
-or Worker implementation is authorized yet.
+any request. Probe `2e69f25c` passed guarded run `35026144931`; the active task
+is now only Psywave effect 88 through that route. It must preserve shared
+accuracy/PP/type/no-effect, sample after typecalc even on immunity, and avoid
+ordinary critical/base/random damage. No broad random-formula support,
+held-item/endure state, or Phase 4 completion is authorized.
 
 Super Fang effect 40 discovery independently passed: it is a single
 current-target-HP-halving formula record. The next gate is a separate

@@ -62,3 +62,10 @@ request.
 The literal selector, allowlist, focused execution, replay, and individual
 publication staging configuration independently passed review. Run the separate
 one-file probe next; no Worker patch is eligible until that probe passes.
+
+## Probe
+
+Probe `2e69f25c` passed guarded Local Worker Bridge run `35026144931`, including
+trusted checkout, explicit route selection, Lua toolchain, and private-ROM SHA
+verification. Patch validation, apply, tests, replay, and publication were
+skipped as required. One reviewed effect-88 Worker request is now eligible.
