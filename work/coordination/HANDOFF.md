@@ -96,10 +96,11 @@ publication. Select the next source-locked effect family separately; do not
 bundle formulas or other stateful families. Held-item trainer layouts remain
 deferred because battlers do not retain or apply item state.
 
-Flail #175 and Reversal #179 effect-99 discovery is source-locked and awaits
-the independent review of its exact Worker route plan. That plan permits no
-workflow configuration or gameplay code yet; after review PASS its next gate is
-literal route configuration followed by a separate one-file probe.
+Flail #175 and Reversal #179 effect-99 is closed and independently reviewed at
+`656c1f1b` after guarded run `34995558611`. Its route was configured at
+`d0e151e2` and probed by `883536b0` (run `34994516318`). Select the next
+source-locked effect family separately; do not infer broader dynamic-formula or
+Phase 4 completion.
 
 Super Fang effect 40 discovery independently passed: it is a single
 current-target-HP-halving formula record. The next gate is a separate

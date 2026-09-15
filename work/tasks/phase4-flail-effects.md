@@ -1,6 +1,6 @@
 # Task: Phase 4 Flail/Reversal effects
 
-- Status: `READY FOR WORKER`
+- Status: `CLOSED — REVIEWED PASS`
 - Type: `PHASE 4 / BATTLE RULES / BOUNDED IMPLEMENTATION`
 
 ## Goal
@@ -27,3 +27,12 @@ Only the seven paths in `local-worker-bridge-phase4-flail-route.md`.
 
 Other dynamic formulas, Super Fang, generic admission, status/items/UI/main,
 doubles/links, or Phase 4 completion status.
+
+## Closure evidence
+
+The independently reviewed request `a4f925da` was applied only by the guarded
+Local Worker Bridge and published as `656c1f1b`. Guarded run `34995558611`
+passed trusted checkout, explicit routing, private-ROM SHA, target validation,
+apply, focused/no-ROM/verified-ROM suites, replay, and publication. Independent
+post-publication review of `a4f925da..656c1f1b` passed. This closes effect 99
+only, not other dynamic formulas, generic admission, or Phase 4.
