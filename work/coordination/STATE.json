@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
-  "updated_utc": "2026-09-15T22:05:00Z",
+  "updated_utc": "2026-09-15T22:10:00Z",
   "role": "ORCHESTRATOR",
-  "status": "READY_FOR_ROUTE_PROBE",
+  "status": "READY_FOR_WORKER",
   "current_phase": "Phase 4 — full Gen 3 battle engine",
   "canonical_status_owner": "work/roadmaps/CAPABILITY_CHECKLIST.md",
-  "active_task": "work/tasks/local-worker-bridge-phase4-ohko-route.md",
-  "objective": "Run the separate one-file probe for the independently reviewed literal Phase 4 OHKO Worker route while Phase 2 retail comparison remains externally blocked.",
-  "next_role": "ORCHESTRATOR",
+  "active_task": "work/tasks/phase4-ohko-effects.md",
+  "objective": "Execute only bounded Phase 4 OHKO effect 38 through the reviewed, probed Local Worker Bridge route, while Phase 2 retail comparison remains externally blocked.",
+  "next_role": "WORKER",
   "reconciliation": {
     "camera_task_status": "CLOSED — REVIEWED PASS at 4c5456f3; guarded run 34753297372",
     "oak_evidence_bridge": "CLOSED — REVIEWED PASS at ff5ff890; trusted probe run 34753855210",
@@ -19,7 +19,7 @@
     "phase4_move_admission_matrix_status": "CLOSED — REVIEWED PASS at 784a5188; six effect-17 accuracy-zero records selected as one next leaf"
   },
   "phase2_external_blocker": "Trusted, user-owned retail-reference captures with provenance/timing/crop/filter details for Oak and Pallet anchors have not been supplied.",
-  "next_after_success": "If the OHKO Worker-route configuration independently passes, run and independently review one separate phase4-ohko-effects route probe before any Worker request; do not infer Lock-On, Protect, invulnerability, Sturdy, Focus Band, Endure, Destiny Bond, ability, item, doubles/link, or Phase 4 completion.",
+  "next_after_success": "After an independently reviewed OHKO Worker request, verify guarded publication and the canonical range before closing effect 38; do not infer Lock-On, Protect, invulnerability, Sturdy, Focus Band, Endure, Destiny Bond, ability, item, doubles/link, or Phase 4 completion.",
   "legal_content_boundary": "Never commit ROMs, BIOS dumps, generated caches, ROM-derived reference screenshots, extracted game assets, or other prohibited content.",
   "phase_completion_rule": "Phase 2 remains IN PROGRESS until the Oak/reference screenshot discrepancy gate is evidenced and independently reviewed."
 }

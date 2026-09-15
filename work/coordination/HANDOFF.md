@@ -1,8 +1,8 @@
 # FireRedRecomp Coordination Handoff
 
-- Status: `READY_FOR_INDEPENDENT_REVIEW`
+- Status: `READY_FOR_WORKER`
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
-- Active task: [`../tasks/local-worker-bridge-phase4-ohko-route.md`](../tasks/local-worker-bridge-phase4-ohko-route.md)
+- Active task: [`../tasks/phase4-ohko-effects.md`](../tasks/phase4-ohko-effects.md)
 
 ## Published evidence
 
@@ -141,10 +141,16 @@ no implementation is authorized.
 
 The active task is the OHKO fail-closed Worker-route plan: seven literal later
 implementation, test, replay, task, and coordination paths only; one probe
-must pass before any request. The route plan independently passed; configure
-those literal workflow surfaces next, then independently review configuration.
-The seven-path configuration is now pending that review; no Worker request is
-authorized until its separate probe passes.
+must pass before any request. The route plan and its seven literal workflow
+surfaces independently passed review; its separate probe also passed before
+request eligibility.
+
+OHKO effect 38's configuration and probe are now independently evidenced:
+probe `31abae7c` passed guarded run `35027693336`. The active task is only the
+represented-state OHKO implementation through that route. It must preserve the
+strict level/one-roll contract and immunity-before-roll boundary without adding
+Lock-On, Protect, invulnerability, Sturdy, Focus Band, Endure, Destiny Bond,
+ability/item, or doubles/link state.
 
 Super Fang effect 40 discovery independently passed: it is a single
 current-target-HP-halving formula record. The next gate is a separate
