@@ -1,6 +1,6 @@
 # Task: plan Local Worker Bridge route for Phase 4 Eruption/Water Spout
 
-- Status: `REVIEWED PASS — READY FOR CONFIGURATION`
+- Status: `CLOSED — REVIEWED PASS; PROBE PASSED`
 - Type: `INFRASTRUCTURE / EXECUTION SUBSTRATE / PLAN`
 
 ## Goal
@@ -49,3 +49,11 @@ No configuration, code, tests, bridge request, or behavior in this plan.
 Independent route-plan review passed at `ad56217c`. Configure the literal route
 next, then independently review configuration and run its separate probe before
 any Worker request.
+
+## Configured route and probe
+
+Configuration independently passed at `09b25096`; probe `104e7eaf` passed
+guarded Local Worker Bridge run `34996725283`, including trusted checkout,
+explicit route selection, Lua toolchain, and private-ROM SHA verification.
+Patch/test/replay/publication steps were correctly skipped. One reviewed
+effect-190 Worker request is now eligible.
