@@ -1,52 +1,50 @@
 {
   "schema_version": 1,
-  "updated_utc": "2026-09-11T15:00:00Z",
+  "updated_utc": "2026-09-15T00:00:00Z",
   "role": "ORCHESTRATOR",
   "status": "READY_FOR_WORKER",
-  "current_phase": "Phase 3 — playable vertical slice",
+  "current_phase": "FireRed balance mod implementation",
   "canonical_status_owner": "work/roadmaps/CAPABILITY_CHECKLIST.md",
-  "active_task": "work/tasks/local-worker-bridge-complete-runtime-route.md",
-  "objective": "Add only the explicit fail-closed Local Worker Bridge route required to execute the already-authorized phase3-complete-runtime-exit-replay evidence package, preserving trusted-main, exact-target, verified-ROM, test-before-publish, and no-public-PR invariants.",
+  "active_task": "work/tasks/pokemon-firered-balance-translation-manifest.md",
+  "objective": "Bind the explicitly frozen Pokémon FireRed balance package to exact FireRedRecomp data seams without gameplay changes; fail closed on missing representation and preserve the source package unchanged.",
   "next_role": "WORKER",
   "reconciliation": {
-    "blocked_parent_leaf": "work/tasks/phase3-complete-runtime-exit-replay.md",
-    "worker_result": "BLOCKED",
-    "blocker": "EXECUTION_SUBSTRATE_ROUTE_MISSING",
+    "paused_prior_task": "work/tasks/local-worker-bridge-complete-runtime-route.md",
+    "worker_result": "NOT_STARTED",
+    "blocker": null,
     "gameplay_defect_found": false,
     "implementation_published": false,
     "tests_claimed": false,
-    "new_prerequisite": "work/tasks/local-worker-bridge-complete-runtime-route.md",
+    "new_prerequisite": "work/tasks/pokemon-firered-balance-translation-manifest.md",
     "canonical_status_change": false,
-    "phase3_status": "IN PROGRESS"
+    "phase3_status": "IN PROGRESS — PAUSED BY EXPLICIT HUMAN REPRIORITIZATION"
   },
   "active_task_acceptance_summary": [
-    "Add a dedicated explicit phase3-complete-runtime-exit-replay request/probe route; unknown routes remain fail-closed.",
-    "Hard-code only the blocked evidence task's authorized target, focused-test, runtime-replay, and publish-staging surfaces; no wildcard or generic fallback.",
-    "Preserve trusted push-to-main only and no pull_request/pull_request_target self-hosted execution.",
-    "Preserve exact FireRed v1.0 SHA-1 verification plus focused/no-ROM/verified-ROM/replay test-before-publish gates.",
-    "Prove the route with a non-gameplay probe or equivalent deterministic validation.",
-    "Independent Reviewer PASS is required on the exact bridge-maintenance revision."
+    "Pin and verify both the frozen source-package blob and FireRedRecomp target revision.",
+    "Map every frozen row exactly once to target representation or an explicit blocked seam.",
+    "Preserve ROM-imported baseline data and all prohibited game surfaces.",
+    "Identify and test the category-resolver and learnset-overlay foundation requirements without implementing them.",
+    "Independent Reviewer PASS is required before dispatching a foundation implementation task."
   ],
   "boundaries": {
     "may_change": [
-      ".github/workflows/local-worker-bridge.yml",
-      "work/coordination/LOCAL_RUNNER_BRIDGE.md if needed",
-      "focused bridge validation/probe support if required",
-      "task/coordination/review documentation"
+        "work/tasks/pokemon-firered-balance-translation-manifest.md",
+        "work/evidence/pokemon-firered-balance-translation-manifest.md",
+        "focused manifest-validation support if required",
+        "task/coordination/review documentation"
     ],
     "must_not_change": [
-      "main.lua or gameplay/runtime behavior",
-      "complete-runtime replay implementation itself except names referenced by bridge routing",
-      "public-PR execution policy",
+        "main.lua, battle/runtime/importer behavior, or mod API",
+        "Phase 3 replay/bridge implementation",
       "supported-ROM policy or exact ROM SHA gate",
       "save format/layout",
       "ROM/cache/BIOS/extracted content",
-      "broader repository permissions",
+        "trainer, encounter, TM compatibility, held/non-promoted, or economy data",
       "independent-review requirement"
     ]
   },
   "blocker": null,
-  "next_after_success": "After independent PASS on this bridge prerequisite, Orchestrator restores work/tasks/phase3-complete-runtime-exit-replay.md as READY_FOR_WORKER. Do not advance Phase 3 until that complete runtime proof itself receives independent PASS.",
+  "next_after_success": "After independent PASS, dispatch only the category-resolver and learnset-overlay foundation task. Do not apply frozen package rows or advance Phase 3 from this planning package.",
   "legal_content_boundary": "Never commit ROMs, BIOS dumps, generated caches, extracted game assets, or other prohibited content.",
   "phase_completion_rule": "Do not mark Phase 3 DONE until the complete parent exit criterion is evidenced and independently reviewed."
 }
