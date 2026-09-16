@@ -2099,7 +2099,7 @@ function BattleEngine:_resolveMove(attackerSide, moveSlot, events, copiedMoveId,
     end
     local flags = {
       superEffective=false, notVeryEffective=false, noEffect=false,
-      damageCategory=BattleFormulas.isPhysicalType(move.type) and "physical" or "special",
+      damageCategory=BattleFormulas.damageCategory(move),
     }
     self:applyDamage(attackerSide, defenderSide, defender, defender.hp, flags, events)
     return
@@ -2676,31 +2676,34 @@ function BattleEngine:_resolveMove(attackerSide, moveSlot, events, copiedMoveId,
   -- BattleScript_EffectFlail runs Cmd_remaininghptopower before the normal
   -- hit script, so Flail and Reversal retain every ordinary damage rule but
   -- substitute their source-derived dynamic base power first.
+  local function scaledDamageMove(moveType, movePower)
+    return { type=moveType, power=movePower, category=move.category }
+  end
   local damageMove = move
-  if spitUpCount then damageMove = { type=move.type, power=move.power * spitUpCount } end
+  if spitUpCount then damageMove = scaledDamageMove(move.type, move.power * spitUpCount) end
   if move.effect == 117 then
     if attacker.rolloutTurns == 0 then
       attacker.rolloutTurns, attacker.rolloutMove = 5, moveId
     end
-    damageMove = { type=move.type, power=move.power * (2 ^ (5 - attacker.rolloutTurns))
-      * (attacker.defenseCurled and 2 or 1) }
+    damageMove = scaledDamageMove(move.type, move.power * (2 ^ (5 - attacker.rolloutTurns))
+      * (attacker.defenseCurled and 2 or 1))
     attacker.rolloutTurns = attacker.rolloutTurns - 1
     if attacker.rolloutTurns == 0 then attacker.rolloutMove = nil end
   end
   if move.effect == 119 then
     attacker.furyCutterCount = math.min(5, attacker.furyCutterCount + 1)
-    damageMove = { type=move.type, power=move.power * (2 ^ (attacker.furyCutterCount - 1)) }
+    damageMove = scaledDamageMove(move.type, move.power * (2 ^ (attacker.furyCutterCount - 1)))
   end
   if move.effect == BattleEngine.EFFECT_FLAIL then
-    damageMove = { type=move.type, power=BattleFormulas.flailPower(attacker.hp, attacker.maxHP) }
+    damageMove = scaledDamageMove(move.type, BattleFormulas.flailPower(attacker.hp, attacker.maxHP))
   elseif move.effect == BattleEngine.EFFECT_ERUPTION then
-    damageMove = { type=move.type, power=BattleFormulas.healthScaledPower(attacker.hp, attacker.maxHP, move.power) }
+    damageMove = scaledDamageMove(move.type, BattleFormulas.healthScaledPower(attacker.hp, attacker.maxHP, move.power))
   elseif move.effect == BattleEngine.EFFECT_MAGNITUDE then
-    damageMove = { type=move.type, power=magnitudePower }
+    damageMove = scaledDamageMove(move.type, magnitudePower)
   elseif move.effect == BattleEngine.EFFECT_RETURN then
-    damageMove = { type=move.type, power=math.floor(10 * attacker.friendship / 25) }
+    damageMove = scaledDamageMove(move.type, math.floor(10 * attacker.friendship / 25))
   elseif move.effect == BattleEngine.EFFECT_FRUSTRATION then
-    damageMove = { type=move.type, power=math.floor(10 * (255 - attacker.friendship) / 25) }
+    damageMove = scaledDamageMove(move.type, math.floor(10 * (255 - attacker.friendship) / 25))
   elseif move.effect == BattleEngine.EFFECT_HIDDEN_POWER then
     local iv = attacker.ivs
     local powerBits = math.floor(iv.hp / 2) % 2 + (math.floor(iv.attack / 2) % 2) * 2
@@ -2710,27 +2713,27 @@ function BattleEngine:_resolveMove(attackerSide, moveSlot, events, copiedMoveId,
       + (iv.speed % 2) * 8 + (iv.spAttack % 2) * 16 + (iv.spDefense % 2) * 32
     local hiddenType = math.floor(15 * typeBits / 63) + 1
     if hiddenType >= 9 then hiddenType = hiddenType + 1 end
-    damageMove = { type=hiddenType, power=math.floor(40 * powerBits / 63) + 30 }
+    damageMove = scaledDamageMove(hiddenType, math.floor(40 * powerBits / 63) + 30)
   end
   if move.effect == BattleEngine.EFFECT_WEATHER_BALL and self.weather.kind then
     local weatherTypes = { rain=11, sandstorm=5, sun=10, hail=15 }
-    damageMove = { type=weatherTypes[self.weather.kind] or 0, power=move.power * 2 }
+    damageMove = scaledDamageMove(weatherTypes[self.weather.kind] or 0, move.power * 2)
   end
   if attacker.chargeTurns > 0 and move.type == 13 then -- TYPE_ELECTRIC
-    damageMove = { type=damageMove.type, power=damageMove.power * 2 }
+    damageMove = scaledDamageMove(damageMove.type, damageMove.power * 2)
   end
   -- FireRed's CalculateBaseDamage scans every active battler for these
   -- STATUS3 flags. In a single battle either side's active state halves the
   -- matching type's move power, and switching naturally clears the source.
   if (damageMove.type == 13 and (self.player.mudSport or self.foe.mudSport))
       or (damageMove.type == 10 and (self.player.waterSport or self.foe.waterSport)) then
-    damageMove = { type=damageMove.type, power=math.floor(damageMove.power / 2) }
+    damageMove = scaledDamageMove(damageMove.type, math.floor(damageMove.power / 2))
   end
   if semiRule == 2 then
-    damageMove = { type=damageMove.type, power=damageMove.power * 2 }
+    damageMove = scaledDamageMove(damageMove.type, damageMove.power * 2)
   end
   if move.effect == BattleEngine.EFFECT_FLINCH_MINIMIZE_HIT and defender.minimized then
-    damageMove = { type=move.type, power=move.power * 2 }
+    damageMove = scaledDamageMove(move.type, move.power * 2)
   end
   -- BattleScript_EffectFacade doubles its damage only for the user's four
   -- modeled nonvolatile conditions. Raw STATUS1 keeps this compatible with
@@ -2739,15 +2742,15 @@ function BattleEngine:_resolveMove(attackerSide, moveSlot, events, copiedMoveId,
       or math.floor((attacker.status or 0) / 16) % 2 == 1
       or math.floor((attacker.status or 0) / 64) % 2 == 1
       or math.floor((attacker.status or 0) / 128) % 2 == 1) then -- EFFECT_FACADE
-    damageMove = { type=move.type, power=move.power * 2 }
+    damageMove = scaledDamageMove(move.type, move.power * 2)
   end
   -- BattleScript_EffectSmellingsalt doubles before the ordinary hit script
   -- when its target is paralyzed. Substitute is outside this engine slice.
   if move.effect == 171 and math.floor((defender.status or 0) / 64) % 2 == 1 then
-    damageMove = { type=move.type, power=move.power * 2 }
+    damageMove = scaledDamageMove(move.type, move.power * 2)
   end
   if move.effect == 185 and attacker.damagedByThisTurn == defenderSide then
-    damageMove = { type=move.type, power=move.power * 2 }
+    damageMove = scaledDamageMove(move.type, move.power * 2)
   end
   local damage = BattleFormulas.calculateBaseDamage(
     attacker, defender, damageMove, isCrit, self.sideStatus[defenderSide], self.weather.kind)
@@ -2826,7 +2829,7 @@ function BattleEngine:_resolveMove(attackerSide, moveSlot, events, copiedMoveId,
   -- 7. datahpupdate: real HP subtraction, floored at 0.
   flags.falseSwipe = move.effect == BattleEngine.EFFECT_FALSE_SWIPE
   if move.effect == BattleEngine.EFFECT_RAGE then attacker.rageActive = true end
-  flags.damageCategory = BattleFormulas.isPhysicalType(damageMove.type) and "physical" or "special"
+  flags.damageCategory = BattleFormulas.damageCategory(damageMove)
   flags.moveType = damageMove.type
   flags.moveSlot, flags.moveId = moveSlot, moveId
   flags.ignoreSubstitute = move.ignoresSubstitute == true
@@ -3606,7 +3609,8 @@ function BattleEngine:resolveMultiHit(attackerSide, attacker, defenderSide, defe
     local rolledCrit = BattleFormulas.critRoll(self.rng, self:critStage(attacker, move))
     local isCrit = rolledCrit and not (self.firstBattle and not self.tutorialPlayerDamageDone)
 
-    local damageMove = entry.growingPower and { type=move.type, power=entry.growingPower * i } or move
+    local damageMove = entry.growingPower
+      and { type=move.type, power=entry.growingPower * i, category=move.category } or move
     local damage = BattleFormulas.calculateBaseDamage(
       attacker, defender, damageMove, isCrit, self.sideStatus[defenderSide], self.weather.kind)
     if isCrit then
@@ -3633,6 +3637,7 @@ function BattleEngine:resolveMultiHit(attackerSide, attacker, defenderSide, defe
       events[#events + 1] = { type = "critical", side = attackerSide }
     end
 
+    flags.damageCategory = BattleFormulas.damageCategory(damageMove)
     flags.moveType, flags.moveSlot, flags.moveId = move.type, moveSlot, moveId
     self:applyDamage(attackerSide, defenderSide, defender, damage, flags, events)
     landedHits = landedHits + 1

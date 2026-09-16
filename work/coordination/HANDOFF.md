@@ -2,57 +2,39 @@
 
 - Record role: `HANDOFF`
 - Primary information class: `TASK CONTEXT`
-- Status: `READY_FOR_WORKER`
+- Status: `READY_FOR_REVIEWER`
 - Lifecycle: `ACTIVE`
-- Authority: coordination only; root `AGENTS.md` and active task contract control implementation
+- Authority: coordination only; root `AGENTS.md` and active task contract control review
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
-- Parent balance evidence: [`../evidence/pokemon-firered-balance-translation-manifest.md`](../evidence/pokemon-firered-balance-translation-manifest.md)
 - Active task: [`../tasks/pokemon-firered-balance-foundation.md`](../tasks/pokemon-firered-balance-foundation.md)
 - Machine state: [`STATE.json`](STATE.json)
 
-## Summary
+## Worker result
 
-The frozen package translation manifest independently passed at
-`6da2c4b1fec866e60b04c84a534a29f570bb03e6`. It found two real missing target
-seams: per-move category resolution and composable learnset additions. The
-active task adds those capabilities only; it may not add frozen balance values.
+The bounded category/learnset foundation is implemented at the pending commit.
+It adds no frozen package data or mod package.
 
-The previous Phase 3 bridge task remains paused by explicit human
-reprioritization and is unmodified.
+- explicit move categories are resolved centrally, with unmodded Gen-3 fallback;
+- all damage transformation/event paths retain an explicit category;
+- a `battleLearnsetAdditions` empty-base namespace and pure merge route all
+  nine live learnset consumers through one resolver;
+- focused checks passed: 46 BattleFormulas, 7 overlay, 392 BattleEngine;
+- `luac5.1 -p main.lua` and the 141-file no-ROM suite passed.
 
-## Worker package
+ROM-dependent checks were not run because no `POKEPORT_ROM` path was supplied.
+This is recorded missing evidence, not a pass claim.
 
-Implement only the category/learnset foundation task. Required evidence:
+## Reviewer scope
 
-1. unchanged unmodded Gen-3 golden behavior;
-2. deterministic synthetic category and learnset-overlay tests;
-3. full no-ROM suite;
-4. prohibited-scope diff check; and
-5. exact revision routed to an independent Reviewer.
+Review the exact implementation revision against the task only. Verify:
 
-If any `main.lua` learnset consumer is unavailable before mod runtime setup,
-or a category change conflicts with an effect path, stop with the first exact
-seam. Do not insert the balance package to make a test pass.
+1. no frozen move/category/learnset values or mod content appeared;
+2. no prohibited game surface changed;
+3. Gen-3 fallback and explicit category behavior are both directly tested;
+4. all nine former direct main learnset consumers use the common resolver;
+5. additions preserve decoded base rows and fail closed on invalid/duplicate
+   values; and
+6. the test claims reproduce in the available no-ROM environment.
 
-## Boundaries
-
-### MAY CHANGE
-
-- category resolver/event seams, pure level-up addition merge, common main
-  learnset resolver, focused tests, and task/coordination/review evidence.
-
-### MUST NOT CHANGE
-
-- package data, generated category map, mods content, move values, species,
-  trainers, encounters, AI, economy, items/TM compatibility, save format,
-  ROM policy/content, Phase 3 work, or independent-review requirement.
-
-## After independent PASS
-
-Dispatch the separate frozen-package mod task. That task—not this one—will
-materialize all 355 category records, eight move overrides, 13 natural
-additions, and negative-scope evidence.
-
-## Next role
-
-`WORKER`
+Return `PASS`, `NEEDS_FIX`, or `BLOCK`. Do not dispatch package application or
+advance Phase 3 in this review.

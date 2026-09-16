@@ -150,6 +150,21 @@ function BattleFormulas.isSpecialType(moveType)
   return moveType > BattleFormulas.TYPE_MYSTERY
 end
 
+-- A modded move may opt into a later-generation per-move category. Imported
+-- FireRed records do not have this field, so their fallback is exactly the
+-- original type-era split. `status` deliberately has no damage-stat branch.
+function BattleFormulas.damageCategory(move)
+  assert(type(move) == "table", "move record is required")
+  if move.category ~= nil then
+    assert(move.category == "physical" or move.category == "special" or move.category == "status",
+      "move category must be physical, special, or status")
+    return move.category
+  end
+  if BattleFormulas.isPhysicalType(move.type) then return "physical" end
+  if BattleFormulas.isSpecialType(move.type) then return "special" end
+  return "status" -- FireRed's ??? type remains neither damage branch.
+end
+
 -- Real stat stages are stored 0..12 with 6 == neutral (MIN_STAT_STAGE 0,
 -- DEFAULT_STAT_STAGE 6, MAX_STAT_STAGE 12, include/constants/pokemon.h).
 -- This module keeps that real 0..12 encoding rather than a -6..+6 one so
@@ -229,8 +244,9 @@ function BattleFormulas.calculateBaseDamage(attacker, defender, move, isCrit, de
   local moveType = move.type
   local power = move.power
   local damage = 0
+  local category = BattleFormulas.damageCategory(move)
 
-  if BattleFormulas.isPhysicalType(moveType) then
+  if category == "physical" then
     -- Real: on a crit, a LOWERED attack stage is ignored (raw stat used),
     -- a raised one is still applied.
     local atkStage = stageOf(attacker, "attack")
@@ -287,7 +303,7 @@ function BattleFormulas.calculateBaseDamage(attacker, defender, move, isCrit, de
     damage = 0 -- real: the ??? type does 0 damage
   end
 
-  if BattleFormulas.isSpecialType(moveType) then
+  if category == "special" then
     local spAtkStage = stageOf(attacker, "spAttack")
     if isCrit and spAtkStage <= BattleFormulas.DEFAULT_STAT_STAGE then
       damage = attacker.spAttack
@@ -316,10 +332,17 @@ function BattleFormulas.calculateBaseDamage(attacker, defender, move, isCrit, de
     if defenderScreens and defenderScreens.lightScreen and not isCrit then
       damage = idiv(damage, 2)
     end
-    -- Real weather block in the special branch of CalculateBaseDamage:
-    -- temporary rain weakens Fire and boosts Water; sun reverses that.
-    -- Fire and Water are both special in FireRed, so this placement also
-    -- reproduces the real physical/special branch boundary and truncation.
+    -- No minimum-1 clamp here: real special branch genuinely lacks one,
+    -- confirmed still true even after Light Screen halving -- real source
+    -- has no such clamp anywhere in this branch, so a special hit that
+    -- Light Screen halves to 0 legitimately stays 0.
+  end
+
+  -- Weather is type-based, not category-based. This is outside the stat
+  -- branch so a later-category physical Fire/Water move keeps its modifier;
+  -- absent categories retain the original FireRed result because Fire/Water
+  -- were special under the fallback split.
+  if category ~= "status" then
     if weather == "rain" then
       if moveType == BattleFormulas.TYPE_FIRE then damage = idiv(damage, 2) end
       if moveType == BattleFormulas.TYPE_WATER then damage = idiv(15 * damage, 10) end
@@ -327,10 +350,6 @@ function BattleFormulas.calculateBaseDamage(attacker, defender, move, isCrit, de
       if moveType == BattleFormulas.TYPE_FIRE then damage = idiv(15 * damage, 10) end
       if moveType == BattleFormulas.TYPE_WATER then damage = idiv(damage, 2) end
     end
-    -- No minimum-1 clamp here: real special branch genuinely lacks one,
-    -- confirmed still true even after Light Screen halving -- real source
-    -- has no such clamp anywhere in this branch, so a special hit that
-    -- Light Screen halves to 0 legitimately stays 0.
   end
 
   return damage + 2

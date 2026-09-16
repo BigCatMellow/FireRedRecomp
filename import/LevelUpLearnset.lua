@@ -32,10 +32,46 @@ local function u32le(data, offset)
     + byte(data, offset + 3) * 65536 + byte(data, offset + 4) * 16777216
 end
 
+-- Purely merges an opt-in mod addition list into decoded ROM entries. The
+-- caller supplies the supported move-id ceiling because this importer owns no
+-- battle-move table. Base rows are never mutated or removed.
+function LevelUpLearnset.mergeAdditions(base, additions, maxMoveId)
+  assert(type(base) == "table", "base learnset must be an array")
+  if additions == nil then return base end
+  assert(type(additions) == "table", "learnset additions must be an array")
+  assert(type(maxMoveId) == "number" and maxMoveId >= 1,
+    "learnset additions require a supported move-id ceiling")
+
+  local out, seen = {}, {}
+  for index, entry in ipairs(base) do
+    assert(type(entry) == "table" and type(entry.level) == "number" and type(entry.move) == "number",
+      "base learnset contains an invalid entry")
+    local key = entry.level .. ":" .. entry.move
+    assert(not seen[key], "base learnset contains duplicate entry " .. key)
+    seen[key] = true
+    out[#out + 1] = { level=entry.level, move=entry.move, packed=entry.packed, order=index }
+  end
+  for index, entry in ipairs(additions) do
+    assert(type(entry) == "table" and type(entry.level) == "number" and entry.level % 1 == 0
+      and entry.level >= 1 and entry.level <= 100, "learnset addition has invalid level")
+    assert(type(entry.move) == "number" and entry.move % 1 == 0
+      and entry.move >= 1 and entry.move <= maxMoveId, "learnset addition has invalid move")
+    local key = entry.level .. ":" .. entry.move
+    assert(not seen[key], "learnset addition duplicates " .. key)
+    seen[key] = true
+    out[#out + 1] = { level=entry.level, move=entry.move, order=#base + index }
+  end
+  table.sort(out, function(a, b)
+    return a.level == b.level and a.order < b.order or a.level < b.level
+  end)
+  for _, entry in ipairs(out) do entry.order = nil end
+  return out
+end
+
 -- Returns an ordered, 1-indexed list of { level, move, packed } records.
 -- tableOffset is a 0-based ROM file offset; species is the real internal
 -- species id and therefore also the pointer-table index.
-function LevelUpLearnset.resolve(data, tableOffset, species)
+function LevelUpLearnset.resolve(data, tableOffset, species, additions, maxMoveId)
   assert(type(data) == "string", "ROM data must be a byte string")
   assert(type(tableOffset) == "number", "learnset pointer-table offset is required")
   assert(type(species) == "number" and species >= 0, "species must be a non-negative id")
@@ -55,7 +91,7 @@ function LevelUpLearnset.resolve(data, tableOffset, species)
     local packed = u16le(data, cursor)
     cursor = cursor + 2
     if packed == LevelUpLearnset.LEVEL_UP_END then
-      return out
+      return LevelUpLearnset.mergeAdditions(out, additions, maxMoveId)
     end
     out[#out + 1] = {
       level = math.floor(packed / LevelUpLearnset.LEVEL_DIVISOR),

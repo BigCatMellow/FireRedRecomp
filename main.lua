@@ -1182,6 +1182,7 @@ local function loadBattleSceneAssets(data, addrs, dbg)
         {name="battleNatures", options={semantics="deep", base=result.natures}},
         {name="battleTrainers", options={semantics="deep", base=result.trainers}},
         {name="battleItems", options={semantics="deep", base=result.items}},
+        {name="battleLearnsetAdditions", options={semantics="record", base={}}},
       },
     })
     local modRoot = "mods"
@@ -1203,12 +1204,21 @@ local function loadBattleSceneAssets(data, addrs, dbg)
     result.natures = runtime:resolve("battleNatures")
     result.trainers = runtime:resolve("battleTrainers")
     result.items = runtime:resolve("battleItems")
+    result.learnsetAdditions = runtime:resolve("battleLearnsetAdditions")
     world.modRuntime, world.modProfile = runtime, runtime.profile
     world.battleCatalog = result
     dbg("battle species/move/nature/trainer tables, modded move view, and grass terrain built")
   else
     addLine("Battle scene assets failed: " .. tostring(result))
   end
+end
+
+-- Every live learnset consumer uses this single overlay boundary. Imported
+-- ROM entries remain the base; an enabled mod may register additions only.
+function Battle.resolveLearnset(species)
+  assert(world.battleCatalog, "battle learnset requested before battle catalog is ready")
+  return Battle.Learnset.resolve(romData, romAddrs.gLevelUpLearnsets, species,
+    world.battleCatalog.learnsetAdditions[species], RomAddresses.COUNTS.MOVES_COUNT - 1)
 end
 
 local ensureRngStreams
@@ -1268,7 +1278,7 @@ startWildBattle = function(encounter)
     local ok, instance = pcall(function()
       return Battle.WildFactory.generate({
         species=playerSpecies, level=playerLevel, speciesInfo=info,
-        learnset=Battle.Learnset.resolve(romData, romAddrs.gLevelUpLearnsets, playerSpecies),
+        learnset=Battle.resolveLearnset(playerSpecies),
         battleMoves=catalog.moves, natures=catalog.natures,
         rng=Rng.new(tonumber(os.getenv("POKEPORT_BATTLE_DEBUG_PARTY_SEED") or "") or 0x4D3),
         speciesName=romData:sub(romAddrs.gSpeciesNames + playerSpecies * 11 + 1,
@@ -1303,7 +1313,7 @@ startWildBattle = function(encounter)
   local okGenerate, foeInstance = pcall(function()
     return Battle.WildFactory.generate({
       species=encounter.species, level=encounter.level, speciesInfo=foeSpecies,
-      learnset=Battle.Learnset.resolve(romData, romAddrs.gLevelUpLearnsets, encounter.species),
+      learnset=Battle.resolveLearnset(encounter.species),
       battleMoves=catalog.moves, natures=catalog.natures, rng=world.globalRng,
       speciesName=romData:sub(romAddrs.gSpeciesNames + encounter.species * 11 + 1,
         romAddrs.gSpeciesNames + encounter.species * 11 + 10),
@@ -1403,7 +1413,7 @@ world.startRivalBattle = function(action)
       trainer=trainer, partyMon=partyMon, speciesInfo=foeInfo,
       speciesName=romData:sub(romAddrs.gSpeciesNames + partyMon.species * 11 + 1,
         romAddrs.gSpeciesNames + partyMon.species * 11 + 10),
-      learnset=Battle.Learnset.resolve(romData, romAddrs.gLevelUpLearnsets, partyMon.species),
+      learnset=Battle.resolveLearnset(partyMon.species),
       battleMoves=catalog.moves, natures=catalog.natures, rng=world.globalRng,
     })
     local player = Battle.PartyBridge.battlerFromParty(partyRecord, catalog.species)
@@ -1513,7 +1523,7 @@ world.startTrainerBattle = function(trainerId)
       trainer=trainer, partyMon=partyMon, speciesInfo=foeInfo,
       speciesName=romData:sub(romAddrs.gSpeciesNames + partyMon.species * 11 + 1,
         romAddrs.gSpeciesNames + partyMon.species * 11 + 10),
-      learnset=Battle.Learnset.resolve(romData, romAddrs.gLevelUpLearnsets, partyMon.species),
+      learnset=Battle.resolveLearnset(partyMon.species),
       battleMoves=catalog.moves, natures=catalog.natures, rng=world.globalRng,
     })
     local player = Battle.PartyBridge.battlerFromParty(partyRecord, catalog.species)
@@ -2480,7 +2490,7 @@ acceptStarterChoice = function()
     species=choice.species, speciesInfo=catalog.species[choice.species],
     speciesName=romData:sub(romAddrs.gSpeciesNames + choice.species * 11 + 1,
       romAddrs.gSpeciesNames + choice.species * 11 + 10),
-    learnset=Battle.Learnset.resolve(romData, romAddrs.gLevelUpLearnsets, choice.species),
+    learnset=Battle.resolveLearnset(choice.species),
     battleMoves=catalog.moves, natures=catalog.natures, rng=world.globalRng,
     trainer={ id=sb2.playerTrainerId, name=sb2.playerName:sub(1, 7), gender=sb2.playerGender },
     metLocation=world.regionMapSectionId,
@@ -2892,7 +2902,7 @@ local function startScript(scriptPtr, facingNpc)
       local ok, record = pcall(Battle.StarterFactory.generate, {
         species=mon.species, speciesInfo=catalog.species[mon.species],
         speciesName=romData:sub(romAddrs.gSpeciesNames + mon.species * 11 + 1, romAddrs.gSpeciesNames + mon.species * 11 + 10),
-        learnset=Battle.Learnset.resolve(romData, romAddrs.gLevelUpLearnsets, mon.species),
+        learnset=Battle.resolveLearnset(mon.species),
         battleMoves=catalog.moves, natures=catalog.natures, rng=world.globalRng,
         trainer={id=sb2.playerTrainerId, name=sb2.playerName:sub(1, 7), gender=sb2.playerGender},
         metLocation=world.regionMapSectionId, level=mon.level, heldItem=mon.item,
@@ -4266,8 +4276,7 @@ world.settleOakLabRivalBattle = function(battle)
       local reward = Battle.RivalRewards.applyVictory(
         battle.partyRecord, battle.foeInstance, world.battleCatalog.species,
         world.battleCatalog.natures,
-        Battle.Learnset.resolve(romData, romAddrs.gLevelUpLearnsets,
-          battle.controller.engine.player.species),
+        Battle.resolveLearnset(battle.controller.engine.player.species),
         world.regionMapSectionId)
       Battle.RivalRewards.addPrizeMoney(newGame.session.state.saveBlock1)
       messages[#messages + 1] = ("%s gained %d EXP. Points!"):format(battle.playerName, reward.exp)
@@ -4374,8 +4383,7 @@ world.finishTrainerBattle = function(battle)
       local ok, reward = pcall(Battle.RivalRewards.applyVictory,
         battle.partyRecord, battle.foeInstance, world.battleCatalog.species,
         world.battleCatalog.natures,
-        Battle.Learnset.resolve(romData, romAddrs.gLevelUpLearnsets,
-          battle.controller.engine.player.species),
+        Battle.resolveLearnset(battle.controller.engine.player.species),
         world.regionMapSectionId, { allowLevelUpMoveGap = true })
       if ok then
         local levelMsg = ""
@@ -4504,8 +4512,7 @@ function love.update(dt)
             local ok, reward = pcall(Battle.RivalRewards.applyWildVictory,
               battle.partyRecord, battle.foeInstance, world.battleCatalog.species,
               world.battleCatalog.natures,
-              Battle.Learnset.resolve(romData, romAddrs.gLevelUpLearnsets,
-                battle.controller.engine.player.species),
+              Battle.resolveLearnset(battle.controller.engine.player.species),
               world.regionMapSectionId)
             if ok then
               local levelMsg = ""

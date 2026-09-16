@@ -42,6 +42,17 @@ check("Steel is physical", F.isPhysicalType(Data.TYPE_STEEL))
 check("Fire is special", F.isSpecialType(Data.TYPE_FIRE))
 check("Dark is special", F.isSpecialType(Data.TYPE_DARK))
 check("??? is neither physical nor special", not F.isPhysicalType(Data.TYPE_MYSTERY) and not F.isSpecialType(Data.TYPE_MYSTERY))
+check("absent category keeps the FireRed type split",
+  F.damageCategory(Data.moves[Data.MOVE_TACKLE]) == "physical"
+    and F.damageCategory(Data.moves[Data.MOVE_EMBER]) == "special")
+check("explicit per-move category overrides the type split",
+  F.damageCategory({type=Data.TYPE_FIRE, category="physical"}) == "physical"
+    and F.damageCategory({type=Data.TYPE_NORMAL, category="special"}) == "special")
+check("status category selects no damage-stat branch",
+  F.damageCategory({type=Data.TYPE_NORMAL, category="status"}) == "status"
+    and F.calculateBaseDamage({}, {}, {type=Data.TYPE_NORMAL, power=50, category="status"}, false) == 2)
+local invalidCategory = pcall(F.damageCategory, {type=Data.TYPE_NORMAL, category="mixed"})
+check("invalid per-move category fails closed", not invalidCategory)
 
 check("neutral stat stage leaves a stat unchanged", F.applyStatMod(100, 6) == 100)
 check("-6 stat stage is one quarter", F.applyStatMod(100, 0) == 25)
@@ -59,6 +70,16 @@ check("rain halves Fire base damage before CalculateBaseDamage's +2",
   F.calculateBaseDamage(charmander, bulbasaur, Data.moves[Data.MOVE_EMBER], false, nil, "rain") == 3)
 check("sun boosts Fire base damage before CalculateBaseDamage's +2",
   F.calculateBaseDamage(charmander, bulbasaur, Data.moves[Data.MOVE_EMBER], false, nil, "sun") == 6)
+local categoryAttacker = {level=50, attack=100, defense=80, spAttack=20, spDefense=80}
+local categoryDefender = {level=50, attack=80, defense=100, spAttack=80, spDefense=100}
+local physicalFire = {type=Data.TYPE_FIRE, power=60, category="physical"}
+local specialFire = {type=Data.TYPE_FIRE, power=60, category="special"}
+check("explicit category selects the matching attack and defense stats",
+  F.calculateBaseDamage(categoryAttacker, categoryDefender, physicalFire, false)
+    ~= F.calculateBaseDamage(categoryAttacker, categoryDefender, specialFire, false))
+check("physical-category Fire still receives type-based rain modifier",
+  F.calculateBaseDamage(categoryAttacker, categoryDefender, physicalFire, false, nil, "rain")
+    < F.calculateBaseDamage(categoryAttacker, categoryDefender, physicalFire, false))
 
 -- Cmd_remaininghptopower / sFlailHpScaleToPowerTable, used by Flail and
 -- Reversal. maxHP=48 makes the source's scaled-HP threshold boundaries

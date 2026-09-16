@@ -1,6 +1,6 @@
 # Task: add mod-safe category and learnset foundations
 
-- Status: `ACTIVE`
+- Status: `READY_FOR_REVIEWER`
 - AGI status: `AGI READY`
 - Type: `IMPLEMENTATION / FOUNDATION`
 - Owner: project maintainer
@@ -102,3 +102,19 @@ available. Report the first exact seam; do not apply balance data as a workaroun
 After independent `PASS`, dispatch a separate frozen-package mod task that
 uses only these seams and proves all 355 category records, eight move overrides,
 13 natural additions, and negative scope against the frozen CSV.
+
+## Worker result
+
+Implemented revision: pending commit.
+
+- `BattleFormulas.damageCategory` accepts explicit physical/special/status
+  values and retains the Gen-3 type fallback when absent.
+- Dynamic damage transformations and multi-hit bookkeeping retain the source
+  move's explicit category; Fire/Water weather remains type-based.
+- `battleLearnsetAdditions` is an empty-base record namespace; all nine live
+  `main.lua` consumers route through `Battle.resolveLearnset` and the pure
+  `LevelUpLearnset.mergeAdditions` validator.
+- Focused results: BattleFormulas 46/0, learnset overlay 7/0, BattleEngine
+  392/0; `luac5.1 -p main.lua` passed.
+- Full no-ROM suite: 141 test files passed; ROM-dependent checks skipped
+  cleanly because no supported-ROM path was configured.

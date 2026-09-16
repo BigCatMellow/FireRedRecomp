@@ -67,6 +67,23 @@ check("second Ember faints the player", events[3].type == "damage" and events[3]
 check("faint ends the 1v1 battle as playerLost", battle.outcome == "playerLost")
 check("fainted player does not get a second action", #events == 5, #events)
 
+-- Per-move categories are opt-in. A Fire move marked physical must both use
+-- the category resolver and report physical damage for downstream effects.
+categoryMoves = setmetatable({
+  [998] = {power=40, type=Data.TYPE_FIRE, category="physical", accuracy=100, priority=0},
+}, {__index=Data.moves})
+battle = BattleEngine.new({
+  player=BattleEngine.makeBattler({species=1, level=5, stats=bulbaStats,
+    types=Data.BULBASAUR.types, moves={{move=998, pp=1}}}),
+  foe=BattleEngine.makeBattler({species=4, level=5, stats=charStats,
+    types=Data.CHARMANDER.types, moves={{move=Data.MOVE_TACKLE, pp=1}}}),
+  moves=categoryMoves, typeChart=Data.typeChart, rng=scriptedRng({0, 1, 0, 0, 1, 0}),
+})
+battle.player.speed = 20
+events = battle:runTurn({action="move", moveSlot=1}, {action="move", moveSlot=1})
+check("explicit category reaches BattleEngine damage bookkeeping",
+  battle.foe.physicalDamageThisTurn and not battle.foe.specialDamageThisTurn, events[3] and events[3].type)
+
 -- Misses still consume PP, but neither crit nor random-damage RNG.
 battle = makeBattle({ 95 }, { { move = Data.MOVE_TACKLE, pp = 1 } }, { { move = Data.MOVE_TACKLE, pp = 1 } })
 events = battle:runTurn({ action = "move", moveSlot = 1 }, { action = "move", moveSlot = 1 })
