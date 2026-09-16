@@ -1,6 +1,6 @@
 # Task: plan Local Worker Bridge route for Phase 4 Endeavor
 
-- Status: `PLAN COMPLETE — PENDING INDEPENDENT REVIEW`
+- Status: `CLOSED — REVIEWED PASS; PROBE PASSED`
 - Type: `INFRASTRUCTURE / EXECUTION SUBSTRATE / PLAN`
 
 ## Goal
@@ -63,3 +63,11 @@ The literal selector, allowlist, focused execution, replay, and individual
 publication staging configuration independently passed review. Run the separate
 one-file probe next; no Worker request or behavior is authorized until it
 passes.
+
+## Probe
+
+Probe `b3090013` passed guarded Local Worker Bridge run `35081185726` on the
+trusted self-hosted runner: checkout, explicit route selection, Lua toolchain,
+and private-ROM SHA verification passed. Patch validation/application, tests,
+replay, and publication were skipped as required. One independently reviewed
+effect-189 Worker request is now eligible.

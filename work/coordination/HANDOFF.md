@@ -1,8 +1,8 @@
 # FireRedRecomp Coordination Handoff
 
-- Status: `READY_FOR_ROUTE_PROBE`
+- Status: `READY_FOR_WORKER_REQUEST`
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
-- Active task: [`../tasks/local-worker-bridge-phase4-endeavor-route.md`](../tasks/local-worker-bridge-phase4-endeavor-route.md)
+- Active task: [`../tasks/phase4-endeavor-effects.md`](../tasks/phase4-endeavor-effects.md)
 
 ## Published evidence
 
@@ -167,9 +167,12 @@ HP fails with no accuracy draw; otherwise its target-minus-attacker HP amount
 then follows ordinary accuracy/type/no-effect and shared HP handling. It is
 bounded to the engine's represented state: Protect, Substitute, Focus
 Band/Endure, and their absent state/RNG paths remain explicitly excluded. The
-The literal fail-closed Worker route passed independent configuration review.
-It requires one separate non-gameplay readiness probe before any behavior or
-Worker request.
+The literal fail-closed Worker route passed independent configuration review and
+its separate non-gameplay probe `b3090013` passed guarded run `35081185726`.
+The Endeavor effect-189 implementation contract independently passed review.
+Exactly one literal bounded Worker request through this reviewed, probed route
+is authorized; independently review the resulting canonical range before
+closure.
 
 Super Fang effect 40 discovery independently passed: it is a single
 current-target-HP-halving formula record. The next gate is a separate
