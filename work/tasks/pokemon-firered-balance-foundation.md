@@ -1,6 +1,6 @@
 # Task: add mod-safe category and learnset foundations
 
-- Status: `READY_FOR_REVIEWER`
+- Status: `CLOSED — REVIEWED PASS`
 - AGI status: `AGI READY`
 - Type: `IMPLEMENTATION / FOUNDATION`
 - Owner: project maintainer
@@ -120,3 +120,19 @@ Implemented revision: `1939d3b62f29a2ad9e75e1d0f1b0d1abb1c7ce70`.
   392/0; `luac5.1 -p main.lua` passed.
 - Full no-ROM suite: 141 test files passed; ROM-dependent checks skipped
   cleanly because no supported-ROM path was configured.
+
+## Independent review result
+
+Independent Reviewer returned `PASS` on the corrected revision
+`25e3d88e2b7ae5e4b693e1da831abfe2b5bda6db`.
+
+- The reviewer reproduced the sparse-array failure before the correction and
+  confirmed it now fails closed rather than being silently truncated by Lua.
+- The reviewer reproduced the focused results (46 BattleFormulas, 8 learnset
+  overlay, and 392 BattleEngine assertions), `luac5.1 -p main.lua`, and the
+  141-file no-ROM suite.
+- The diff was confined to the permitted generic seams, tests, and task
+  evidence. It contains no frozen package values, mod content, ROM data, or
+  prohibited game surfaces.
+
+Review record: [`../reviews/2026-09-16-pokemon-firered-balance-foundation-review.md`](../reviews/2026-09-16-pokemon-firered-balance-foundation-review.md).

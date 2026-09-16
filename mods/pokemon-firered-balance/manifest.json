@@ -1,0 +1,7 @@
+{
+  "id": "pokemon-firered-balance",
+  "name": "Pokemon FireRed Balance",
+  "version": "1.0.0",
+  "api": 1,
+  "saveImpact": "gameplay"
+}

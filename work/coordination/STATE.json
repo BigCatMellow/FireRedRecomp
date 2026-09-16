@@ -1,12 +1,12 @@
 {
   "schema_version": 1,
-  "updated_utc": "2026-09-15T00:00:00Z",
+  "updated_utc": "2026-09-16T00:00:00Z",
   "role": "ORCHESTRATOR",
   "status": "READY_FOR_REVIEWER",
   "current_phase": "FireRed balance mod implementation",
   "canonical_status_owner": "work/roadmaps/CAPABILITY_CHECKLIST.md",
-  "active_task": "work/tasks/pokemon-firered-balance-foundation.md",
-  "objective": "Add only generic per-move category resolution and modded learnset-addition seams; preserve unmodded Gen-3 behavior and do not apply frozen package values.",
+  "active_task": "work/tasks/pokemon-firered-balance-package-application.md",
+  "objective": "Generate and validate the frozen FireRed balance package as one mod using only independently reviewed category and learnset seams.",
   "next_role": "REVIEWER",
   "reconciliation": {
     "paused_prior_task": "work/tasks/local-worker-bridge-complete-runtime-route.md",
@@ -15,24 +15,24 @@
     "gameplay_defect_found": false,
     "implementation_published": true,
     "tests_claimed": true,
-    "new_prerequisite": "work/tasks/pokemon-firered-balance-foundation.md",
+    "new_prerequisite": null,
     "canonical_status_change": false,
     "phase3_status": "IN PROGRESS — PAUSED BY EXPLICIT HUMAN REPRIORITIZATION"
   },
   "active_task_acceptance_summary": [
-    "Preserve unmodded Gen-3 calculation results while accepting only explicit per-move categories.",
-    "Add a pure, validated, deterministic learnset-additions merge and one common consumer seam.",
-    "Do not add frozen package values, mod content, or any prohibited game surface.",
-    "Run focused and full no-ROM evidence; require independent Reviewer PASS before package application."
+    "Generate all 355 categories from locked upstream inputs, with only the two frozen exceptions.",
+    "Apply exactly eight move-field overrides and 13 natural additions through mod namespaces.",
+    "Do not alter ROM data, trainer, encounter, AI, item/TM, economy, save, or Phase 3 scope.",
+    "Run focused and full no-ROM evidence; require independent Reviewer PASS before representative validation."
   ],
   "boundaries": {
     "may_change": [
-        "BattleFormulas/BattleEngine category seams, LevelUpLearnset, main learnset consumers",
-        "focused category/learnset tests",
+        "frozen-package generator and source lock",
+        "pokemon-firered-balance mod and focused package tests",
         "task/coordination/review documentation"
     ],
     "must_not_change": [
-        "frozen package data, generated category map, or mod package content",
+        "foundation semantics except separately reviewed defect corrections",
         "Phase 3 replay/bridge implementation",
       "supported-ROM policy or exact ROM SHA gate",
       "save format/layout",
@@ -42,7 +42,7 @@
     ]
   },
   "blocker": null,
-  "next_after_success": "After independent PASS, dispatch the separate frozen-package mod task. Do not advance Phase 3 from this balance foundation task.",
+  "next_after_success": "After independent PASS, dispatch representative balance validation. Do not advance Phase 3 from this package task.",
   "legal_content_boundary": "Never commit ROMs, BIOS dumps, generated caches, extracted game assets, or other prohibited content.",
   "phase_completion_rule": "Do not mark Phase 3 DONE until the complete parent exit criterion is evidenced and independently reviewed."
 }
