@@ -1375,6 +1375,27 @@ local sawPsywaveFaint=false
 for _,event in ipairs(events) do sawPsywaveFaint=sawPsywaveFaint or(event.type=="faint" and event.side=="foe") end
 check("Psywave retains shared lethal HP and faint handling",battle.foe.hp==0 and sawPsywaveFaint and battle.rng.draws==2)
 Data.moves[psywaveId]=nil
+-- EFFECT_OHKO (38): special accuracy command consumes no ordinary accuracy
+-- roll; represented Cmd_tryKO consumes one roll before the level gate.
+check("OHKO helper preserves strict boundary and lower-level draw", BattleEngine.ohkoSucceeds(5,5,30,scriptedRng({28}))
+  and not BattleEngine.ohkoSucceeds(5,5,30,scriptedRng({29}))
+  and not BattleEngine.ohkoSucceeds(4,5,30,scriptedRng({0}))
+  and BattleEngine.ohkoSucceeds(6,5,30,scriptedRng({29})))
+local ohkoId=12
+Data.moves[ohkoId]={effect=38,power=1,type=Data.TYPE_NORMAL,accuracy=30,pp=5,secondaryEffectChance=0,target=0,priority=0,flags=19}
+battle=makeBattle({28},{{move=ohkoId,pp=5}},{{move=Data.MOVE_TACKLE,pp=1}});events={};battle:resolveMove(BattleEngine.SIDE_PLAYER,1,events)
+check("OHKO equal-level success uses target current HP without ordinary draws",events[2].type=="damage" and events[2].amount==battle.foe.maxHP and battle.player.moves[1].pp==4 and battle.rng.draws==1)
+battle=makeBattle({29},{{move=ohkoId,pp=5}},{{move=Data.MOVE_TACKLE,pp=1}});events={};battle:resolveMove(BattleEngine.SIDE_PLAYER,1,events)
+check("OHKO strict boundary misses after PP and one KO draw",events[#events].type=="miss" and battle.player.moves[1].pp==4 and battle.rng.draws==1)
+battle=makeBattle({0},{{move=ohkoId,pp=5}},{{move=Data.MOVE_TACKLE,pp=1}});battle.player.level=4;events={};battle:resolveMove(BattleEngine.SIDE_PLAYER,1,events)
+check("OHKO lower-level failure still consumes its KO draw",events[#events].type=="miss" and battle.player.moves[1].pp==4 and battle.rng.draws==1)
+battle=makeBattle({0},{{move=ohkoId,pp=5}},{{move=Data.MOVE_TACKLE,pp=1}});battle.foe.types={Data.TYPE_GHOST,Data.TYPE_GHOST};events={};battle:resolveMove(BattleEngine.SIDE_PLAYER,1,events)
+check("OHKO immunity branches before KO draw",events[#events].type=="noEffect" and battle.player.moves[1].pp==4 and battle.rng.draws==0)
+battle=makeBattle({28},{{move=ohkoId,pp=5}},{{move=Data.MOVE_TACKLE,pp=1}});battle.player.speed=999;events=battle:runTurn({action="move",moveSlot=1},{action="move",moveSlot=1})
+local sawOhkoFaint=false
+for _,event in ipairs(events) do sawOhkoFaint=sawOhkoFaint or(event.type=="faint" and event.side=="foe") end
+check("OHKO retains shared faint handling",battle.foe.hp==0 and sawOhkoFaint and battle.rng.draws==1)
+Data.moves[ohkoId]=nil
 -- EFFECT_FLAIL (99): transient dynamic base power comes from the real scaled
 -- remaining-HP table before ordinary Hit, without changing stored move data.
 check("Flail real scaled-HP power bands cover both sides of every transition",

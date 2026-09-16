@@ -447,6 +447,7 @@ BattleEngine.EFFECT_VITAL_THROW = 78
 BattleEngine.EFFECT_FLAIL = 99
 BattleEngine.EFFECT_ERUPTION = 190
 BattleEngine.EFFECT_PSYWAVE = 88
+BattleEngine.EFFECT_OHKO = 38
 
 -- Real Cmd_remaininghptopower: scale the attacker's remaining HP to 48,
 -- promote a positive underflow to one, then choose Flail/Reversal's dynamic
@@ -476,6 +477,12 @@ function BattleEngine.psywaveDamageFromLevel(level, rng)
   local roll
   repeat roll = rng:next16() % 16 until roll <= 10
   return math.floor(level * (roll * 10 + 50) / 100)
+end
+
+-- Represented-state Cmd_tryKO: its Random call occurs before the level gate.
+function BattleEngine.ohkoSucceeds(attackerLevel, defenderLevel, accuracy, rng)
+  local roll = rng:next16() % 100 + 1
+  return attackerLevel >= defenderLevel and roll < accuracy + attackerLevel - defenderLevel
 end
 -- EFFECT_DREAM_EATER=8: real BattleScript_EffectDreamEater
 -- (data/battle_scripts_1.s:427) jumps straight to "wasn't affected" unless
@@ -1013,6 +1020,7 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
   local needsAccuracyCheck = not isSelfTargetStat and not screenStatusKey
     and move.effect ~= BattleEngine.EFFECT_ALWAYS_HIT
     and move.effect ~= BattleEngine.EFFECT_VITAL_THROW
+    and move.effect ~= BattleEngine.EFFECT_OHKO
 
   -- The FIRST_BATTLE controller deliberately skips the first player
   -- accuracy RNG independently for a damaging move and for a (DOWN-family)
@@ -1143,6 +1151,21 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
       return
     end
     self:applyDamage(attackerSide, defenderSide, defender, damage, flags, events)
+    return
+  end
+
+  if move.effect == BattleEngine.EFFECT_OHKO then
+    local _, flags = BattleFormulas.typeCalc(1, move.type, attacker.types, defender.types, self.typeChart)
+    if flags.noEffect then
+      events[#events + 1] = { type = "noEffect", side = attackerSide, target = defenderSide }
+      return
+    end
+    flags.superEffective = false; flags.notVeryEffective = false
+    if not BattleEngine.ohkoSucceeds(attacker.level, defender.level, move.accuracy, self.rng) then
+      events[#events + 1] = { type = "miss", side = attackerSide }
+      return
+    end
+    self:applyDamage(attackerSide, defenderSide, defender, defender.hp, flags, events)
     return
   end
 
