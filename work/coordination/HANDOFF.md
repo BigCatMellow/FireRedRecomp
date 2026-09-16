@@ -1,8 +1,8 @@
 # FireRedRecomp Coordination Handoff
 
-- Status: `READY_FOR_NEXT_DISCOVERY`
+- Status: `READY_FOR_ROUTE_PROBE`
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
-- Active task: select one next bounded, source-locked Phase 4 effect discovery
+- Active task: [`../tasks/local-worker-bridge-phase4-endeavor-route.md`](../tasks/local-worker-bridge-phase4-endeavor-route.md)
 
 ## Published evidence
 
@@ -160,6 +160,16 @@ replay passing. It closes only the represented-state subset; Lock-On, Protect,
 invulnerability, Sturdy, Focus Band, Endure, Destiny Bond, abilities/items,
 doubles/links, and Phase 4 completion remain excluded. Select the next family
 separately.
+
+Endeavor #283 effect 189 source-lock discovery independently passed. Its
+viability comparison runs after PP but before accuracy: target HP <= attacker
+HP fails with no accuracy draw; otherwise its target-minus-attacker HP amount
+then follows ordinary accuracy/type/no-effect and shared HP handling. It is
+bounded to the engine's represented state: Protect, Substitute, Focus
+Band/Endure, and their absent state/RNG paths remain explicitly excluded. The
+The literal fail-closed Worker route passed independent configuration review.
+It requires one separate non-gameplay readiness probe before any behavior or
+Worker request.
 
 Super Fang effect 40 discovery independently passed: it is a single
 current-target-HP-halving formula record. The next gate is a separate
