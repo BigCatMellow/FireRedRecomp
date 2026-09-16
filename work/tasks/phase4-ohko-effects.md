@@ -1,6 +1,6 @@
 # Task: Phase 4 OHKO effects
 
-- Status: `READY FOR WORKER`
+- Status: `CLOSED — REVIEWED PASS`
 - Type: `PHASE 4 / BATTLE RULES / BOUNDED IMPLEMENTATION`
 
 ## Goal
@@ -30,3 +30,15 @@ Only the seven paths in `local-worker-bridge-phase4-ohko-route.md`.
 
 Other formulas, generic admission, status/items/abilities/UI/main,
 doubles/links, Phase 2's external-reference blocker, or Phase 4 completion.
+
+## Closure evidence
+
+The guarded Worker applied and published the independently reviewed request at
+`3afcd988` after successful run `35080163638`. The actual canonical range
+`49ea4b93..3afcd988` independently passed review. Evidence: focused/no-ROM
+suite `225 passed, 0 failed`; full no-ROM suite `147 files PASS`; SHA-verified
+retail-ROM suite `232 passed, 0 failed`; and the exact four-record ROM fixture
+plus required runtime replay passed. This closes only the represented-state
+effect-38 subset; it does not authorize Lock-On, Protect, invulnerability,
+Sturdy, Focus Band, Endure, Destiny Bond, abilities/items, doubles/links, or
+Phase 4 completion.

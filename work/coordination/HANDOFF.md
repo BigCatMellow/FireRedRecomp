@@ -1,8 +1,8 @@
 # FireRedRecomp Coordination Handoff
 
-- Status: `READY_FOR_WORKER`
+- Status: `READY_FOR_NEXT_DISCOVERY`
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
-- Active task: [`../tasks/phase4-ohko-effects.md`](../tasks/phase4-ohko-effects.md)
+- Active task: select one next bounded, source-locked Phase 4 effect discovery
 
 ## Published evidence
 
@@ -151,6 +151,15 @@ represented-state OHKO implementation through that route. It must preserve the
 strict level/one-roll contract and immunity-before-roll boundary without adding
 Lock-On, Protect, invulnerability, Sturdy, Focus Band, Endure, Destiny Bond,
 ability/item, or doubles/link state.
+
+OHKO effect 38 is now closed and independently reviewed at `3afcd988` after
+guarded run `35080163638`. Its canonical range `49ea4b93..3afcd988` passed
+post-publication review with 225/0 focused no-ROM checks, 147 full-suite files
+passing, 232/0 SHA-verified-ROM checks, the exact four-record fixture, and
+replay passing. It closes only the represented-state subset; Lock-On, Protect,
+invulnerability, Sturdy, Focus Band, Endure, Destiny Bond, abilities/items,
+doubles/links, and Phase 4 completion remain excluded. Select the next family
+separately.
 
 Super Fang effect 40 discovery independently passed: it is a single
 current-target-HP-halving formula record. The next gate is a separate
