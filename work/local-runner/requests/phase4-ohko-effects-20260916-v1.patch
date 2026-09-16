@@ -1,0 +1,116 @@
+diff --git a/scripts/runtime_phase4_ohko_replay.sh b/scripts/runtime_phase4_ohko_replay.sh
+new file mode 100755
+index 00000000..a48d841d
+--- /dev/null
++++ b/scripts/runtime_phase4_ohko_replay.sh
+@@ -0,0 +1,7 @@
++#!/usr/bin/env bash
++set -euo pipefail
++ROOT=$(cd "$(dirname "$0")/.." && pwd); cd "$ROOT"
++: "${POKEPORT_ROM:?set POKEPORT_ROM to verified FireRed US v1.0}"
++lua5.1 tests/battle_engine_test.lua
++lua5.1 tests/phase4_ohko_effect_rom_test.lua
++echo "RUNTIME_REPLAY phase4_ohko PASS effect=38 represented-state=true singles=true"
+diff --git a/src/core/BattleEngine.lua b/src/core/BattleEngine.lua
+index 49a682ea..94061749 100644
+--- a/src/core/BattleEngine.lua
++++ b/src/core/BattleEngine.lua
+@@ -447,6 +447,7 @@ BattleEngine.EFFECT_VITAL_THROW = 78
+ BattleEngine.EFFECT_FLAIL = 99
+ BattleEngine.EFFECT_ERUPTION = 190
+ BattleEngine.EFFECT_PSYWAVE = 88
++BattleEngine.EFFECT_OHKO = 38
+ 
+ -- Real Cmd_remaininghptopower: scale the attacker's remaining HP to 48,
+ -- promote a positive underflow to one, then choose Flail/Reversal's dynamic
+@@ -477,6 +478,12 @@ function BattleEngine.psywaveDamageFromLevel(level, rng)
+   repeat roll = rng:next16() % 16 until roll <= 10
+   return math.floor(level * (roll * 10 + 50) / 100)
+ end
++
++-- Represented-state Cmd_tryKO: its Random call occurs before the level gate.
++function BattleEngine.ohkoSucceeds(attackerLevel, defenderLevel, accuracy, rng)
++  local roll = rng:next16() % 100 + 1
++  return attackerLevel >= defenderLevel and roll < accuracy + attackerLevel - defenderLevel
++end
+ -- EFFECT_DREAM_EATER=8: real BattleScript_EffectDreamEater
+ -- (data/battle_scripts_1.s:427) jumps straight to "wasn't affected" unless
+ -- the target's real status1 has STATUS1_SLEEP set -- a status-condition
+@@ -1013,6 +1020,7 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
+   local needsAccuracyCheck = not isSelfTargetStat and not screenStatusKey
+     and move.effect ~= BattleEngine.EFFECT_ALWAYS_HIT
+     and move.effect ~= BattleEngine.EFFECT_VITAL_THROW
++    and move.effect ~= BattleEngine.EFFECT_OHKO
+ 
+   -- The FIRST_BATTLE controller deliberately skips the first player
+   -- accuracy RNG independently for a damaging move and for a (DOWN-family)
+@@ -1146,6 +1154,21 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
+     return
+   end
+ 
++  if move.effect == BattleEngine.EFFECT_OHKO then
++    local _, flags = BattleFormulas.typeCalc(1, move.type, attacker.types, defender.types, self.typeChart)
++    if flags.noEffect then
++      events[#events + 1] = { type = "noEffect", side = attackerSide, target = defenderSide }
++      return
++    end
++    flags.superEffective = false; flags.notVeryEffective = false
++    if not BattleEngine.ohkoSucceeds(attacker.level, defender.level, move.accuracy, self.rng) then
++      events[#events + 1] = { type = "miss", side = attackerSide }
++      return
++    end
++    self:applyDamage(attackerSide, defenderSide, defender, defender.hp, flags, events)
++    return
++  end
++
+   -- 3. critcalc (one Random()). Cmd_critcalc evaluates Random before its
+   -- FIRST_BATTLE flag check, so the roll is still consumed while criticals
+   -- are suppressed. Suppression is global until the first player damage
+diff --git a/tests/battle_engine_test.lua b/tests/battle_engine_test.lua
+index c614dfbe..56dd8d67 100644
+--- a/tests/battle_engine_test.lua
++++ b/tests/battle_engine_test.lua
+@@ -1375,6 +1375,27 @@ local sawPsywaveFaint=false
+ for _,event in ipairs(events) do sawPsywaveFaint=sawPsywaveFaint or(event.type=="faint" and event.side=="foe") end
+ check("Psywave retains shared lethal HP and faint handling",battle.foe.hp==0 and sawPsywaveFaint and battle.rng.draws==2)
+ Data.moves[psywaveId]=nil
++-- EFFECT_OHKO (38): special accuracy command consumes no ordinary accuracy
++-- roll; represented Cmd_tryKO consumes one roll before the level gate.
++check("OHKO helper preserves strict boundary and lower-level draw", BattleEngine.ohkoSucceeds(5,5,30,scriptedRng({28}))
++  and not BattleEngine.ohkoSucceeds(5,5,30,scriptedRng({29}))
++  and not BattleEngine.ohkoSucceeds(4,5,30,scriptedRng({0}))
++  and BattleEngine.ohkoSucceeds(6,5,30,scriptedRng({29})))
++local ohkoId=12
++Data.moves[ohkoId]={effect=38,power=1,type=Data.TYPE_NORMAL,accuracy=30,pp=5,secondaryEffectChance=0,target=0,priority=0,flags=19}
++battle=makeBattle({28},{{move=ohkoId,pp=5}},{{move=Data.MOVE_TACKLE,pp=1}});events={};battle:resolveMove(BattleEngine.SIDE_PLAYER,1,events)
++check("OHKO equal-level success uses target current HP without ordinary draws",events[2].type=="damage" and events[2].amount==battle.foe.maxHP and battle.player.moves[1].pp==4 and battle.rng.draws==1)
++battle=makeBattle({29},{{move=ohkoId,pp=5}},{{move=Data.MOVE_TACKLE,pp=1}});events={};battle:resolveMove(BattleEngine.SIDE_PLAYER,1,events)
++check("OHKO strict boundary misses after PP and one KO draw",events[#events].type=="miss" and battle.player.moves[1].pp==4 and battle.rng.draws==1)
++battle=makeBattle({0},{{move=ohkoId,pp=5}},{{move=Data.MOVE_TACKLE,pp=1}});battle.player.level=4;events={};battle:resolveMove(BattleEngine.SIDE_PLAYER,1,events)
++check("OHKO lower-level failure still consumes its KO draw",events[#events].type=="miss" and battle.player.moves[1].pp==4 and battle.rng.draws==1)
++battle=makeBattle({0},{{move=ohkoId,pp=5}},{{move=Data.MOVE_TACKLE,pp=1}});battle.foe.types={Data.TYPE_GHOST,Data.TYPE_GHOST};events={};battle:resolveMove(BattleEngine.SIDE_PLAYER,1,events)
++check("OHKO immunity branches before KO draw",events[#events].type=="noEffect" and battle.player.moves[1].pp==4 and battle.rng.draws==0)
++battle=makeBattle({28},{{move=ohkoId,pp=5}},{{move=Data.MOVE_TACKLE,pp=1}});battle.player.speed=999;events=battle:runTurn({action="move",moveSlot=1},{action="move",moveSlot=1})
++local sawOhkoFaint=false
++for _,event in ipairs(events) do sawOhkoFaint=sawOhkoFaint or(event.type=="faint" and event.side=="foe") end
++check("OHKO retains shared faint handling",battle.foe.hp==0 and sawOhkoFaint and battle.rng.draws==1)
++Data.moves[ohkoId]=nil
+ -- EFFECT_FLAIL (99): transient dynamic base power comes from the real scaled
+ -- remaining-HP table before ordinary Hit, without changing stored move data.
+ check("Flail real scaled-HP power bands cover both sides of every transition",
+diff --git a/tests/phase4_ohko_effect_rom_test.lua b/tests/phase4_ohko_effect_rom_test.lua
+new file mode 100644
+index 00000000..a6b6c3bb
+--- /dev/null
++++ b/tests/phase4_ohko_effect_rom_test.lua
+@@ -0,0 +1,10 @@
++package.path=package.path..";./?.lua"
++local B=require("import.BattleMove");local A=require("import.RomAddresses");local R=require("import.RomImporter")
++local p=os.getenv("POKEPORT_ROM");if not p then print("SKIP phase4_ohko_effect_rom_test (set POKEPORT_ROM)");os.exit(0)end
++local ok,i=R.verify(p);if not ok then print("FAIL: ROM verification -- "..tostring(i));os.exit(1)end
++local f=assert(io.open(p,"rb"));local rom=f:read("*a");f:close();local a=assert(A["41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc"]);local m=B.parseTable(rom,a.gBattleMoves,A.COUNTS.MOVES_COUNT)
++local ids={12,32,90,329};local types={0,0,4,15};local flags={19,19,18,18};local n=0
++for i=0,A.COUNTS.MOVES_COUNT-1 do if m[i].effect==38 then n=n+1 end end
++for j,id in ipairs(ids)do local x=m[id];if not(x.effect==38 and x.power==1 and x.type==types[j] and x.accuracy==30 and x.pp==5 and x.target==0 and x.priority==0 and x.flags==flags[j])then print("FAIL: OHKO ROM record changed");os.exit(1)end end
++if n~=4 then print("FAIL: OHKO ROM record count changed");os.exit(1)end
++print("phase4_ohko_effect_rom_test: 1 passed, 0 failed")
