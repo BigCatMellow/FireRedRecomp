@@ -33,11 +33,19 @@ Default to one critical-path Worker package at a time.
 ## Current critical path
 
 ```text
+Frozen FireRed balance package [CURRENT HUMAN-PRIORITIZED DISPATCH]
+        ↓
+category + learnset foundation: ACTIVE
+        ↓ independent PASS
+separate frozen-package mod + deterministic/representative validation
+        ↓
+resume Phase 3 bridge/replay chain
+
 Phase 1 importer/model [DONE]
         ↓
 Phase 2 renderer/runtime [IN PROGRESS]
         ↓
-Phase 3 playable vertical slice [IN PROGRESS]  ← CURRENT DISPATCH FOCUS
+Phase 3 playable vertical slice [IN PROGRESS — PAUSED]
         │
         ├─ Route 1 battle/capture/save/reload: substantial evidence exists
         ├─ canonical Viridian Parcel/Dex/capture progression: evidenced
@@ -74,7 +82,8 @@ Phase 10 mod/release engineering
 | Phase 3C — north-facing Oak Parcel/Dex scene | `REVIEWED PASS` | [`../tasks/oak-parcel-dex-presentation-north.md`](../tasks/oak-parcel-dex-presentation-north.md) | PASS at `2d8c3221775044a54668683e500055307fe4d20b` | supports Phase 3A |
 | Phase 3D — title/new-game through Oak/identity into bedroom | `REVIEWED PASS` | [`../tasks/phase3-title-oak-entry-proof.md`](../tasks/phase3-title-oak-entry-proof.md) | PASS at `8bdbda903fb0574cb169968976d4b40ce96d3563` | supports Phase 3A |
 | Phase 3D-pre — Local Worker Bridge retargeting | `REVIEWED PASS` | [`../tasks/local-worker-bridge-task-routing.md`](../tasks/local-worker-bridge-task-routing.md) | PASS at `0f0dc2f028f204dce4fcaee4e0fff0d9d0afb61e`; do not redo | completed prerequisite |
-| Phase 3E-pre — explicit bridge route | `ACTIVE` | **[`../tasks/local-worker-bridge-complete-runtime-route.md`](../tasks/local-worker-bridge-complete-runtime-route.md)** | bounded route, probe, suites, independent PASS | restore Phase 3E to Worker |
+| Frozen package — mod foundations | `ACTIVE` | **[`../tasks/pokemon-firered-balance-foundation.md`](../tasks/pokemon-firered-balance-foundation.md)** | unchanged Gen-3 fallback, category and learnset-overlay tests, no-ROM suite, independent PASS | separate package-application task |
+| Phase 3E-pre — explicit bridge route | `PAUSED` | [`../tasks/local-worker-bridge-complete-runtime-route.md`](../tasks/local-worker-bridge-complete-runtime-route.md) | bounded route, probe, suites, independent PASS | restore Phase 3E to Worker after balance priority |
 | Phase 3E — complete end-to-end runtime exit replay | `BLOCKED BY 3E-pre` | [`../tasks/phase3-complete-runtime-exit-replay.md`](../tasks/phase3-complete-runtime-exit-replay.md) | one deterministic complete runtime command, required suites, independent PASS | re-evaluate Phase 3A and canonical Phase 3 status |
 | Phase 4 — full Gen 3 battle engine | `IN PROGRESS` | future | general trainer battles, switching, move/effect and stress matrices | reliable trainer/story progression |
 | Phase 5 — overworld/field systems | `IN PROGRESS` | future | Pallet→Elite Four traversal without invalid paths | credits traversal |

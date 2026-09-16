@@ -1,6 +1,6 @@
 # Task: bind the frozen FireRed balance package to FireRedRecomp
 
-- Status: `ACTIVE`
+- Status: `CLOSED — REVIEWED PASS`
 - AGI status: `AGI READY`
 - Type: `PLANNING / TARGET TRANSLATION`
 - Owner: project maintainer
@@ -8,6 +8,8 @@
 - Human authority: explicit project-continuation authority, 2026-09-15
 - Target: `BigCatMellow/FireRedRecomp`, local branch `master`, revision `f2c240e7a94f7a2329771b0ef06d531eabab64e6`
 - Source package: `BigCatMellow/Pilot_Projects@81a079607cb79f58a5eaf02b424c08eccf4b14ad`, `pokemon-firered-balance/data/integrated_player_package_v1.csv`, blob `ed4c75e54435f4b8e8889b47fd8e1c292a8a705f`
+- Reviewed revision: `6da2c4b1fec866e60b04c84a534a29f570bb03e6`
+- Independent review: `work/reviews/2026-09-16-pokemon-firered-balance-translation-manifest-review.md`
 
 ## Goal
 
@@ -64,4 +66,6 @@ Stop with `BLOCKED` if the frozen source package cannot be recovered at its pinn
 
 ## Completion / handoff
 
-After independent `PASS`, dispatch the smallest implementation-foundation task: a data-only category resolver plus a learnset-overlay namespace/consumer seam. Keep the frozen package application itself separate from that foundation.
+Independent Reviewer returned `PASS` at `6da2c4b1fec866e60b04c84a534a29f570bb03e6`: package blob/row coverage, exact target mappings, negative scope, manifest validation command, and the 140-file no-ROM suite were independently verified.
+
+The next bounded task is `work/tasks/pokemon-firered-balance-foundation.md`. It may add only the category resolver and composable learnset-addition overlay; frozen package values remain separate.
