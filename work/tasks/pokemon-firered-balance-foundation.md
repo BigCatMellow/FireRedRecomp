@@ -114,7 +114,9 @@ Implemented revision: `1939d3b62f29a2ad9e75e1d0f1b0d1abb1c7ce70`.
 - `battleLearnsetAdditions` is an empty-base record namespace; all nine live
   `main.lua` consumers route through `Battle.resolveLearnset` and the pure
   `LevelUpLearnset.mergeAdditions` validator.
-- Focused results: BattleFormulas 46/0, learnset overlay 7/0, BattleEngine
+- Independent review found and the follow-up correction rejects sparse
+  additions before `ipairs` could silently ignore them.
+- Focused results: BattleFormulas 46/0, learnset overlay 8/0, BattleEngine
   392/0; `luac5.1 -p main.lua` passed.
 - Full no-ROM suite: 141 test files passed; ROM-dependent checks skipped
   cleanly because no supported-ROM path was configured.

@@ -20,6 +20,8 @@ check("merge does not mutate decoded base entries", #base == 2 and base[1].packe
 check("duplicate addition fails closed", not pcall(Learnset.mergeAdditions, base, {{level=1, move=33}}, 354))
 check("malformed addition fails closed", not pcall(Learnset.mergeAdditions, base, {{level=0, move=98}}, 354))
 check("unsupported move id fails closed", not pcall(Learnset.mergeAdditions, base, {{level=5, move=355}}, 354))
+check("sparse additions fail closed", not pcall(Learnset.mergeAdditions, base,
+  {[2]={level=30, move=317}}, 354))
 
 local files = {
   ["mods/learnset/manifest.json"] = '{"id":"learnset","version":"1.0.0","saveImpact":"gameplay"}',

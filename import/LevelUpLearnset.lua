@@ -41,6 +41,10 @@ function LevelUpLearnset.mergeAdditions(base, additions, maxMoveId)
   assert(type(additions) == "table", "learnset additions must be an array")
   assert(type(maxMoveId) == "number" and maxMoveId >= 1,
     "learnset additions require a supported move-id ceiling")
+  for key in pairs(additions) do
+    assert(type(key) == "number" and key >= 1 and key % 1 == 0 and key <= #additions,
+      "learnset additions must be a contiguous 1-indexed array")
+  end
 
   local out, seen = {}, {}
   for index, entry in ipairs(base) do

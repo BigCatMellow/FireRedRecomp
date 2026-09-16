@@ -19,7 +19,7 @@ It adds no frozen package data or mod package.
 - all damage transformation/event paths retain an explicit category;
 - a `battleLearnsetAdditions` empty-base namespace and pure merge route all
   nine live learnset consumers through one resolver;
-- focused checks passed: 46 BattleFormulas, 7 overlay, 392 BattleEngine;
+- focused checks passed: 46 BattleFormulas, 8 overlay, 392 BattleEngine;
 - `luac5.1 -p main.lua` and the 141-file no-ROM suite passed.
 
 ROM-dependent checks were not run because no `POKEPORT_ROM` path was supplied.
@@ -34,7 +34,7 @@ Review the exact implementation revision against the task only. Verify:
 3. Gen-3 fallback and explicit category behavior are both directly tested;
 4. all nine former direct main learnset consumers use the common resolver;
 5. additions preserve decoded base rows and fail closed on invalid/duplicate
-   values; and
+   values, including sparse arrays; and
 6. the test claims reproduce in the available no-ROM environment.
 
 Return `PASS`, `NEEDS_FIX`, or `BLOCK`. Do not dispatch package application or
