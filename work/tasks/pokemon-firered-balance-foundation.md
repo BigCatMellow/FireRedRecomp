@@ -105,7 +105,7 @@ uses only these seams and proves all 355 category records, eight move overrides,
 
 ## Worker result
 
-Implemented revision: pending commit.
+Implemented revision: `1939d3b62f29a2ad9e75e1d0f1b0d1abb1c7ce70`.
 
 - `BattleFormulas.damageCategory` accepts explicit physical/special/status
   values and retains the Gen-3 type fallback when absent.

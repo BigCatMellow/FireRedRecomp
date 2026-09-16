@@ -11,7 +11,8 @@
 
 ## Worker result
 
-The bounded category/learnset foundation is implemented at the pending commit.
+The bounded category/learnset foundation is implemented at
+`1939d3b62f29a2ad9e75e1d0f1b0d1abb1c7ce70`.
 It adds no frozen package data or mod package.
 
 - explicit move categories are resolved centrally, with unmodded Gen-3 fallback;
