@@ -1,0 +1,4 @@
+phase4-endeavor-effects route readiness probe
+
+Non-gameplay readiness probe for the independently reviewed Endeavor Worker
+Bridge route. It authorizes no patch, test, replay, or gameplay publication.
