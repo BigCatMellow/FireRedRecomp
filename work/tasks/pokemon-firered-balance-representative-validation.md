@@ -61,8 +61,11 @@ it does not merge PR #14 or release the game.
 - `scripts/runtime_balance_mod_validation.sh` completed with the supported ROM:
   the actual LÖVE process reported `RUNTIME_BALANCE_MOD PASS` for the
   gameplay-impacting package and then passed the Route 1 wild-battle replay.
-- `tests/pokemon_firered_balance_rom_matrix_test.lua` passed 7/0 against the
+- `tests/pokemon_firered_balance_rom_matrix_test.lua` passed 13/0 against the
   verified ROM. It overlays the actual package on decoded move data, proves
   the eight frozen move fields, six representative category records,
-  physical-branch weather behavior, all 13 natural additions, and clean
-  unload. This is mechanism evidence, not a trainer-win-rate target.
+  physical-branch weather behavior, all 13 natural additions, clean unload,
+  and named Gengar/Jynx/Hitmonchan/Gyarados/Rhydon/Kabutops/Seaking watch
+  controls. It also proves finite one-copy TM19/TM30 allocation semantics and
+  no natural promotion of Kingler45, Dragonite56, Omastar49, or Aerodactyl
+  Rock Slide. This is mechanism evidence, not a trainer-win-rate target.

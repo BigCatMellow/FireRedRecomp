@@ -8,11 +8,14 @@ local RomAddresses = require("import.RomAddresses")
 local BattleMove = require("import.BattleMove")
 local Runtime = require("src.core.ModRuntime")
 local Formulas = require("src.core.BattleFormulas")
+local SpeciesInfo = require("import.SpeciesInfo")
+local PokemonStats = require("src.core.PokemonStats")
 local ok, info = RomImporter.verify(path)
 assert(ok, "ROM verification failed: " .. tostring(info))
 local file = assert(io.open(path, "rb")); local rom = file:read("*a"); file:close()
 local addrs = assert(RomAddresses["41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc"])
 local raw = BattleMove.parseTable(rom, addrs.gBattleMoves, RomAddresses.COUNTS.MOVES_COUNT)
+local species = SpeciesInfo.parseTable(rom, addrs.gSpeciesInfo, RomAddresses.COUNTS.NUM_SPECIES)
 local function read(name) local h=assert(io.open(name,"rb")); local v=h:read("*a"); h:close(); return v end
 local fs = {list=function() return {"pokemon-firered-balance"} end,
   isDirectory=function(p) return p == "mods/pokemon-firered-balance" end, read=read}
@@ -42,6 +45,44 @@ local expectedAdditions={[24]={30,305},[31]={30,305},[34]={30,342},[42]={35,305}
 local additionsOK, count=true,0
 for species, row in pairs(additions) do count=count+1; local want=expectedAdditions[species]; additionsOK=additionsOK and want and #row==1 and row[1].level==want[1] and row[1].move==want[2] end
 check("all 13 frozen natural additions resolve against real ROM host", additionsOK and count==13)
+local zero = {hp=0,attack=0,defense=0,speed=0,spAttack=0,spDefense=0}
+local neutral = {attack=0,defense=0,speed=0,spAttack=0,spDefense=0}
+local function battler(id)
+  local value = PokemonStats.calculateAll(species[id], 55, zero, zero, neutral)
+  value.level = 55
+  return value
+end
+local function damage(move, attacker, defender)
+  return Formulas.calculateBaseDamage(attacker, defender, move, false)
+end
+local gengar, jynx, hitmonchan, gyarados = battler(94), battler(124), battler(107), battler(130)
+local rhydon, kabutops, seaking = battler(112), battler(141), battler(119)
+local control = battler(95) -- Onix is a fixed neutral defender for watch comparisons.
+check("Gengar Special Ghost and Jynx Aurora70 are distinct real-ROM watch repairs",
+  damage(moves[247], gengar, control) ~= damage(raw[247], gengar, control)
+  and damage(moves[62], jynx, control) > damage(raw[62], jynx, control))
+check("Hitmonchan elemental coverage and Gyarados Bite retain category-watch distinction",
+  damage(moves[7], hitmonchan, control) ~= damage(raw[7], hitmonchan, control)
+  and damage(moves[44], gyarados, control) ~= damage(raw[44], gyarados, control))
+check("Rhydon/Kabutops Rock and Seaking Waterfall watches use only frozen changes",
+  damage(moves[317], rhydon, control) > damage(raw[317], rhydon, control)
+  and moves[350].power == raw[350].power and moves[350].accuracy == 90
+  and damage(moves[127], seaking, control) ~= damage(raw[127], seaking, control))
+local function oneCopy(recipient, eligible)
+  local owners = 0
+  for _, candidate in ipairs(eligible) do if candidate == recipient then owners = owners + 1 end end
+  return owners == 1
+end
+check("TM19 remains one-copy and is a finite Gengar-versus-Kabutops allocation control",
+  moves[202].power == raw[202].power and moves[202].pp == 10
+  and oneCopy("Gengar", {"Gengar", "Kabutops"}) and damage(moves[202], gengar, rhydon) > damage(moves[202], kabutops, rhydon))
+check("TM30's unchanged move data remains a finite allocation control",
+  oneCopy("Gengar", {"Gengar", "Jynx"}) and moves[247].power == raw[247].power
+  and moves[247].pp == raw[247].pp and additions[124] and additions[124][1].move ~= 247)
+check("held timing candidates remain controls with no promoted natural additions",
+  moves[152].power == raw[152].power and moves[200].power == raw[200].power
+  and moves[246].power == raw[246].power and moves[157].power == raw[157].power
+  and additions[99] == nil and additions[149] == nil and additions[139] == nil and additions[142] == nil)
 runtime:unload()
 local unloadedMoves = runtime:resolve("battleMoves")
 local unloadedAdditions = runtime:resolve("battleLearnsetAdditions")
