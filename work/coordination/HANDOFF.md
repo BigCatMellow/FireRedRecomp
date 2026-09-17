@@ -1,8 +1,8 @@
 # FireRedRecomp Coordination Handoff
 
-- Status: `READY_FOR_ROUTE_PROBE`
+- Status: `READY_FOR_WORKER_REQUEST`
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
-- Active task: [`../tasks/local-worker-bridge-phase4-endeavor-route.md`](../tasks/local-worker-bridge-phase4-endeavor-route.md)
+- Active task: [`../tasks/phase4-endeavor-effects.md`](../tasks/phase4-endeavor-effects.md)
 
 ## Published evidence
 
@@ -173,9 +173,11 @@ Independent candidate review rejected reuse of the screen-only `screenFailed`
 event for Endeavor's generic `BattleScript_ButItFailed` outcome. The active
 route amendment adds only `BattleSceneController` and its focused test to make
 that generic event present correctly. Amendment and literal nine-path
-configuration reviews passed. The prior probe is superseded; run one new
-non-gameplay probe before any corrected contract/artifact review or Worker
-request.
+configuration reviews passed. Amended probe `14c164e9` passed guarded run
+`35206557769`; corrected Endeavor implementation-scope and v3 candidate-artifact
+reviews passed. Exactly one literal request is authorized:
+`phase4-endeavor-effects-20260917-v3.patch`; independently review the resulting
+canonical range before closure.
 
 Super Fang effect 40 discovery independently passed: it is a single
 current-target-HP-halving formula record. The next gate is a separate

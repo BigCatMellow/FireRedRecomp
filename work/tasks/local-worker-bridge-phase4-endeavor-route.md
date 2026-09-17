@@ -1,6 +1,6 @@
 # Task: plan Local Worker Bridge route for Phase 4 Endeavor
 
-- Status: `ROUTE AMENDMENT COMPLETE — PENDING INDEPENDENT REVIEW`
+- Status: `CLOSED — REVIEWED PASS; AMENDED PROBE PASSED`
 - Type: `INFRASTRUCTURE / EXECUTION SUBSTRATE / PLAN`
 
 ## Goal
@@ -48,7 +48,8 @@ event and its existing-scene text presentation are required because
 reuse `screenFailed` or alter screen behavior. Tests must prove the
 single ROM record, viability boundary and zero-draw failure, viable hit/miss
 and PP/RNG order, immunity after accuracy with no HP loss, presentation
-clearing, shared faint, excluded formula draws, and ordinary-move regression.
+clearing, positive-HP target landing/no-faint behavior, excluded formula draws,
+and ordinary-move regression.
 
 Preserve trusted-main-only dispatch, one request, SHA gate, literal validation
 and staging, and independent publication review.
@@ -62,19 +63,23 @@ No gameplay code, bridge request, or behavior in this plan.
 The original route and probe passed, but independent candidate review found its
 generic failure message must use a dedicated event rather than the screen-only
 `screenFailed` event. This amendment adds only the scene/controller-test paths
-needed for that event and its text. Independent amendment review passed. Its
-configuration review and one separate probe remain required before any Worker
-request.
+needed for that event and its text. Independent amendment review, configuration
+review, and its separate one-file probe all passed before this corrected
+implementation-contract review.
 
 ## Configured route
 
 The original seven-path configuration and probe are superseded for Endeavor by
 this nine-path amendment. The literal amended selector, focused commands,
-replay, and publication staging independently passed review. Run a new
-one-file probe next; no Worker request is authorized until it passes.
+replay, and publication staging independently passed review. The new one-file
+probe passed; the corrected implementation contract still requires
+independent review before any Worker request.
 
 ## Probe
 
-Probe `b3090013` passed the original route, but does not validate the amended
-nine-path contract. A new one-file probe is required after amended configuration
-review; no Worker request is currently eligible.
+Probe `b3090013` passed the original route, but did not validate the amended
+nine-path contract. Fresh probe `14c164e9` passed guarded Local Worker Bridge
+run `35206557769`: trusted checkout, explicit route selection, Lua toolchain,
+and private-ROM SHA verification passed; patch apply/tests/replay/publication
+were skipped as required. The corrected implementation contract requires fresh
+independent review before any Worker request.

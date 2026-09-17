@@ -1,6 +1,6 @@
 # Task: Phase 4 Endeavor effect
 
-- Status: `ROUTE AMENDMENT PENDING INDEPENDENT REVIEW`
+- Status: `ACTIVE — CORRECTED IMPLEMENTATION CONTRACT REVIEWED PASS`
 - Type: `PHASE 4 / BATTLE RULES / BOUNDED IMPLEMENTATION`
 
 ## Goal
@@ -20,9 +20,11 @@ critical, base-damage, or normal random-damage operations.
    accuracy roll and produces no HP loss. Nonzero type effectiveness
    presentation is cleared without changing the stored HP delta.
 3. The exact target-current-HP minus attacker-current-HP amount uses shared
-   damage/faint handling and bypasses ordinary critical/base/random damage.
+   damage handling and bypasses ordinary critical/base/random damage. A valid
+   living attacker leaves the target at that positive attacker HP and emits no
+   `faint` event.
 4. Tests prove the exact Endeavor ROM record, viability boundary, PP and RNG
-   order for viable hit/miss and immunity, HP/faint behavior, presentation
+   order for viable hit/miss and immunity, positive-HP landing/no-faint behavior, presentation
    clearing, absence of ordinary formula draws, and ordinary-move regression.
 5. Focused/no-ROM/verified-ROM/replay evidence passes only through the
    reviewed, probed `phase4-endeavor-effects` route.
@@ -45,4 +47,13 @@ focused controller test are permitted in the two added route paths.
 Independent candidate review found that Endeavor's `BattleScript_ButItFailed`
 outcome must use a dedicated generic move-failure event, not the screen-only
 `screenFailed` event. The minimal scene/controller-test route amendment is
-pending review, configuration, and a new probe; no request is authorized.
+passed amendment review, configuration review, and fresh probe `14c164e9` /
+guarded run `35206557769`. The corrected contract independently passed fresh
+scope review; no request is authorized until corrected artifact review passes.
+
+## Corrected review
+
+Independent corrected implementation-scope and candidate-artifact reviews
+passed. The reviewed artifact
+`phase4-endeavor-effects-20260917-v3.patch` is the only literal Worker request
+authorized through the reviewed, probed nine-path route.
