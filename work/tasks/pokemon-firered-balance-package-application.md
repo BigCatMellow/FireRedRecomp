@@ -1,6 +1,6 @@
 # Task: apply the frozen FireRed balance package as a mod
 
-- Status: `READY_FOR_REVIEWER`
+- Status: `CLOSED — REVIEWED PASS`
 - AGI status: `AGI READY`
 - Type: `IMPLEMENTATION / DATA PACKAGE`
 - Owner: project maintainer
@@ -57,6 +57,19 @@ approved move-field overrides, and the 13 approved natural learnset additions.
 After independent `PASS`, dispatch representative validation: deterministic
 category/override regressions plus a bounded gameplay matrix using only an
 explicitly configured supported ROM. Do not claim ROM execution without it.
+
+## Independent review result
+
+Independent Reviewer returned `PASS` on revision
+`bb0476cedd9831e5a43d086e52bced1769982c3c`.
+
+The reviewer exported the frozen CSV directly from its pinned Pilot Git blob,
+reproduced byte-identical generation from the pinned FireRed/PokeAPI inputs,
+and confirmed the generator derives every exception, override, and addition
+from parsed frozen rows. The generator regression passed 5/0, the actual-mod
+test passed 7/0, Lua syntax passed, and all 142 no-ROM test files passed.
+
+Review record: [`../reviews/2026-09-17-pokemon-firered-balance-package-application-review.md`](../reviews/2026-09-17-pokemon-firered-balance-package-application-review.md).
 
 ## Worker result
 

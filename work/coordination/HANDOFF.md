@@ -2,11 +2,11 @@
 
 - Record role: `HANDOFF`
 - Primary information class: `TASK CONTEXT`
-- Status: `READY_FOR_REVIEWER`
+- Status: `IN PROGRESS`
 - Lifecycle: `ACTIVE`
 - Authority: coordination only; root `AGENTS.md` and active task contract control review
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
-- Active task: [`../tasks/pokemon-firered-balance-package-application.md`](../tasks/pokemon-firered-balance-package-application.md)
+- Active task: [`../tasks/pokemon-firered-balance-representative-validation.md`](../tasks/pokemon-firered-balance-representative-validation.md)
 - Machine state: [`STATE.json`](STATE.json)
 
 ## Completed prerequisite
@@ -43,33 +43,16 @@ The independent Reviewer returned `PASS` on corrected revision
   no-ROM suite reproduce; and
 - no frozen package data, mod content, ROM data, or prohibited scope appears.
 
+## Completed package gate
+
+The independent Reviewer returned `PASS` at
+`bb0476cedd9831e5a43d086e52bced1769982c3c`. The source-locked package is
+complete; the next task must not change its values.
+
 ## Current worker scope
 
-Generate the frozen balance package as `mods/pokemon-firered-balance` with a
-source-locked build tool and headless actual-package validation. It may apply
-only 355 categories, the eight frozen move-field overrides, and 13 frozen
-natural additions. It must not alter ROM/imported data, trainer, encounter,
-AI, item/TM, economy, save, or Phase 3 surfaces. Independent review is
-required before a separate representative-validation task is dispatched.
-
-## Worker result
-
-The package implementation is ready for independent review. The source-locked
-generator emitted a 355-record category table and only the frozen eight move
-field patches and 13 learnset registrations. The actual-package headless test
-passed 6/0; Lua/Python syntax checks passed; and `bash scripts/test_all.sh`
-passed 142 test files in no-ROM mode. Those results are distinct from the
-later, separately recorded supported-ROM baseline.
-
-The supported-ROM baseline is now available and recorded at
-[`../evidence/2026-09-17-supported-firered-rom-baseline.md`](../evidence/2026-09-17-supported-firered-rom-baseline.md).
-It must not be misreported as package or representative balance validation.
-
-## Reviewer scope
-
-Review the generated package and generator against the frozen CSV and source
-lock. Reproduce the actual-package test, generation from the pinned inputs,
-syntax checks, and no-ROM suite. Confirm that there are exactly 355 categories,
-eight approved field changes, 13 additions, and no trainer, encounter, AI,
-item/TM, economy, ROM, save, or Phase 3 changes. Return `PASS`, `NEEDS_FIX`,
-or `BLOCK`; do not dispatch representative validation in this review.
+Build reproducible actual-runtime load proof and mechanism-focused battle
+validation under the new task. The verified supported-ROM baseline remains at
+[`../evidence/2026-09-17-supported-firered-rom-baseline.md`](../evidence/2026-09-17-supported-firered-rom-baseline.md),
+but is only a prerequisite, not balance evidence. Do not adjust package values
+or any prohibited surface based on validation results.

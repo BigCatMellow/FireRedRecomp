@@ -37,7 +37,9 @@ Frozen FireRed balance package [CURRENT HUMAN-PRIORITIZED DISPATCH]
         ↓
 category + learnset foundation: ACTIVE
         ↓ independent PASS
-separate frozen-package mod + deterministic/representative validation
+frozen-package mod: REVIEWED PASS
+        ↓
+separate deterministic/representative validation: ACTIVE
         ↓
 resume Phase 3 bridge/replay chain
 
@@ -82,7 +84,9 @@ Phase 10 mod/release engineering
 | Phase 3C — north-facing Oak Parcel/Dex scene | `REVIEWED PASS` | [`../tasks/oak-parcel-dex-presentation-north.md`](../tasks/oak-parcel-dex-presentation-north.md) | PASS at `2d8c3221775044a54668683e500055307fe4d20b` | supports Phase 3A |
 | Phase 3D — title/new-game through Oak/identity into bedroom | `REVIEWED PASS` | [`../tasks/phase3-title-oak-entry-proof.md`](../tasks/phase3-title-oak-entry-proof.md) | PASS at `8bdbda903fb0574cb169968976d4b40ce96d3563` | supports Phase 3A |
 | Phase 3D-pre — Local Worker Bridge retargeting | `REVIEWED PASS` | [`../tasks/local-worker-bridge-task-routing.md`](../tasks/local-worker-bridge-task-routing.md) | PASS at `0f0dc2f028f204dce4fcaee4e0fff0d9d0afb61e`; do not redo | completed prerequisite |
-| Frozen package — mod foundations | `ACTIVE` | **[`../tasks/pokemon-firered-balance-foundation.md`](../tasks/pokemon-firered-balance-foundation.md)** | unchanged Gen-3 fallback, category and learnset-overlay tests, no-ROM suite, independent PASS | separate package-application task |
+| Frozen package — mod foundations | `REVIEWED PASS` | [`../tasks/pokemon-firered-balance-foundation.md`](../tasks/pokemon-firered-balance-foundation.md) | independently passed at `25e3d88e` | package application |
+| Frozen package — mod application | `REVIEWED PASS` | [`../tasks/pokemon-firered-balance-package-application.md`](../tasks/pokemon-firered-balance-package-application.md) | independently passed at `bb0476ce` | representative validation |
+| Frozen package — representative validation | `ACTIVE` | **[`../tasks/pokemon-firered-balance-representative-validation.md`](../tasks/pokemon-firered-balance-representative-validation.md)** | actual-runtime load proof, mechanism matrix, supported-ROM evidence, independent PASS | durable PR #14 implementation evidence |
 | Phase 3E-pre — explicit bridge route | `PAUSED` | [`../tasks/local-worker-bridge-complete-runtime-route.md`](../tasks/local-worker-bridge-complete-runtime-route.md) | bounded route, probe, suites, independent PASS | restore Phase 3E to Worker after balance priority |
 | Phase 3E — complete end-to-end runtime exit replay | `BLOCKED BY 3E-pre` | [`../tasks/phase3-complete-runtime-exit-replay.md`](../tasks/phase3-complete-runtime-exit-replay.md) | one deterministic complete runtime command, required suites, independent PASS | re-evaluate Phase 3A and canonical Phase 3 status |
 | Phase 4 — full Gen 3 battle engine | `IN PROGRESS` | future | general trainer battles, switching, move/effect and stress matrices | reliable trainer/story progression |

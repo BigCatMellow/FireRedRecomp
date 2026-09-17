@@ -2,15 +2,15 @@
   "schema_version": 1,
   "updated_utc": "2026-09-16T00:00:00Z",
   "role": "ORCHESTRATOR",
-  "status": "READY_FOR_REVIEWER",
+  "status": "IN_PROGRESS",
   "current_phase": "FireRed balance mod implementation",
   "canonical_status_owner": "work/roadmaps/CAPABILITY_CHECKLIST.md",
-  "active_task": "work/tasks/pokemon-firered-balance-package-application.md",
-  "objective": "Generate and validate the frozen FireRed balance package as one mod using only independently reviewed category and learnset seams.",
-  "next_role": "REVIEWER",
+  "active_task": "work/tasks/pokemon-firered-balance-representative-validation.md",
+  "objective": "Validate the independently approved frozen balance mod in deterministic and representative actual-runtime battle lanes without reopening package values.",
+  "next_role": "WORKER",
   "reconciliation": {
     "paused_prior_task": "work/tasks/local-worker-bridge-complete-runtime-route.md",
-    "worker_result": "IMPLEMENTED — REVIEW PENDING",
+    "worker_result": "PACKAGE IMPLEMENTED — REVIEWED PASS",
     "blocker": null,
     "gameplay_defect_found": false,
     "implementation_published": true,
@@ -42,7 +42,7 @@
     ]
   },
   "blocker": null,
-  "next_after_success": "After independent PASS, dispatch representative balance validation. Do not advance Phase 3 from this package task.",
+  "next_after_success": "After independent PASS, record durable PR #14 implementation evidence and perform final completion audit. Do not advance Phase 3 from this validation task.",
   "legal_content_boundary": "Never commit ROMs, BIOS dumps, generated caches, extracted game assets, or other prohibited content.",
   "phase_completion_rule": "Do not mark Phase 3 DONE until the complete parent exit criterion is evidenced and independently reviewed."
 }
