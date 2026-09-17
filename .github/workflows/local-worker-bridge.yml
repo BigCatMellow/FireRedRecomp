@@ -234,7 +234,7 @@ jobs:
                 ;;
               phase4-ohko-effects:src/core/BattleEngine.lua|phase4-ohko-effects:tests/battle_engine_test.lua|phase4-ohko-effects:tests/phase4_ohko_effect_rom_test.lua|phase4-ohko-effects:scripts/runtime_phase4_ohko_replay.sh|phase4-ohko-effects:work/tasks/phase4-ohko-effects.md|phase4-ohko-effects:work/coordination/STATE.json|phase4-ohko-effects:work/coordination/HANDOFF.md)
                 ;;
-              phase4-endeavor-effects:src/core/BattleEngine.lua|phase4-endeavor-effects:tests/battle_engine_test.lua|phase4-endeavor-effects:tests/phase4_endeavor_effect_rom_test.lua|phase4-endeavor-effects:scripts/runtime_phase4_endeavor_replay.sh|phase4-endeavor-effects:work/tasks/phase4-endeavor-effects.md|phase4-endeavor-effects:work/coordination/STATE.json|phase4-endeavor-effects:work/coordination/HANDOFF.md)
+              phase4-endeavor-effects:src/core/BattleEngine.lua|phase4-endeavor-effects:tests/battle_engine_test.lua|phase4-endeavor-effects:tests/phase4_endeavor_effect_rom_test.lua|phase4-endeavor-effects:scripts/runtime_phase4_endeavor_replay.sh|phase4-endeavor-effects:src/core/BattleSceneController.lua|phase4-endeavor-effects:tests/battle_scene_controller_test.lua|phase4-endeavor-effects:work/tasks/phase4-endeavor-effects.md|phase4-endeavor-effects:work/coordination/STATE.json|phase4-endeavor-effects:work/coordination/HANDOFF.md)
                 ;;
               *)
                 echo "Patch target is not authorized for explicit route '$ROUTE': $target" >&2
@@ -347,6 +347,7 @@ jobs:
               ;;
             phase4-endeavor-effects)
               "$LUA" tests/battle_engine_test.lua
+              "$LUA" tests/battle_scene_controller_test.lua
               "$LUA" tests/phase4_endeavor_effect_rom_test.lua
               ;;
             *)
@@ -601,7 +602,7 @@ jobs:
               done
               ;;
             phase4-endeavor-effects)
-              for path in src/core/BattleEngine.lua tests/battle_engine_test.lua tests/phase4_endeavor_effect_rom_test.lua scripts/runtime_phase4_endeavor_replay.sh work/tasks/phase4-endeavor-effects.md work/coordination/STATE.json work/coordination/HANDOFF.md; do
+              for path in src/core/BattleEngine.lua tests/battle_engine_test.lua tests/phase4_endeavor_effect_rom_test.lua scripts/runtime_phase4_endeavor_replay.sh src/core/BattleSceneController.lua tests/battle_scene_controller_test.lua work/tasks/phase4-endeavor-effects.md work/coordination/STATE.json work/coordination/HANDOFF.md; do
                 if [[ -e "$path" ]]; then
                   git add -- "$path"
                 fi

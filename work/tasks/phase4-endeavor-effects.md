@@ -1,6 +1,6 @@
 # Task: Phase 4 Endeavor effect
 
-- Status: `ACTIVE — REVIEWED IMPLEMENTATION CONTRACT`
+- Status: `ROUTE AMENDMENT PENDING INDEPENDENT REVIEW`
 - Type: `PHASE 4 / BATTLE RULES / BOUNDED IMPLEMENTATION`
 
 ## Goal
@@ -29,16 +29,20 @@ critical, base-damage, or normal random-damage operations.
 
 ## MAY CHANGE
 
-Only the seven paths in `local-worker-bridge-phase4-endeavor-route.md`.
+Only the nine paths in `local-worker-bridge-phase4-endeavor-route.md`.
 
 ## MUST NOT CHANGE
 
 Protect, Substitute, Focus Band, Endure, their state/RNG paths (including
 Focus Band RNG), generic current-HP formulas, other effects, item/ability/status
-state, UI/controller/main, doubles/links, Phase 2's external-reference blocker,
-or Phase 4 completion.
+state, unrelated UI/controller/main behavior, doubles/links, Phase 2's
+external-reference blocker, or Phase 4 completion. Only the minimal generic
+move-failure event, its existing-scene “But it failed!” presentation, and its
+focused controller test are permitted in the two added route paths.
 
 ## Review
 
-Independent implementation-scope review passed. Exactly one literal bounded
-Worker patch request through the reviewed, probed route is now authorized.
+Independent candidate review found that Endeavor's `BattleScript_ButItFailed`
+outcome must use a dedicated generic move-failure event, not the screen-only
+`screenFailed` event. The minimal scene/controller-test route amendment is
+pending review, configuration, and a new probe; no request is authorized.

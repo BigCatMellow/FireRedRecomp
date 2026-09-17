@@ -1,6 +1,6 @@
 # Task: plan Local Worker Bridge route for Phase 4 Endeavor
 
-- Status: `CLOSED — REVIEWED PASS; PROBE PASSED`
+- Status: `ROUTE AMENDMENT COMPLETE — PENDING INDEPENDENT REVIEW`
 - Type: `INFRASTRUCTURE / EXECUTION SUBSTRATE / PLAN`
 
 ## Goal
@@ -16,16 +16,19 @@ Selector `phase4-endeavor-effects` must allow only:
 2. `tests/battle_engine_test.lua`
 3. `tests/phase4_endeavor_effect_rom_test.lua`
 4. `scripts/runtime_phase4_endeavor_replay.sh`
-5. `work/tasks/phase4-endeavor-effects.md`
-6. `work/coordination/STATE.json`
-7. `work/coordination/HANDOFF.md`
+5. `src/core/BattleSceneController.lua`
+6. `tests/battle_scene_controller_test.lua`
+7. `work/tasks/phase4-endeavor-effects.md`
+8. `work/coordination/STATE.json`
+9. `work/coordination/HANDOFF.md`
 
 Focused execution is exactly `lua5.1 tests/battle_engine_test.lua`, then
+`lua5.1 tests/battle_scene_controller_test.lua`, then
 `lua5.1 tests/phase4_endeavor_effect_rom_test.lua`; full no-ROM is
 `env -u POKEPORT_ROM bash scripts/test_all.sh`; verified-ROM is
 `bash scripts/test_all.sh` with the SHA-verified `POKEPORT_ROM`; replay is
 `bash scripts/runtime_phase4_endeavor_replay.sh`. Publication stages the same
-seven literal paths individually when present. Require a separate one-file
+nine literal paths individually when present. Require a separate one-file
 probe `work/local-runner/probes/phase4-endeavor-effects-route-YYYYMMDD.probe`.
 
 ## Acceptance and exclusions
@@ -38,8 +41,11 @@ only nonzero effectiveness presentation, and apply exactly target-current-HP
 minus attacker-current-HP through shared HP/faint handling. Do not run ordinary
 critical, base-damage, or normal random-damage operations. Protect, Substitute,
 Focus Band, Endure, all item/ability/status state (and Focus Band RNG),
-doubles/links, generic current-HP formula support, other effects, UI,
-controller/main, and Phase 4 completion are excluded. Tests must prove the
+doubles/links, generic current-HP formula support, other effects, unrelated
+UI/controller/main behavior, and Phase 4 completion are excluded. A minimal generic move-failure
+event and its existing-scene text presentation are required because
+`BattleScript_ButItFailed` is not the screen-only failure event; this must not
+reuse `screenFailed` or alter screen behavior. Tests must prove the
 single ROM record, viability boundary and zero-draw failure, viable hit/miss
 and PP/RNG order, immunity after accuracy with no HP loss, presentation
 clearing, shared faint, excluded formula draws, and ordinary-move regression.
@@ -49,25 +55,26 @@ and staging, and independent publication review.
 
 ## MUST NOT CHANGE
 
-No configuration, code, tests, bridge request, or behavior in this plan.
+No gameplay code, bridge request, or behavior in this plan.
 
 ## Review
 
-Independent route-plan review passed. Configure only the literal route next,
-then independently review its configuration and run the separate one-file probe
-before any Worker request.
+The original route and probe passed, but independent candidate review found its
+generic failure message must use a dedicated event rather than the screen-only
+`screenFailed` event. This amendment adds only the scene/controller-test paths
+needed for that event and its text. Independent amendment review passed. Its
+configuration review and one separate probe remain required before any Worker
+request.
 
 ## Configured route
 
-The literal selector, allowlist, focused execution, replay, and individual
-publication staging configuration independently passed review. Run the separate
-one-file probe next; no Worker request or behavior is authorized until it
-passes.
+The original seven-path configuration and probe are superseded for Endeavor by
+this nine-path amendment. The literal amended selector, focused commands,
+replay, and publication staging independently passed review. Run a new
+one-file probe next; no Worker request is authorized until it passes.
 
 ## Probe
 
-Probe `b3090013` passed guarded Local Worker Bridge run `35081185726` on the
-trusted self-hosted runner: checkout, explicit route selection, Lua toolchain,
-and private-ROM SHA verification passed. Patch validation/application, tests,
-replay, and publication were skipped as required. One independently reviewed
-effect-189 Worker request is now eligible.
+Probe `b3090013` passed the original route, but does not validate the amended
+nine-path contract. A new one-file probe is required after amended configuration
+review; no Worker request is currently eligible.
