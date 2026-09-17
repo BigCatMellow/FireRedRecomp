@@ -1206,6 +1206,22 @@ local function loadBattleSceneAssets(data, addrs, dbg)
     result.items = runtime:resolve("battleItems")
     result.learnsetAdditions = runtime:resolve("battleLearnsetAdditions")
     world.modRuntime, world.modProfile = runtime, runtime.profile
+    -- Opt-in evidence probe: this is intentionally outside gameplay and only
+    -- emits during the bounded balance-validation runner. It proves that the
+    -- actual LÖVE filesystem discovered the package and that resolved live
+    -- records contain representative frozen values.
+    if os.getenv("POKEPORT_BALANCE_MOD_PROBE") == "1" then
+      local balanceEntry
+      for _, entry in ipairs(runtime.profile.entries) do
+        if entry.id == "pokemon-firered-balance" then balanceEntry = entry end
+      end
+      assert(balanceEntry and balanceEntry.impact == "gameplay",
+        "balance validation requires the pokemon-firered-balance gameplay mod")
+      assert(result.moves[124].category == "physical" and result.moves[188].category == "physical"
+        and result.moves[41].power == 30 and result.learnsetAdditions[95][1].move == 317,
+        "balance validation observed incomplete resolved package data")
+      print("RUNTIME_BALANCE_MOD PASS id=pokemon-firered-balance saveImpact=gameplay")
+    end
     world.battleCatalog = result
     dbg("battle species/move/nature/trainer tables, modded move view, and grass terrain built")
   else
