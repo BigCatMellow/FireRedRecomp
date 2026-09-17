@@ -1,6 +1,6 @@
 # Task: Phase 4 Endeavor effect
 
-- Status: `ACTIVE — CORRECTED IMPLEMENTATION CONTRACT REVIEWED PASS`
+- Status: `CLOSED — REVIEWED PASS`
 - Type: `PHASE 4 / BATTLE RULES / BOUNDED IMPLEMENTATION`
 
 ## Goal
@@ -57,3 +57,15 @@ Independent corrected implementation-scope and candidate-artifact reviews
 passed. The reviewed artifact
 `phase4-endeavor-effects-20260917-v3.patch` is the only literal Worker request
 authorized through the reviewed, probed nine-path route.
+
+## Closure evidence
+
+The guarded Worker applied and published the reviewed request as `3a489b94`
+after successful run `35207142939`. Independent canonical-range review passed
+the actual range `50537277..3a489b94`: it changed only six permitted paths,
+preserved source order and exclusions, documents/uses generic `moveFailed`
+distinct from `screenFailed`, presents “But it failed!”, and proves positive-HP
+landing with no faint. The guarded run passed target validation, apply,
+focused/no-ROM/verified-ROM suites, replay, and publication. This closes only
+effect 189 in the existing one-opponent engine; it does not authorize broader
+state, formula, UI/controller, doubles/link, or Phase 4 completion work.
