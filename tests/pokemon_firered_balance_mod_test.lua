@@ -20,6 +20,8 @@ local fs = {
   isDirectory=function(path) return path == "mods/pokemon-firered-balance" end,
   read=read,
 }
+check("mod root contains no stale placeholder package directory",
+  io.open("mods/examples/.gitkeep", "rb") == nil)
 local moves = {}
 for id = 0, 354 do moves[id] = {power=1, accuracy=100, pp=20, marker=id} end
 local host = {namespaces={

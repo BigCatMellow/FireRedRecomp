@@ -69,6 +69,10 @@ Implemented revision pending commit.
 - `mods/pokemon-firered-balance` is a gameplay-impacting package with a
   generated category table and only the eight approved deep patches and 13
   approved learnset registrations.
+- Removed the obsolete tracked `mods/examples/.gitkeep` placeholder: LÖVE
+  discovers every directory under `mods/`, so retaining a manifest-less
+  placeholder would make package discovery reject the complete set before the
+  balance mod could load.
 - `tests/pokemon_firered_balance_mod_test.lua` loads the actual package into a
   complete synthetic host and verifies coverage, exact frozen values, negative
   preservation, and unload behavior.
