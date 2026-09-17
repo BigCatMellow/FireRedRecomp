@@ -65,7 +65,9 @@ Implemented revision pending commit.
 - `scripts/generate_pokemon_firered_balance_mod.py` verifies the exact FireRed
   revision, PokeAPI and frozen-package SHA-256 values, 23-row package shape,
   identifier mappings, and complete 355-record category coverage before
-  generating the mod entrypoint.
+  generating the mod entrypoint. It derives each category exception, move
+  field override, and natural addition from parsed frozen CSV rows; it has no
+  second editable value table.
 - `mods/pokemon-firered-balance` is a gameplay-impacting package with a
   generated category table and only the eight approved deep patches and 13
   approved learnset registrations.
@@ -76,6 +78,14 @@ Implemented revision pending commit.
 - `tests/pokemon_firered_balance_mod_test.lua` loads the actual package into a
   complete synthetic host and verifies coverage, exact frozen values, negative
   preservation, and unload behavior.
+- `tests/generate_pokemon_firered_balance_mod_test.py --package <frozen-csv>`
+  proves package values are parsed from CSV and rejects changed override or
+  natural-addition rows at the locked hash gate. Export `<frozen-csv>` only
+  from the recorded Pilot Git blob; do not use a mutable source checkout.
+- Independent review initially returned `NEEDS_FIX` because the generator
+  duplicated those 21 non-category values in code. The correction removes the
+  duplicate tables, derives all package content from parsed rows, and is now
+  awaiting a fresh independent review.
 - Focused package test passed 6/0; `luac5.1 -p` and Python compilation passed;
   `bash scripts/test_all.sh` passed 142 test files in no-ROM mode. That run's
   ROM-backed checks correctly skipped because no path was supplied to it.
