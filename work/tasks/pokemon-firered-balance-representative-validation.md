@@ -55,3 +55,14 @@ Independent Reviewer must confirm the actual-runtime load proof, matrix
 coverage, bounded interpretation, and negative scope. A `PASS` permits durable
 PR #14 implementation evidence and a final implementation-completion audit;
 it does not merge PR #14 or release the game.
+
+## Worker evidence in progress
+
+- `scripts/runtime_balance_mod_validation.sh` completed with the supported ROM:
+  the actual LÖVE process reported `RUNTIME_BALANCE_MOD PASS` for the
+  gameplay-impacting package and then passed the Route 1 wild-battle replay.
+- `tests/pokemon_firered_balance_rom_matrix_test.lua` passed 7/0 against the
+  verified ROM. It overlays the actual package on decoded move data, proves
+  the eight frozen move fields, six representative category records,
+  physical-branch weather behavior, all 13 natural additions, and clean
+  unload. This is mechanism evidence, not a trainer-win-rate target.
