@@ -113,6 +113,9 @@ c:processInput(input(InputState.A_BUTTON)); c:processInput(input(InputState.A_BU
 check("unsupported status effects remain an explicit boundary",
   c:message() == "That move's effect is not available yet." and c.engine.player.moves[1].pp == 10)
 
+local failedEntries = c:_eventMessages({ { type="moveFailed", side="player" } })
+check("generic move failure presents FireRed But it failed text", failedEntries[1].text == "But it failed!", failedEntries[1] and failedEntries[1].text)
+
 -- Real BAG wiring: with a bag that actually has a Poke Ball, BAG throws
 -- one (consuming it regardless of outcome, matching real
 -- RemoveBagItem-before-throw semantics) and the engine's real "capture"

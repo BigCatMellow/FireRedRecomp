@@ -1481,6 +1481,28 @@ battle.foe.hp = 100; events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1
 check("Super Fang path does not alter existing Dragon Rage fixed 40 damage", battle.foe.hp == 60 and battle.rng.draws == 1)
 Data.moves[fixedId] = nil
 Data.moves[superFangId] = nil
+-- EFFECT_ENDEAVOR (189): PP and the target-vs-attacker HP viability check
+-- precede ordinary accuracy; a viable set-damage hit then bypasses crit/base/random.
+local endeavorId = 283
+Data.moves[endeavorId] = { effect=189,power=1,type=Data.TYPE_NORMAL,accuracy=80,pp=5,secondaryEffectChance=0,target=0,priority=0,flags=51 }
+battle = makeBattle({0}, {{move=endeavorId,pp=5}}, {{move=Data.MOVE_TACKLE,pp=1}})
+battle.player.hp = 10; battle.foe.hp = 10; events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER,1,events)
+check("Endeavor equal-HP viability failure consumes PP but no accuracy RNG", events[2].type == "moveFailed" and battle.player.moves[1].pp == 4 and battle.rng.draws == 0)
+battle = makeBattle({0}, {{move=endeavorId,pp=5}}, {{move=Data.MOVE_TACKLE,pp=1}})
+battle.player.hp = 5; battle.foe.hp = 20; events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER,1,events)
+local endeavorFainted = false
+for _, event in ipairs(events) do endeavorFainted = endeavorFainted or event.type == "faint" end
+check("Endeavor viable hit sets target HP to attacker HP without formula RNG or faint", battle.foe.hp == 5 and events[2].amount == 15 and battle.player.moves[1].pp == 4 and battle.rng.draws == 1 and not endeavorFainted)
+battle = makeBattle({99}, {{move=endeavorId,pp=5}}, {{move=Data.MOVE_TACKLE,pp=1}})
+battle.player.hp = 5; battle.foe.hp = 20; events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER,1,events)
+check("Endeavor viable miss follows ordinary accuracy after PP", events[#events].type == "miss" and battle.player.moves[1].pp == 4 and battle.rng.draws == 1)
+battle = makeBattle({0}, {{move=endeavorId,pp=5}}, {{move=Data.MOVE_TACKLE,pp=1}})
+battle.player.hp = 5; battle.foe.hp = 20; battle.foe.types = {Data.TYPE_GHOST,Data.TYPE_GHOST}; events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER,1,events)
+check("Endeavor immunity follows accuracy and leaves HP unchanged", events[#events].type == "noEffect" and battle.foe.hp == 20 and battle.player.moves[1].pp == 4 and battle.rng.draws == 1)
+battle = makeBattle({0}, {{move=endeavorId,pp=5}}, {{move=Data.MOVE_TACKLE,pp=1}})
+battle.player.hp = 5; battle.foe.hp = 20; battle.foe.types = {Data.TYPE_ROCK,Data.TYPE_ROCK}; events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER,1,events)
+check("Endeavor clears nonzero effectiveness presentation", battle.foe.hp == 5 and events[2].superEffective == false and events[2].notVeryEffective == false, events[2])
+Data.moves[endeavorId] = nil
 -- EFFECT_EXPLOSION (7): PP/Damp/self-KO precede accuracy, while target then
 -- attacker faint records are finalized together after the hit path.
 local explosionId = 999

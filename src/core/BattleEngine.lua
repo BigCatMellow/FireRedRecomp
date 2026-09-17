@@ -37,6 +37,7 @@
 --   {type="forcedSwitchResolved", side=}           -- resolveForcedSwitch
 --    supplied the replacement; the battle may proceed normally again.
 --   {type="noPP", side=, move=}                   -- see the Struggle stub
+--   {type="moveFailed", side=}                    -- generic But it failed; distinct from screenFailed
 --   {type="statChange", side=<target>, stat=, stages=-1, prevented=}
 --   {type="screenSet", side=, screen="reflect"|"lightScreen", turns=5}
 --   {type="screenFailed", side=, screen="reflect"|"lightScreen"} -- already active
@@ -448,6 +449,7 @@ BattleEngine.EFFECT_FLAIL = 99
 BattleEngine.EFFECT_ERUPTION = 190
 BattleEngine.EFFECT_PSYWAVE = 88
 BattleEngine.EFFECT_OHKO = 38
+BattleEngine.EFFECT_ENDEAVOR = 189
 
 -- Real Cmd_remaininghptopower: scale the attacker's remaining HP to 48,
 -- promote a positive underflow to one, then choose Flail/Reversal's dynamic
@@ -1002,6 +1004,18 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
     return
   end
 
+  -- EffectEndeavor reaches ppreduce before its HP comparison, unlike the
+  -- ordinary Hit family below. A non-viable target goes directly to the
+  -- generic "But it failed" message and consumes no accuracy RNG.
+  local isEndeavor = move.effect == BattleEngine.EFFECT_ENDEAVOR
+  if isEndeavor then
+    if slot then slot.pp = slot.pp - 1 end
+    if defender.hp <= attacker.hp then
+      events[#events + 1] = { type = "moveFailed", side = attackerSide }
+      return
+    end
+  end
+
   -- Real BattleScript_EffectStatUp (every self-target UP/UP_2 effect) has
   -- NO accuracycheck step at all: attackcanceler -> attackstring ->
   -- ppreduce -> statbuffchange. It cannot miss and consumes zero Random()
@@ -1045,7 +1059,7 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
   -- runs ppreduce). Real HITMARKER_NO_PPDEDUCT means Struggle (no `slot`,
   -- see above) skips this step entirely -- there is no move slot of its
   -- own to decrement.
-  if slot then
+  if slot and not isEndeavor then
     slot.pp = slot.pp - 1
   end
 
@@ -1134,6 +1148,23 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
     flags.notVeryEffective = false
     local damage = math.max(1, math.floor(defender.hp / 2))
     self:applyDamage(attackerSide, defenderSide, defender, damage, flags, events)
+    return
+  end
+
+  if move.effect == BattleEngine.EFFECT_ENDEAVOR then
+    -- setdamagetohealthdifference precomputed this after PP and before the
+    -- ordinary accuracy step. The later set-damage path retains typecalc but
+    -- bypasses critical/base/random damage and clears nonzero presentation.
+    local _, flags = BattleFormulas.typeCalc(
+      1, move.type, attacker.types, defender.types, self.typeChart
+    )
+    if flags.noEffect then
+      events[#events + 1] = { type = "noEffect", side = attackerSide, target = defenderSide }
+      return
+    end
+    flags.superEffective = false
+    flags.notVeryEffective = false
+    self:applyDamage(attackerSide, defenderSide, defender, defender.hp - attacker.hp, flags, events)
     return
   end
 

@@ -188,6 +188,8 @@ function BattleSceneController:_eventMessages(events)
       add(name(event.side) .. " used " .. self.moveName(event.move) .. "!")
     elseif event.type == "miss" then
       add(possessive(name(event.side)) .. " attack missed!")
+    elseif event.type == "moveFailed" then
+      add("But it failed!")
     elseif event.type == "critical" then
       add("A critical hit!")
     elseif event.type == "damage" then
