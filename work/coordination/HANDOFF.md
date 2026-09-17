@@ -58,8 +58,12 @@ The package implementation is ready for independent review. The source-locked
 generator emitted a 355-record category table and only the frozen eight move
 field patches and 13 learnset registrations. The actual-package headless test
 passed 6/0; Lua/Python syntax checks passed; and `bash scripts/test_all.sh`
-passed 142 test files in no-ROM mode. No supported ROM is configured, so
-ROM-backed checks are still missing evidence rather than a claimed pass.
+passed 142 test files in no-ROM mode. Those results are distinct from the
+later, separately recorded supported-ROM baseline.
+
+The supported-ROM baseline is now available and recorded at
+[`../evidence/2026-09-17-supported-firered-rom-baseline.md`](../evidence/2026-09-17-supported-firered-rom-baseline.md).
+It must not be misreported as package or representative balance validation.
 
 ## Reviewer scope
 

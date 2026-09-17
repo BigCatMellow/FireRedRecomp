@@ -73,5 +73,9 @@ Implemented revision pending commit.
   complete synthetic host and verifies coverage, exact frozen values, negative
   preservation, and unload behavior.
 - Focused package test passed 6/0; `luac5.1 -p` and Python compilation passed;
-  `bash scripts/test_all.sh` passed 142 test files in no-ROM mode. ROM-backed
-  checks skipped cleanly because no supported-ROM path is configured.
+  `bash scripts/test_all.sh` passed 142 test files in no-ROM mode. That run's
+  ROM-backed checks correctly skipped because no path was supplied to it.
+- Independently of package correctness, the supported FireRed US v1.0 SHA-1
+  was located locally and the full 142-file suite passed in ROM mode. See
+  [`../evidence/2026-09-17-supported-firered-rom-baseline.md`](../evidence/2026-09-17-supported-firered-rom-baseline.md).
+  This is runtime readiness only; it is not representative balance evidence.
