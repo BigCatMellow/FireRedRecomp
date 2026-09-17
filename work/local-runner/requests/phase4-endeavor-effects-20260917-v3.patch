@@ -1,0 +1,168 @@
+diff --git a/scripts/runtime_phase4_endeavor_replay.sh b/scripts/runtime_phase4_endeavor_replay.sh
+new file mode 100755
+index 00000000..db5cbcf5
+--- /dev/null
++++ b/scripts/runtime_phase4_endeavor_replay.sh
+@@ -0,0 +1,7 @@
++#!/usr/bin/env bash
++set -euo pipefail
++ROOT=$(cd "$(dirname "$0")/.." && pwd); cd "$ROOT"
++: "${POKEPORT_ROM:?set POKEPORT_ROM to verified FireRed US v1.0}"
++lua5.1 tests/battle_engine_test.lua
++lua5.1 tests/phase4_endeavor_effect_rom_test.lua
++echo "RUNTIME_REPLAY phase4_endeavor PASS effect=189 represented-state=true singles=true"
+diff --git a/src/core/BattleEngine.lua b/src/core/BattleEngine.lua
+index 94061749..82eba577 100644
+--- a/src/core/BattleEngine.lua
++++ b/src/core/BattleEngine.lua
+@@ -37,6 +37,7 @@
+ --   {type="forcedSwitchResolved", side=}           -- resolveForcedSwitch
+ --    supplied the replacement; the battle may proceed normally again.
+ --   {type="noPP", side=, move=}                   -- see the Struggle stub
++--   {type="moveFailed", side=}                    -- generic But it failed; distinct from screenFailed
+ --   {type="statChange", side=<target>, stat=, stages=-1, prevented=}
+ --   {type="screenSet", side=, screen="reflect"|"lightScreen", turns=5}
+ --   {type="screenFailed", side=, screen="reflect"|"lightScreen"} -- already active
+@@ -448,6 +449,7 @@ BattleEngine.EFFECT_FLAIL = 99
+ BattleEngine.EFFECT_ERUPTION = 190
+ BattleEngine.EFFECT_PSYWAVE = 88
+ BattleEngine.EFFECT_OHKO = 38
++BattleEngine.EFFECT_ENDEAVOR = 189
+ 
+ -- Real Cmd_remaininghptopower: scale the attacker's remaining HP to 48,
+ -- promote a positive underflow to one, then choose Flail/Reversal's dynamic
+@@ -1002,6 +1004,18 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
+     return
+   end
+ 
++  -- EffectEndeavor reaches ppreduce before its HP comparison, unlike the
++  -- ordinary Hit family below. A non-viable target goes directly to the
++  -- generic "But it failed" message and consumes no accuracy RNG.
++  local isEndeavor = move.effect == BattleEngine.EFFECT_ENDEAVOR
++  if isEndeavor then
++    if slot then slot.pp = slot.pp - 1 end
++    if defender.hp <= attacker.hp then
++      events[#events + 1] = { type = "moveFailed", side = attackerSide }
++      return
++    end
++  end
++
+   -- Real BattleScript_EffectStatUp (every self-target UP/UP_2 effect) has
+   -- NO accuracycheck step at all: attackcanceler -> attackstring ->
+   -- ppreduce -> statbuffchange. It cannot miss and consumes zero Random()
+@@ -1045,7 +1059,7 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
+   -- runs ppreduce). Real HITMARKER_NO_PPDEDUCT means Struggle (no `slot`,
+   -- see above) skips this step entirely -- there is no move slot of its
+   -- own to decrement.
+-  if slot then
++  if slot and not isEndeavor then
+     slot.pp = slot.pp - 1
+   end
+ 
+@@ -1137,6 +1151,23 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
+     return
+   end
+ 
++  if move.effect == BattleEngine.EFFECT_ENDEAVOR then
++    -- setdamagetohealthdifference precomputed this after PP and before the
++    -- ordinary accuracy step. The later set-damage path retains typecalc but
++    -- bypasses critical/base/random damage and clears nonzero presentation.
++    local _, flags = BattleFormulas.typeCalc(
++      1, move.type, attacker.types, defender.types, self.typeChart
++    )
++    if flags.noEffect then
++      events[#events + 1] = { type = "noEffect", side = attackerSide, target = defenderSide }
++      return
++    end
++    flags.superEffective = false
++    flags.notVeryEffective = false
++    self:applyDamage(attackerSide, defenderSide, defender, defender.hp - attacker.hp, flags, events)
++    return
++  end
++
+   if move.effect == BattleEngine.EFFECT_PSYWAVE then
+     -- Stock runs typecalc before psywavedamageeffect, clears only nonzero
+     -- effectiveness presentation, then samples even if typecalc was immune.
+diff --git a/src/core/BattleSceneController.lua b/src/core/BattleSceneController.lua
+index e2775ee1..227aaa27 100644
+--- a/src/core/BattleSceneController.lua
++++ b/src/core/BattleSceneController.lua
+@@ -188,6 +188,8 @@ function BattleSceneController:_eventMessages(events)
+       add(name(event.side) .. " used " .. self.moveName(event.move) .. "!")
+     elseif event.type == "miss" then
+       add(possessive(name(event.side)) .. " attack missed!")
++    elseif event.type == "moveFailed" then
++      add("But it failed!")
+     elseif event.type == "critical" then
+       add("A critical hit!")
+     elseif event.type == "damage" then
+diff --git a/tests/battle_engine_test.lua b/tests/battle_engine_test.lua
+index 56dd8d67..100a0812 100644
+--- a/tests/battle_engine_test.lua
++++ b/tests/battle_engine_test.lua
+@@ -1481,6 +1481,28 @@ battle.foe.hp = 100; events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1
+ check("Super Fang path does not alter existing Dragon Rage fixed 40 damage", battle.foe.hp == 60 and battle.rng.draws == 1)
+ Data.moves[fixedId] = nil
+ Data.moves[superFangId] = nil
++-- EFFECT_ENDEAVOR (189): PP and the target-vs-attacker HP viability check
++-- precede ordinary accuracy; a viable set-damage hit then bypasses crit/base/random.
++local endeavorId = 283
++Data.moves[endeavorId] = { effect=189,power=1,type=Data.TYPE_NORMAL,accuracy=80,pp=5,secondaryEffectChance=0,target=0,priority=0,flags=51 }
++battle = makeBattle({0}, {{move=endeavorId,pp=5}}, {{move=Data.MOVE_TACKLE,pp=1}})
++battle.player.hp = 10; battle.foe.hp = 10; events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER,1,events)
++check("Endeavor equal-HP viability failure consumes PP but no accuracy RNG", events[2].type == "moveFailed" and battle.player.moves[1].pp == 4 and battle.rng.draws == 0)
++battle = makeBattle({0}, {{move=endeavorId,pp=5}}, {{move=Data.MOVE_TACKLE,pp=1}})
++battle.player.hp = 5; battle.foe.hp = 20; events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER,1,events)
++local endeavorFainted = false
++for _, event in ipairs(events) do endeavorFainted = endeavorFainted or event.type == "faint" end
++check("Endeavor viable hit sets target HP to attacker HP without formula RNG or faint", battle.foe.hp == 5 and events[2].amount == 15 and battle.player.moves[1].pp == 4 and battle.rng.draws == 1 and not endeavorFainted)
++battle = makeBattle({99}, {{move=endeavorId,pp=5}}, {{move=Data.MOVE_TACKLE,pp=1}})
++battle.player.hp = 5; battle.foe.hp = 20; events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER,1,events)
++check("Endeavor viable miss follows ordinary accuracy after PP", events[#events].type == "miss" and battle.player.moves[1].pp == 4 and battle.rng.draws == 1)
++battle = makeBattle({0}, {{move=endeavorId,pp=5}}, {{move=Data.MOVE_TACKLE,pp=1}})
++battle.player.hp = 5; battle.foe.hp = 20; battle.foe.types = {Data.TYPE_GHOST,Data.TYPE_GHOST}; events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER,1,events)
++check("Endeavor immunity follows accuracy and leaves HP unchanged", events[#events].type == "noEffect" and battle.foe.hp == 20 and battle.player.moves[1].pp == 4 and battle.rng.draws == 1)
++battle = makeBattle({0}, {{move=endeavorId,pp=5}}, {{move=Data.MOVE_TACKLE,pp=1}})
++battle.player.hp = 5; battle.foe.hp = 20; battle.foe.types = {Data.TYPE_ROCK,Data.TYPE_ROCK}; events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER,1,events)
++check("Endeavor clears nonzero effectiveness presentation", battle.foe.hp == 5 and events[2].superEffective == false and events[2].notVeryEffective == false, events[2])
++Data.moves[endeavorId] = nil
+ -- EFFECT_EXPLOSION (7): PP/Damp/self-KO precede accuracy, while target then
+ -- attacker faint records are finalized together after the hit path.
+ local explosionId = 999
+diff --git a/tests/battle_scene_controller_test.lua b/tests/battle_scene_controller_test.lua
+index b23745bb..79ef0697 100644
+--- a/tests/battle_scene_controller_test.lua
++++ b/tests/battle_scene_controller_test.lua
+@@ -113,6 +113,9 @@ c:processInput(input(InputState.A_BUTTON)); c:processInput(input(InputState.A_BU
+ check("unsupported status effects remain an explicit boundary",
+   c:message() == "That move's effect is not available yet." and c.engine.player.moves[1].pp == 10)
+ 
++local failedEntries = c:_eventMessages({ { type="moveFailed", side="player" } })
++check("generic move failure presents FireRed But it failed text", failedEntries[1].text == "But it failed!", failedEntries[1] and failedEntries[1].text)
++
+ -- Real BAG wiring: with a bag that actually has a Poke Ball, BAG throws
+ -- one (consuming it regardless of outcome, matching real
+ -- RemoveBagItem-before-throw semantics) and the engine's real "capture"
+diff --git a/tests/phase4_endeavor_effect_rom_test.lua b/tests/phase4_endeavor_effect_rom_test.lua
+new file mode 100644
+index 00000000..c0cd1451
+--- /dev/null
++++ b/tests/phase4_endeavor_effect_rom_test.lua
+@@ -0,0 +1,17 @@
++package.path = package.path .. ";./?.lua"
++local BattleMove = require("import.BattleMove")
++local RomAddresses = require("import.RomAddresses")
++local RomImporter = require("import.RomImporter")
++local path = os.getenv("POKEPORT_ROM")
++if not path then print("SKIP phase4_endeavor_effect_rom_test (set POKEPORT_ROM)"); os.exit(0) end
++local ok, info = RomImporter.verify(path)
++if not ok then print("FAIL: ROM verification -- " .. tostring(info)); os.exit(1) end
++local f = assert(io.open(path, "rb")); local rom = f:read("*a"); f:close()
++local a = assert(RomAddresses["41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc"])
++local moves = BattleMove.parseTable(rom, a.gBattleMoves, RomAddresses.COUNTS.MOVES_COUNT)
++local m, count = moves[283], 0
++for i = 0, RomAddresses.COUNTS.MOVES_COUNT - 1 do if moves[i].effect == 189 then count = count + 1 end end
++if not (m.effect == 189 and m.power == 1 and m.type == 0 and m.accuracy == 100 and m.pp == 5 and m.target == 0 and m.priority == 0 and m.flags == 51 and count == 1) then
++  print("FAIL: Endeavor ROM record changed"); os.exit(1)
++end
++print("phase4_endeavor_effect_rom_test: 1 passed, 0 failed")
