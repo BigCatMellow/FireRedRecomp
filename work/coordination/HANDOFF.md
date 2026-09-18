@@ -1,8 +1,8 @@
 # FireRedRecomp Coordination Handoff
 
-- Status: `READY_FOR_INDEPENDENT_REVIEW`
+- Status: `READY_FOR_ROUTE_PROBE`
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
-- Active task: [`../tasks/phase4-pain-split-effect-discovery.md`](../tasks/phase4-pain-split-effect-discovery.md)
+- Active task: [`../tasks/local-worker-bridge-phase4-pain-split-route.md`](../tasks/local-worker-bridge-phase4-pain-split-route.md)
 
 ## Published evidence
 
@@ -187,8 +187,10 @@ no-state accuracy command consumes zero RNG, then computes/stores signed deltas
 from average attacker/target HP; the script applies attacker first and target
 second. Substitute, Protect, Mirror Move,
 Lock-On/sure-hit, semi-invulnerability, items/abilities/status, doubles/links,
-and generic zero-power/healing support remain excluded. It needs independent
-review and a separate two-sided-HP/admission design before any route or behavior.
+and generic zero-power/healing support remain excluded. Discovery independently
+passed; the two-sided-HP/admission design and literal route plan independently
+passed. The active next gate is only route configuration, followed by separate
+configuration review and probe; no behavior is authorized.
 
 Super Fang effect 40 discovery independently passed: it is a single
 current-target-HP-halving formula record. The next gate is a separate

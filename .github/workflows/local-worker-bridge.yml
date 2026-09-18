@@ -119,6 +119,9 @@ jobs:
             phase4-endeavor-effects*.patch|phase4-endeavor-effects*.probe)
               route='phase4-endeavor-effects'
               ;;
+            phase4-pain-split-effect*.patch|phase4-pain-split-effect*.probe)
+              route='phase4-pain-split-effect'
+              ;;
             oak-parcel-dex-presentation-north*.patch|oak-parcel-dex-presentation-north*.probe)
               route='oak-parcel-dex-presentation-north'
               ;;
@@ -236,6 +239,8 @@ jobs:
                 ;;
               phase4-endeavor-effects:src/core/BattleEngine.lua|phase4-endeavor-effects:tests/battle_engine_test.lua|phase4-endeavor-effects:tests/phase4_endeavor_effect_rom_test.lua|phase4-endeavor-effects:scripts/runtime_phase4_endeavor_replay.sh|phase4-endeavor-effects:src/core/BattleSceneController.lua|phase4-endeavor-effects:tests/battle_scene_controller_test.lua|phase4-endeavor-effects:work/tasks/phase4-endeavor-effects.md|phase4-endeavor-effects:work/coordination/STATE.json|phase4-endeavor-effects:work/coordination/HANDOFF.md)
                 ;;
+              phase4-pain-split-effect:src/core/BattleEngine.lua|phase4-pain-split-effect:src/core/BattleSceneController.lua|phase4-pain-split-effect:tests/battle_engine_test.lua|phase4-pain-split-effect:tests/battle_scene_controller_test.lua|phase4-pain-split-effect:tests/phase4_pain_split_effect_rom_test.lua|phase4-pain-split-effect:scripts/runtime_phase4_pain_split_replay.sh|phase4-pain-split-effect:work/tasks/phase4-pain-split-effect.md|phase4-pain-split-effect:work/coordination/STATE.json|phase4-pain-split-effect:work/coordination/HANDOFF.md)
+                ;;
               *)
                 echo "Patch target is not authorized for explicit route '$ROUTE': $target" >&2
                 exit 1
@@ -350,6 +355,11 @@ jobs:
               "$LUA" tests/battle_scene_controller_test.lua
               "$LUA" tests/phase4_endeavor_effect_rom_test.lua
               ;;
+            phase4-pain-split-effect)
+              "$LUA" tests/battle_engine_test.lua
+              "$LUA" tests/battle_scene_controller_test.lua
+              "$LUA" tests/phase4_pain_split_effect_rom_test.lua
+              ;;
             *)
               echo "Patch execution has no focused-test route for '$ROUTE'." >&2
               exit 1
@@ -450,6 +460,9 @@ jobs:
               ;;
             phase4-endeavor-effects)
               bash scripts/runtime_phase4_endeavor_replay.sh
+              ;;
+            phase4-pain-split-effect)
+              bash scripts/runtime_phase4_pain_split_replay.sh
               ;;
             *)
               echo "Patch execution has no runtime-replay route for '$ROUTE'." >&2
@@ -603,6 +616,13 @@ jobs:
               ;;
             phase4-endeavor-effects)
               for path in src/core/BattleEngine.lua tests/battle_engine_test.lua tests/phase4_endeavor_effect_rom_test.lua scripts/runtime_phase4_endeavor_replay.sh src/core/BattleSceneController.lua tests/battle_scene_controller_test.lua work/tasks/phase4-endeavor-effects.md work/coordination/STATE.json work/coordination/HANDOFF.md; do
+                if [[ -e "$path" ]]; then
+                  git add -- "$path"
+                fi
+              done
+              ;;
+            phase4-pain-split-effect)
+              for path in src/core/BattleEngine.lua src/core/BattleSceneController.lua tests/battle_engine_test.lua tests/battle_scene_controller_test.lua tests/phase4_pain_split_effect_rom_test.lua scripts/runtime_phase4_pain_split_replay.sh work/tasks/phase4-pain-split-effect.md work/coordination/STATE.json work/coordination/HANDOFF.md; do
                 if [[ -e "$path" ]]; then
                   git add -- "$path"
                 fi

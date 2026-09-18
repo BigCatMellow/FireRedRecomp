@@ -1,6 +1,6 @@
 # Task: Phase 4 Pain Split effect discovery
 
-- Status: `DISCOVERY COMPLETE — PENDING INDEPENDENT REVIEW`
+- Status: `CLOSED — REVIEWED PASS`
 - Type: `PHASE 4 / BATTLE RULES / READ-ONLY DISCOVERY`
 
 ## Goal
@@ -35,3 +35,9 @@ healing, and Phase 4 completion remain excluded.
 
 Battle behavior, admission policy, UI/controller, bridge configuration, Phase
 2's trusted external-reference blocker, or Phase 4 completion status.
+
+## Review
+
+Independent source review passed. The next gate is a separate bounded design
+for effect-91-only admission and ordered two-sided HP events; no route or
+implementation is authorized by this discovery closure.
