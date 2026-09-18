@@ -1,8 +1,8 @@
 # FireRedRecomp Coordination Handoff
 
-- Status: `READY_FOR_NEXT_DISCOVERY`
+- Status: `READY_FOR_INDEPENDENT_REVIEW`
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
-- Active task: none — select the next bounded, source-locked Phase 4 effect discovery
+- Active task: [`../tasks/phase4-pain-split-effect-discovery.md`](../tasks/phase4-pain-split-effect-discovery.md)
 
 ## Published evidence
 
@@ -180,6 +180,15 @@ configuration reviews passed. Amended probe `14c164e9` passed guarded run
 generic-failure event/presentation, positive-HP/no-faint, exclusion, and
 evidence review. Select the next source-locked effect family separately; do
 not infer broader formula/state/UI/controller or Phase 4 completion.
+
+Pain Split #220 effect 91 is the next read-only source lock. It has zero power
+and is correctly rejected by current generic admission; stock's represented
+no-state accuracy command consumes zero RNG, then computes/stores signed deltas
+from average attacker/target HP; the script applies attacker first and target
+second. Substitute, Protect, Mirror Move,
+Lock-On/sure-hit, semi-invulnerability, items/abilities/status, doubles/links,
+and generic zero-power/healing support remain excluded. It needs independent
+review and a separate two-sided-HP/admission design before any route or behavior.
 
 Super Fang effect 40 discovery independently passed: it is a single
 current-target-HP-halving formula record. The next gate is a separate
