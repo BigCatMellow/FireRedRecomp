@@ -15,7 +15,7 @@
     "gameplay_defect_found": false,
     "implementation_published": true,
     "tests_claimed": true,
-    "review_subject": "Pending Worker commit for phase3-complete-runtime-exit-replay; Reviewer must verify the exact resulting revision.",
+    "review_subject": "a675cdf8f632d4bf7a4b23aa0b0f55dc17644baa (published implementation/evidence revision); Reviewer must verify this exact revision.",
     "reproduced_evidence": [
       "Private FireRed US v1.0 SHA-1 matched 41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc",
       "lua5.1 tests/phase3_complete_runtime_exit_replay_test.lua: PASS",

@@ -15,8 +15,9 @@ The bounded evidence implementation is ready for independent review. It adds
 only replay-driver plumbing, one focused contract test, and one runtime wrapper;
 normal gameplay behavior was not changed.
 
-The exact Worker revision is to be recorded after the commit below. Reviewer
-must assess that revision against
+The published Worker implementation/evidence revision is
+`a675cdf8f632d4bf7a4b23aa0b0f55dc17644baa`. Reviewer must assess that exact
+revision against
 [`../tasks/phase3-complete-runtime-exit-replay.md`](../tasks/phase3-complete-runtime-exit-replay.md),
 not treat this handoff as a self-approval.
 
