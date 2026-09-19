@@ -64,3 +64,11 @@ The literal selector, allowlist, focused execution, replay, and individual
 publication staging configuration independently passed review. Run the separate
 one-file probe next; no Worker request or behavior is authorized until it
 passes.
+
+## Probe
+
+Probe `7409ad54` passed guarded Local Worker Bridge run `35290005345`: trusted
+checkout, explicit route selection, Lua toolchain, and private-ROM SHA
+verification passed. Patch apply/tests/replay/publication were skipped as
+required. One independently reviewed effect-91 implementation contract may now
+be considered.

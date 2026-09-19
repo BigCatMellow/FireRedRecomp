@@ -1,8 +1,8 @@
 # FireRedRecomp Coordination Handoff
 
-- Status: `READY_FOR_ROUTE_PROBE`
+- Status: `READY_FOR_INDEPENDENT_IMPLEMENTATION_SCOPE_REVIEW`
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
-- Active task: [`../tasks/local-worker-bridge-phase4-pain-split-route.md`](../tasks/local-worker-bridge-phase4-pain-split-route.md)
+- Active task: [`../tasks/phase4-pain-split-effect.md`](../tasks/phase4-pain-split-effect.md)
 
 ## Published evidence
 
@@ -181,16 +181,25 @@ generic-failure event/presentation, positive-HP/no-faint, exclusion, and
 evidence review. Select the next source-locked effect family separately; do
 not infer broader formula/state/UI/controller or Phase 4 completion.
 
-Pain Split #220 effect 91 is the next read-only source lock. It has zero power
-and is correctly rejected by current generic admission; stock's represented
-no-state accuracy command consumes zero RNG, then computes/stores signed deltas
-from average attacker/target HP; the script applies attacker first and target
-second. Substitute, Protect, Mirror Move,
-Lock-On/sure-hit, semi-invulnerability, items/abilities/status, doubles/links,
-and generic zero-power/healing support remain excluded. Discovery independently
-passed; the two-sided-HP/admission design and literal route plan independently
-passed. The active next gate is only route configuration, followed by separate
-configuration review and probe; no behavior is authorized.
+Pain Split #220 effect 91 is source-locked. It has zero power and is correctly
+rejected by current generic admission; stock's represented no-state accuracy
+command consumes zero RNG, then computes/stores signed deltas from average
+attacker/target HP; the script applies attacker first and target second.
+Substitute, Protect, Mirror Move, Lock-On/sure-hit, semi-invulnerability,
+items/abilities/status, doubles/links, and generic zero-power/healing support
+remain excluded. Discovery and the two-sided-HP/admission design independently
+passed. The literal nine-path Worker route configuration independently passed
+and its non-gameplay probe `7409ad54` passed guarded run `35290005345`.
+
+The active gate is now only independent review of
+`work/tasks/phase4-pain-split-effect.md`. It authorizes no implementation until
+it passes. The reviewer must confirm literal effect-91-only admission;
+pre-mutation deltas; per-side own-max clamps; attacker-before-target actual HP
+events; shared-pain presentation; zero RNG; no faint; and all stated
+exclusions. On PASS, issue one Worker request only through selector
+`phase4-pain-split-effect`, with the literal nine-path allowlist and its
+focused/full/verified-ROM/replay evidence sequence. Do not widen zero-power or
+HP/healing support, and do not mark Phase 4 complete.
 
 Super Fang effect 40 discovery independently passed: it is a single
 current-target-HP-halving formula record. The next gate is a separate
