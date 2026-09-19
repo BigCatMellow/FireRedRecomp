@@ -130,24 +130,7 @@ jobs:
           ROUTE: ${{ steps.route.outputs.route }}
         run: |
           set -euo pipefail
-          test -s "$PATCH_FILE"
-          targets="$(grep -E '^(--- a/|\+\+\+ b/)' "$PATCH_FILE" | sed -E 's#^(--- a/|\+\+\+ b/)##' | grep -v '^/dev/null$' | sort -u)"
-          test -n "$targets"
-          while IFS= read -r target; do
-            case "$ROUTE:$target" in
-              oak-parcel-dex-presentation-north:main.lua|oak-parcel-dex-presentation-north:src/core/OakParcelDexPresentation.lua|oak-parcel-dex-presentation-north:tests/oak_parcel_dex_presentation_test.lua|oak-parcel-dex-presentation-north:scripts/runtime_natural_capture_replay.sh|oak-parcel-dex-presentation-north:work/tasks/oak-parcel-dex-presentation-north.md)
-                ;;
-              phase3-title-oak-entry-proof:main.lua|phase3-title-oak-entry-proof:tests/phase3_title_oak_entry_test.lua|phase3-title-oak-entry-proof:scripts/runtime_title_oak_entry_replay.sh|phase3-title-oak-entry-proof:work/tasks/phase3-title-oak-entry-proof.md|phase3-title-oak-entry-proof:work/tasks/phase3-exit-proof.md)
-                ;;
-              phase3-complete-runtime-exit-replay:main.lua|phase3-complete-runtime-exit-replay:tests/phase3_complete_runtime_exit_replay_test.lua|phase3-complete-runtime-exit-replay:scripts/runtime_phase3_complete_exit_replay.sh|phase3-complete-runtime-exit-replay:work/tasks/phase3-complete-runtime-exit-replay.md|phase3-complete-runtime-exit-replay:work/tasks/phase3-exit-proof.md)
-                ;;
-              *)
-                echo "Patch target is not authorized for explicit route '$ROUTE': $target" >&2
-                exit 1
-                ;;
-            esac
-          done <<< "$targets"
-          git apply --check "$PATCH_FILE"
+          bash scripts/validate_local_worker_bridge_patch_targets.sh
 
       - name: Apply bounded patch
         if: steps.request.outputs.mode == 'patch'

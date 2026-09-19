@@ -34,7 +34,9 @@ Adding a new route requires a bounded task that authorizes bridge maintenance. D
 - The workflow is `push` to `main` only. It does not run for `pull_request` or `pull_request_target`.
 - It accepts exactly one changed bridge request/probe in the triggering commit.
 - Every patch route has an explicit hard-coded target allowlist tied to its task identifier.
-- Unknown task identifiers or unauthorized targets fail before `git apply`.
+- Before `git apply`, the bridge parses both paths of every `diff --git` header;
+  malformed/unparseable headers and unauthorized targets (including mode-only
+  changes) fail closed.
 - `git apply --check` and `git diff --check` must pass before tests.
 - The private ROM is never committed or uploaded.
 - The runner locates the local ROM privately and verifies SHA-1 `41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc` before ROM-backed execution.
