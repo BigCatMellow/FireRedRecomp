@@ -134,7 +134,8 @@ correction, if any.
 
 ## Worker implementation and evidence — 2026-09-19
 
-Implementation revision: `PENDING COMMIT` (bounded harness only).
+Implementation revision: `5f55bd6aae8a129260ba236ed4c532de8b61999f`
+(`Add Phase 2 camera parity harness`; bounded harness only).
 
 - Added `src/core/CameraCrop.lua`; `main.lua` now uses this exact pure
   240×160 crop result for the map quad, while player/NPC coordinates and the

@@ -2,7 +2,7 @@
 
 - Record role: `HANDOFF`
 - Primary information class: `TASK CONTEXT`
-- Status: `READY FOR WORKER`
+- Status: `READY FOR REVIEWER — EXTERNAL REFERENCE CORPUS BLOCKED`
 - Lifecycle: `ACTIVE`
 - Authority: coordination only; root `AGENTS.md` and active task contract control review
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
@@ -38,6 +38,28 @@ measured visual discrepancy is a stop-and-rescope result. Worker records exact
 revision, changed files, focused/suite results, and real-reference result or
 blocker. Independent Reviewer must assess the exact revision before this task
 may close; Phase 2 itself remains `IN PROGRESS`.
+
+## Worker delivery — Phase 2 camera/Oak reference-parity harness
+
+Subject for independent review: `5f55bd6aae8a129260ba236ed4c532de8b61999f`
+(`Add Phase 2 camera parity harness`). It is limited to the dispatched
+support boundary: live-used pure 240×160 camera geometry; opt-in
+`POKEPORT_CAPTURE_240=1` (normal launch dimensions unchanged); isolated
+three-case capture wrapper; and explicit external manifest/checker with
+machine-readable, fail-closed JSON results.
+
+Evidence: `tests/camera_crop_test.lua` 11 PASS;
+`tests/phase2_camera_oak_parity_harness_test.lua` 8 PASS (valid synthetic
+comparison plus missing/malformed/checksum/wrong-size rejection); ROM-gated
+Oak structural test 56 PASS; no-ROM suite 146 PASS; verified-ROM suite 146
+PASS after required SHA-1 verification. An isolated opt-in field capture
+decoded as 240×160 and was not retained.
+
+`BLOCKED: reference corpus unavailable`. No external 240×160 emulator PNG
+corpus with complete required provenance exists locally, so there is no parity
+PASS or measured discrepancy. Reviewer independently checks the exact subject;
+only a lawful supplied corpus can enable the three real comparisons. Do not
+advance Phase 2.
 
 ## Historical Worker handoff — Phase 3 complete runtime exit replay identity correction
 
