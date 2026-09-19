@@ -123,3 +123,35 @@ bypass is rejected before `git apply --check`. No gameplay/runtime replay
 implementation, policy, permissions, ROM content, or save-layout change is
 authorized. Do not restore `work/tasks/phase3-complete-runtime-exit-replay.md`
 to Worker or advance Phase 3 without a fresh independent `PASS`.
+
+## Ready for fresh independent review — marker validation correction
+
+Worker correction subject: `e8c9c32c782728ca5d06cf679c808a01e8cb1d24`
+(`Validate bridge patch file markers`). This corrects only the bridge target
+validator, its deterministic non-gameplay coverage, bridge procedure text, and
+the active task record.
+
+Before `git apply --check`, the validator now validates both paths of every
+parseable `diff --git` header and each actionable paired `---`/`+++` marker.
+Malformed, unpaired, wrong-prefix, or unallowlisted marker paths fail closed;
+`/dev/null` is accepted only for one side of a creation/deletion pair. Existing
+mode-only header protection and all explicit route allowlists are retained.
+
+Focused deterministic evidence:
+
+- `bash -n scripts/validate_local_worker_bridge_patch_targets.sh
+  scripts/test_local_worker_bridge_patch_targets.sh`: PASS.
+- `bash scripts/test_local_worker_bridge_patch_targets.sh`: PASS. The test
+  first confirms `git apply --check` accepts an allowed `main.lua` header with
+  unallowlisted workflow-file markers, then substitutes a fake `git` executable
+  and proves the validator rejects the patch before `git apply --check`.
+- `env -u POKEPORT_ROM bash scripts/test_all.sh`: PASS, 143 test files in
+  no-ROM mode.
+- The available private ROM matched SHA-1
+  `41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc`; `POKEPORT_ROM=<verified private
+  ROM> bash scripts/test_all.sh`: PASS, 143 test files in ROM mode.
+
+No gameplay/runtime replay implementation, public-PR policy, permissions,
+supported-ROM policy, ROM content, or save-layout surface changed. Reviewer
+must independently assess `e8c9c32c` and return `PASS`, `NEEDS_FIX`, or
+`BLOCK`; Phase 3 remains in progress pending that verdict.
