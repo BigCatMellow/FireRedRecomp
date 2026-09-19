@@ -39,7 +39,7 @@ category + learnset foundation: ACTIVE
         ↓ independent PASS
 frozen-package mod: REVIEWED PASS
         ↓
-separate deterministic/representative validation: ACTIVE
+separate deterministic/representative validation: REVIEWED PASS
         ↓
 resume Phase 3 bridge/replay chain
 
@@ -86,8 +86,8 @@ Phase 10 mod/release engineering
 | Phase 3D-pre — Local Worker Bridge retargeting | `REVIEWED PASS` | [`../tasks/local-worker-bridge-task-routing.md`](../tasks/local-worker-bridge-task-routing.md) | PASS at `0f0dc2f028f204dce4fcaee4e0fff0d9d0afb61e`; do not redo | completed prerequisite |
 | Frozen package — mod foundations | `REVIEWED PASS` | [`../tasks/pokemon-firered-balance-foundation.md`](../tasks/pokemon-firered-balance-foundation.md) | independently passed at `25e3d88e` | package application |
 | Frozen package — mod application | `REVIEWED PASS` | [`../tasks/pokemon-firered-balance-package-application.md`](../tasks/pokemon-firered-balance-package-application.md) | independently passed at `bb0476ce` | representative validation |
-| Frozen package — representative validation | `ACTIVE` | **[`../tasks/pokemon-firered-balance-representative-validation.md`](../tasks/pokemon-firered-balance-representative-validation.md)** | actual-runtime load proof, mechanism matrix, supported-ROM evidence, independent PASS | durable PR #14 implementation evidence |
-| Phase 3E-pre — explicit bridge route | `PAUSED` | [`../tasks/local-worker-bridge-complete-runtime-route.md`](../tasks/local-worker-bridge-complete-runtime-route.md) | bounded route, probe, suites, independent PASS | restore Phase 3E to Worker after balance priority |
+| Frozen package — representative validation | `REVIEWED PASS` | [`../tasks/pokemon-firered-balance-representative-validation.md`](../tasks/pokemon-firered-balance-representative-validation.md) | PASS at `6db8d9c0`; see durable implementation evidence | resume Phase 3 bridge route |
+| Phase 3E-pre — explicit bridge route | `READY FOR WORKER` | **[`../tasks/local-worker-bridge-complete-runtime-route.md`](../tasks/local-worker-bridge-complete-runtime-route.md)** | bounded route, probe, suites, independent PASS | restore Phase 3E to Worker |
 | Phase 3E — complete end-to-end runtime exit replay | `BLOCKED BY 3E-pre` | [`../tasks/phase3-complete-runtime-exit-replay.md`](../tasks/phase3-complete-runtime-exit-replay.md) | one deterministic complete runtime command, required suites, independent PASS | re-evaluate Phase 3A and canonical Phase 3 status |
 | Phase 4 — full Gen 3 battle engine | `IN PROGRESS` | future | general trainer battles, switching, move/effect and stress matrices | reliable trainer/story progression |
 | Phase 5 — overworld/field systems | `IN PROGRESS` | future | Pallet→Elite Four traversal without invalid paths | credits traversal |

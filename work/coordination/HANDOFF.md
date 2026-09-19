@@ -2,11 +2,11 @@
 
 - Record role: `HANDOFF`
 - Primary information class: `TASK CONTEXT`
-- Status: `IN PROGRESS`
+- Status: `READY FOR WORKER`
 - Lifecycle: `ACTIVE`
 - Authority: coordination only; root `AGENTS.md` and active task contract control review
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
-- Active task: [`../tasks/pokemon-firered-balance-representative-validation.md`](../tasks/pokemon-firered-balance-representative-validation.md)
+- Active task: [`../tasks/local-worker-bridge-complete-runtime-route.md`](../tasks/local-worker-bridge-complete-runtime-route.md)
 - Machine state: [`STATE.json`](STATE.json)
 
 ## Completed prerequisite
@@ -49,10 +49,55 @@ The independent Reviewer returned `PASS` at
 `bb0476cedd9831e5a43d086e52bced1769982c3c`. The source-locked package is
 complete; the next task must not change its values.
 
+## Completed balance-validation task
+
+The Worker evidence is committed at `6db8d9c0` (`Strengthen balance validation
+matrix evidence`) and is ready for independent review under
+[`../tasks/pokemon-firered-balance-representative-validation.md`](../tasks/pokemon-firered-balance-representative-validation.md).
+
+The orchestration operator reproduced the required supported-ROM evidence at
+that revision: the FireRed US v1.0 SHA-1 was
+`41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc`; the focused matrix passed 13/0;
+the actual LÖVE runtime reported `RUNTIME_BALANCE_MOD PASS`; and the full
+suite passed all 143 test files in ROM mode. These are review inputs, not a
+self-approval or task closure.
+
+The Reviewer must verify the exact task criteria and negative scope directly,
+then return `PASS`, `NEEDS_FIX`, or `BLOCK`. Do not adjust frozen package
+values or prohibited surfaces based on validation results.
+
+## Independent reviewer result
+
+`PASS` at `6db8d9c0ba37b6c83464660ca82cc04e9fa68aa9`.
+
+The Reviewer independently verified that the validation range from the prior
+reviewed package gate changes only runtime observation plumbing, focused
+validation, and coordination/task records; it does not alter the frozen mod
+package, ROM/imported data, trainers, encounters, AI, items/TM compatibility,
+economy, held-candidate controls, save layout, Phase 3 records, or prohibited
+assets. The actual LÖVE process, using the locally verified FireRed US v1.0
+ROM SHA-1 `41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc`, emitted
+`RUNTIME_BALANCE_MOD PASS` for the gameplay-impacting package and passed the
+Route 1 replay. The focused ROM matrix passed 13/0 and directly covers the
+eight overridden fields, all 13 additions, physical Fire/Water, Special
+Ghost/Flying, both physical Poison exceptions, raw Gen-3 fallback controls,
+the named watch matrix, finite TM19/TM30 allocation arms, held non-promotion,
+and unload. `bash scripts/test_all.sh` also passed all 143 files in ROM mode.
+
+The reviewed task is now closed. Its durable implementation evidence is at
+[`../evidence/2026-09-18-pokemon-firered-balance-implementation-evidence.md`](../evidence/2026-09-18-pokemon-firered-balance-implementation-evidence.md).
+This result does not merge or release anything, reopen frozen values, or
+advance Phase 3.
+
 ## Current worker scope
 
-Build reproducible actual-runtime load proof and mechanism-focused battle
-validation under the new task. The verified supported-ROM baseline remains at
-[`../evidence/2026-09-17-supported-firered-rom-baseline.md`](../evidence/2026-09-17-supported-firered-rom-baseline.md),
-but is only a prerequisite, not balance evidence. Do not adjust package values
-or any prohibited surface based on validation results.
+Resume the existing AGI-ready
+[`../tasks/local-worker-bridge-complete-runtime-route.md`](../tasks/local-worker-bridge-complete-runtime-route.md).
+The Worker may add only the explicit fail-closed Local Worker Bridge route for
+the complete Phase 3 replay and its narrow routing/probe/documentation surface.
+No `main.lua`, gameplay, replay implementation, public-PR policy, repository
+permission, ROM policy, save format, or copyrighted-content change is
+authorized. The Worker must establish the route's exact allowlist, gate it by
+the supported ROM SHA, prove route recognition without a gameplay patch, run
+the stated suite/replay evidence, and route the exact revision to an
+independent Reviewer.

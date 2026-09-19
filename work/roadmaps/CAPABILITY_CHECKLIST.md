@@ -1,8 +1,9 @@
 # FireRed ReComp capability checklist
 
-Last verified: 2026-09-12 against merged local/GitHub history: 140 no-ROM
-and 140 verified-ROM test files pass, and the isolated title → Oak → identity
-→ bedroom runtime replay passes.
+Last verified: 2026-09-18 against local revision `6db8d9c0`: 143 no-ROM and
+143 verified-ROM test files pass; the isolated title → Oak → identity →
+bedroom runtime replay passes; and the frozen balance mod has independent
+actual-runtime representative-validation evidence.
 
 Status vocabulary is intentionally narrow:
 
@@ -25,7 +26,7 @@ This is the project-wide status surface. Detailed history and checkboxes live in
 | Phase 7 — story and cutscenes | IN PROGRESS | early-story and script tests | New game through credits without manual state edits or story skips |
 | Phase 8 — audio and presentation parity | IN PROGRESS | song, audio, title, and graphics tests | Reference playthrough has no major missing audio/visual system |
 | Phase 9 — postgame and secondary modes | NOT STARTED | Roadmap only | Offline single-player content complete from a normal save |
-| Phase 10 — modding and release engineering | IN PROGRESS | Versioned mod namespaces, package/manifest validation, deterministic hooks, save-profile compatibility, and host-validation tests | Clean-install UX, broader API consumers, release/recovery tooling, and end-to-end import/play/mod/update/diagnose proof |
+| Phase 10 — modding and release engineering | IN PROGRESS | Versioned mod namespaces, package/manifest validation, deterministic hooks, save-profile compatibility, host validation, and independently reviewed actual-runtime evidence for `pokemon-firered-balance` at `6db8d9c0` | Clean-install UX, broader API consumers, release/recovery tooling, and end-to-end import/play/mod/update/diagnose proof |
 
 ## Dispatch order
 
