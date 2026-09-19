@@ -63,8 +63,8 @@ The earlier functional title/Oak seam is no longer open. The remaining issue is 
 
 Because acceptance criterion 1 explicitly calls for a ROM-backed automated test of the complete path when no untestable boundary remains, Phase 3 is **not yet eligible for `DONE`** merely by stitching claims together in prose.
 
-The bounded final continuation has produced Worker evidence and is pending
-independent review:
+The bounded final continuation produced Worker evidence and received
+independent `PASS` at `000f98475c366709d4117051a2572eafa67c53e1`:
 
 `work/tasks/phase3-complete-runtime-exit-replay.md`
 
@@ -72,9 +72,11 @@ independent review:
 boot → title/Oak/identity → bedroom/Pallet → Route 1 wild defeat → normal save
 → fresh-process normal load in an isolated XDG sandbox. Its final marker
 asserts identity, location progression, deterministic loss money and recovered
-HP, save production, and reload party continuity. This does not close the
-parent gate: an independent Reviewer `PASS` on the exact revision is still
-required.
+HP, save production, and reload party continuity. The independent review at
+[`../reviews/2026-09-19-phase3-complete-runtime-exit-replay-identity-review.md`](../reviews/2026-09-19-phase3-complete-runtime-exit-replay-identity-review.md)
+verified the exact persisted save-leg and fresh-load identity predicates
+(`RED/GREEN/0`), the focused replay, and both 144-file suites. The parent gate
+is closed.
 
 ## Stop conditions
 

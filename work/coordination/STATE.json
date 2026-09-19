@@ -1,21 +1,21 @@
 {
   "schema_version": 1,
-  "updated_utc": "2026-09-19T10:35:00Z",
-  "role": "WORKER",
-  "status": "READY_FOR_REVIEWER",
-  "current_phase": "Phase 3 complete runtime exit replay",
+  "updated_utc": "2026-09-19T12:00:00Z",
+  "role": "ORCHESTRATOR",
+  "status": "NEEDS_SHAPING",
+  "current_phase": "Phase 2 camera and Oak reference parity",
   "canonical_status_owner": "work/roadmaps/CAPABILITY_CHECKLIST.md",
-  "active_task": "work/tasks/phase3-complete-runtime-exit-replay.md",
-  "objective": "Produce one deterministic normal-boot-to-fresh-reload Phase 3 runtime artifact using existing gameplay seams only.",
-  "next_role": "REVIEWER",
+  "active_task": null,
+  "objective": "Specify the smallest independently reviewable Phase 2 camera/Oak reference-parity task now that the Phase 3 vertical-slice proof is closed.",
+  "next_role": "ORCHESTRATOR",
   "reconciliation": {
     "paused_prior_task": "work/tasks/local-worker-bridge-complete-runtime-route.md",
-    "worker_result": "One deterministic normal-title-boot replay reaches Oak/identity, bedroom/Pallet, Route 1 wild defeat, normal save, and fresh-process normal reload without injecting a post-Oak/post-battle session.",
+    "worker_result": "The independently reviewed complete runtime replay reaches normal title/Oak/identity, bedroom/Pallet, Route 1 wild defeat, normal save, and fresh-process normal reload without injecting a post-Oak/post-battle session.",
     "blocker": null,
     "gameplay_defect_found": false,
     "implementation_published": true,
     "tests_claimed": true,
-    "review_subject": "333d048809c2c3a53f51cee016e685afdea911cb (identity-assertion implementation/evidence revision); Reviewer must verify this exact revision and its coordination handoff.",
+    "review_subject": "333d048809c2c3a53f51cee016e685afdea911cb (identity-assertion implementation/evidence revision), independently reviewed in 000f98475c366709d4117051a2572eafa67c53e1.",
     "reproduced_evidence": [
       "Private FireRed US v1.0 SHA-1 matched 41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc",
       "lua5.1 tests/phase3_complete_runtime_exit_replay_test.lua: PASS",
@@ -24,24 +24,21 @@
       "POKEPORT_ROM=<verified private ROM> bash scripts/test_all.sh: 144 test files PASS in ROM mode",
       "Identity correction: complete save process and fresh reload process each emitted PASS only with actual identity=RED/GREEN/0; wrapper checked both fields before its aggregate marker"
     ],
-    "review_result": "PENDING fresh independent review; Worker does not self-approve this corrected identity-continuity evidence.",
-    "new_prerequisite": "Reviewer independently verifies the actual save-leg and fresh-reload identity predicates, wrapper marker validation, focused replay, and both required suites on the stated revision.",
-    "canonical_status_change": false,
-    "phase3_status": "IN PROGRESS — complete runtime replay implemented with Worker evidence, pending independent review"
+    "review_result": "PASS: independent review published at 000f98475c366709d4117051a2572eafa67c53e1; see work/reviews/2026-09-19-phase3-complete-runtime-exit-replay-identity-review.md.",
+    "new_prerequisite": "Phase 2 task shaping: specify reference screenshots and deterministic camera/Oak parity assertions before dispatch.",
+    "canonical_status_change": true,
+    "phase3_status": "DONE — parent exit criterion evidenced and independently reviewed"
   },
   "active_task_acceptance_summary": [
-    "One normal-boot runtime command continuously proves title/Oak/identity through bedroom/Pallet, Route 1 wild outcome, normal save, and fresh-process load.",
-    "Use only normal runtime input/event seams and an isolated temporary XDG/save sandbox; do not inject post-Oak, post-battle, or post-save state.",
-    "Focused test, no-ROM suite, verified-ROM suite, and independent Reviewer PASS are required before parent/canonical status changes."
+    "Phase 3 vertical-slice parent is closed with independent PASS.",
+    "The next dispatch must define Phase 2 reference scenes and camera assertions before any visual-parity implementation starts."
   ],
   "boundaries": {
     "may_change": [
-      "main.lua replay plumbing only",
-      "scripts runtime replay support",
-      "focused tests and task/parent/coordination documentation"
+      "roadmap, task-contract, coordination, and reference-inventory documentation needed to shape the next Phase 2 package"
     ],
     "must_not_change": [
-      "normal gameplay behavior",
+      "normal gameplay behavior until a new Phase 2 task is approved",
       "supported-ROM policy or exact ROM SHA gate",
       "save format/layout",
       "ROM/cache/BIOS/extracted content",
@@ -50,7 +47,7 @@
     ]
   },
   "blocker": null,
-  "next_after_success": "Fresh independent Reviewer verifies the exact correction before Orchestrator may reconcile the parent gate or canonical Phase 3 status.",
+  "next_after_success": "Create and dispatch the smallest Phase 2 camera/Oak reference-parity package, then obtain independent review before claiming Phase 2 closure.",
   "legal_content_boundary": "Never commit ROMs, BIOS dumps, generated caches, extracted game assets, or other prohibited content.",
-  "phase_completion_rule": "Do not mark Phase 3 DONE until the complete parent exit criterion is evidenced and independently reviewed."
+  "phase_completion_rule": "Do not mark Phase 2 DONE until 240x160 camera parity and the specified Oak/reference screenshot gate are evidenced and independently reviewed."
 }

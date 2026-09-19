@@ -55,11 +55,11 @@ Phase 3 playable vertical slice [DONE]
         ├─ title/new-game → Oak/identity → bedroom runtime entry: REVIEWED PASS
         └─ continuous runtime proof: REVIEWED PASS
                           ↓ independent PASS
-          complete continuous boot→battle→save→reload runtime artifact: READY FOR WORKER
-                          ↓ independent PASS
-                    reconcile full Phase 3 exit proof
+          complete continuous boot→battle→save→reload runtime artifact: REVIEWED PASS
                           ↓
-Phase 2 camera/Oak-intro visual parity closure
+                    Phase 3 exit proof: CLOSED
+                          ↓
+Phase 2 camera/Oak-intro visual parity: NEXT GATE (task shaping)
         ↓
 Phase 4 battle generalization
         ↓
@@ -99,7 +99,7 @@ Phase 10 mod/release engineering
 
 ## Current bounded chain
 
-### Parent gate: Phase 3 exit proof
+### Closed parent gate: Phase 3 exit proof
 
 Required observable path:
 
@@ -116,7 +116,10 @@ boot
 → fresh-process reload
 ```
 
-All known functional seams on that path now have deterministic evidence, including independent PASS for the former title→Oak entry gap. The parent nevertheless remains open because its acceptance calls for a ROM-backed automated proof of the complete path when no remaining boundary is untestable. Current evidence is split across overlapping artifacts.
+All known functional seams on that path have deterministic evidence. The final
+continuous runtime replay at `333d048` received independent `PASS` at
+`000f9847`, so this parent and canonical Phase 3 status are closed. Do not
+reopen it absent regression evidence.
 
 ### Closed leaf: title/Oak entry
 
@@ -126,13 +129,13 @@ Reviewer verified normal title `A`/`START` → existing Oak scene → existing i
 
 Do not redo this leaf unless direct evidence shows regression.
 
-### Active leaf: complete runtime exit replay
+### Closed leaf: complete runtime exit replay
 
-The smallest remaining parent acceptance item is evidence integration, not a known gameplay feature gap.
-
-Worker may execute only [`../tasks/phase3-complete-runtime-exit-replay.md`](../tasks/phase3-complete-runtime-exit-replay.md): produce one deterministic automated run from normal boot through title/Oak, bedroom/Pallet, Route 1 wild battle, save, and fresh-process reload, reusing existing runtime seams.
-
-This package may add replay-driver/test plumbing. It may **not** change normal gameplay behavior. If a real gameplay defect appears during continuous execution, Worker must stop and report the exact first failing seam for separate scoping.
+[`../tasks/phase3-complete-runtime-exit-replay.md`](../tasks/phase3-complete-runtime-exit-replay.md)
+is `CLOSED — REVIEWED PASS`. Its independent review confirms normal boot through
+title/Oak/identity, bedroom/Pallet, Route 1 wild defeat, normal save, and
+fresh-process load, including persisted identity assertions and both 144-file
+test-suite modes.
 
 ### Completed prerequisite: Local Worker Bridge retargeting
 

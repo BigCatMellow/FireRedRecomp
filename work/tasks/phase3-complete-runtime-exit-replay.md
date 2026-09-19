@@ -100,7 +100,7 @@ Return `BLOCKED` with the first exact failing seam rather than changing gameplay
 
 Completion means the complete Phase 3 exit path has one reproducible automated runtime artifact, required suites pass, and an independent Reviewer returns `PASS` on the exact revision. Orchestrator must then reconcile `work/tasks/phase3-exit-proof.md` and only then decide whether the canonical Phase 3 capability can advance to `DONE`.
 
-## Worker evidence — pending independent review
+## Worker evidence and independent review — PASS
 
 `scripts/runtime_phase3_complete_exit_replay.sh` creates an isolated temporary
 XDG/LÖVE sandbox, drives `phase3_complete_exit_save` from normal title boot
@@ -118,5 +118,9 @@ The save and fresh-reload legs each assert the actual `RED/GREEN/0` identity
 before emitting their PASS markers; the wrapper validates those emitted fields
 before emitting its aggregate `identity=asserted` marker. The focused contract
 test and full suites passed locally (144 files in both no-ROM and verified-ROM
-modes). This is Worker evidence only; independent Reviewer verification of the
-exact committed revision remains required.
+modes). Independent Reviewer verification is published at
+[`../reviews/2026-09-19-phase3-complete-runtime-exit-replay-identity-review.md`](../reviews/2026-09-19-phase3-complete-runtime-exit-replay-identity-review.md)
+in revision `000f98475c366709d4117051a2572eafa67c53e1`. It independently
+reproduced the focused replay and both suites, and confirmed that the normal
+save leg and fresh-load leg each assert actual `RED/GREEN/0` identity. The
+task is closed; its parent may be reconciled by Orchestrator.

@@ -2,14 +2,29 @@
 
 - Record role: `HANDOFF`
 - Primary information class: `TASK CONTEXT`
-- Status: `READY FOR INDEPENDENT REVIEW`
-- Lifecycle: `ACTIVE`
+- Status: `PHASE 2 TASK SHAPING`
+- Lifecycle: `ACTIVE — ORCHESTRATION`
 - Authority: coordination only; root `AGENTS.md` and active task contract control review
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
-- Active task: [`../tasks/phase3-complete-runtime-exit-replay.md`](../tasks/phase3-complete-runtime-exit-replay.md)
+- Active task: none; Phase 2 camera/Oak reference-parity package is being shaped
 - Machine state: [`STATE.json`](STATE.json)
 
-## Current Worker handoff — Phase 3 complete runtime exit replay identity correction
+## Current orchestration handoff — Phase 3 closed; shape Phase 2 parity gate
+
+Phase 3 is `DONE` in the canonical capability checklist. The complete replay
+implementation/evidence revision `333d048809c2c3a53f51cee016e685afdea911cb`
+received an independent `PASS` published at
+`000f98475c366709d4117051a2572eafa67c53e1`; the durable review is
+[`../reviews/2026-09-19-phase3-complete-runtime-exit-replay-identity-review.md`](../reviews/2026-09-19-phase3-complete-runtime-exit-replay-identity-review.md).
+
+The next canonical gate is Phase 2: true 240×160 camera parity plus a
+specified Oak-intro/reference screenshot gate. Before dispatch, Orchestrator
+must inventory available reference sources and current camera/render seams,
+then create one bounded task with deterministic assertions, explicit visual
+comparison evidence, scope fences, and independent-review criteria. Do not
+reopen or redo Phase 3 absent direct regression evidence.
+
+## Historical Worker handoff — Phase 3 complete runtime exit replay identity correction
 
 The Worker corrected the sole `NEEDS_FIX` finding from the independent review
 at [`../reviews/2026-09-19-phase3-complete-runtime-exit-replay-review.md`](../reviews/2026-09-19-phase3-complete-runtime-exit-replay-review.md).
