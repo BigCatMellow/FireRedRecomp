@@ -1,6 +1,6 @@
 # FireRedRecomp Coordination Handoff
 
-- Status: `READY_FOR_INDEPENDENT_IMPLEMENTATION_SCOPE_REVIEW`
+- Status: `READY_FOR_WORKER`
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
 - Active task: [`../tasks/phase4-pain-split-effect.md`](../tasks/phase4-pain-split-effect.md)
 
@@ -191,12 +191,11 @@ remain excluded. Discovery and the two-sided-HP/admission design independently
 passed. The literal nine-path Worker route configuration independently passed
 and its non-gameplay probe `7409ad54` passed guarded run `35290005345`.
 
-The active gate is now only independent review of
-`work/tasks/phase4-pain-split-effect.md`. It authorizes no implementation until
-it passes. The reviewer must confirm literal effect-91-only admission;
-pre-mutation deltas; per-side own-max clamps; attacker-before-target actual HP
-events; shared-pain presentation; zero RNG; no faint; and all stated
-exclusions. On PASS, issue one Worker request only through selector
+The independent implementation-scope review passed at
+`b1cb14970726f5289b2439a906dcbeff26ad2e28`. It verified literal effect-91-only
+admission; pre-mutation deltas; per-side own-max clamps; attacker-before-target
+actual HP events; shared-pain presentation; zero RNG; no faint; and all stated
+exclusions. A single Worker request is now authorized only through selector
 `phase4-pain-split-effect`, with the literal nine-path allowlist and its
 focused/full/verified-ROM/replay evidence sequence. Do not widen zero-power or
 HP/healing support, and do not mark Phase 4 complete.

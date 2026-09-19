@@ -1,0 +1,157 @@
+diff --git a/src/core/BattleEngine.lua b/src/core/BattleEngine.lua
+--- a/src/core/BattleEngine.lua
++++ b/src/core/BattleEngine.lua
+@@ -450,5 +450,6 @@ BattleEngine.EFFECT_ERUPTION = 190
+ BattleEngine.EFFECT_PSYWAVE = 88
+ BattleEngine.EFFECT_OHKO = 38
+ BattleEngine.EFFECT_ENDEAVOR = 189
++BattleEngine.EFFECT_PAIN_SPLIT = 91
+ 
+ -- Real Cmd_remaininghptopower: scale the attacker's remaining HP to 48,
+@@ -860,5 +861,6 @@ function BattleEngine:supportsMove(move)
+   if not move then return false end
+   if move.effect == BattleEngine.EFFECT_DREAM_EATER then return false end
+   return move.power > 0 or BattleEngine.STAT_STAGE_MOVES[move.effect] ~= nil
+     or BattleEngine.SCREEN_MOVES[move.effect] ~= nil
++    or move.effect == BattleEngine.EFFECT_PAIN_SPLIT
+ end
+@@ -1035,4 +1037,5 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
+     and move.effect ~= BattleEngine.EFFECT_ALWAYS_HIT
+     and move.effect ~= BattleEngine.EFFECT_VITAL_THROW
+     and move.effect ~= BattleEngine.EFFECT_OHKO
++    and move.effect ~= BattleEngine.EFFECT_PAIN_SPLIT
+ 
+@@ -1069,6 +1072,24 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
+   end
+ 
+   if move.power == 0 then
++    if move.effect == BattleEngine.EFFECT_PAIN_SPLIT then
++      -- Cmd_painsplitdmgcalc stores both signed deltas from the same
++      -- pre-mutation average; the script then updates attacker before target.
++      local average = math.floor((attacker.hp + defender.hp) / 2)
++      local function applyPainSplitHP(side, battler)
++        local beforeHP = battler.hp
++        local afterHP = math.max(0, math.min(battler.maxHP, average))
++        battler.hp = afterHP
++        events[#events + 1] = {
++          type = "painSplitHP", side = side, beforeHP = beforeHP,
++          hpRemaining = afterHP, amount = afterHP - beforeHP,
++        }
++      end
++      applyPainSplitHP(attackerSide, attacker)
++      applyPainSplitHP(defenderSide, defender)
++      events[#events + 1] = { type = "painSplit" }
++      return
++    end
+     if screenStatusKey then
+       self:resolveScreenMove(attackerSide, screenStatusKey, events)
+       return
+diff --git a/src/core/BattleSceneController.lua b/src/core/BattleSceneController.lua
+--- a/src/core/BattleSceneController.lua
++++ b/src/core/BattleSceneController.lua
+@@ -199,5 +199,9 @@ function BattleSceneController:_eventMessages(events)
+       entries[#entries + 1] = { hpSide = event.target, hp = event.hpRemaining }
+       if event.superEffective then add("It's super effective!") end
+       if event.notVeryEffective then add("It's not very effective...") end
++    elseif event.type == "painSplitHP" then
++      entries[#entries + 1] = { hpSide = event.side, hp = event.hpRemaining }
++    elseif event.type == "painSplit" then
++      add("The battlers\nshared their pain!")
+     elseif event.type == "noEffect" then
+       add("It doesn't affect " .. name(event.target) .. "...")
+diff --git a/tests/battle_engine_test.lua b/tests/battle_engine_test.lua
+--- a/tests/battle_engine_test.lua
++++ b/tests/battle_engine_test.lua
+@@ -1503,2 +1503,40 @@ battle = makeBattle({0}, {{move=endeavorId,pp=5}}, {{move=Data.MOVE_TACKLE,pp=1}
+ Data.moves[endeavorId] = nil
++-- EFFECT_PAIN_SPLIT (91): effect-specific zero-power admission, no accuracy
++-- RNG, pre-mutation average, ordered own-max-clamped non-damage HP changes.
++local painSplitId, unsupportedZeroId = 220, 997
++Data.moves[painSplitId] = { effect=91,power=0,type=Data.TYPE_NORMAL,accuracy=100,pp=20,secondaryEffectChance=0,target=0,priority=0,flags=51 }
++Data.moves[unsupportedZeroId] = { effect=92,power=0,type=Data.TYPE_NORMAL,accuracy=100,pp=20,secondaryEffectChance=0,target=0,priority=0,flags=0 }
++battle = makeBattle({}, {{move=painSplitId,pp=20}}, {{move=Data.MOVE_TACKLE,pp=1}})
++check("Pain Split #220 alone is admitted among otherwise unsupported zero-power moves",
++  battle:supportsMove(Data.moves[painSplitId]) and not battle:supportsMove(Data.moves[unsupportedZeroId]))
++battle.player.hp, battle.foe.hp = 5, 15; events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
++check("Pain Split lower attacker applies pre-mutation average to attacker then target with zero RNG",
++  battle.player.hp == 10 and battle.foe.hp == 10 and battle.player.moves[1].pp == 19
++  and battle.rng.draws == 0 and events[2].type == "painSplitHP" and events[2].side == "player"
++  and events[2].beforeHP == 5 and events[2].hpRemaining == 10 and events[2].amount == 5
++  and events[3].type == "painSplitHP" and events[3].side == "foe" and events[3].beforeHP == 15
++  and events[3].hpRemaining == 10 and events[3].amount == -5 and events[4].type == "painSplit")
++battle = makeBattle({}, {{move=painSplitId,pp=20}}, {{move=Data.MOVE_TACKLE,pp=1}})
++battle.player.hp, battle.foe.hp = 15, 5; events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
++check("Pain Split higher attacker loses HP without ordinary critical or damage events",
++  battle.player.hp == 10 and battle.foe.hp == 10 and battle.rng.draws == 0
++  and events[2].amount == -5 and events[3].amount == 5 and events[4].type == "painSplit")
++battle = makeBattle({}, {{move=painSplitId,pp=20}}, {{move=Data.MOVE_TACKLE,pp=1}})
++battle.player.hp, battle.foe.hp = 5, 16; events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
++check("Pain Split floors odd pre-mutation sums", battle.player.hp == 10 and battle.foe.hp == 10)
++battle = makeBattle({}, {{move=painSplitId,pp=20}}, {{move=Data.MOVE_TACKLE,pp=1}})
++battle.player.hp, battle.foe.hp = 9, 9; events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
++check("Pain Split equal HP is successful sharing, not failure", battle.player.hp == 9 and battle.foe.hp == 9
++  and events[2].amount == 0 and events[3].amount == 0 and events[4].type == "painSplit")
++battle = makeBattle({}, {{move=painSplitId,pp=20}}, {{move=Data.MOVE_TACKLE,pp=1}})
++battle.player.maxHP, battle.player.hp, battle.foe.hp = 8, 5, 15; events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
++check("Pain Split clamps the attacker to its own lower maximum and reports actual delta", battle.player.hp == 8
++  and battle.foe.hp == 10 and events[2].amount == 3 and events[2].hpRemaining == 8)
++battle = makeBattle({}, {{move=painSplitId,pp=20}}, {{move=Data.MOVE_TACKLE,pp=1}})
++battle.player.hp, battle.foe.maxHP, battle.foe.hp = 15, 8, 5; events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
++local painSplitFaint = false
++for _, event in ipairs(events) do painSplitFaint = painSplitFaint or event.type == "faint" end
++check("Pain Split clamps the target to its own lower maximum and never emits faint", battle.player.hp == 10
++  and battle.foe.hp == 8 and events[3].amount == 3 and events[3].hpRemaining == 8 and not painSplitFaint)
++Data.moves[painSplitId] = nil; Data.moves[unsupportedZeroId] = nil
+ -- EFFECT_EXPLOSION (7): PP/Damp/self-KO precede accuracy, while target then
+diff --git a/tests/battle_scene_controller_test.lua b/tests/battle_scene_controller_test.lua
+--- a/tests/battle_scene_controller_test.lua
++++ b/tests/battle_scene_controller_test.lua
+@@ -190,4 +190,13 @@ do
+ end
+ 
++do
++  local c = controller()
++  local messages = c:_eventMessages({ { type="painSplitHP", side="player", hpRemaining=12 },
++    { type="painSplitHP", side="foe", hpRemaining=11 }, { type="painSplit" } })
++  check("Pain Split preserves attacker then target invisible HP order before shared-pain text",
++    messages[1].hpSide == "player" and messages[1].hp == 12 and messages[2].hpSide == "foe"
++    and messages[2].hp == 11 and messages[3].text == "The battlers\nshared their pain!", messages[3] and messages[3].text)
++end
++
+ do
+   local c = controller()
+diff --git a/tests/phase4_pain_split_effect_rom_test.lua b/tests/phase4_pain_split_effect_rom_test.lua
+new file mode 100644
+--- /dev/null
++++ b/tests/phase4_pain_split_effect_rom_test.lua
+@@ -0,0 +1,17 @@
++package.path = package.path .. ";./?.lua"
++local BattleMove = require("import.BattleMove")
++local RomAddresses = require("import.RomAddresses")
++local RomImporter = require("import.RomImporter")
++local path = os.getenv("POKEPORT_ROM")
++if not path then print("SKIP phase4_pain_split_effect_rom_test (set POKEPORT_ROM)"); os.exit(0) end
++local ok, info = RomImporter.verify(path)
++if not ok then print("FAIL: ROM verification -- " .. tostring(info)); os.exit(1) end
++local f = assert(io.open(path, "rb")); local rom = f:read("*a"); f:close()
++local a = assert(RomAddresses["41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc"])
++local moves = BattleMove.parseTable(rom, a.gBattleMoves, RomAddresses.COUNTS.MOVES_COUNT)
++local m, count = moves[220], 0
++for i = 0, RomAddresses.COUNTS.MOVES_COUNT - 1 do if moves[i].effect == 91 then count = count + 1 end end
++if not (m.effect == 91 and m.power == 0 and m.type == 0 and m.accuracy == 100 and m.pp == 20 and m.target == 0 and m.priority == 0 and m.flags == 51 and count == 1) then
++  print("FAIL: Pain Split ROM record changed"); os.exit(1)
++end
++print("phase4_pain_split_effect_rom_test: 1 passed, 0 failed")
+diff --git a/scripts/runtime_phase4_pain_split_replay.sh b/scripts/runtime_phase4_pain_split_replay.sh
+new file mode 100755
+--- /dev/null
++++ b/scripts/runtime_phase4_pain_split_replay.sh
+@@ -0,0 +1,8 @@
++#!/usr/bin/env bash
++set -euo pipefail
++ROOT=$(cd "$(dirname "$0")/.." && pwd); cd "$ROOT"
++: "${POKEPORT_ROM:?set POKEPORT_ROM to verified FireRed US v1.0}"
++lua5.1 tests/battle_engine_test.lua
++lua5.1 tests/battle_scene_controller_test.lua
++lua5.1 tests/phase4_pain_split_effect_rom_test.lua
++echo "RUNTIME_REPLAY phase4_pain_split PASS effect=91 represented-state=true singles=true"

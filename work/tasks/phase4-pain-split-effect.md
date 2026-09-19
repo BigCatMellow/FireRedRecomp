@@ -1,6 +1,6 @@
 # Task: Phase 4 Pain Split effect
 
-- Status: `IMPLEMENTATION CONTRACT COMPLETE — PENDING INDEPENDENT REVIEW`
+- Status: `IMPLEMENTATION CONTRACT REVIEWED PASS — READY FOR WORKER`
 - Type: `PHASE 4 / BATTLE RULES / BOUNDED IMPLEMENTATION`
 
 ## Goal
@@ -33,3 +33,20 @@ Generic zero-power admission, generic healing/HP APIs, Protect, Substitute,
 Mirror Move, Lock-On/sure-hit, semi-invulnerability, items, abilities, status,
 doubles/links, other effects, UI redesign, Phase 2's external blocker, or
 Phase 4 completion.
+
+## Independent implementation-scope review
+
+`PASS` at `b1cb14970726f5289b2439a906dcbeff26ad2e28`. The review reconstructed
+the source-lock and design contract against the current engine: effect 91 is
+currently rejected solely by generic admission; it can receive a literal
+exception without widening zero-power acceptance; its no-state accuracy path
+has no RNG draw; and the required pre-mutation attacker/target deltas, own-max
+clamps, attacker-first event order, shared-pain presentation, and no-faint
+boundary are all expressible within the literal nine-path route. Existing
+focused no-ROM checks reproduced at 230/0 engine and 38/0 scene-controller.
+
+Exactly one Worker request is authorized through selector
+`phase4-pain-split-effect`. It must retain the reviewed route's literal
+nine-path allowlist and focused, full no-ROM, SHA-verified-ROM, and replay
+sequence. This PASS authorizes neither generic zero-power/healing support nor
+any excluded state or Phase 4 completion.
