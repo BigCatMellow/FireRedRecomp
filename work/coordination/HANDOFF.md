@@ -89,15 +89,20 @@ The reviewed task is now closed. Its durable implementation evidence is at
 This result does not merge or release anything, reopen frozen values, or
 advance Phase 3.
 
-## Current worker scope
+## Current reviewer scope
 
-Resume the existing AGI-ready
+Independently review the recovered bridge-maintenance revision
+`f2c240e7a94f7a2329771b0ef06d531eabab64e6` against
 [`../tasks/local-worker-bridge-complete-runtime-route.md`](../tasks/local-worker-bridge-complete-runtime-route.md).
-The Worker may add only the explicit fail-closed Local Worker Bridge route for
-the complete Phase 3 replay and its narrow routing/probe/documentation surface.
-No `main.lua`, gameplay, replay implementation, public-PR policy, repository
-permission, ROM policy, save format, or copyrighted-content change is
-authorized. The Worker must establish the route's exact allowlist, gate it by
-the supported ROM SHA, prove route recognition without a gameplay patch, run
-the stated suite/replay evidence, and route the exact revision to an
-independent Reviewer.
+The exact route surface is unchanged through the current `HEAD`.
+
+The Worker verified exact route recognition and fail-closed rejection locally,
+confirmed the five-file allowlist plus route-specific focused-test/replay/publish
+entries, and passed `env -u POKEPORT_ROM bash scripts/test_all.sh` (143 test
+files). No local `POKEPORT_ROM` was supplied, so it did not claim a local
+ROM-backed probe or suite pass. No gameplay, replay implementation, public-PR
+policy, permissions, ROM policy, or save-layout file was changed.
+
+Reviewer must independently judge the existing acceptance/security criteria and
+return `PASS`, `NEEDS_FIX`, or `BLOCK`. Do not advance Phase 3 or restore the
+parent complete-runtime replay task until that independent verdict is recorded.

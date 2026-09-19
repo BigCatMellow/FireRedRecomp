@@ -1,31 +1,32 @@
 {
   "schema_version": 1,
-  "updated_utc": "2026-09-18T21:30:00Z",
-  "role": "ORCHESTRATOR",
-  "status": "READY_FOR_WORKER",
+  "updated_utc": "2026-09-18T22:15:00Z",
+  "role": "WORKER",
+  "status": "READY_FOR_REVIEWER",
   "current_phase": "Phase 3 Local Worker Bridge route",
   "canonical_status_owner": "work/roadmaps/CAPABILITY_CHECKLIST.md",
   "active_task": "work/tasks/local-worker-bridge-complete-runtime-route.md",
   "objective": "Remove only the execution-substrate blocker for the complete Phase 3 runtime replay by adding its explicit, fail-closed Local Worker Bridge route.",
-  "next_role": "WORKER",
+  "next_role": "INDEPENDENT_REVIEWER",
   "reconciliation": {
     "paused_prior_task": "work/tasks/local-worker-bridge-complete-runtime-route.md",
-    "worker_result": "BALANCE VALIDATION CLOSED — REVIEWED PASS AT 6db8d9c0",
+    "worker_result": "Route implementation recovered at f2c240e7; exact route surface unchanged through HEAD and ready for independent review.",
     "blocker": null,
     "gameplay_defect_found": false,
     "implementation_published": true,
     "tests_claimed": true,
-    "review_subject": "6db8d9c0 Strengthen balance validation matrix evidence",
+    "review_subject": "f2c240e7 Route complete Phase 3 replay through local bridge",
     "reproduced_evidence": [
-      "verified FireRed US v1.0 SHA-1 41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc",
-      "lua5.1 tests/pokemon_firered_balance_rom_matrix_test.lua: 13 passed, 0 failed",
-      "scripts/runtime_balance_mod_validation.sh: RUNTIME_BALANCE_MOD PASS",
-      "scripts/test_all.sh: 143 test files PASS in ROM mode"
+      "route selector recognized phase3-complete-runtime-exit-replay",
+      "unknown route selector rejected fail-closed",
+      "route surface unchanged from f2c240e7 through HEAD",
+      "env -u POKEPORT_ROM bash scripts/test_all.sh: 143 test files PASS in no-ROM mode",
+      "no POKEPORT_ROM supplied locally; ROM-backed probe/suite not re-run"
     ],
-    "review_result": "PASS at 6db8d9c0: Reviewer independently reproduced verified-ROM matrix (13/0), actual LÖVE load/replay proof, and 143-file ROM suite; validation diff contains no frozen-package or prohibited-surface change.",
+    "review_result": null,
     "new_prerequisite": null,
     "canonical_status_change": false,
-    "phase3_status": "IN PROGRESS — bridge-route prerequisite restored to Worker"
+    "phase3_status": "IN PROGRESS — complete-runtime bridge route awaiting independent review"
   },
   "active_task_acceptance_summary": [
     "Add only the explicit `phase3-complete-runtime-exit-replay` bridge route, its exact allowlist, focused-test command, runtime-replay command, and explicit publish staging.",

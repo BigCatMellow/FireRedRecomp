@@ -1,6 +1,6 @@
 # Task: add Local Worker Bridge route for the complete Phase 3 replay
 
-- Status: `ACTIVE`
+- Status: `READY FOR INDEPENDENT REVIEW`
 - AGI status: `AGI READY`
 - Type: `INFRASTRUCTURE / EXECUTION SUBSTRATE`
 - Owner: project maintainer
@@ -90,6 +90,38 @@ Extend the already-reviewed explicit `case`-based routing pattern with one narro
 ## Stop / escalate
 
 Stop rather than weaken security if this would require public-PR self-hosted execution, arbitrary targets, a generic fallback route, dropping the exact ROM gate, publishing before tests, storing ROM information in git, broader permissions, gameplay changes, or redesigning the coordination architecture.
+
+## Worker result — 2026-09-18
+
+The requested route was already present, unchanged, in the active local history
+at `f2c240e7a94f7a2329771b0ef06d531eabab64e6` (`Route complete Phase 3
+replay through local bridge`). This Worker did not duplicate or widen that
+implementation.
+
+The revision adds only explicit request/probe selection, the five-file
+hard-coded patch allowlist (`main.lua`, focused test, replay script, and the
+complete/parent task documents), its focused-test and complete-runtime replay
+commands, exact publish staging, a two-line non-gameplay probe, and the matching
+procedure entry.
+
+Worker checks on the current descendant:
+
+- the route surface is unchanged from `f2c240e7` through `HEAD`;
+- a deterministic selector probe recognized exactly
+  `phase3-complete-runtime-exit-replay`, while an unrecognized filename was
+  rejected fail-closed;
+- source inspection confirmed the exact allowlist, focused test, replay, and
+  staging entries and retained trusted-main-only triggering, target validation
+  before apply, and the exact ROM SHA gate; and
+- `env -u POKEPORT_ROM bash scripts/test_all.sh` passed: 143 test files in
+  no-ROM mode.
+
+No `POKEPORT_ROM` was supplied locally, so ROM-backed execution and the guarded
+self-hosted probe were not re-run here. This is missing local evidence, not a
+pass claim. No gameplay, replay implementation, public-PR policy, permissions,
+ROM policy, or save-layout file was modified by this Worker.
+
+The exact revision is ready for independent review.
 
 ## Completion / handoff
 
