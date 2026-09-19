@@ -1,32 +1,34 @@
 {
   "schema_version": 1,
-  "updated_utc": "2026-09-18T22:15:00Z",
-  "role": "WORKER",
-  "status": "READY_FOR_REVIEWER",
+  "updated_utc": "2026-09-18T23:30:00Z",
+  "role": "ORCHESTRATOR",
+  "status": "READY_FOR_WORKER",
   "current_phase": "Phase 3 Local Worker Bridge route",
   "canonical_status_owner": "work/roadmaps/CAPABILITY_CHECKLIST.md",
   "active_task": "work/tasks/local-worker-bridge-complete-runtime-route.md",
   "objective": "Remove only the execution-substrate blocker for the complete Phase 3 runtime replay by adding its explicit, fail-closed Local Worker Bridge route.",
-  "next_role": "INDEPENDENT_REVIEWER",
+  "next_role": "WORKER",
   "reconciliation": {
     "paused_prior_task": "work/tasks/local-worker-bridge-complete-runtime-route.md",
-    "worker_result": "Route implementation recovered at f2c240e7; exact route surface unchanged through HEAD and ready for independent review.",
+    "worker_result": "Route implementation recovered at f2c240e7; exact route surface unchanged through 41ca7eb1.",
     "blocker": null,
     "gameplay_defect_found": false,
     "implementation_published": true,
     "tests_claimed": true,
-    "review_subject": "f2c240e7 Route complete Phase 3 replay through local bridge",
+    "review_subject": "41ca7eb184cdabe6e247f442ab95b6b0037d98be (route implementation ancestor f2c240e7)",
     "reproduced_evidence": [
       "route selector recognized phase3-complete-runtime-exit-replay",
       "unknown route selector rejected fail-closed",
       "route surface unchanged from f2c240e7 through HEAD",
       "env -u POKEPORT_ROM bash scripts/test_all.sh: 143 test files PASS in no-ROM mode",
-      "no POKEPORT_ROM supplied locally; ROM-backed probe/suite not re-run"
+      "both locally available candidate ROMs match the required SHA-1",
+      "env -u POKEPORT_ROM bash scripts/test_all.sh: 143 test files PASS in no-ROM mode",
+      "target parser misses mode-only diff --git paths before git apply"
     ],
-    "review_result": null,
+    "review_result": "NEEDS_FIX at 41ca7eb1: validate every diff --git target, including mode-only changes, against the route allowlist before git apply.",
     "new_prerequisite": null,
     "canonical_status_change": false,
-    "phase3_status": "IN PROGRESS — complete-runtime bridge route awaiting independent review"
+    "phase3_status": "IN PROGRESS — exact fail-closed target-validation correction dispatched"
   },
   "active_task_acceptance_summary": [
     "Add only the explicit `phase3-complete-runtime-exit-replay` bridge route, its exact allowlist, focused-test command, runtime-replay command, and explicit publish staging.",
@@ -50,7 +52,7 @@
     ]
   },
   "blocker": null,
-  "next_after_success": "After independent PASS, restore `work/tasks/phase3-complete-runtime-exit-replay.md` as READY_FOR_WORKER. Do not mark Phase 3 DONE until its parent exit proof is independently reviewed.",
+  "next_after_success": "Worker may make only the target-validation correction plus deterministic non-gameplay validation in the active bridge task. Do not restore `work/tasks/phase3-complete-runtime-exit-replay.md` until a fresh independent PASS.",
   "legal_content_boundary": "Never commit ROMs, BIOS dumps, generated caches, extracted game assets, or other prohibited content.",
   "phase_completion_rule": "Do not mark Phase 3 DONE until the complete parent exit criterion is evidenced and independently reviewed."
 }
