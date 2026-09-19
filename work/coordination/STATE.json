@@ -1,51 +1,46 @@
 {
   "schema_version": 1,
-  "updated_utc": "2026-09-19T01:54:42Z",
-  "role": "ORCHESTRATOR",
-  "status": "BLOCKED",
-  "current_phase": "Phase 3 Local Worker Bridge route",
+  "updated_utc": "2026-09-19T09:26:33Z",
+  "role": "WORKER",
+  "status": "READY_FOR_REVIEWER",
+  "current_phase": "Phase 3 complete runtime exit replay",
   "canonical_status_owner": "work/roadmaps/CAPABILITY_CHECKLIST.md",
-  "active_task": "work/tasks/local-worker-bridge-complete-runtime-route.md",
-  "objective": "Remove only the execution-substrate blocker for the complete Phase 3 runtime replay by adding its explicit, fail-closed Local Worker Bridge route.",
-  "next_role": "ORCHESTRATOR",
+  "active_task": "work/tasks/phase3-complete-runtime-exit-replay.md",
+  "objective": "Produce one deterministic normal-boot-to-fresh-reload Phase 3 runtime artifact using existing gameplay seams only.",
+  "next_role": "REVIEWER",
   "reconciliation": {
     "paused_prior_task": "work/tasks/local-worker-bridge-complete-runtime-route.md",
-    "worker_result": "Parser disambiguation now validates paired file-marker preambles while treating post-hunk Lua deletion records as content; the focused bridge coverage proves both required cases.",
-    "blocker": "The remote-isolated Reviewer cannot fetch the locally committed parser-disambiguation subject b7eaaec7 from origin; publishing to origin/master requires explicit human authorization.",
+    "worker_result": "One deterministic normal-title-boot replay reaches Oak/identity, bedroom/Pallet, Route 1 wild defeat, normal save, and fresh-process normal reload without injecting a post-Oak/post-battle session.",
+    "blocker": null,
     "gameplay_defect_found": false,
     "implementation_published": true,
     "tests_claimed": true,
-    "review_subject": "Current bounded parser-disambiguation correction (exact revision to be recorded by Worker handoff).",
+    "review_subject": "Pending Worker commit for phase3-complete-runtime-exit-replay; Reviewer must verify the exact resulting revision.",
     "reproduced_evidence": [
-      "bash scripts/test_local_worker_bridge_patch_targets.sh: allowed mode-only header accepted; unauthorized mode-only target, unauthorized source path, malformed header, and an allowed-header/unallowlisted-marker patch rejected before git apply --check",
-      "bash -n scripts/validate_local_worker_bridge_patch_targets.sh scripts/test_local_worker_bridge_patch_targets.sh: PASS",
-      "env -u POKEPORT_ROM bash scripts/test_all.sh: 143 test files PASS in no-ROM mode",
-      "available private ROM SHA-1 matched 41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc",
-      "POKEPORT_ROM=<verified private ROM> bash scripts/test_all.sh: 143 test files PASS in ROM mode",
-      "focused spoof coverage first confirms git apply --check accepts an allowed main.lua header paired with unallowlisted workflow markers, then proves the validator rejects it before git apply --check",
-      "focused Lua-comment coverage first confirms git apply --check accepts a valid authorized main.lua patch whose deletion record begins --- , then proves the validator also reaches and passes git apply --check",
-      "env -u POKEPORT_ROM bash scripts/test_all.sh: 143 test files PASS in no-ROM mode",
-      "POKEPORT_ROM=<verified private ROM> bash scripts/test_all.sh: 143 test files PASS in ROM mode"
+      "Private FireRed US v1.0 SHA-1 matched 41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc",
+      "lua5.1 tests/phase3_complete_runtime_exit_replay_test.lua: PASS",
+      "POKEPORT_ROM=<verified private ROM> bash scripts/runtime_phase3_complete_exit_replay.sh: PASS with title/Oak/identity, bedroom/Pallet/Route 1, wild defeat money=2960/recovered HP, normal save, and fresh-process reload party=1",
+      "env -u POKEPORT_ROM bash scripts/test_all.sh: 144 test files PASS in no-ROM mode",
+      "POKEPORT_ROM=<verified private ROM> bash scripts/test_all.sh: 144 test files PASS in ROM mode"
     ],
-    "review_result": "PENDING fresh independent review; Worker does not self-approve the parser-disambiguation correction.",
-    "new_prerequisite": "Independent Reviewer must verify paired preamble-marker validation, post-hunk Lua deletion handling, spoof rejection before apply, and valid authorized Lua deletion acceptance.",
+    "review_result": "PENDING independent review; Worker does not self-approve this evidence integration.",
+    "new_prerequisite": "Reviewer independently runs focused test, complete isolated replay, and required suites on the exact revision while checking no gameplay behavior changed.",
     "canonical_status_change": false,
-    "phase3_status": "IN PROGRESS \u2014 parser-disambiguation correction ready for fresh review"
+    "phase3_status": "IN PROGRESS — complete runtime replay implemented with Worker evidence, pending independent review"
   },
   "active_task_acceptance_summary": [
-    "Add only the explicit `phase3-complete-runtime-exit-replay` bridge route, its exact allowlist, focused-test command, runtime-replay command, and explicit publish staging.",
-    "Preserve trusted-main-only execution, fail-closed unknown routes, target validation before apply, exact supported-ROM SHA gate, tests before publish, and no copyrighted-content handling.",
-    "Prove route recognition through a non-gameplay probe or equivalent deterministic check and obtain independent Reviewer PASS."
+    "One normal-boot runtime command continuously proves title/Oak/identity through bedroom/Pallet, Route 1 wild outcome, normal save, and fresh-process load.",
+    "Use only normal runtime input/event seams and an isolated temporary XDG/save sandbox; do not inject post-Oak, post-battle, or post-save state.",
+    "Focused test, no-ROM suite, verified-ROM suite, and independent Reviewer PASS are required before parent/canonical status changes."
   ],
   "boundaries": {
     "may_change": [
-      ".github/workflows/local-worker-bridge.yml",
-      "work/coordination/LOCAL_RUNNER_BRIDGE.md when procedure changes",
-      "focused bridge validation/probe support and task/coordination/review documentation"
+      "main.lua replay plumbing only",
+      "scripts runtime replay support",
+      "focused tests and task/parent/coordination documentation"
     ],
     "must_not_change": [
-      "main.lua or gameplay/runtime behavior",
-      "the complete-runtime replay implementation beyond route names",
+      "normal gameplay behavior",
       "supported-ROM policy or exact ROM SHA gate",
       "save format/layout",
       "ROM/cache/BIOS/extracted content",
@@ -53,8 +48,8 @@
       "independent-review requirement"
     ]
   },
-  "blocker": "Explicit human authorization is required to publish the bounded local commits to origin/master so the remote-isolated Reviewer can fetch the exact subject revision.",
-  "next_after_success": "After authorized publication and a fresh independent PASS, restore `work/tasks/phase3-complete-runtime-exit-replay.md` to READY_FOR_WORKER.",
+  "blocker": null,
+  "next_after_success": "Independent Reviewer verifies the exact Worker revision; Orchestrator alone reconciles the parent gate and canonical Phase 3 status.",
   "legal_content_boundary": "Never commit ROMs, BIOS dumps, generated caches, extracted game assets, or other prohibited content.",
   "phase_completion_rule": "Do not mark Phase 3 DONE until the complete parent exit criterion is evidenced and independently reviewed."
 }

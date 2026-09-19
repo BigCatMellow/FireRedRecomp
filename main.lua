@@ -3642,11 +3642,13 @@ function love.load()
   -- keyboard-input path used in normal play. They are opt-in, terminate
   -- after emitting one machine-readable result, and are not a scripting API.
   local runtimeReplay = os.getenv("POKEPORT_RUNTIME_REPLAY")
+  local replayCompleteExit = runtimeReplay == "phase3_complete_exit_save"
   local replayRoute1 = runtimeReplay == "route1_wild_defeat"
     or runtimeReplay == "route1_wild_defeat_save"
     or runtimeReplay == "route1_wild_win"
     or runtimeReplay == "natural_capture"
     or runtimeReplay == "natural_capture_save"
+    or replayCompleteExit
   local replayNaturalCapture = runtimeReplay == "natural_capture"
     or runtimeReplay == "natural_capture_save"
   if runtimeReplay == "restart_load" then
@@ -3751,7 +3753,6 @@ function love.load()
       tostring(session and session.location.x), tostring(session and session.location.y)))
     if passed then love.event.quit(0) else love.event.quit(1) end
   elseif runtimeReplay == "house_to_pallet" or replayRoute1 then
-    beginNewGameFlow()
 
     local function tick(mask, count)
       world.replayInputMask = mask
@@ -3919,10 +3920,23 @@ function love.load()
       end
     end
 
+    local startedAtTitle, reachedOak, reachedIdentity = true, true, true
+    if replayCompleteExit then
+      -- The complete proof enters the existing downstream route only after
+      -- normal title and Oak input have reached the identity flow.  It does
+      -- not construct a post-Oak session or call an alternate bootstrap.
+      startedAtTitle = titleActive and not oakSceneActive and not newGame.active
+      press(InputState.START_BUTTON)
+      reachedOak = oakSceneActive and not titleActive and not newGame.active
+      press(InputState.A_BUTTON)
+      reachedIdentity = newGame.active and newGame.flow ~= nil
+    else
+      beginNewGameFlow()
+    end
+
     -- Exercise the real post-Oak keyboard state machine: accept its
     -- default BOY cursor, accept the deterministic generated player-name
     -- fallback, select the visible GREEN rival preset, then confirm both.
-    -- This intentionally does not claim to automate Oak's preceding scene.
     press(InputState.A_BUTTON) -- gender -> player naming
     press(InputState.START_BUTTON) -- naming cursor -> OK
     press(InputState.A_BUTTON) -- accept player fallback -> confirm
@@ -3932,8 +3946,10 @@ function love.load()
     press(InputState.A_BUTTON) -- rival YES -> complete
     world.runtimeReplayIdentity = newGame.flow:result()
     tick(0, 1) -- completed identity flow bootstraps the fresh session
-    local started = newGame.session and walkMapId == GameSession.MAP_PALLET_TOWN_PLAYERS_HOUSE_2F
+    local started = startedAtTitle and reachedOak and reachedIdentity
+      and newGame.session and walkMapId == GameSession.MAP_PALLET_TOWN_PLAYERS_HOUSE_2F
       and playerMovement and playerMovement.tileX == 6 and playerMovement.tileY == 6
+    local reachedPallet = false
     if started then
       for _ = 1, 4 do move(InputState.DPAD_RIGHT) end
       for _ = 1, 4 do move(InputState.DPAD_UP) end
@@ -3941,6 +3957,7 @@ function love.load()
       -- door warp at (5,8) is the next real map transition into Pallet.
       for _ = 1, 5 do move(InputState.DPAD_LEFT) end
       for _ = 1, 6 do move(InputState.DPAD_DOWN) end
+      reachedPallet = walkMapId == MAP_PALLET_TOWN
       if replayRoute1 then
         -- The only north exit tiles are Oak's real (12,1)/(13,1) story
         -- gate, so traverse to it rather than bypassing field progression.
@@ -4187,8 +4204,17 @@ function love.load()
       else
         passed = passed and result.wildOutcome == (runtimeReplay == "route1_wild_win" and "playerWon" or "playerLost")
       end
+      if replayCompleteExit then
+        local sb1 = newGame.session and newGame.session.state.saveBlock1
+        local lead = sb1 and sb1.playerParty and sb1.playerParty[1]
+        -- The defeat branch must complete its ordinary whiteout/recovery
+        -- callback: the deterministic loss penalty is charged and the lead
+        -- is healed before saving.
+        passed = passed and reachedPallet and sb1.money == NewGameDefaults.startingMoney - 40
+          and lead and lead.hp == lead.maxHP
+      end
     end
-    if passed and runtimeReplay == "route1_wild_defeat_save" then
+    if passed and (runtimeReplay == "route1_wild_defeat_save" or replayCompleteExit) then
       -- K reaches saveGame only through the normal public hotkey callback.
       -- The save-restart shell gate owns the isolated filesystem boundary.
       love.keypressed("k")
@@ -4237,8 +4263,18 @@ function love.load()
         .. " capture=" .. tostring(capture.captureOutcome)
         .. " party=" .. tostring(newGame.session and newGame.session.state.saveBlock1.playerPartyCount))
     end
-    if runtimeReplay == "route1_wild_defeat_save" or runtimeReplay == "natural_capture_save" then
+    if runtimeReplay == "route1_wild_defeat_save" or runtimeReplay == "natural_capture_save" or replayCompleteExit then
       replayDetail = replayDetail .. " saved=" .. tostring(world.runtimeReplaySaved)
+    end
+    if replayCompleteExit then
+      local sb1 = newGame.session and newGame.session.state.saveBlock1
+      local lead = sb1 and sb1.playerParty and sb1.playerParty[1]
+      replayDetail = replayDetail .. " title=" .. tostring(startedAtTitle)
+        .. " oak=" .. tostring(reachedOak)
+        .. " bedroom=" .. tostring(started)
+        .. " pallet=" .. tostring(reachedPallet)
+        .. " money=" .. tostring(sb1 and sb1.money)
+        .. " hp=" .. tostring(lead and lead.hp) .. "/" .. tostring(lead and lead.maxHP)
     end
     print(("RUNTIME_REPLAY %s %s map=%s pos=%s,%s%s"):format(runtimeReplay,
       passed and "PASS" or "FAIL", tostring(walkMapId),

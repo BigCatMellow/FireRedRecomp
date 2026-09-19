@@ -1,6 +1,6 @@
 # Task: prove the complete Phase 3 runtime exit path end to end
 
-- Status: `ACTIVE`
+- Status: `IMPLEMENTED — PENDING INDEPENDENT REVIEW`
 - AGI status: `AGI READY`
 - Type: `EVIDENCE / BOUNDED INTEGRATION`
 - Owner: project maintainer
@@ -99,3 +99,21 @@ Return `BLOCKED` with the first exact failing seam rather than changing gameplay
 ## Completion / handoff
 
 Completion means the complete Phase 3 exit path has one reproducible automated runtime artifact, required suites pass, and an independent Reviewer returns `PASS` on the exact revision. Orchestrator must then reconcile `work/tasks/phase3-exit-proof.md` and only then decide whether the canonical Phase 3 capability can advance to `DONE`.
+
+## Worker evidence — pending independent review
+
+`scripts/runtime_phase3_complete_exit_replay.sh` creates an isolated temporary
+XDG/LÖVE sandbox, drives `phase3_complete_exit_save` from normal title boot
+through Oak/identity, bedroom, Pallet, Route 1, and a real wild defeat, checks
+the normal `K` save callback wrote the sandbox save, then starts a second LÖVE
+process and uses normal `L` load handling.
+
+Its verified-ROM final marker is:
+
+```text
+RUNTIME_REPLAY phase3_complete_exit PASS title=true oak=true identity=RED/GREEN bedroom=true pallet=true route1=true wild=playerLost money=2960 hp=recovered saved=true reload=true party=1
+```
+
+The focused contract test and full suites passed locally (144 files in both
+no-ROM and verified-ROM modes). This is Worker evidence only; independent
+Reviewer verification of the exact committed revision remains required.

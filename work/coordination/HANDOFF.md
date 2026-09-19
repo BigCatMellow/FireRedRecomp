@@ -9,6 +9,33 @@
 - Active task: [`../tasks/local-worker-bridge-complete-runtime-route.md`](../tasks/local-worker-bridge-complete-runtime-route.md)
 - Machine state: [`STATE.json`](STATE.json)
 
+## Current Worker handoff — Phase 3 complete runtime exit replay
+
+The bounded evidence implementation is ready for independent review. It adds
+only replay-driver plumbing, one focused contract test, and one runtime wrapper;
+normal gameplay behavior was not changed.
+
+The exact Worker revision is to be recorded after the commit below. Reviewer
+must assess that revision against
+[`../tasks/phase3-complete-runtime-exit-replay.md`](../tasks/phase3-complete-runtime-exit-replay.md),
+not treat this handoff as a self-approval.
+
+Evidence reproduced locally using the private verified FireRed US v1.0 ROM
+(SHA-1 `41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc`):
+
+- `lua5.1 tests/phase3_complete_runtime_exit_replay_test.lua`: PASS.
+- `POKEPORT_ROM=<verified private ROM> bash scripts/runtime_phase3_complete_exit_replay.sh`: PASS. The normal-title-boot process emits title/Oak/identity, bedroom/Pallet, Route 1 wild-defeat, money `2960`, recovered lead HP, and normal-save evidence; a second LÖVE process emits normal-load party continuity. The wrapper emits the single final `RUNTIME_REPLAY phase3_complete_exit PASS` marker.
+- `env -u POKEPORT_ROM bash scripts/test_all.sh`: 144 files PASS.
+- `POKEPORT_ROM=<verified private ROM> bash scripts/test_all.sh`: 144 files PASS.
+
+The wrapper uses a freshly created temporary XDG sandbox, verifies the normal
+`K` callback produced a nonempty save there, and supplies that same sandbox to
+the fresh `L`-load process. It does not add ROM content or alter save layout.
+
+Next action: independent Reviewer runs the focused test, complete replay, and
+both suites on the exact commit; only then may Orchestrator reconcile the
+parent Phase 3 gate. `STATE.json` is `READY_FOR_REVIEWER`.
+
 ## Completed prerequisite
 
 The bounded category/learnset foundation is implemented at
@@ -89,7 +116,30 @@ The reviewed task is now closed. Its durable implementation evidence is at
 This result does not merge or release anything, reopen frozen values, or
 advance Phase 3.
 
-## Current reviewer result — bridge header-validation correction
+## Current reviewer result — bridge parser-disambiguation correction
+
+The independent Reviewer returns `PASS` on published subject
+`63d4bf517b09a441b6769fb7f61b6afa3657d709` (`origin/master` and local
+`HEAD`), including parser-correction implementation
+`b7eaaec77eb98b336b0c25299580dd6cbafab4a0`. The durable record is
+[`../reviews/2026-09-19-local-worker-bridge-parser-disambiguation-review.md`](../reviews/2026-09-19-local-worker-bridge-parser-disambiguation-review.md).
+
+The Reviewer independently reproduced focused syntax/bridge coverage, the
+143-file no-ROM suite, and the 143-file verified-ROM suite after independently
+confirming the supplied private ROM's required SHA-1. An adversarial patch with
+an allowed `main.lua` header and unallowlisted workflow markers was rejected
+before fake `git apply --check` could run. Conversely, an applicable allowed
+Lua-comment deletion line beginning `--- ` reached the apply check rather than
+being treated as a preamble marker. Mode-only, malformed-header, source-path,
+explicit routing, trusted-main-only, exact-ROM-gate, test/replay-before-publish,
+and route-specific staging invariants remain intact.
+
+This PASS closes only the bounded bridge prerequisite. The Orchestrator may
+restore the existing `phase3-complete-runtime-exit-replay.md` task to
+`READY_FOR_WORKER`; it must not advance Phase 3 or treat its continuous replay
+as implemented or reviewed.
+
+## Superseded reviewer result — bridge header-validation correction
 
 The fresh independent Reviewer returns `NEEDS_FIX` on handoff subject
 `49aa6b7589faf1d7a3c3a3b550a6e83043b2c2a8` (implementation

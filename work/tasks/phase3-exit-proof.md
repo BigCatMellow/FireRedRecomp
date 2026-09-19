@@ -63,11 +63,18 @@ The earlier functional title/Oak seam is no longer open. The remaining issue is 
 
 Because acceptance criterion 1 explicitly calls for a ROM-backed automated test of the complete path when no untestable boundary remains, Phase 3 is **not yet eligible for `DONE`** merely by stitching claims together in prose.
 
-The bounded final continuation is:
+The bounded final continuation has produced Worker evidence and is pending
+independent review:
 
 `work/tasks/phase3-complete-runtime-exit-replay.md`
 
-Its job is evidence integration only: reuse the already-passed runtime seams and prove normal boot → title/Oak/identity → bedroom/Pallet → Route 1 → first wild battle → catch or defeat → save → fresh-process reload in one deterministic automated artifact. It may add replay-driver/test plumbing but may not change normal gameplay behavior. If the continuous run reveals a real gameplay defect, it must stop and report the first exact failing seam for separate Orchestrator scoping.
+`scripts/runtime_phase3_complete_exit_replay.sh` continuously drives normal
+boot → title/Oak/identity → bedroom/Pallet → Route 1 wild defeat → normal save
+→ fresh-process normal load in an isolated XDG sandbox. Its final marker
+asserts identity, location progression, deterministic loss money and recovered
+HP, save production, and reload party continuity. This does not close the
+parent gate: an independent Reviewer `PASS` on the exact revision is still
+required.
 
 ## Stop conditions
 
