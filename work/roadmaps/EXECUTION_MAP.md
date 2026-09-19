@@ -78,7 +78,7 @@ Phase 10 mod/release engineering
 | --- | --- | --- | --- | --- |
 | Phase 0 — charter/reproducibility | `IN PROGRESS` | no current dispatch | save-version contract + first CI verification | stronger release baseline |
 | Phase 1 — ROM importer/canonical model | `DONE` | none | already met | downstream systems consume canonical data |
-| Phase 2 — camera + Oak/reference parity | `IN PROGRESS` | deferred by current dispatch order | true 240×160 camera parity + Oak/reference assertions | Phase 2 closure |
+| Phase 2 — camera + Oak/reference parity | `IN PROGRESS` | [`../tasks/phase2-camera-oak-reference-parity-spec.md`](../tasks/phase2-camera-oak-reference-parity-spec.md) | deterministic three-case reference/camera comparison harness, then measured parity corrections | Phase 2 closure |
 | Phase 3A — deterministic vertical-slice proof | `DONE` | [`../tasks/phase3-exit-proof.md`](../tasks/phase3-exit-proof.md) | independently reviewed `333d048` complete runtime artifact, with 144-file no-ROM/ROM suites | Phase 2 camera/Oak parity gate |
 | Phase 3B — canonical Viridian Parcel/Dex progression | evidenced | [`../tasks/viridian-parcel-dex-progression.md`](../tasks/viridian-parcel-dex-progression.md) | already evidenced; do not redo | supports Phase 3A |
 | Phase 3C — north-facing Oak Parcel/Dex scene | `REVIEWED PASS` | [`../tasks/oak-parcel-dex-presentation-north.md`](../tasks/oak-parcel-dex-presentation-north.md) | PASS at `2d8c3221775044a54668683e500055307fe4d20b` | supports Phase 3A |

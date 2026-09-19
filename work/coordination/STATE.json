@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
-  "updated_utc": "2026-09-19T12:00:00Z",
-  "role": "ORCHESTRATOR",
-  "status": "NEEDS_SHAPING",
+  "updated_utc": "2026-09-19T12:15:00Z",
+  "role": "WORKER",
+  "status": "READY_FOR_WORKER",
   "current_phase": "Phase 2 camera and Oak reference parity",
   "canonical_status_owner": "work/roadmaps/CAPABILITY_CHECKLIST.md",
-  "active_task": null,
-  "objective": "Specify the smallest independently reviewable Phase 2 camera/Oak reference-parity task now that the Phase 3 vertical-slice proof is closed.",
-  "next_role": "ORCHESTRATOR",
+  "active_task": "work/tasks/phase2-camera-oak-reference-parity-spec.md",
+  "objective": "Build the deterministic Phase 2 camera/Oak reference-parity comparison harness and fail-closed reference contract without claiming visual parity.",
+  "next_role": "WORKER",
   "reconciliation": {
     "paused_prior_task": "work/tasks/local-worker-bridge-complete-runtime-route.md",
     "worker_result": "The independently reviewed complete runtime replay reaches normal title/Oak/identity, bedroom/Pallet, Route 1 wild defeat, normal save, and fresh-process normal reload without injecting a post-Oak/post-battle session.",
@@ -25,20 +25,24 @@
       "Identity correction: complete save process and fresh reload process each emitted PASS only with actual identity=RED/GREEN/0; wrapper checked both fields before its aggregate marker"
     ],
     "review_result": "PASS: independent review published at 000f98475c366709d4117051a2572eafa67c53e1; see work/reviews/2026-09-19-phase3-complete-runtime-exit-replay-identity-review.md.",
-    "new_prerequisite": "Phase 2 task shaping: specify reference screenshots and deterministic camera/Oak parity assertions before dispatch.",
+    "new_prerequisite": "Phase 2 harness: validate externally supplied reference provenance and obtain deterministic three-case camera/Oak comparison evidence.",
     "canonical_status_change": true,
     "phase3_status": "DONE — parent exit criterion evidenced and independently reviewed"
   },
   "active_task_acceptance_summary": [
-    "Phase 3 vertical-slice parent is closed with independent PASS.",
-    "The next dispatch must define Phase 2 reference scenes and camera assertions before any visual-parity implementation starts."
+    "Capture and compare static Oak, player-centred Pallet, and edge-clamped camera cases at exactly 240x160.",
+    "Fail closed for missing or invalid external references and record a blocker rather than a parity PASS.",
+    "Focused tests, no-ROM suite, verified-ROM suite, and independent Reviewer PASS are required before this harness task closes."
   ],
   "boundaries": {
     "may_change": [
-      "roadmap, task-contract, coordination, and reference-inventory documentation needed to shape the next Phase 2 package"
+      "task-local manifest/template and documentation",
+      "focused camera-geometry test or narrow pure helper",
+      "deterministic capture/diff wrapper and its focused tests",
+      "Oak structural assertions only when directly needed"
     ],
     "must_not_change": [
-      "normal gameplay behavior until a new Phase 2 task is approved",
+      "normal gameplay behavior, camera policy, map movement, scene flow, and rendering changes intended to lower a diff score",
       "supported-ROM policy or exact ROM SHA gate",
       "save format/layout",
       "ROM/cache/BIOS/extracted content",
@@ -47,7 +51,7 @@
     ]
   },
   "blocker": null,
-  "next_after_success": "Create and dispatch the smallest Phase 2 camera/Oak reference-parity package, then obtain independent review before claiming Phase 2 closure.",
+  "next_after_success": "Worker supplies implementation/evidence or the exact external-reference blocker; independent Reviewer then assesses the exact revision before Orchestrator closes only the harness package.",
   "legal_content_boundary": "Never commit ROMs, BIOS dumps, generated caches, extracted game assets, or other prohibited content.",
   "phase_completion_rule": "Do not mark Phase 2 DONE until 240x160 camera parity and the specified Oak/reference screenshot gate are evidenced and independently reviewed."
 }

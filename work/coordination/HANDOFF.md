@@ -2,14 +2,14 @@
 
 - Record role: `HANDOFF`
 - Primary information class: `TASK CONTEXT`
-- Status: `PHASE 2 TASK SHAPING`
-- Lifecycle: `ACTIVE — ORCHESTRATION`
+- Status: `READY FOR WORKER`
+- Lifecycle: `ACTIVE`
 - Authority: coordination only; root `AGENTS.md` and active task contract control review
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
-- Active task: none; Phase 2 camera/Oak reference-parity package is being shaped
+- Active task: [`../tasks/phase2-camera-oak-reference-parity-spec.md`](../tasks/phase2-camera-oak-reference-parity-spec.md)
 - Machine state: [`STATE.json`](STATE.json)
 
-## Current orchestration handoff — Phase 3 closed; shape Phase 2 parity gate
+## Current Worker handoff — Phase 2 camera/Oak reference-parity harness
 
 Phase 3 is `DONE` in the canonical capability checklist. The complete replay
 implementation/evidence revision `333d048809c2c3a53f51cee016e685afdea911cb`
@@ -18,11 +18,26 @@ received an independent `PASS` published at
 [`../reviews/2026-09-19-phase3-complete-runtime-exit-replay-identity-review.md`](../reviews/2026-09-19-phase3-complete-runtime-exit-replay-identity-review.md).
 
 The next canonical gate is Phase 2: true 240×160 camera parity plus a
-specified Oak-intro/reference screenshot gate. Before dispatch, Orchestrator
-must inventory available reference sources and current camera/render seams,
-then create one bounded task with deterministic assertions, explicit visual
-comparison evidence, scope fences, and independent-review criteria. Do not
-reopen or redo Phase 3 absent direct regression evidence.
+specified Oak-intro/reference screenshot gate. Worker may execute only
+[`../tasks/phase2-camera-oak-reference-parity-spec.md`](../tasks/phase2-camera-oak-reference-parity-spec.md).
+
+The bounded package builds a deterministic three-case capture/comparison
+harness: static Oak, player-centred Pallet camera, and edge-clamped camera.
+It must require untracked externally supplied reference PNGs and provenance
+metadata, validate dimensions/checksums, emit machine-readable pixel-diff
+results, and fail closed before comparison when references are absent or
+invalid. Existing `POKEPORT_OAKSCENE`, `POKEPORT_WALK`,
+`POKEPORT_WALK_MOVES`, `POKEPORT_SCREENSHOT`, and `tools/pixeldiff/` are the
+starting seams. No actual emulator-reference corpus is currently tracked or
+provisioned; `BLOCKED: reference corpus unavailable` is an acceptable truthful
+handoff after the harness/evidence work, never a PASS.
+
+Worker must not alter gameplay, camera policy, rendering merely to lower a
+diff, visual assets, ROM policy/content, saves, Phase 3, or later phases. A
+measured visual discrepancy is a stop-and-rescope result. Worker records exact
+revision, changed files, focused/suite results, and real-reference result or
+blocker. Independent Reviewer must assess the exact revision before this task
+may close; Phase 2 itself remains `IN PROGRESS`.
 
 ## Historical Worker handoff — Phase 3 complete runtime exit replay identity correction
 
