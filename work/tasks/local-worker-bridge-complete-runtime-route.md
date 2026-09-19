@@ -160,6 +160,28 @@ no-ROM 143-file suite, and verified-ROM 143-file suite passed. No gameplay,
 replay implementation, policy, permissions, ROM content, or save-layout file
 changed. A fresh independent review is required.
 
+## Worker correction — parser disambiguation follow-up
+
+The focused validator now tracks each unified-diff section's pre-hunk file
+preamble. It validates paired `---`/`+++` markers only in that actionable
+preamble, along with both paths of every `diff --git` header. Once an `@@`
+hunk begins, records beginning `--- ` or `+++ ` are ordinary hunk content;
+this preserves valid Lua comment deletion lines without relaxing pre-apply
+target validation.
+
+Deterministic non-gameplay coverage retains the allowed-header/unallowlisted-
+workflow-marker patch: it first passes `git apply --check`, then the validator
+rejects it before a fake `git apply --check` can execute. The same focused
+test also builds an applicable allowed `main.lua` patch whose deleted Lua
+comment produces a `--- ` line, confirms `git apply --check` accepts it, and
+confirms the validator reaches and passes that check. `bash -n` on both bridge
+scripts, the focused test, the 143-file no-ROM suite, and the 143-file
+verified-ROM suite passed. No gameplay/runtime implementation, policy,
+permissions, ROM content, or save-layout surface changed.
+
+A fresh independent review remains required; this task and Phase 3 are not
+self-approved or advanced.
+
 ## Completion / handoff
 
 Completion closes only this execution-substrate prerequisite. After independent `PASS`, Orchestrator restores `work/tasks/phase3-complete-runtime-exit-replay.md` as `READY_FOR_WORKER`. Phase 3 remains `IN PROGRESS` until the complete parent exit proof itself is independently verified.

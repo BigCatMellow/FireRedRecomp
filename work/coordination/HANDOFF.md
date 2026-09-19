@@ -124,7 +124,39 @@ implementation, policy, permissions, ROM content, or save-layout change is
 authorized. Do not restore `work/tasks/phase3-complete-runtime-exit-replay.md`
 to Worker or advance Phase 3 without a fresh independent `PASS`.
 
-## Current reviewer result — marker validation correction
+## Ready for fresh independent review — parser-disambiguation correction
+
+The Worker repaired only the focused bridge validator and deterministic
+non-gameplay coverage after the marker-validation review. Within each
+`diff --git` section, it treats paired `---`/`+++` records as actionable file
+markers only before the first `@@` hunk; it still validates both header paths
+and every actionable marker path against the unchanged route allowlist before
+`git apply --check`. Post-hunk `--- ` and `+++ ` lines are hunk content, so a
+valid deleted Lua comment is not misclassified as a file marker.
+
+The exact revision is recorded in the Worker delivery. Evidence on that
+revision:
+
+- `bash -n scripts/validate_local_worker_bridge_patch_targets.sh scripts/test_local_worker_bridge_patch_targets.sh`: PASS.
+- `bash scripts/test_local_worker_bridge_patch_targets.sh`: PASS. It proves
+  the allowed-header/unallowlisted-workflow-marker spoof is rejected before a
+  fake `git apply --check`, while an authorized applicable `main.lua` patch
+  containing a Lua-comment deletion record beginning `--- ` reaches and passes
+  the real `git apply --check`.
+- `env -u POKEPORT_ROM bash scripts/test_all.sh`: 143 test files PASS in
+  no-ROM mode.
+- A local private ROM matched the required SHA-1
+  `41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc`; with it as `POKEPORT_ROM`, the
+  full suite passed 143 test files in ROM mode.
+
+No gameplay/runtime replay implementation, public-PR policy, permissions,
+supported-ROM policy, ROM content, or save-layout surface changed. The
+Reviewer must independently assess the exact revision and return `PASS`,
+`NEEDS_FIX`, or `BLOCK`. Do not restore
+`work/tasks/phase3-complete-runtime-exit-replay.md` to Worker or advance Phase
+3 without that fresh `PASS`.
+
+## Superseded reviewer result — marker validation correction
 
 The fresh independent Reviewer returns `NEEDS_FIX` on subject
 `f7aa498dbe17e40d144557b9cd9614f1779b9096`, reviewing correction

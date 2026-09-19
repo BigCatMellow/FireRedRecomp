@@ -1,21 +1,21 @@
 {
   "schema_version": 1,
-  "updated_utc": "2026-09-19T03:00:00Z",
+  "updated_utc": "2026-09-19T01:54:42Z",
   "role": "ORCHESTRATOR",
-  "status": "READY_FOR_WORKER",
+  "status": "READY_FOR_REVIEWER",
   "current_phase": "Phase 3 Local Worker Bridge route",
   "canonical_status_owner": "work/roadmaps/CAPABILITY_CHECKLIST.md",
   "active_task": "work/tasks/local-worker-bridge-complete-runtime-route.md",
   "objective": "Remove only the execution-substrate blocker for the complete Phase 3 runtime replay by adding its explicit, fail-closed Local Worker Bridge route.",
-  "next_role": "WORKER",
+  "next_role": "REVIEWER",
   "reconciliation": {
     "paused_prior_task": "work/tasks/local-worker-bridge-complete-runtime-route.md",
-    "worker_result": "Marker-path correction implemented at e8c9c32c; review reproduced its spoof defense but found legitimate allowed Lua deletion lines are misclassified as file markers.",
+    "worker_result": "Parser disambiguation now validates paired file-marker preambles while treating post-hunk Lua deletion records as content; the focused bridge coverage proves both required cases.",
     "blocker": null,
     "gameplay_defect_found": false,
     "implementation_published": true,
     "tests_claimed": true,
-    "review_subject": "f7aa498dbe17e40d144557b9cd9614f1779b9096 (correction implementation e8c9c32c782728ca5d06cf679c808a01e8cb1d24)",
+    "review_subject": "Current bounded parser-disambiguation correction (exact revision to be recorded by Worker handoff).",
     "reproduced_evidence": [
       "bash scripts/test_local_worker_bridge_patch_targets.sh: allowed mode-only header accepted; unauthorized mode-only target, unauthorized source path, malformed header, and an allowed-header/unallowlisted-marker patch rejected before git apply --check",
       "bash -n scripts/validate_local_worker_bridge_patch_targets.sh scripts/test_local_worker_bridge_patch_targets.sh: PASS",
@@ -23,12 +23,14 @@
       "available private ROM SHA-1 matched 41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc",
       "POKEPORT_ROM=<verified private ROM> bash scripts/test_all.sh: 143 test files PASS in ROM mode",
       "focused spoof coverage first confirms git apply --check accepts an allowed main.lua header paired with unallowlisted workflow markers, then proves the validator rejects it before git apply --check",
-      "independent legitimate-patch probe: git apply --check accepted an authorized main.lua patch, but the validator rejected its Lua-comment deletion line as a malformed old-file marker"
+      "focused Lua-comment coverage first confirms git apply --check accepts a valid authorized main.lua patch whose deletion record begins --- , then proves the validator also reaches and passes git apply --check",
+      "env -u POKEPORT_ROM bash scripts/test_all.sh: 143 test files PASS in no-ROM mode",
+      "POKEPORT_ROM=<verified private ROM> bash scripts/test_all.sh: 143 test files PASS in ROM mode"
     ],
-    "review_result": "NEEDS_FIX: e8c9c32c closes the marker spoof but rejects valid authorized main.lua patches when deleted Lua comments begin -- .",
-    "new_prerequisite": "Worker must make the focused parser distinguish marker preamble from hunk content, retain header/actionable-marker fail-closed validation, and prove both the spoof rejection-before-apply and valid authorized Lua deletion acceptance.",
+    "review_result": "PENDING fresh independent review; Worker does not self-approve the parser-disambiguation correction.",
+    "new_prerequisite": "Independent Reviewer must verify paired preamble-marker validation, post-hunk Lua deletion handling, spoof rejection before apply, and valid authorized Lua deletion acceptance.",
     "canonical_status_change": false,
-    "phase3_status": "IN PROGRESS \u2014 final parser-disambiguation correction dispatched"
+    "phase3_status": "IN PROGRESS \u2014 parser-disambiguation correction ready for fresh review"
   },
   "active_task_acceptance_summary": [
     "Add only the explicit `phase3-complete-runtime-exit-replay` bridge route, its exact allowlist, focused-test command, runtime-replay command, and explicit publish staging.",
@@ -52,7 +54,7 @@
     ]
   },
   "blocker": null,
-  "next_after_success": "Worker may only distinguish real unified-diff file markers from ordinary Lua deletion lines, with deterministic coverage; fresh independent PASS remains required before restoring the complete-runtime replay task.",
+  "next_after_success": "Reviewer must independently verify the parser-disambiguation correction before the Orchestrator may restore `work/tasks/phase3-complete-runtime-exit-replay.md` to Worker.",
   "legal_content_boundary": "Never commit ROMs, BIOS dumps, generated caches, extracted game assets, or other prohibited content.",
   "phase_completion_rule": "Do not mark Phase 3 DONE until the complete parent exit criterion is evidenced and independently reviewed."
 }

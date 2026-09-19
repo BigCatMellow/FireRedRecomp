@@ -8,6 +8,7 @@ test -s "$PATCH_FILE"
 
 headers=0
 pending_old_marker=''
+in_file_preamble=0
 
 validate_target() {
   local target="$1"
@@ -28,7 +29,12 @@ validate_target() {
 while IFS= read -r header || [ -n "$header" ]; do
   case "$header" in
     'diff --git '*)
+      if [ -n "$pending_old_marker" ]; then
+        echo "Malformed or unpaired old file marker: $pending_old_marker" >&2
+        exit 1
+      fi
       headers=$((headers + 1))
+      in_file_preamble=1
       if [[ ! "$header" =~ ^diff\ --git\ a/([^[:space:]]+)\ b/([^[:space:]]+)$ ]]; then
         echo "Malformed or unparseable diff header: $header" >&2
         exit 1
@@ -41,7 +47,19 @@ while IFS= read -r header || [ -n "$header" ]; do
       echo "Malformed or unparseable diff header: $header" >&2
       exit 1
       ;;
+    '@@ '*)
+      if [ -n "$pending_old_marker" ]; then
+        echo "Malformed or unpaired old file marker: $pending_old_marker" >&2
+        exit 1
+      fi
+      # File markers are actionable only before the first hunk. After this,
+      # "--- Lua comment" is deletion content, not an old-file marker.
+      in_file_preamble=0
+      ;;
     '--- '*)
+      if [ "$in_file_preamble" -ne 1 ]; then
+        continue
+      fi
       if [ -n "$pending_old_marker" ]; then
         echo "Malformed or unpaired old file marker: $header" >&2
         exit 1
@@ -58,6 +76,9 @@ while IFS= read -r header || [ -n "$header" ]; do
       fi
       ;;
     '+++ '*)
+      if [ "$in_file_preamble" -ne 1 ]; then
+        continue
+      fi
       if [ -z "$pending_old_marker" ]; then
         echo "Malformed or unpaired new file marker: $header" >&2
         exit 1
@@ -74,6 +95,12 @@ while IFS= read -r header || [ -n "$header" ]; do
         validate_target "${BASH_REMATCH[2]}"
       fi
       pending_old_marker=''
+      ;;
+    *)
+      if [ -n "$pending_old_marker" ]; then
+        echo "Malformed or unpaired old file marker: $pending_old_marker" >&2
+        exit 1
+      fi
       ;;
   esac
 done < "$PATCH_FILE"

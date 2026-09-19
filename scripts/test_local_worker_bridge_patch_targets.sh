@@ -4,6 +4,7 @@ set -euo pipefail
 
 repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 validator="$repo_root/scripts/validate_local_worker_bridge_patch_targets.sh"
+cd "$repo_root"
 tmpdir=$(mktemp -d)
 trap 'rm -rf "$tmpdir"' EXIT
 fake_git_dir="$tmpdir/fake-git"
@@ -61,4 +62,16 @@ printf '%s\n' \
 git apply --check "$unallowlisted_marker"
 check_rejected unallowlisted-marker "$unallowlisted_marker" 'Patch target is not authorized'
 
-echo 'PASS: Local Worker Bridge validates diff headers and actionable file markers before git apply.'
+allowed_lua_comment="$tmpdir/allowed-lua-comment.patch"
+printf '%s\n' \
+  'diff --git a/main.lua b/main.lua' \
+  '--- a/main.lua' \
+  '+++ b/main.lua' \
+  '@@ -1,2 +1,2 @@' \
+  '--- Phase 1+2 shell: boots a window, verifies a ROM if POKEPORT_ROM points at' \
+  '+-- Phase 1+2 shell: boots a window, verifies a ROM if POKEPORT_ROM points at [bridge parser test]' \
+  ' -- one, composites a real map into an image and draws it (defaults to' > "$allowed_lua_comment"
+git apply --check "$allowed_lua_comment"
+PATCH_FILE="$allowed_lua_comment" ROUTE=phase3-complete-runtime-exit-replay bash "$validator"
+
+echo 'PASS: Local Worker Bridge validates actionable file markers and accepts Lua deletion content before git apply.'
