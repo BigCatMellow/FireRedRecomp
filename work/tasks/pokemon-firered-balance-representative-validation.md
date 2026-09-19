@@ -69,3 +69,16 @@ it does not merge PR #14 or release the game.
   controls. It also proves finite one-copy TM19/TM30 allocation semantics and
   no natural promotion of Kingler45, Dragonite56, Omastar49, or Aerodactyl
   Rock Slide. This is mechanism evidence, not a trainer-win-rate target.
+- The supported ROM used for this run was the locally built FireRed US v1.0
+  image, SHA-1 `41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc`; the alternate Rev 1
+  image was not used.
+- `bash scripts/test_all.sh` passed all 143 files in no-ROM mode. Re-running
+  it with the supported ROM passed all 143 files in ROM mode. The focused
+  matrix and the actual-runtime probe were then re-run against that same ROM
+  and passed (`13/0` and `RUNTIME_BALANCE_MOD PASS`, respectively).
+- The matrix now enumerates both eligible-recipient arms for its TM19 and
+  TM30 one-copy controls, instead of using a tautological recipient helper;
+  it remains validation-only and does not change frozen package data.
+
+Independent review remains required before this task can be closed or its
+implementation evidence can be treated as complete.

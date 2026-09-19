@@ -67,18 +67,34 @@ check("Hitmonchan elemental coverage and Gyarados Bite retain category-watch dis
 check("Rhydon/Kabutops Rock and Seaking Waterfall watches use only frozen changes",
   damage(moves[317], rhydon, control) > damage(raw[317], rhydon, control)
   and moves[350].power == raw[350].power and moves[350].accuracy == 90
+  and damage(moves[350], kabutops, control) > 0
   and damage(moves[127], seaking, control) ~= damage(raw[127], seaking, control))
-local function oneCopy(recipient, eligible)
-  local owners = 0
-  for _, candidate in ipairs(eligible) do if candidate == recipient then owners = owners + 1 end end
-  return owners == 1
+local function oneCopyArms(moveId, eligible, defender)
+  local arms = {}
+  for selectedIndex, selected in ipairs(eligible) do
+    local owners, selectedDamage = 0, nil
+    for candidateIndex, candidate in ipairs(eligible) do
+      local assigned = candidateIndex == selectedIndex
+      if assigned then
+        owners = owners + 1
+        selectedDamage = damage(moves[moveId], candidate.stats, defender)
+      end
+    end
+    assert(owners == 1 and selectedDamage, "allocation arm must assign exactly one copy")
+    arms[#arms + 1] = {recipient=selected.name, owners=owners, damage=selectedDamage}
+  end
+  return arms
 end
+local tm19 = oneCopyArms(202, {{name="Gengar",stats=gengar},{name="Kabutops",stats=kabutops}}, rhydon)
 check("TM19 remains one-copy and is a finite Gengar-versus-Kabutops allocation control",
   moves[202].power == raw[202].power and moves[202].pp == 10
-  and oneCopy("Gengar", {"Gengar", "Kabutops"}) and damage(moves[202], gengar, rhydon) > damage(moves[202], kabutops, rhydon))
+  and #tm19 == 2 and tm19[1].recipient == "Gengar" and tm19[2].recipient == "Kabutops"
+  and tm19[1].owners == 1 and tm19[2].owners == 1 and tm19[1].damage > tm19[2].damage)
+local tm30 = oneCopyArms(247, {{name="Gengar",stats=gengar},{name="Jynx",stats=jynx}}, control)
 check("TM30's unchanged move data remains a finite allocation control",
-  oneCopy("Gengar", {"Gengar", "Jynx"}) and moves[247].power == raw[247].power
-  and moves[247].pp == raw[247].pp and additions[124] and additions[124][1].move ~= 247)
+  moves[247].power == raw[247].power and moves[247].pp == raw[247].pp
+  and #tm30 == 2 and tm30[1].owners == 1 and tm30[2].owners == 1
+  and tm30[1].damage > 0 and tm30[2].damage > 0 and additions[124] and additions[124][1].move ~= 247)
 check("held timing candidates remain controls with no promoted natural additions",
   moves[152].power == raw[152].power and moves[200].power == raw[200].power
   and moves[246].power == raw[246].power and moves[157].power == raw[157].power
