@@ -89,33 +89,36 @@ The reviewed task is now closed. Its durable implementation evidence is at
 This result does not merge or release anything, reopen frozen values, or
 advance Phase 3.
 
-## Current Worker scope — bridge validation correction
+## Current reviewer scope — corrected bridge validation
 
-Independent review returned `NEEDS_FIX` on exact subject revision
-`41ca7eb184cdabe6e247f442ab95b6b0037d98be`; the requested route implementation
-is its unchanged ancestor `f2c240e7a94f7a2329771b0ef06d531eabab64e6`. The
-durable review record is
+The prior `NEEDS_FIX` on
+`41ca7eb184cdabe6e247f442ab95b6b0037d98be` is corrected by implementation
+revision `616d802e41a4006cf19894a8a27ca4de68c34ae6`, with Worker evidence and
+state recorded at `cde0692edd411f30e5750d01df5e5596e3719f30`. Review the
+resulting revision range against the active task and the durable prior review
+record at
 [`../reviews/2026-09-18-local-worker-bridge-complete-runtime-route-review.md`](../reviews/2026-09-18-local-worker-bridge-complete-runtime-route-review.md).
 
-The route otherwise independently confirms trusted `push`-to-`main` only
-execution, no public-PR trigger, one controlled request/probe, explicit
-complete-runtime selection, focused/no-ROM/verified-ROM/replay-before-publish
-ordering, exact five-file staging, exact FireRed US v1.0 SHA-1 gating, and no
-gameplay or prohibited-content change. The independent no-ROM suite passed all
-143 files, and both locally available candidate ROMs match the supported SHA-1.
+Before `git apply --check`, the workflow now delegates to focused bridge
+validation that parses both paths of every `diff --git` header and checks each
+path against the unchanged hard-coded route allowlists. Missing,
+malformed/unparseable headers and unauthorized targets fail closed; this covers
+mode-only changes, which do not contain `---`/`+++` target lines. The trusted
+`push`-to-`main` trigger, no-public-PR policy, exact route selection, ROM SHA
+gate, suite/replay-before-publish order, and explicit publish staging are
+unchanged.
 
-The single correction is required before `git apply`: the validator currently
-collects targets only from `---`/`+++` headers, missing a mode-only
-`diff --git` target. Worker may change only the bridge validator and focused
-non-gameplay validation needed to validate both paths of every `diff --git`
-header (rejecting malformed/unparseable ones) against the existing hard-coded
-route allowlists before application. It must prove an unauthorized mode-only
-target is rejected, preserve all existing invariants, and return the new exact
-revision for fresh independent review.
+Worker evidence:
 
-Do not restore `work/tasks/phase3-complete-runtime-exit-replay.md` to Worker,
-advance Phase 3, or widen the active bridge task until that PASS is recorded.
+- `bash scripts/test_local_worker_bridge_patch_targets.sh` passed. It accepts
+  an authorized mode-only header and rejects an unauthorized mode-only target,
+  unauthorized source path, and malformed header.
+- `env -u POKEPORT_ROM bash scripts/test_all.sh` passed 143 files.
+- A locally available private ROM matched
+  `41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc`; its 143-file ROM-mode suite
+  passed.
 
-The Orchestrator has dispatched exactly that correction under the existing
-task authority. Fresh review must bind to the resulting revision; the prior
-`NEEDS_FIX` verdict is not eligible for zero-diff reuse.
+No gameplay/runtime replay implementation, policy, permissions, ROM content,
+or save-layout file changed. Return `PASS`, `NEEDS_FIX`, or `BLOCK`; do not
+restore `work/tasks/phase3-complete-runtime-exit-replay.md` to Worker or
+advance Phase 3 without a fresh independent `PASS`.
