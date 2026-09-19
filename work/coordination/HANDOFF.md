@@ -2,7 +2,7 @@
 
 - Record role: `HANDOFF`
 - Primary information class: `TASK CONTEXT`
-- Status: `READY FOR REVIEWER — EXTERNAL REFERENCE CORPUS BLOCKED`
+- Status: `NEEDS FIX — READY FOR WORKER`
 - Lifecycle: `ACTIVE`
 - Authority: coordination only; root `AGENTS.md` and active task contract control review
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
@@ -38,6 +38,24 @@ measured visual discrepancy is a stop-and-rescope result. Worker records exact
 revision, changed files, focused/suite results, and real-reference result or
 blocker. Independent Reviewer must assess the exact revision before this task
 may close; Phase 2 itself remains `IN PROGRESS`.
+
+## Current reviewer result — Phase 2 raw capture correction
+
+Independent review returned `NEEDS_FIX` on published subject `7947e9a9`, with
+implementation `5f55bd6a`. The focused tests, ROM Oak test, both 146-file
+suites, and missing-manifest fail-closed result reproduced. The actual capture
+wrapper did not: the verified-ROM Oak capture creates a PNG then LÖVE exits 1,
+causing `set -e` to stop before all three cases. Its nominal 240×160 image
+retains normal status/chrome insets (content row 22 through 159), so it is not
+a full raw Oak frame.
+
+Worker may change only opt-in capture presentation, wrapper completion/error
+handling, and focused integration evidence. It must provide raw 240×160 output
+without normal chrome/insets, complete all three capture legs before compare,
+and prove that behavior. No visual-parity/rendering correction, corpus change,
+or Phase 2 status change is authorized. A fresh independent review is required
+after the correction; the external reference corpus remains unavailable but is
+not the current gate until capture correctness is restored.
 
 ## Worker delivery — Phase 2 camera/Oak reference-parity harness
 

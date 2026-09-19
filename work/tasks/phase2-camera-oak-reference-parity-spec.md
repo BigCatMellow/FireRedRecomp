@@ -1,6 +1,6 @@
 # Task: specify and prove the Phase 2 camera/Oak reference-parity gate
 
-- Status: `READY FOR REVIEWER — EXTERNAL REFERENCE CORPUS BLOCKED`
+- Status: `NEEDS FIX — READY FOR WORKER`
 - AGI status: `AGI READY`
 - Type: `EVIDENCE HARNESS / BOUNDED RENDERING SUPPORT`
 - Owner: project maintainer
@@ -131,6 +131,35 @@ blocker, and any first measured discrepancy. Reviewer independently verifies
 the contract and returns `PASS`, `NEEDS_FIX`, or `BLOCK`. Orchestrator then
 closes only this harness package and chooses the smallest measured rendering
 correction, if any.
+
+## Independent review — NEEDS FIX (2026-09-19)
+
+Independent review of published subject `7947e9a9ba6239e9f080d0d06a1abfbc9cd89aab`
+(implementation `5f55bd6aae8a129260ba236ed4c532de8b61999f`) reproduced the
+focused camera test (11), harness test (8), ROM-gated Oak test (56), and both
+146-file suites. The fail-closed missing-manifest JSON result also reproduced.
+
+The required real capture command did not meet acceptance criterion 1. With a
+verified ROM, the Oak invocation creates `screenshot.png` but LÖVE exits `1`;
+the wrapper's `set -e` stops before copying or comparing any case. The image is
+nominally 240×160 but its non-background content starts at row 22 and extends
+to row 159, proving normal status/chrome insets remain in the capture and the
+full Oak frame is vertically shifted/cropped.
+
+Worker may correct only the capture presentation and its deterministic
+integration evidence:
+
+1. provide an opt-in raw 240×160 capture presentation with no normal
+   status/chrome/insets;
+2. make the wrapper reliably finish all three capture legs, accepting a LÖVE
+   termination only after the expected screenshot is present and valid; and
+3. add regression coverage for successful wrapper capture flow and raw-frame
+   geometry, including the live crop/object/scissor relationship where
+   practical in the existing test boundary.
+
+Do not change rendering behavior to improve a diff, expand the reference
+corpus, advance Phase 2, or treat `reference corpus unavailable` as resolved.
+Obtain a fresh independent review after the correction.
 
 ## Worker implementation and evidence — 2026-09-19
 
