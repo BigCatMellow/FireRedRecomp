@@ -1,6 +1,6 @@
 # Task: Phase 4 Pain Split effect
 
-- Status: `IMPLEMENTATION CONTRACT REVIEWED PASS — READY FOR WORKER`
+- Status: `WORKER REQUEST FAILED — NEEDS BOUNDED FIX REVIEW`
 - Type: `PHASE 4 / BATTLE RULES / BOUNDED IMPLEMENTATION`
 
 ## Goal
@@ -50,3 +50,14 @@ Exactly one Worker request is authorized through selector
 nine-path allowlist and focused, full no-ROM, SHA-verified-ROM, and replay
 sequence. This PASS authorizes neither generic zero-power/healing support nor
 any excluded state or Phase 4 completion.
+
+## Worker result
+
+The one authorized request, `87d5e72`, failed before publication in guarded run
+`35410055700`. Focused checks and the full SHA-verified-ROM suite reached the
+new Pain Split ROM-record assertion; that assertion alone failed because the
+request expected flags `51`. Direct private-ROM parsing in the guarded runner
+shows #220 has flags `18` (the source-locked Protect/Mirror-Move shape).
+No implementation commit was published. Preserve this exact failure as a
+bounded test-fixture defect; do not issue another Worker request until its
+smallest correction receives independent review.

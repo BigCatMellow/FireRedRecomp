@@ -1,6 +1,6 @@
 # FireRedRecomp Coordination Handoff
 
-- Status: `READY_FOR_WORKER`
+- Status: `WORKER_REQUEST_FAILED_NEEDS_FIX_REVIEW`
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
 - Active task: [`../tasks/phase4-pain-split-effect.md`](../tasks/phase4-pain-split-effect.md)
 
@@ -199,6 +199,14 @@ exclusions. A single Worker request is now authorized only through selector
 `phase4-pain-split-effect`, with the literal nine-path allowlist and its
 focused/full/verified-ROM/replay evidence sequence. Do not widen zero-power or
 HP/healing support, and do not mark Phase 4 complete.
+
+The one authorized request at `87d5e72` failed before publication in guarded
+run `35410055700`. The focused checks and full verified-ROM suite passed until
+the new record test asserted #220 flags `51`; direct verified-ROM parsing shows
+the source-locked record has flags `18` (Protect/Mirror Move). This is a
+request-fixture defect only; no implementation commit exists. The active gate
+is independent review of the smallest correction. Do not issue a replacement
+request or widen scope until that review states the exact allowance.
 
 Super Fang effect 40 discovery independently passed: it is a single
 current-target-HP-halving formula record. The next gate is a separate
