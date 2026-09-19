@@ -124,7 +124,36 @@ implementation, policy, permissions, ROM content, or save-layout change is
 authorized. Do not restore `work/tasks/phase3-complete-runtime-exit-replay.md`
 to Worker or advance Phase 3 without a fresh independent `PASS`.
 
-## Ready for fresh independent review — marker validation correction
+## Current reviewer result — marker validation correction
+
+The fresh independent Reviewer returns `NEEDS_FIX` on subject
+`f7aa498dbe17e40d144557b9cd9614f1779b9096`, reviewing correction
+implementation `e8c9c32c782728ca5d06cf679c808a01e8cb1d24`. The durable record
+is [`../reviews/2026-09-19-local-worker-bridge-marker-validation-final-review.md`](../reviews/2026-09-19-local-worker-bridge-marker-validation-final-review.md).
+
+The correction successfully rejects the prior allowed-header/unallowlisted-
+marker spoof before `git apply --check`, but it mistakes a normal unified-diff
+deletion line for a file marker whenever an authorized Lua source line begins
+`-- `. An independently constructed, valid and applicable `main.lua` patch
+that changes the first Lua comment passed `git apply --check` but the validator
+rejected it as a malformed old-file marker. Legitimate allowed patches are
+therefore blocked.
+
+Worker may amend only the focused validator and deterministic non-gameplay
+coverage, plus directly accurate task/coordination documentation. The repair
+must distinguish the actionable marker preamble from hunk content while
+retaining validation of both `diff --git` paths and every actionable marker
+before `git apply`. It must prove both: (1) the allowed-header/unallowlisted-
+marker spoof still fails before `git apply --check`; and (2) a valid authorized
+Lua deletion line beginning `--- ` reaches and passes `git apply --check`.
+
+Independent checks reproduced: focused syntax/test passed; no-ROM suite passed
+143 files; both local ROM candidates matched
+`41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc`; and the ROM-mode suite passed
+143 files. Do not restore `work/tasks/phase3-complete-runtime-exit-replay.md`
+to Worker or advance Phase 3 without a fresh independent `PASS` on the repair.
+
+## Superseded worker routing — marker validation correction
 
 Worker correction subject: `e8c9c32c782728ca5d06cf679c808a01e8cb1d24`
 (`Validate bridge patch file markers`). This corrects only the bridge target
