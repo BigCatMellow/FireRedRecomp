@@ -2,38 +2,47 @@
 
 - Record role: `HANDOFF`
 - Primary information class: `TASK CONTEXT`
-- Status: `NEEDS FIX — REVIEWED`
+- Status: `READY FOR INDEPENDENT REVIEW`
 - Lifecycle: `ACTIVE`
 - Authority: coordination only; root `AGENTS.md` and active task contract control review
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
 - Active task: [`../tasks/phase3-complete-runtime-exit-replay.md`](../tasks/phase3-complete-runtime-exit-replay.md)
 - Machine state: [`STATE.json`](STATE.json)
 
-## Current independent reviewer result — Phase 3 complete runtime exit replay
+## Current Worker handoff — Phase 3 complete runtime exit replay identity correction
 
-The independent Reviewer returns `NEEDS_FIX` for implementation/evidence
-revision `a675cdf8f632d4bf7a4b23aa0b0f55dc17644baa`, recovered with
-coordination revision `3727dc37150280f13c75cf835ca26ee57380a404`. The durable
-review is [`../reviews/2026-09-19-phase3-complete-runtime-exit-replay-review.md`](../reviews/2026-09-19-phase3-complete-runtime-exit-replay-review.md).
+The Worker corrected the sole `NEEDS_FIX` finding from the independent review
+at [`../reviews/2026-09-19-phase3-complete-runtime-exit-replay-review.md`](../reviews/2026-09-19-phase3-complete-runtime-exit-replay-review.md).
+The implementation/evidence revision is
+`333d048809c2c3a53f51cee016e685afdea911cb` (`Assert identity in Phase 3
+complete replay`). A fresh independent Reviewer must assess that revision and
+this coordination handoff; this is not a Worker approval or parent-gate
+reconciliation.
 
-The focused contract test, complete isolated verified-ROM replay, 144-file
-no-ROM suite, and 144-file verified-ROM suite all independently passed. The
-review found no gameplay, save-layout, ROM-policy, or prohibited-content
-change. The replay genuinely uses the normal title/Oak/identity, movement,
-battle, K-save, and fresh-process L-load paths.
+The normal-save route now makes success conditional on both the identity that
+flows through the normal Oak/new-game result and the actual session identity
+that the normal `K` callback saves: male (`0`), player `RED`, rival `GREEN`.
+The separate fresh-load route makes success conditional on the same identity
+decoded from the newly loaded session. Its output remains observational, but
+each PASS now depends on those predicates. The wrapper requires
+`identity=RED/GREEN/0` in both process outputs before emitting its aggregate
+`identity=asserted` marker; it no longer synthesizes `RED/GREEN` in that
+marker.
 
-The evidence does not yet satisfy the task's identity-continuity requirement:
-the save route and fresh reload process print identity but do not include its
-expected values in their pass predicates; the wrapper checks only generic PASS
-substrings and then hard-codes `identity=RED/GREEN` in the final marker. A
-different identity could therefore pass the artifact while yielding the same
-claimed final marker.
+Worker evidence on the corrected revision, with the private FireRed US v1.0
+image SHA-1 verified as `41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc`:
 
-Next action: Worker may make only the smallest replay-evidence correction to
-assert the expected identity in both processes and validate those fields in the
-wrapper, with focused coverage. Re-run the focused replay and both suites, then
-request a fresh independent review of the new exact revision. Do not reconcile
-the parent Phase 3 gate or canonical capability status.
+- `lua5.1 tests/phase3_complete_runtime_exit_replay_test.lua`: PASS.
+- `luac5.1 -p main.lua` and `bash -n scripts/runtime_phase3_complete_exit_replay.sh`: PASS.
+- `POKEPORT_ROM=<verified private ROM> bash scripts/runtime_phase3_complete_exit_replay.sh`: PASS. The normal-save process emitted `identity=RED/GREEN/0`; the fresh `L`-load process independently emitted `identity=RED/GREEN/0`; the wrapper emitted the aggregate PASS marker only after validating both.
+- `env -u POKEPORT_ROM bash scripts/test_all.sh`: 144 test files PASS in no-ROM mode.
+- `POKEPORT_ROM=<verified private ROM> bash scripts/test_all.sh`: 144 test files PASS in ROM mode.
+
+No gameplay, save layout, supported-ROM policy, ROM content, or prohibited
+surface changed. Next action: a fresh independent Reviewer reproduces the
+focused test, isolated complete replay, and both suites against the exact
+revision, then returns `PASS`, `NEEDS_FIX`, or `BLOCK`. Do not reconcile the
+parent Phase 3 gate or canonical capability status without that review.
 
 ## Superseded Worker handoff — Phase 3 complete runtime exit replay
 

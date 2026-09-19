@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
-  "updated_utc": "2026-09-19T10:15:00Z",
-  "role": "REVIEWER",
-  "status": "NEEDS_FIX",
+  "updated_utc": "2026-09-19T10:35:00Z",
+  "role": "WORKER",
+  "status": "READY_FOR_REVIEWER",
   "current_phase": "Phase 3 complete runtime exit replay",
   "canonical_status_owner": "work/roadmaps/CAPABILITY_CHECKLIST.md",
   "active_task": "work/tasks/phase3-complete-runtime-exit-replay.md",
   "objective": "Produce one deterministic normal-boot-to-fresh-reload Phase 3 runtime artifact using existing gameplay seams only.",
-  "next_role": "WORKER",
+  "next_role": "REVIEWER",
   "reconciliation": {
     "paused_prior_task": "work/tasks/local-worker-bridge-complete-runtime-route.md",
     "worker_result": "One deterministic normal-title-boot replay reaches Oak/identity, bedroom/Pallet, Route 1 wild defeat, normal save, and fresh-process normal reload without injecting a post-Oak/post-battle session.",
@@ -15,16 +15,17 @@
     "gameplay_defect_found": false,
     "implementation_published": true,
     "tests_claimed": true,
-    "review_subject": "a675cdf8f632d4bf7a4b23aa0b0f55dc17644baa (published implementation/evidence revision); Reviewer must verify this exact revision.",
+    "review_subject": "333d048809c2c3a53f51cee016e685afdea911cb (identity-assertion implementation/evidence revision); Reviewer must verify this exact revision and its coordination handoff.",
     "reproduced_evidence": [
       "Private FireRed US v1.0 SHA-1 matched 41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc",
       "lua5.1 tests/phase3_complete_runtime_exit_replay_test.lua: PASS",
       "POKEPORT_ROM=<verified private ROM> bash scripts/runtime_phase3_complete_exit_replay.sh: PASS with title/Oak/identity, bedroom/Pallet/Route 1, wild defeat money=2960/recovered HP, normal save, and fresh-process reload party=1",
       "env -u POKEPORT_ROM bash scripts/test_all.sh: 144 test files PASS in no-ROM mode",
-      "POKEPORT_ROM=<verified private ROM> bash scripts/test_all.sh: 144 test files PASS in ROM mode"
+      "POKEPORT_ROM=<verified private ROM> bash scripts/test_all.sh: 144 test files PASS in ROM mode",
+      "Identity correction: complete save process and fresh reload process each emitted PASS only with actual identity=RED/GREEN/0; wrapper checked both fields before its aggregate marker"
     ],
-    "review_result": "NEEDS_FIX by independent Reviewer: the real replay and required suites reproduce, but identity is printed rather than asserted at save and fresh reload; the wrapper hard-codes identity=RED/GREEN in its final marker.",
-    "new_prerequisite": "Worker must add deterministic save-leg and fresh-reload identity assertions and wrapper validation of those asserted fields, then route the new exact revision for fresh independent review.",
+    "review_result": "PENDING fresh independent review; Worker does not self-approve this corrected identity-continuity evidence.",
+    "new_prerequisite": "Reviewer independently verifies the actual save-leg and fresh-reload identity predicates, wrapper marker validation, focused replay, and both required suites on the stated revision.",
     "canonical_status_change": false,
     "phase3_status": "IN PROGRESS — complete runtime replay implemented with Worker evidence, pending independent review"
   },
@@ -48,8 +49,8 @@
       "independent-review requirement"
     ]
   },
-  "blocker": "Acceptance criterion 3 is not fully proven: identity continuity is observational output, not a checked assertion, and the final wrapper marker synthesizes RED/GREEN.",
-  "next_after_success": "Worker makes only the narrow replay-evidence correction; a fresh independent Reviewer then verifies the new exact revision before Orchestrator may reconcile the parent gate.",
+  "blocker": null,
+  "next_after_success": "Fresh independent Reviewer verifies the exact correction before Orchestrator may reconcile the parent gate or canonical Phase 3 status.",
   "legal_content_boundary": "Never commit ROMs, BIOS dumps, generated caches, extracted game assets, or other prohibited content.",
   "phase_completion_rule": "Do not mark Phase 3 DONE until the complete parent exit criterion is evidenced and independently reviewed."
 }
