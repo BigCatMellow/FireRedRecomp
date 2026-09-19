@@ -6,12 +6,16 @@ repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 validator="$repo_root/scripts/validate_local_worker_bridge_patch_targets.sh"
 tmpdir=$(mktemp -d)
 trap 'rm -rf "$tmpdir"' EXIT
+fake_git_dir="$tmpdir/fake-git"
+mkdir "$fake_git_dir"
+printf '%s\n' '#!/usr/bin/env bash' 'echo "FAIL: git apply --check was reached" >&2' 'exit 1' > "$fake_git_dir/git"
+chmod +x "$fake_git_dir/git"
 
 check_rejected() {
   local name="$1"
   local patch="$2"
   local expected="$3"
-  if PATCH_FILE="$patch" ROUTE=phase3-complete-runtime-exit-replay bash "$validator" >"$tmpdir/$name.out" 2>"$tmpdir/$name.err"; then
+  if PATH="$fake_git_dir:$PATH" PATCH_FILE="$patch" ROUTE=phase3-complete-runtime-exit-replay bash "$validator" >"$tmpdir/$name.out" 2>"$tmpdir/$name.err"; then
     echo "FAIL: $name was accepted" >&2
     exit 1
   fi
@@ -43,4 +47,18 @@ malformed="$tmpdir/malformed.patch"
 printf '%s\n' 'diff --git a/main.lua' > "$malformed"
 check_rejected malformed "$malformed" 'Malformed or unparseable diff header'
 
-echo 'PASS: Local Worker Bridge validates both diff --git paths and rejects unauthorized mode-only targets.'
+unallowlisted_marker="$tmpdir/unallowlisted-marker.patch"
+printf '%s\n' \
+  'diff --git a/main.lua b/main.lua' \
+  '--- a/.github/workflows/local-worker-bridge.yml' \
+  '+++ b/.github/workflows/local-worker-bridge.yml' \
+  '@@ -1,4 +1,4 @@' \
+  '-name: Local Worker Bridge' \
+  '+name: Unallowlisted marker bypass' \
+  ' ' \
+  ' on:' \
+  '   push:' > "$unallowlisted_marker"
+git apply --check "$unallowlisted_marker"
+check_rejected unallowlisted-marker "$unallowlisted_marker" 'Patch target is not authorized'
+
+echo 'PASS: Local Worker Bridge validates diff headers and actionable file markers before git apply.'

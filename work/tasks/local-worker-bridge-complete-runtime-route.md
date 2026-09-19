@@ -141,6 +141,25 @@ passed locally; the available ROM matched the required SHA-1. No gameplay,
 replay implementation, policy, permissions, ROM content, or save-layout file
 changed. A fresh independent review is required.
 
+## Worker correction — marker validation follow-up
+
+The remaining allowed-header/unallowlisted-marker bypass is corrected in the
+next bridge-maintenance revision. Before `git apply --check`, the validator now
+validates both paths of every parseable `diff --git` header and every
+actionable `---`/`+++` marker path. Marker syntax must use the appropriate
+`a/` or `b/` prefix; `/dev/null` is accepted only for a creation or deletion,
+not for both markers. Missing, unpaired, malformed, or unallowlisted markers
+fail closed.
+
+`bash scripts/test_local_worker_bridge_patch_targets.sh` now creates a patch
+with an allowed `main.lua` `diff --git` header and an applicable unallowlisted
+workflow-file marker pair. It first confirms `git apply --check` would accept
+that marker-targeted patch, then uses a fake `git` executable to prove the
+validator rejects it before `git apply --check` can run. The focused check,
+no-ROM 143-file suite, and verified-ROM 143-file suite passed. No gameplay,
+replay implementation, policy, permissions, ROM content, or save-layout file
+changed. A fresh independent review is required.
+
 ## Completion / handoff
 
 Completion closes only this execution-substrate prerequisite. After independent `PASS`, Orchestrator restores `work/tasks/phase3-complete-runtime-exit-replay.md` as `READY_FOR_WORKER`. Phase 3 remains `IN PROGRESS` until the complete parent exit proof itself is independently verified.
