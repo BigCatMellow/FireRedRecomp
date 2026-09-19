@@ -18,11 +18,12 @@
     "review_subject": "5f55bd6aae8a129260ba236ed4c532de8b61999f (Phase 2 camera/Oak parity harness implementation).",
     "reproduced_evidence": [
       "Private FireRed US v1.0 SHA-1 matched 41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc",
-      "lua5.1 tests/phase3_complete_runtime_exit_replay_test.lua: PASS",
-      "POKEPORT_ROM=<verified private ROM> bash scripts/runtime_phase3_complete_exit_replay.sh: PASS with title/Oak/identity, bedroom/Pallet/Route 1, wild defeat money=2960/recovered HP, normal save, and fresh-process reload party=1",
-      "env -u POKEPORT_ROM bash scripts/test_all.sh: 144 test files PASS in no-ROM mode",
-      "POKEPORT_ROM=<verified private ROM> bash scripts/test_all.sh: 144 test files PASS in ROM mode",
-      "Identity correction: complete save process and fresh reload process each emitted PASS only with actual identity=RED/GREEN/0; wrapper checked both fields before its aggregate marker"
+      "lua5.1 tests/camera_crop_test.lua: PASS (11 assertions)",
+      "lua5.1 tests/phase2_camera_oak_parity_harness_test.lua: PASS (8 assertions)",
+      "POKEPORT_ROM=<verified private ROM> lua5.1 tests/oak_speech_scene_test.lua: PASS (56 assertions)",
+      "env -u POKEPORT_ROM bash scripts/test_all.sh: 146 test files PASS in no-ROM mode",
+      "POKEPORT_ROM=<verified private ROM> bash scripts/test_all.sh: 146 test files PASS in ROM mode",
+      "An isolated opt-in POKEPORT_CAPTURE_240=1 field screenshot decoded as 240x160 and was not retained"
     ],
     "review_result": "PENDING: independent review required for 5f55bd6a; no external-reference parity verdict exists.",
     "new_prerequisite": "Independent review of the bounded Phase 2 harness, then provision a lawful external reference corpus and run its three comparisons.",
