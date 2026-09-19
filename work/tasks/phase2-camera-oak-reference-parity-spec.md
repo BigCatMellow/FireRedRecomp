@@ -1,6 +1,6 @@
 # Task: specify and prove the Phase 2 camera/Oak reference-parity gate
 
-- Status: `READY FOR WORKER`
+- Status: `READY FOR REVIEWER — EXTERNAL REFERENCE CORPUS BLOCKED`
 - AGI status: `AGI READY`
 - Type: `EVIDENCE HARNESS / BOUNDED RENDERING SUPPORT`
 - Owner: project maintainer
@@ -131,3 +131,47 @@ blocker, and any first measured discrepancy. Reviewer independently verifies
 the contract and returns `PASS`, `NEEDS_FIX`, or `BLOCK`. Orchestrator then
 closes only this harness package and chooses the smallest measured rendering
 correction, if any.
+
+## Worker implementation and evidence — 2026-09-19
+
+Implementation revision: `PENDING COMMIT` (bounded harness only).
+
+- Added `src/core/CameraCrop.lua`; `main.lua` now uses this exact pure
+  240×160 crop result for the map quad, while player/NPC coordinates and the
+  scissor continue to use its `quadX`/`quadY` values. The opt-in
+  `POKEPORT_CAPTURE_240=1` window mode makes LÖVE screenshots exactly
+  240×160 without affecting normal desktop launch dimensions.
+- Added `scripts/phase2_camera_oak_parity.sh`, which first preflights an
+  explicitly mapped external reference corpus, then captures static Oak,
+  Pallet edge-clamped, and asserted-centred Pallet cases in isolated XDG
+  sandboxes and invokes the fail-closed checker.
+- Added the untracked-reference manifest template at
+  `work/reference-manifests/phase2-camera-oak-reference-parity.manifest.example`.
+  It records the required ROM SHA-1, emulator/version, dimensions, per-case
+  state/input/capture point, reference SHA-256, and declared diff thresholds.
+- `tools/phase2_camera_oak_parity_check.lua` writes structured JSON with each
+  requested size/checksum/diff statistic/threshold/status and rejects absent,
+  malformed, checksum-mismatched, or non-240×160 external data before a
+  comparison result.
+
+Evidence reproduced by Worker:
+
+- `lua5.1 tests/camera_crop_test.lua`: PASS (11 assertions).
+- `lua5.1 tests/phase2_camera_oak_parity_harness_test.lua`: PASS (8
+  assertions; valid synthetic comparison plus missing, malformed,
+  checksum-mismatched, and wrong-sized rejection paths).
+- `lua5.1 tests/oak_speech_scene_test.lua`: PASS with verified ROM (56
+  assertions).
+- `env -u POKEPORT_ROM bash scripts/test_all.sh`: PASS, 146 test files.
+- `POKEPORT_ROM=<verified private ROM> bash scripts/test_all.sh`: PASS, 146
+  test files; private ROM SHA-1 matched
+  `41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc`.
+- An isolated `POKEPORT_CAPTURE_240=1` live field capture decoded as exactly
+  240×160; it is temporary and not retained in the repository.
+
+`BLOCKED: reference corpus unavailable`. No untracked external emulator PNGs
+plus complete provenance manifest are present, so no real comparison, parity
+PASS, discrepancy, or Phase 2 advancement is claimed. Reviewer should inspect
+the exact implementation revision and independently reproduce the focused and
+suite evidence; once the corpus exists, run the documented wrapper and route
+any mismatch as a new bounded rendering-correction task.

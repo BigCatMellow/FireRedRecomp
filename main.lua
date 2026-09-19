@@ -104,6 +104,7 @@ local Battle = {
   Bag = require("src.core.Bag"),
   TrainerSightline = require("src.core.TrainerSightline"),
   TrainerApproach = require("src.core.TrainerApproach"),
+  CameraCrop = require("src.core.CameraCrop"),
   TrainerAI = require("src.core.TrainerAI"),
   CaptureRewards = require("src.core.CaptureRewards"),
   PartyBridge = require("src.core.BattlePartyBridge"),
@@ -3559,6 +3560,7 @@ function love.load()
         world.onPlayerStep(playerMovement.tileX, playerMovement.tileY)
         if world.battle then break end
       end
+      dbg(("deterministic walk capture position %d,%d"):format(playerMovement.tileX, playerMovement.tileY))
     end
     if os.getenv("POKEPORT_WALK_TALK") == "1" and not world.battle then
       world.onPlayerInteract()
@@ -5019,9 +5021,27 @@ function love.draw()
     local playerCompositedX = playerMovement:pixelX() + borderOffsetPx
     local playerCompositedY = playerMovement:pixelY() + borderOffsetPx
     local mapPixelWidth, mapPixelHeight = mapImage:getDimensions()
-    local quadX = math.max(0, math.min(playerCompositedX + 8 - WALK_CAMERA_WIDTH / 2, mapPixelWidth - WALK_CAMERA_WIDTH))
-    local quadY = math.max(0, math.min(playerCompositedY + 8 - WALK_CAMERA_HEIGHT / 2, mapPixelHeight - WALK_CAMERA_HEIGHT))
-    local quad = love.graphics.newQuad(quadX, quadY, WALK_CAMERA_WIDTH, WALK_CAMERA_HEIGHT, mapPixelWidth, mapPixelHeight)
+    local cameraCrop = Battle.CameraCrop.forPlayer(playerCompositedX, playerCompositedY, mapPixelWidth, mapPixelHeight)
+    local quadX, quadY = cameraCrop.x, cameraCrop.y
+    -- The parity wrapper opts into a one-frame assertion/report so its named
+    -- reference cases cannot silently capture the wrong camera relation.
+    local captureCase = os.getenv("POKEPORT_CAMERA_CAPTURE_CASE")
+    if captureCase and not world.cameraCaptureReported then
+      local maxX, maxY = mapPixelWidth - cameraCrop.width, mapPixelHeight - cameraCrop.height
+      local relation
+      if captureCase == "pallet_centered" then
+        relation = quadX > 0 and quadX < maxX and quadY > 0 and quadY < maxY and "centered" or "INVALID"
+      elseif captureCase == "pallet_edge_clamped" then
+        relation = (quadX == 0 or quadX == maxX or quadY == 0 or quadY == maxY) and "edge_clamped" or "INVALID"
+      else
+        relation = "INVALID"
+      end
+      print(("POKEPORT_CAMERA_CAPTURE case=%s relation=%s crop=%d,%d size=%dx%d"):format(captureCase, relation, quadX, quadY, cameraCrop.width, cameraCrop.height))
+      io.stdout:flush()
+      if relation == "INVALID" then error("invalid requested camera capture case " .. captureCase) end
+      world.cameraCaptureReported = true
+    end
+    local quad = love.graphics.newQuad(quadX, quadY, cameraCrop.width, cameraCrop.height, mapPixelWidth, mapPixelHeight)
     local baseX, baseY = 20 + viewport.x, y + 10 + viewport.y
     love.graphics.draw(mapImage, quad, baseX, baseY, 0, viewport.scale, viewport.scale)
 

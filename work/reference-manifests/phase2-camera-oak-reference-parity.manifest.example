@@ -1,0 +1,43 @@
+# Externally supplied, untracked Phase 2 reference provenance. Copy this file
+# outside the repository, fill every value from the emulator capture session,
+# and pass its directory explicitly to scripts/phase2_camera_oak_parity.sh.
+# Values are literal single lines; reference_file is mapped under --reference-dir.
+schema=phase2-camera-oak-reference-parity/v1
+supported_rom_sha1=41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc
+emulator=REPLACE_WITH_NAME_AND_VERSION
+capture_dimensions=240x160
+project_capture_command=scripts/phase2_camera_oak_parity.sh --manifest MANIFEST --reference-dir REFERENCE_DIR --result RESULT.json
+
+# Static Task_OakSpeech_WelcomeToTheWorld full frame.
+case.oak_static.reference_file=oak_static.png
+case.oak_static.reference_sha256=REPLACE_WITH_64_HEX_SHA256
+case.oak_static.boot_state=Power-on boot; title/new-game intro at Task_OakSpeech_WelcomeToTheWorld.
+case.oak_static.input_sequence=No input after reaching the named task.
+case.oak_static.capture_point=First fully rendered static full dialogue Oak frame.
+case.oak_static.pixel_channel_delta=0
+case.oak_static.max_differing_percent=0
+case.oak_static.max_channel_delta=0
+case.oak_static.max_mean_delta=0
+
+# Pallet Town group 3/map 0, camera centered away from all map bounds.
+case.pallet_centered.reference_file=pallet_centered.png
+case.pallet_centered.reference_sha256=REPLACE_WITH_64_HEX_SHA256
+case.pallet_centered.boot_state=Fresh POKEPORT_MAP=3,0 field load at first walkable tile.
+case.pallet_centered.input_sequence=down,down,down,down
+case.pallet_centered.capture_point=After four deterministic 16-frame down steps complete; wrapper asserts the crop is off every map edge.
+case.pallet_centered.pixel_channel_delta=0
+case.pallet_centered.max_differing_percent=0
+case.pallet_centered.max_channel_delta=0
+case.pallet_centered.max_mean_delta=0
+
+# Same Pallet deterministic initial position, which is intentionally at its
+# left/top camera clamp before movement.
+case.pallet_edge_clamped.reference_file=pallet_edge_clamped.png
+case.pallet_edge_clamped.reference_sha256=REPLACE_WITH_64_HEX_SHA256
+case.pallet_edge_clamped.boot_state=Fresh POKEPORT_MAP=3,0 field load at first walkable tile.
+case.pallet_edge_clamped.input_sequence=No movement.
+case.pallet_edge_clamped.capture_point=First rendered field frame before input.
+case.pallet_edge_clamped.pixel_channel_delta=0
+case.pallet_edge_clamped.max_differing_percent=0
+case.pallet_edge_clamped.max_channel_delta=0
+case.pallet_edge_clamped.max_mean_delta=0
