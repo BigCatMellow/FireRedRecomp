@@ -124,7 +124,19 @@ implementation, policy, permissions, ROM content, or save-layout change is
 authorized. Do not restore `work/tasks/phase3-complete-runtime-exit-replay.md`
 to Worker or advance Phase 3 without a fresh independent `PASS`.
 
-## Ready for fresh independent review — parser-disambiguation correction
+## Current publication blocker
+
+The remote-isolated Reviewer could not resolve the local parser-disambiguation
+subject `b7eaaec77eb98b336b0c25299580dd6cbafab4a0`; an exact fetch from `origin`
+reported it was not a remote ref. The local branch has the bounded commits and
+test evidence, but no review verdict can bind until the subject is published.
+
+Direct publication to `origin/master` requires explicit human authorization.
+Do not retry or work around that shared-repository boundary. Once authorized,
+publish only the existing bounded commits and request a fresh independent
+review of the exact remote-visible revision.
+
+## Prior local review scope — parser-disambiguation correction
 
 The Worker repaired only the focused bridge validator and deterministic
 non-gameplay coverage after the marker-validation review. Within each

@@ -2,16 +2,16 @@
   "schema_version": 1,
   "updated_utc": "2026-09-19T01:54:42Z",
   "role": "ORCHESTRATOR",
-  "status": "READY_FOR_REVIEWER",
+  "status": "BLOCKED",
   "current_phase": "Phase 3 Local Worker Bridge route",
   "canonical_status_owner": "work/roadmaps/CAPABILITY_CHECKLIST.md",
   "active_task": "work/tasks/local-worker-bridge-complete-runtime-route.md",
   "objective": "Remove only the execution-substrate blocker for the complete Phase 3 runtime replay by adding its explicit, fail-closed Local Worker Bridge route.",
-  "next_role": "REVIEWER",
+  "next_role": "ORCHESTRATOR",
   "reconciliation": {
     "paused_prior_task": "work/tasks/local-worker-bridge-complete-runtime-route.md",
     "worker_result": "Parser disambiguation now validates paired file-marker preambles while treating post-hunk Lua deletion records as content; the focused bridge coverage proves both required cases.",
-    "blocker": null,
+    "blocker": "The remote-isolated Reviewer cannot fetch the locally committed parser-disambiguation subject b7eaaec7 from origin; publishing to origin/master requires explicit human authorization.",
     "gameplay_defect_found": false,
     "implementation_published": true,
     "tests_claimed": true,
@@ -53,8 +53,8 @@
       "independent-review requirement"
     ]
   },
-  "blocker": null,
-  "next_after_success": "Reviewer must independently verify the parser-disambiguation correction before the Orchestrator may restore `work/tasks/phase3-complete-runtime-exit-replay.md` to Worker.",
+  "blocker": "Explicit human authorization is required to publish the bounded local commits to origin/master so the remote-isolated Reviewer can fetch the exact subject revision.",
+  "next_after_success": "After authorized publication and a fresh independent PASS, restore `work/tasks/phase3-complete-runtime-exit-replay.md` to READY_FOR_WORKER.",
   "legal_content_boundary": "Never commit ROMs, BIOS dumps, generated caches, extracted game assets, or other prohibited content.",
   "phase_completion_rule": "Do not mark Phase 3 DONE until the complete parent exit criterion is evidenced and independently reviewed."
 }
