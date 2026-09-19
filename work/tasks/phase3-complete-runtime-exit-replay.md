@@ -1,6 +1,6 @@
 # Task: prove the complete Phase 3 runtime exit path end to end
 
-- Status: `IMPLEMENTED — PENDING INDEPENDENT REVIEW`
+- Status: `CLOSED — REVIEWED PASS`
 - AGI status: `AGI READY`
 - Type: `EVIDENCE / BOUNDED INTEGRATION`
 - Owner: project maintainer

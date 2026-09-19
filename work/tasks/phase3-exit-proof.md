@@ -2,7 +2,7 @@
 
 ## Contract
 
-- Status: `ACTIVE — FINAL COMPLETE-RUNTIME PROOF OPEN`
+- Status: `CLOSED — REVIEWED PASS`
 - Owner: project maintainer
 - Source of truth: `docs/roadmap.md` Phase 3 and `docs/handoffs/firered-recomp-checklist.md`
 - Output boundary: deterministic test/support code and documentation needed to prove the existing Phase 3 path; no ROM, extracted assets, or unrelated Phase 4–10 work

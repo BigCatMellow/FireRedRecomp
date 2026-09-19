@@ -47,13 +47,13 @@ Phase 1 importer/model [DONE]
         ↓
 Phase 2 renderer/runtime [IN PROGRESS]
         ↓
-Phase 3 playable vertical slice [IN PROGRESS — PAUSED]
+Phase 3 playable vertical slice [DONE]
         │
         ├─ Route 1 battle/capture/save/reload: substantial evidence exists
         ├─ canonical Viridian Parcel/Dex/capture progression: evidenced
         ├─ visible north Oak Parcel/Dex presentation: REVIEWED PASS
         ├─ title/new-game → Oak/identity → bedroom runtime entry: REVIEWED PASS
-        └─ bridge-route prerequisite: ACTIVE
+        └─ continuous runtime proof: REVIEWED PASS
                           ↓ independent PASS
           complete continuous boot→battle→save→reload runtime artifact: READY FOR WORKER
                           ↓ independent PASS
@@ -79,7 +79,7 @@ Phase 10 mod/release engineering
 | Phase 0 — charter/reproducibility | `IN PROGRESS` | no current dispatch | save-version contract + first CI verification | stronger release baseline |
 | Phase 1 — ROM importer/canonical model | `DONE` | none | already met | downstream systems consume canonical data |
 | Phase 2 — camera + Oak/reference parity | `IN PROGRESS` | deferred by current dispatch order | true 240×160 camera parity + Oak/reference assertions | Phase 2 closure |
-| Phase 3A — deterministic vertical-slice proof | `IN PROGRESS` | [`../tasks/phase3-exit-proof.md`](../tasks/phase3-exit-proof.md) | one complete automated boot → title/Oak → bedroom/Pallet → Route 1 → wild battle → catch/defeat → save → fresh reload artifact + independent review | Phase 3 exit eligibility |
+| Phase 3A — deterministic vertical-slice proof | `DONE` | [`../tasks/phase3-exit-proof.md`](../tasks/phase3-exit-proof.md) | independently reviewed `333d048` complete runtime artifact, with 144-file no-ROM/ROM suites | Phase 2 camera/Oak parity gate |
 | Phase 3B — canonical Viridian Parcel/Dex progression | evidenced | [`../tasks/viridian-parcel-dex-progression.md`](../tasks/viridian-parcel-dex-progression.md) | already evidenced; do not redo | supports Phase 3A |
 | Phase 3C — north-facing Oak Parcel/Dex scene | `REVIEWED PASS` | [`../tasks/oak-parcel-dex-presentation-north.md`](../tasks/oak-parcel-dex-presentation-north.md) | PASS at `2d8c3221775044a54668683e500055307fe4d20b` | supports Phase 3A |
 | Phase 3D — title/new-game through Oak/identity into bedroom | `REVIEWED PASS` | [`../tasks/phase3-title-oak-entry-proof.md`](../tasks/phase3-title-oak-entry-proof.md) | PASS at `8bdbda903fb0574cb169968976d4b40ce96d3563` | supports Phase 3A |
@@ -87,8 +87,8 @@ Phase 10 mod/release engineering
 | Frozen package — mod foundations | `REVIEWED PASS` | [`../tasks/pokemon-firered-balance-foundation.md`](../tasks/pokemon-firered-balance-foundation.md) | independently passed at `25e3d88e` | package application |
 | Frozen package — mod application | `REVIEWED PASS` | [`../tasks/pokemon-firered-balance-package-application.md`](../tasks/pokemon-firered-balance-package-application.md) | independently passed at `bb0476ce` | representative validation |
 | Frozen package — representative validation | `REVIEWED PASS` | [`../tasks/pokemon-firered-balance-representative-validation.md`](../tasks/pokemon-firered-balance-representative-validation.md) | PASS at `6db8d9c0`; see durable implementation evidence | resume Phase 3 bridge route |
-| Phase 3E-pre — explicit bridge route | `NEEDS FIX — READY FOR WORKER` | **[`../tasks/local-worker-bridge-complete-runtime-route.md`](../tasks/local-worker-bridge-complete-runtime-route.md)** | reviewer found mode-only `diff --git` targets can evade pre-apply allowlisting; correction must validate every header path, then obtain fresh PASS | restore Phase 3E to Worker |
-| Phase 3E — complete end-to-end runtime exit replay | `BLOCKED BY 3E-pre` | [`../tasks/phase3-complete-runtime-exit-replay.md`](../tasks/phase3-complete-runtime-exit-replay.md) | one deterministic complete runtime command, required suites, independent PASS | re-evaluate Phase 3A and canonical Phase 3 status |
+| Phase 3E-pre — explicit bridge route | `REVIEWED PASS` | [`../tasks/local-worker-bridge-complete-runtime-route.md`](../tasks/local-worker-bridge-complete-runtime-route.md) | published parser-disambiguation review PASS | complete runtime replay |
+| Phase 3E — complete end-to-end runtime exit replay | `REVIEWED PASS` | [`../tasks/phase3-complete-runtime-exit-replay.md`](../tasks/phase3-complete-runtime-exit-replay.md) | `333d048` artifact and independent PASS at `000f9847` | Phase 3 exit proof closed |
 | Phase 4 — full Gen 3 battle engine | `IN PROGRESS` | future | general trainer battles, switching, move/effect and stress matrices | reliable trainer/story progression |
 | Phase 5 — overworld/field systems | `IN PROGRESS` | future | Pallet→Elite Four traversal without invalid paths | credits traversal |
 | Phase 6 — menus/inventory/progression UI | `IN PROGRESS` | future | complete player UI, no dev-key fallbacks | normal completion |

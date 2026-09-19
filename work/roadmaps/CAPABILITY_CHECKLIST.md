@@ -1,9 +1,8 @@
 # FireRed ReComp capability checklist
 
-Last verified: 2026-09-18 against local revision `6db8d9c0`: 143 no-ROM and
-143 verified-ROM test files pass; the isolated title → Oak → identity →
-bedroom runtime replay passes; and the frozen balance mod has independent
-actual-runtime representative-validation evidence.
+Last verified: 2026-09-19 against independently reviewed Phase 3 replay
+`333d048`: 144 no-ROM and 144 verified-ROM test files pass, including the
+complete normal-boot-to-fresh-reload artifact.
 
 Status vocabulary is intentionally narrow:
 
@@ -19,7 +18,7 @@ This is the project-wide status surface. Detailed history and checkboxes live in
 | Phase 0 — charter and reproducibility | IN PROGRESS | `PARITY_CONTRACT.md`, `docs/behavior-ledger.md`, `scripts/test_all.sh`, CI workflow | Save-version contract and first CI run must be verified; behavior ledger needs rows as subsystems grow |
 | Phase 1 — ROM importer and canonical model | DONE | 117-test suite; `tests/full_sweep_validation_test.lua`; data viewer | All supported data-viewer records are reachable and decoded |
 | Phase 2 — rendering, input, scene runtime | IN PROGRESS | Rendering, sprite, title, palette, and viewport tests | True 240×160 camera parity and Oak-intro/reference screenshot gate |
-| Phase 3 — playable vertical slice | IN PROGRESS | New game, movement, wild battle, capture, save/load tests; verified-ROM title→Oak→identity→bedroom and Mart→Parcel→Dex→capture→save/reload replays | One continuous boot→title/Oak→Route 1 battle→save→fresh reload artifact, then independent review; `work/tasks/phase3-complete-runtime-exit-replay.md` is currently blocked only by its explicit bridge-route prerequisite |
+| Phase 3 — playable vertical slice | DONE | Independently reviewed `333d048` normal boot→title/Oak→identity→bedroom/Pallet→Route 1 wild defeat→normal save→fresh-process reload replay; identity, location, outcome, and persistence assertions; 144-file no-ROM and ROM suites | Exit criterion met; later phases remain independently gated |
 | Phase 4 — full Gen 3 battle engine | IN PROGRESS | `BattleEngine`, trainer AI, capture, EXP, and battle-scene tests | General trainer battles, switching, full move/effect and stress matrix |
 | Phase 5 — overworld and field systems | IN PROGRESS | map, warp, object-event, movement, and script tests | Scripted Pallet-to-Elite-Four traversal without blocked or invalid paths |
 | Phase 6 — menus, inventory, progression UI | IN PROGRESS | bag, party, mart, PC, and menu tests | Complete player-facing UI; no dev-key fallbacks |
