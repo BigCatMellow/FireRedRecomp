@@ -111,9 +111,12 @@ process and uses normal `L` load handling.
 Its verified-ROM final marker is:
 
 ```text
-RUNTIME_REPLAY phase3_complete_exit PASS title=true oak=true identity=RED/GREEN bedroom=true pallet=true route1=true wild=playerLost money=2960 hp=recovered saved=true reload=true party=1
+RUNTIME_REPLAY phase3_complete_exit PASS title=true oak=true identity=asserted bedroom=true pallet=true route1=true wild=playerLost money=2960 hp=recovered saved=true reload=true party=1
 ```
 
-The focused contract test and full suites passed locally (144 files in both
-no-ROM and verified-ROM modes). This is Worker evidence only; independent
-Reviewer verification of the exact committed revision remains required.
+The save and fresh-reload legs each assert the actual `RED/GREEN/0` identity
+before emitting their PASS markers; the wrapper validates those emitted fields
+before emitting its aggregate `identity=asserted` marker. The focused contract
+test and full suites passed locally (144 files in both no-ROM and verified-ROM
+modes). This is Worker evidence only; independent Reviewer verification of the
+exact committed revision remains required.

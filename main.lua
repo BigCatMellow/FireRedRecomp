@@ -3651,6 +3651,11 @@ function love.load()
     or replayCompleteExit
   local replayNaturalCapture = runtimeReplay == "natural_capture"
     or runtimeReplay == "natural_capture_save"
+  local function isExpectedReplayIdentity(identity)
+    return identity and identity.playerGender == NewGameFlow.MALE
+      and Charmap.decode(identity.playerName) == "RED"
+      and Charmap.decode(identity.rivalName) == "GREEN"
+  end
   if runtimeReplay == "restart_load" then
     -- This is intentionally a separate process from the save replay.  L is
     -- the normal hotkey callback, and the outer script supplies a fresh,
@@ -3660,6 +3665,7 @@ function love.load()
     local loaded = session and session.mapId == GameSession.MAP_PALLET_TOWN_PLAYERS_HOUSE_2F
       and session.location.x == 6 and session.location.y == 6
       and session.state.saveBlock1.playerPartyCount == 1
+      and isExpectedReplayIdentity(session.identity)
     print(("RUNTIME_REPLAY restart_load %s map=%s pos=%s,%s party=%s identity=%s/%s/%s"):format(
       loaded and "PASS" or "FAIL", tostring(session and session.mapId),
       tostring(session and session.location.x), tostring(session and session.location.y),
@@ -4212,6 +4218,8 @@ function love.load()
         -- is healed before saving.
         passed = passed and reachedPallet and sb1.money == NewGameDefaults.startingMoney - 40
           and lead and lead.hp == lead.maxHP
+          and isExpectedReplayIdentity(world.runtimeReplayIdentity)
+          and isExpectedReplayIdentity(newGame.session and newGame.session.identity)
       end
     end
     if passed and (runtimeReplay == "route1_wild_defeat_save" or replayCompleteExit) then
@@ -4236,11 +4244,13 @@ function love.load()
       replayDetail = replayDetail .. (" afterLab=" .. tostring(world.runtimeReplayAfterLab.map)
         .. "@" .. tostring(world.runtimeReplayAfterLab.x) .. "," .. tostring(world.runtimeReplayAfterLab.y))
     end
-    if world.runtimeReplayIdentity then
+    local replayIdentity = replayCompleteExit and newGame.session and newGame.session.identity
+      or world.runtimeReplayIdentity
+    if replayIdentity then
       replayDetail = replayDetail .. (" identity="
-        .. Charmap.decode(world.runtimeReplayIdentity.playerName) .. "/"
-        .. Charmap.decode(world.runtimeReplayIdentity.rivalName)
-        .. "/" .. tostring(world.runtimeReplayIdentity.playerGender))
+        .. Charmap.decode(replayIdentity.playerName) .. "/"
+        .. Charmap.decode(replayIdentity.rivalName)
+        .. "/" .. tostring(replayIdentity.playerGender))
     end
     if world.runtimeReplayNaturalCapture then
       local capture = world.runtimeReplayNaturalCapture
