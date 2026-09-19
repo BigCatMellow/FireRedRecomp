@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
-  "updated_utc": "2026-09-19T09:26:33Z",
-  "role": "WORKER",
-  "status": "READY_FOR_REVIEWER",
+  "updated_utc": "2026-09-19T10:15:00Z",
+  "role": "REVIEWER",
+  "status": "NEEDS_FIX",
   "current_phase": "Phase 3 complete runtime exit replay",
   "canonical_status_owner": "work/roadmaps/CAPABILITY_CHECKLIST.md",
   "active_task": "work/tasks/phase3-complete-runtime-exit-replay.md",
   "objective": "Produce one deterministic normal-boot-to-fresh-reload Phase 3 runtime artifact using existing gameplay seams only.",
-  "next_role": "REVIEWER",
+  "next_role": "WORKER",
   "reconciliation": {
     "paused_prior_task": "work/tasks/local-worker-bridge-complete-runtime-route.md",
     "worker_result": "One deterministic normal-title-boot replay reaches Oak/identity, bedroom/Pallet, Route 1 wild defeat, normal save, and fresh-process normal reload without injecting a post-Oak/post-battle session.",
@@ -23,8 +23,8 @@
       "env -u POKEPORT_ROM bash scripts/test_all.sh: 144 test files PASS in no-ROM mode",
       "POKEPORT_ROM=<verified private ROM> bash scripts/test_all.sh: 144 test files PASS in ROM mode"
     ],
-    "review_result": "PENDING independent review; Worker does not self-approve this evidence integration.",
-    "new_prerequisite": "Reviewer independently runs focused test, complete isolated replay, and required suites on the exact revision while checking no gameplay behavior changed.",
+    "review_result": "NEEDS_FIX by independent Reviewer: the real replay and required suites reproduce, but identity is printed rather than asserted at save and fresh reload; the wrapper hard-codes identity=RED/GREEN in its final marker.",
+    "new_prerequisite": "Worker must add deterministic save-leg and fresh-reload identity assertions and wrapper validation of those asserted fields, then route the new exact revision for fresh independent review.",
     "canonical_status_change": false,
     "phase3_status": "IN PROGRESS — complete runtime replay implemented with Worker evidence, pending independent review"
   },
@@ -48,8 +48,8 @@
       "independent-review requirement"
     ]
   },
-  "blocker": null,
-  "next_after_success": "Independent Reviewer verifies the exact Worker revision; Orchestrator alone reconciles the parent gate and canonical Phase 3 status.",
+  "blocker": "Acceptance criterion 3 is not fully proven: identity continuity is observational output, not a checked assertion, and the final wrapper marker synthesizes RED/GREEN.",
+  "next_after_success": "Worker makes only the narrow replay-evidence correction; a fresh independent Reviewer then verifies the new exact revision before Orchestrator may reconcile the parent gate.",
   "legal_content_boundary": "Never commit ROMs, BIOS dumps, generated caches, extracted game assets, or other prohibited content.",
   "phase_completion_rule": "Do not mark Phase 3 DONE until the complete parent exit criterion is evidenced and independently reviewed."
 }

@@ -2,14 +2,40 @@
 
 - Record role: `HANDOFF`
 - Primary information class: `TASK CONTEXT`
-- Status: `READY FOR WORKER`
+- Status: `NEEDS FIX — REVIEWED`
 - Lifecycle: `ACTIVE`
 - Authority: coordination only; root `AGENTS.md` and active task contract control review
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
-- Active task: [`../tasks/local-worker-bridge-complete-runtime-route.md`](../tasks/local-worker-bridge-complete-runtime-route.md)
+- Active task: [`../tasks/phase3-complete-runtime-exit-replay.md`](../tasks/phase3-complete-runtime-exit-replay.md)
 - Machine state: [`STATE.json`](STATE.json)
 
-## Current Worker handoff — Phase 3 complete runtime exit replay
+## Current independent reviewer result — Phase 3 complete runtime exit replay
+
+The independent Reviewer returns `NEEDS_FIX` for implementation/evidence
+revision `a675cdf8f632d4bf7a4b23aa0b0f55dc17644baa`, recovered with
+coordination revision `3727dc37150280f13c75cf835ca26ee57380a404`. The durable
+review is [`../reviews/2026-09-19-phase3-complete-runtime-exit-replay-review.md`](../reviews/2026-09-19-phase3-complete-runtime-exit-replay-review.md).
+
+The focused contract test, complete isolated verified-ROM replay, 144-file
+no-ROM suite, and 144-file verified-ROM suite all independently passed. The
+review found no gameplay, save-layout, ROM-policy, or prohibited-content
+change. The replay genuinely uses the normal title/Oak/identity, movement,
+battle, K-save, and fresh-process L-load paths.
+
+The evidence does not yet satisfy the task's identity-continuity requirement:
+the save route and fresh reload process print identity but do not include its
+expected values in their pass predicates; the wrapper checks only generic PASS
+substrings and then hard-codes `identity=RED/GREEN` in the final marker. A
+different identity could therefore pass the artifact while yielding the same
+claimed final marker.
+
+Next action: Worker may make only the smallest replay-evidence correction to
+assert the expected identity in both processes and validate those fields in the
+wrapper, with focused coverage. Re-run the focused replay and both suites, then
+request a fresh independent review of the new exact revision. Do not reconcile
+the parent Phase 3 gate or canonical capability status.
+
+## Superseded Worker handoff — Phase 3 complete runtime exit replay
 
 The bounded evidence implementation is ready for independent review. It adds
 only replay-driver plumbing, one focused contract test, and one runtime wrapper;
