@@ -89,26 +89,21 @@ The reviewed task is now closed. Its durable implementation evidence is at
 This result does not merge or release anything, reopen frozen values, or
 advance Phase 3.
 
-## Current reviewer scope — corrected bridge validation
+## Current reviewer result — bridge header-validation correction
 
-The prior `NEEDS_FIX` on
-`41ca7eb184cdabe6e247f442ab95b6b0037d98be` is corrected by implementation
-revision `616d802e41a4006cf19894a8a27ca4de68c34ae6`, with Worker evidence and
-state recorded at `cde0692edd411f30e5750d01df5e5596e3719f30`. Review the
-resulting revision range against the active task and the durable prior review
-record at
-[`../reviews/2026-09-18-local-worker-bridge-complete-runtime-route-review.md`](../reviews/2026-09-18-local-worker-bridge-complete-runtime-route-review.md).
+The fresh independent Reviewer returns `NEEDS_FIX` on handoff subject
+`49aa6b7589faf1d7a3c3a3b550a6e83043b2c2a8` (implementation
+`616d802e41a4006cf19894a8a27ca4de68c34ae6`). The durable record is
+[`../reviews/2026-09-19-local-worker-bridge-header-validation-review.md`](../reviews/2026-09-19-local-worker-bridge-header-validation-review.md).
 
-Before `git apply --check`, the workflow now delegates to focused bridge
-validation that parses both paths of every `diff --git` header and checks each
-path against the unchanged hard-coded route allowlists. Missing,
-malformed/unparseable headers and unauthorized targets fail closed; this covers
-mode-only changes, which do not contain `---`/`+++` target lines. The trusted
-`push`-to-`main` trigger, no-public-PR policy, exact route selection, ROM SHA
-gate, suite/replay-before-publish order, and explicit publish staging are
-unchanged.
+The correction properly validates both paths of every parseable `diff --git`
+header, including mode-only changes, but it removed validation of textual
+`---`/`+++` marker paths. An independent probe constructed an allowed
+`diff --git a/main.lua b/main.lua` header with textual markers for the
+unallowlisted workflow file. The validator accepted it and `git apply --check`
+accepted it too. The pre-apply allowlist is therefore still bypassable.
 
-Worker evidence:
+Reproduced evidence:
 
 - `bash scripts/test_local_worker_bridge_patch_targets.sh` passed. It accepts
   an authorized mode-only header and rejects an unauthorized mode-only target,
@@ -117,8 +112,14 @@ Worker evidence:
 - A locally available private ROM matched
   `41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc`; its 143-file ROM-mode suite
   passed.
+- The header/marker mismatch probe above was accepted, demonstrating the
+  remaining security defect.
 
-No gameplay/runtime replay implementation, policy, permissions, ROM content,
-or save-layout file changed. Return `PASS`, `NEEDS_FIX`, or `BLOCK`; do not
-restore `work/tasks/phase3-complete-runtime-exit-replay.md` to Worker or
-advance Phase 3 without a fresh independent `PASS`.
+Worker may only amend the focused target validator and deterministic
+non-gameplay coverage: validate both paths of every `diff --git` header and
+every textual `---`/`+++` path that `git apply` may use, fail closed on
+malformed/unallowlisted values, and prove the allowed-header/unallowlisted-marker
+bypass is rejected before `git apply --check`. No gameplay/runtime replay
+implementation, policy, permissions, ROM content, or save-layout change is
+authorized. Do not restore `work/tasks/phase3-complete-runtime-exit-replay.md`
+to Worker or advance Phase 3 without a fresh independent `PASS`.

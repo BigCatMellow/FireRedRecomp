@@ -1,32 +1,33 @@
 {
   "schema_version": 1,
-  "updated_utc": "2026-09-19T01:37:38Z",
-  "role": "WORKER",
-  "status": "READY_FOR_REVIEWER",
+  "updated_utc": "2026-09-19T02:20:00Z",
+  "role": "ORCHESTRATOR",
+  "status": "READY_FOR_WORKER",
   "current_phase": "Phase 3 Local Worker Bridge route",
   "canonical_status_owner": "work/roadmaps/CAPABILITY_CHECKLIST.md",
   "active_task": "work/tasks/local-worker-bridge-complete-runtime-route.md",
   "objective": "Remove only the execution-substrate blocker for the complete Phase 3 runtime replay by adding its explicit, fail-closed Local Worker Bridge route.",
-  "next_role": "INDEPENDENT_REVIEWER",
+  "next_role": "WORKER",
   "reconciliation": {
     "paused_prior_task": "work/tasks/local-worker-bridge-complete-runtime-route.md",
-    "worker_result": "Corrected pre-apply validation at 616d802e: every diff --git header path is parsed and allowlisted fail-closed.",
+    "worker_result": "Correction reviewed at subject 49aa6b75; header-path validation is present but textual git-apply marker paths remain unvalidated.",
     "blocker": null,
     "gameplay_defect_found": false,
     "implementation_published": true,
     "tests_claimed": true,
-    "review_subject": "616d802e41a4006cf19894a8a27ca4de68c34ae6",
+    "review_subject": "49aa6b7589faf1d7a3c3a3b550a6e83043b2c2a8",
     "reproduced_evidence": [
       "bash scripts/test_local_worker_bridge_patch_targets.sh: allowed mode-only header accepted; unauthorized mode-only target, unauthorized source path, and malformed header rejected",
       "bash -n scripts/validate_local_worker_bridge_patch_targets.sh scripts/test_local_worker_bridge_patch_targets.sh: PASS",
       "env -u POKEPORT_ROM bash scripts/test_all.sh: 143 test files PASS in no-ROM mode",
       "available private ROM SHA-1 matched 41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc",
-      "POKEPORT_ROM=<verified private ROM> bash scripts/test_all.sh: 143 test files PASS in ROM mode"
+      "POKEPORT_ROM=<verified private ROM> bash scripts/test_all.sh: 143 test files PASS in ROM mode",
+      "independent spoof probe: allowed diff --git main.lua header plus unallowlisted .github/workflows/local-worker-bridge.yml ---/+++ markers was accepted by validator and git apply --check"
     ],
-    "review_result": null,
-    "new_prerequisite": null,
+    "review_result": "NEEDS_FIX at 49aa6b75; see work/reviews/2026-09-19-local-worker-bridge-header-validation-review.md",
+    "new_prerequisite": "Validate every textual ---/+++ path that git apply may use, in addition to both paths of every diff --git header, and add a fail-closed deterministic spoof test.",
     "canonical_status_change": false,
-    "phase3_status": "IN PROGRESS — corrected bridge validation awaiting fresh independent review"
+    "phase3_status": "IN PROGRESS — header/marker validation alignment dispatched for fresh review"
   },
   "active_task_acceptance_summary": [
     "Add only the explicit `phase3-complete-runtime-exit-replay` bridge route, its exact allowlist, focused-test command, runtime-replay command, and explicit publish staging.",
@@ -50,7 +51,7 @@
     ]
   },
   "blocker": null,
-  "next_after_success": "Worker may make only the target-validation correction plus deterministic non-gameplay validation in the active bridge task. Do not restore `work/tasks/phase3-complete-runtime-exit-replay.md` until a fresh independent PASS.",
+  "next_after_success": "Worker may only correct pre-apply target validation and add deterministic non-gameplay coverage, including the allowed-header/unallowlisted-marker bypass. Do not restore `work/tasks/phase3-complete-runtime-exit-replay.md` until a fresh independent PASS.",
   "legal_content_boundary": "Never commit ROMs, BIOS dumps, generated caches, extracted game assets, or other prohibited content.",
   "phase_completion_rule": "Do not mark Phase 3 DONE until the complete parent exit criterion is evidenced and independently reviewed."
 }
