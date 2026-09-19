@@ -123,6 +123,24 @@ ROM policy, or save-layout file was modified by this Worker.
 
 The exact revision is ready for independent review.
 
+## Worker correction — 2026-09-19
+
+The independent review's mode-only target-validation finding is corrected at
+`616d802e41a4006cf19894a8a27ca4de68c34ae6`. Before `git apply --check`, the
+bridge now parses both paths of every `diff --git` header and validates each
+against the unchanged hard-coded route allowlists. A missing, malformed, or
+unparseable header fails closed. This includes mode-only changes, which have no
+`---`/`+++` headers.
+
+Deterministic non-gameplay coverage in
+`bash scripts/test_local_worker_bridge_patch_targets.sh` proves an authorized
+mode-only header is accepted, while an unauthorized mode-only target, an
+unauthorized source path, and a malformed header are rejected before apply.
+The focused check, no-ROM suite (143 files), and verified-ROM suite (143 files)
+passed locally; the available ROM matched the required SHA-1. No gameplay,
+replay implementation, policy, permissions, ROM content, or save-layout file
+changed. A fresh independent review is required.
+
 ## Completion / handoff
 
 Completion closes only this execution-substrate prerequisite. After independent `PASS`, Orchestrator restores `work/tasks/phase3-complete-runtime-exit-replay.md` as `READY_FOR_WORKER`. Phase 3 remains `IN PROGRESS` until the complete parent exit proof itself is independently verified.

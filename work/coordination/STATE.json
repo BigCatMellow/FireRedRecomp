@@ -1,34 +1,32 @@
 {
   "schema_version": 1,
-  "updated_utc": "2026-09-18T23:30:00Z",
-  "role": "ORCHESTRATOR",
-  "status": "READY_FOR_WORKER",
+  "updated_utc": "2026-09-19T01:37:38Z",
+  "role": "WORKER",
+  "status": "READY_FOR_REVIEWER",
   "current_phase": "Phase 3 Local Worker Bridge route",
   "canonical_status_owner": "work/roadmaps/CAPABILITY_CHECKLIST.md",
   "active_task": "work/tasks/local-worker-bridge-complete-runtime-route.md",
   "objective": "Remove only the execution-substrate blocker for the complete Phase 3 runtime replay by adding its explicit, fail-closed Local Worker Bridge route.",
-  "next_role": "WORKER",
+  "next_role": "INDEPENDENT_REVIEWER",
   "reconciliation": {
     "paused_prior_task": "work/tasks/local-worker-bridge-complete-runtime-route.md",
-    "worker_result": "Route implementation recovered at f2c240e7; exact route surface unchanged through 41ca7eb1.",
+    "worker_result": "Corrected pre-apply validation at 616d802e: every diff --git header path is parsed and allowlisted fail-closed.",
     "blocker": null,
     "gameplay_defect_found": false,
     "implementation_published": true,
     "tests_claimed": true,
-    "review_subject": "41ca7eb184cdabe6e247f442ab95b6b0037d98be (route implementation ancestor f2c240e7)",
+    "review_subject": "616d802e41a4006cf19894a8a27ca4de68c34ae6",
     "reproduced_evidence": [
-      "route selector recognized phase3-complete-runtime-exit-replay",
-      "unknown route selector rejected fail-closed",
-      "route surface unchanged from f2c240e7 through HEAD",
+      "bash scripts/test_local_worker_bridge_patch_targets.sh: allowed mode-only header accepted; unauthorized mode-only target, unauthorized source path, and malformed header rejected",
+      "bash -n scripts/validate_local_worker_bridge_patch_targets.sh scripts/test_local_worker_bridge_patch_targets.sh: PASS",
       "env -u POKEPORT_ROM bash scripts/test_all.sh: 143 test files PASS in no-ROM mode",
-      "both locally available candidate ROMs match the required SHA-1",
-      "env -u POKEPORT_ROM bash scripts/test_all.sh: 143 test files PASS in no-ROM mode",
-      "target parser misses mode-only diff --git paths before git apply"
+      "available private ROM SHA-1 matched 41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc",
+      "POKEPORT_ROM=<verified private ROM> bash scripts/test_all.sh: 143 test files PASS in ROM mode"
     ],
-    "review_result": "NEEDS_FIX at 41ca7eb1: validate every diff --git target, including mode-only changes, against the route allowlist before git apply.",
+    "review_result": null,
     "new_prerequisite": null,
     "canonical_status_change": false,
-    "phase3_status": "IN PROGRESS — exact fail-closed target-validation correction dispatched"
+    "phase3_status": "IN PROGRESS — corrected bridge validation awaiting fresh independent review"
   },
   "active_task_acceptance_summary": [
     "Add only the explicit `phase3-complete-runtime-exit-replay` bridge route, its exact allowlist, focused-test command, runtime-replay command, and explicit publish staging.",
