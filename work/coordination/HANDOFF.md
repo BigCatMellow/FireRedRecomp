@@ -1,6 +1,6 @@
 # FireRedRecomp Coordination Handoff
 
-- Status: `READY_FOR_REVIEWER`
+- Status: `READY_FOR_WORKER`
 - Task ID: `P4-02-ROUTE`, with disjoint `P4-02` preparation
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
 - Active task: [`../tasks/local-worker-bridge-phase4-move-effect-inventory-route.md`](../tasks/local-worker-bridge-phase4-move-effect-inventory-route.md)
@@ -30,6 +30,15 @@ unchanged after removing those additions, and passed 149-file before/after
 no-ROM suites plus syntax/selector/allowlist checks. No push or probe occurred.
 Reviewer owns the next critical-path action; inventory preparation continues
 independently in its isolated worktree.
+
+That exact configuration now has
+[independent PASS](../reviews/2026-09-20-move-effect-inventory-route-review.md).
+Worker may publish the single separate
+`phase4-move-effect-inventory-route-20260920.probe`; no inventory request is
+authorized until its trusted route/Lua/SHA steps pass and patch/tests/publication
+are confirmed skipped. Main is synchronized through `0353572`, whose public
+Lua CI also passed (`35511166788`). Keep GitHub and coordination current as
+the user explicitly requested.
 
 Local checkout: `/home/home/FireRedRecomp`. Isolated Lua/LÖVE tools are in
 `/home/home/.local/share/firered-toolchain/bin`; source reference is pinned at

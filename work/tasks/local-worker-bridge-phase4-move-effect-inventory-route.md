@@ -1,7 +1,7 @@
 # Task: dedicated move-effect inventory verification route
 
 - Task ID: `P4-02-ROUTE`
-- Status: `CONFIGURED — PENDING INDEPENDENT REVIEW`
+- Status: `READY_FOR_WORKER` — separate probe only
 - Type: `INFRASTRUCTURE / BOUNDED ROUTE`
 - Parent capability gate: Phase 4 move/effect matrix via [`phase4-move-effect-inventory.md`](phase4-move-effect-inventory.md).
 - Assigned role: `WORKER`, after independent readiness review.
@@ -106,3 +106,14 @@ in its extraction regex; the final complete check passed without any workflow
 change. No inventory implementation, ROM execution, publication, or probe was
 performed in this package. Independent configuration review must pass before
 the separate probe; no capability or phase completion is claimed.
+
+## Configuration acceptance and probe authorization
+
+[Independent configuration review](../reviews/2026-09-20-move-effect-inventory-route-review.md)
+passes exact `82af910..24f39c424347425be9836e16d529c7706641aa93`.
+Orchestrator authorizes exactly the separately named one-file probe above.
+Worker may commit/push that probe and inspect its guarded run; do not add a
+request, change configuration, or claim inventory evidence. Trusted checkout,
+route selection, Lua and SHA checks must pass; patch/test/publication steps
+must be skipped. On success return exact commit/run for reconciliation and
+inventory-request eligibility. On failure record the exact blocker.
