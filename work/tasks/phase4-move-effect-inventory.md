@@ -91,3 +91,32 @@ These packages have disjoint writable paths; neither may change gameplay.
 Worker must wait for exact configuration review and a successful separate
 probe before publishing the inventory request. Local source counts and a
 no-ROM skip cannot close this task.
+
+## Source preparation result — 2026-09-20
+
+Prepared in isolated `work/move-effect-inventory` at base
+`82af91015cc438711d7ae9c6cbb001cdfddd36d1`, using accepted engine revision
+`a739ddc` and the pinned public source. Artifacts:
+[`../reports/phase4-move-effect-inventory.md`](../reports/phase4-move-effect-inventory.md)
+and `tests/phase4_move_effect_inventory_test.lua`; no runtime changes.
+
+Source enumeration confirms 354 real records (216 positive, 138 zero), 198
+used effects and 16 unused definitions, for 214 total definitions. Source-only
+invocation of the actual admission predicate returns 248 admitted / 106 rejected.
+Classification metadata: 137 represented-with-limits records, 25 candidates,
+191 blocked-on-state/path records, and one intentional rejection. The 111
+admitted but uncovered positive-power records are explicitly identified.
+The proposed single successor is effect32 source-lock discovery, justified by
+Misty's two explicit Recover slots; this is not implementation authority.
+
+Local checks: baseline 149 no-ROM files PASS; new static partition validation
+PASS followed by explicit ROM skip; Lua `loadfile` syntax PASS; final full
+no-ROM suite 150 files PASS. A separate source-metadata harness exercised the
+test's success path and five rejection paths with stubbed importer/SHA; all
+passed. It supplies no ROM evidence. `git diff --check` passed.
+
+Mandatory non-skipped SHA-ROM evidence and independent exact-artifact review
+remain outstanding. Orchestrator reports the private runner offline; no probe
+or inventory request was published by this Worker, and no local ROM was used.
+Preserve the configuration-review-plus-separate-probe publication gate. Do not
+close this inventory or the broader Phase 4 gate from local preparation.
