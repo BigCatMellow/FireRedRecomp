@@ -1,11 +1,20 @@
 # FireRedRecomp Coordination Handoff
 
-- Status: `READY_FOR_WORKER`
-- Task ID: `P4-PAIN-03`
+- Status: `READY_FOR_REVIEWER`
+- Task ID: `P4-PAIN-04`
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
 - Active task: [`../tasks/phase4-pain-split-effect.md`](../tasks/phase4-pain-split-effect.md)
 
 ## Current relay — 2026-09-19
+
+Updated 2026-09-20: the corrected request `bf36d94` passed guarded run
+`35493728001` and published implementation `a739ddc88cb44a33d5e6025e619cf1df3fe6a1a8`.
+Both full suites passed 149 files; focused engine/controller counts were
+237/0 and 39/0, with verified replay engine 244/0 and ROM record 1/0.
+The next owner is an independent implementation Reviewer for `P4-PAIN-04`.
+The user reiterated autonomous continuation while unavailable: record user-owned
+blockers and continue independent authorized work. No new gameplay scope is
+implied; after bounded PASS, compile the inventory refresh and runner prerequisite.
 
 The local checkout recovered live main at `d793981`. Independent
 [fixture correction review](../reviews/2026-09-19-pain-split-fixture-correction-review.md)

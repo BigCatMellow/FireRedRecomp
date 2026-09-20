@@ -1,7 +1,7 @@
 # Task: Phase 4 Pain Split effect
 
 - Task ID: `P4-PAIN-03` (authorized by `P4-PAIN-02`)
-- Status: `READY_FOR_WORKER`
+- Status: `READY_FOR_REVIEWER`
 - Type: `PHASE 4 / BATTLE RULES / BOUNDED IMPLEMENTATION`
 - Parent capability gate: Phase 4 move/effect matrix in `work/roadmaps/CAPABILITY_CHECKLIST.md`.
 - Assigned role: `WORKER`; independent implementation reviewer: separate `REVIEWER` helper.
@@ -99,3 +99,16 @@ a broader retry. On success, route the exact published implementation to a
 separate independent Reviewer before closure. Eligible successor after PASS:
 `P4-02` effect-family inventory refresh from the MAPSL execution plan; no
 new move behavior or Phase 4 completion is authorized here.
+
+## Corrected Worker result
+
+Request `bf36d94ccb20b7457d224c7bd5f94d8b3cfeb89c` retained the reviewed
+digest. Guarded run
+[`35493728001`](https://github.com/BigCatMellow/FireRedRecomp/actions/runs/35493728001)
+passed SHA verification, target validation, application, focused checks, both
+149-file full suites, and the configured engine/controller replay. Focused
+checks: engine 237/0, scene controller 39/0; verified replay: engine 244/0,
+scene controller 39/0, Pain Split ROM record 1/0. It published only the six
+permitted implementation/test/replay paths at
+`a739ddc88cb44a33d5e6025e619cf1df3fe6a1a8`. Independent `P4-PAIN-04`
+implementation review remains required before effect closure.

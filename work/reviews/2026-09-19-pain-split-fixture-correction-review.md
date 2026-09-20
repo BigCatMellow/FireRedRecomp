@@ -22,9 +22,9 @@ request or implementation was written during review.
 
 Primary source independently establishes the correction. At upstream
 `pret/pokefirered` revision `c75f352304d529f6ba92d4f74b9cf8b5c3810788`,
-the [Pain Split record](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/src/data/battle_moves.h#L2643)
+the [Pain Split record](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/src/data/battle_moves.h#L2863)
 contains only Protect-affected and Mirror-Move-affected flags. The
-[flag constants](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/include/constants/pokemon.h#L225)
+[flag constants](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/include/constants/pokemon.h#L239-L242)
 assign these bits 1 and 4: `2 | 16 = 18`. Decimal 51 would additionally set
 contact and King's Rock bits. The upstream master revision was independently
 read using `git ls-remote`, then the record and constants were read at the
