@@ -1,19 +1,24 @@
 {
   "schema_version": 1,
-  "updated_utc": "2026-09-20T06:17:00Z",
+  "updated_utc": "2026-09-20T11:24:00Z",
   "role": "ORCHESTRATOR",
-  "status": "READY_FOR_REVIEWER",
-  "task_id": "P4-PAIN-04",
+  "status": "READY_FOR_WORKER",
+  "task_id": "P4-02-ROUTE",
   "current_phase": "Phase 4 — full Gen 3 battle engine",
   "canonical_status_owner": "work/roadmaps/CAPABILITY_CHECKLIST.md",
-  "active_task": "work/tasks/phase4-pain-split-effect.md",
-  "objective": "Independently review exact Pain Split implementation bf36d94..a739ddc against the existing bounded criteria and guarded run 35493728001.",
-  "next_role": "REVIEWER",
-  "implementation_revision": "a739ddc88cb44a33d5e6025e619cf1df3fe6a1a8",
-  "evidence_run": "https://github.com/BigCatMellow/FireRedRecomp/actions/runs/35493728001",
-  "acceptance": "Corrected request digest c6170f42df62f45867bbf0c1330584a2c067136ff5811042fbc7d7009856cd69; unchanged nine-path route; focused, full no-ROM, SHA-verified full ROM, and configured replay pass; independent implementation review still required.",
-  "boundaries": "Effect 91 only. No generic zero-power/healing admission, excluded state, other effects, route change, or Phase 4 completion.",
-  "dependencies": "Fixture-scope PASS in work/reviews/2026-09-19-pain-split-fixture-correction-review.md at base d793981; existing route/probe PASS; 148-file local no-ROM baseline PASS; user selected private runner.",
+  "active_task": "work/tasks/local-worker-bridge-phase4-move-effect-inventory-route.md",
+  "objective": "Configure only the independently reviewed three-file inventory evidence route; return exact configuration for review before a separate probe.",
+  "next_role": "WORKER",
+  "acceptance": "Literal selector and three allowed paths; new focused case; unchanged shared no-ROM/SHA-ROM suites; explicit no-replay branch; individual staging; syntax/allowlist checks; independent configuration review then separate probe.",
+  "boundaries": "Only new route configuration and specified docs. No existing route changes, global workflow changes, runtime behavior, inventory implementation in this package, ROM content, or phase advancement.",
+  "dependencies": "Pain Split independently PASS at a739ddc; inventory/route readiness PASS in work/reviews/2026-09-20-move-effect-inventory-readiness-review.md; user selected existing private runner and autonomous continuation.",
+  "parallel_preparation": {
+    "task_id": "P4-02",
+    "task": "work/tasks/phase4-move-effect-inventory.md",
+    "status": "READY_FOR_WORKER",
+    "boundary": "Source/report/test preparation only in isolated worktree; three inventory paths are disjoint from route work. No request publication until exact route review and probe PASS.",
+    "publication_gate": "P4-02-ROUTE independent configuration PASS and separate trusted probe PASS"
+  },
   "reconciliation": {
     "camera_task_status": "CLOSED — REVIEWED PASS at 4c5456f3; guarded run 34753297372",
     "oak_evidence_bridge": "CLOSED — REVIEWED PASS at ff5ff890; trusted probe run 34753855210",
@@ -22,10 +27,11 @@
     "phase4_foe_multimon_status": "CLOSED — REVIEWED PASS at 8533cf6a; guarded run 34777072801",
     "phase4_player_forced_replacement_status": "CLOSED — REVIEWED PASS at 8fd9a397; guarded run 34783304717",
     "phase4_fixed_damage_status": "CLOSED — REVIEWED PASS at c65cf838; guarded run 34798961274",
-    "phase4_move_admission_matrix_status": "CLOSED — REVIEWED PASS at 784a5188; six effect-17 accuracy-zero records selected as one next leaf"
+    "phase4_move_admission_matrix_status": "CLOSED — REVIEWED PASS at 784a5188; historical positive-power inventory, now being refreshed by P4-02",
+    "phase4_pain_split_status": "CLOSED — REVIEWED PASS at a739ddc; guarded run 35493728001; exact review work/reviews/2026-09-20-pain-split-implementation-review.md"
   },
   "phase2_external_blocker": "Trusted, user-owned retail-reference captures with provenance/timing/crop/filter details for Oak and Pallet anchors have not been supplied.",
-  "next_after_success": "P4-PAIN-04 independent review of the exact guarded implementation revision; on PASS close only Pain Split and dispatch P4-02 effect-family inventory refresh.",
+  "next_after_success": "Independent route configuration review, separate probe, then P4-02 inventory request and full SHA-ROM evidence. Independently review inventory and select exactly one next source-lock discovery family.",
   "legal_content_boundary": "Never commit ROMs, BIOS dumps, generated caches, ROM-derived reference screenshots, extracted game assets, or other prohibited content.",
   "phase_completion_rule": "Phase 2 remains IN PROGRESS until the Oak/reference screenshot discrepancy gate is evidenced and independently reviewed."
 }

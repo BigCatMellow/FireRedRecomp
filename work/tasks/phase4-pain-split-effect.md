@@ -1,7 +1,7 @@
 # Task: Phase 4 Pain Split effect
 
 - Task ID: `P4-PAIN-03` (authorized by `P4-PAIN-02`)
-- Status: `READY_FOR_REVIEWER`
+- Status: `CLOSED — REVIEWED PASS`
 - Type: `PHASE 4 / BATTLE RULES / BOUNDED IMPLEMENTATION`
 - Parent capability gate: Phase 4 move/effect matrix in `work/roadmaps/CAPABILITY_CHECKLIST.md`.
 - Assigned role: `WORKER`; independent implementation reviewer: separate `REVIEWER` helper.
@@ -112,3 +112,12 @@ scene controller 39/0, Pain Split ROM record 1/0. It published only the six
 permitted implementation/test/replay paths at
 `a739ddc88cb44a33d5e6025e619cf1df3fe6a1a8`. Independent `P4-PAIN-04`
 implementation review remains required before effect closure.
+
+## Independent acceptance and closure
+
+[`P4-PAIN-04 review`](../reviews/2026-09-20-pain-split-implementation-review.md)
+independently passed exact range `bf36d94..a739ddc`, reproduced the 149-file
+local suite, checked guarded evidence, and exercised both attacker roles and
+12,168 living-HP cases without repository changes. Orchestrator reconciled
+this bounded effect on 2026-09-20. `P4-02` inventory refresh is the successor;
+all stated exclusions and Phase 4's remaining gate are preserved.

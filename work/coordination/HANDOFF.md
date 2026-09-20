@@ -1,36 +1,36 @@
 # FireRedRecomp Coordination Handoff
 
-- Status: `READY_FOR_REVIEWER`
-- Task ID: `P4-PAIN-04`
+- Status: `READY_FOR_WORKER`
+- Task ID: `P4-02-ROUTE`, with disjoint `P4-02` preparation
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
-- Active task: [`../tasks/phase4-pain-split-effect.md`](../tasks/phase4-pain-split-effect.md)
+- Active task: [`../tasks/local-worker-bridge-phase4-move-effect-inventory-route.md`](../tasks/local-worker-bridge-phase4-move-effect-inventory-route.md)
 
-## Current relay — 2026-09-19
+## Current relay — 2026-09-20
 
-Updated 2026-09-20: the corrected request `bf36d94` passed guarded run
-`35493728001` and published implementation `a739ddc88cb44a33d5e6025e619cf1df3fe6a1a8`.
-Both full suites passed 149 files; focused engine/controller counts were
-237/0 and 39/0, with verified replay engine 244/0 and ROM record 1/0.
-The next owner is an independent implementation Reviewer for `P4-PAIN-04`.
-The user reiterated autonomous continuation while unavailable: record user-owned
-blockers and continue independent authorized work. No new gameplay scope is
-implied; after bounded PASS, compile the inventory refresh and runner prerequisite.
+Pain Split is closed at `a739ddc88cb44a33d5e6025e619cf1df3fe6a1a8` after
+[independent implementation PASS](../reviews/2026-09-20-pain-split-implementation-review.md).
+Guarded run `35493728001` passed both 149-file suites and the configured
+engine/controller replay. The Reviewer independently reproduced the local suite
+and 12,168 living-HP cases. No broader effect or visual-parity claim follows.
 
-The local checkout recovered live main at `d793981`. Independent
-[fixture correction review](../reviews/2026-09-19-pain-split-fixture-correction-review.md)
-passed: correct exactly two Pain Split fixture values from 51 to 18; retain
-every other failed-request byte. `P4-PAIN-01` and authorization `P4-PAIN-02`
-are reconciled. Worker `P4-PAIN-03` now has one corrected request through the
-unchanged nine-path route. The current user selected the existing private
-runner, observed online/idle. Local Lua baseline passed all 148 no-ROM files.
+The next bounded package is `P4-02`: complete move/effect inventory with
+actual admission separate from represented mechanics. Its dedicated runner
+route is the critical prerequisite. Both contracts have
+[readiness PASS](../reviews/2026-09-20-move-effect-inventory-readiness-review.md).
+Route Worker may change only the new literal workflow cases and specified docs;
+exact configuration review must precede a separate probe. Source/test preparation
+may proceed in an isolated worktree under the three-path inventory contract.
+These outputs do not overlap. Do not publish the inventory request until route
+review and probe both pass; its non-skipped full SHA-ROM execution is mandatory.
 
-Worker must verify the corrected digest in the active task, publish the one
-request under standing bounded publication authority, inspect all guarded
-focused/full/SHA-ROM/replay steps, then return the exact implementation commit.
-An independent implementation Reviewer owns `P4-PAIN-04`; the scope PASS is
-not implementation acceptance. On PASS, select `P4-02` inventory refresh
-without waiting for a new user prompt. Phase 2 reference media remains external.
-Historical retry holds below are superseded only by this exact authorization.
+Local checkout: `/home/home/FireRedRecomp`. Isolated Lua/LÖVE tools are in
+`/home/home/.local/share/firered-toolchain/bin`; source reference is pinned at
+`c75f3523` in `/home/home/FireRedRecomp-reference/pokefirered`. The user selected
+the existing `firered-mint` private runner, last observed online/idle, and asked
+for continuous autonomous work while unavailable. Record user-owned needs here
+and in the register; continue independent authorized tasks without repeated
+questions. The only current user-owned input is Phase 2 retail-reference media.
+Historical Pain Split retry/review holds below have been superseded by closure.
 
 ## Published evidence
 

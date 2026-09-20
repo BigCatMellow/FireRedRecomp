@@ -39,8 +39,9 @@ Do not let README prose or an older handoff override newer direct evidence.
 
 ## Current dispatch
 
-Phase 3 is complete. The active bounded continuation is the Pain Split
-fixture-correction review recorded in `STATE.json`, `HANDOFF.md`, and
+Phase 3 is complete. Pain Split is independently accepted at `a739ddc`.
+The active bounded continuation is the full move-effect inventory and its
+dedicated private-runner route recorded in `STATE.json`, `HANDOFF.md`, and
 `TASK_REGISTER.md`; those live owners supersede historical task prose.
 
 Current intended sequence:
