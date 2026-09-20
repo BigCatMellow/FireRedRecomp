@@ -1,7 +1,7 @@
 # Task: recover the save-version compatibility contract
 
 - Task ID: `P0-02-DISCOVERY`
-- Status: `READY_FOR_WORKER`
+- Status: `DISCOVERY COMPLETE — PENDING INDEPENDENT REVIEW`
 - Type: `RESEARCH / READ-ONLY COMPATIBILITY DISCOVERY`
 - Parent capability gate: Phase 0 save-version contract in [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md), MAPSL `P0-02`.
 - Assigned role: `RESEARCHER`.
@@ -69,3 +69,34 @@ Researcher writes a concise compatibility/evidence matrix and smallest successor
 commits only allowed text artifacts, and returns exact evidence. Reviewer decides
 PASS / NEEDS_FIX / BLOCK. Orchestrator reconciles and dispatches only the accepted
 successor. The Phase 4 inventory/private-runner blocker remains separate.
+
+## Researcher result — 2026-09-20
+
+Completed [the compatibility report](../reports/phase0-save-version-contract.md)
+against `ef836a4`, with codec history pinned at `a01040e` (version 1) and
+`103c5e1` (version 2). The later coordination-only revision `d7f1200` leaves
+all investigated runtime and focused-test paths unchanged. Recovered sizes
+are 40,968 and 114,696 bytes respectively; the current codec explicitly refuses
+genuine version-1 output and has no migration framework.
+
+Focused no-ROM checks passed: codec **45/0**, roundtrip **13/0**. The prior
+149-file baseline remains applicable; no unrelated suite was repeated.
+An outside-git, memory-only synthetic harness passed **24 characterization
+checks** covering historical output, wrapper/length refusal and tolerance,
+signature/ID/PC-sector corruption, blank slots, counter selection, and previous
+buffer preservation. The report includes the harness command/digest and a
+self-contained reproducer for the three material edge cases; that reproducer
+also passed.
+
+Reproduced counter rollover selecting the stale save; reproduced tolerated
+suffixes losing the prior slot on next encode; reproduced mixed-generation
+acceptance, explicitly distinguished from retail divergence because pinned
+source also lacks counter-consistency rejection. Live filesystem atomicity
+remains unproven, separately from in-memory fallback. No user-save access,
+runtime/test/charter changes, migration choice, or phase advancement occurred.
+
+Exactly one proposed immediate successor is `P0-02-CONTRACT`: document current
+version-2/refusal behavior and add bounded compatibility/corruption fixtures.
+Counter-rollover repair, suffix preservation design, and filesystem failure
+safety remain separate leaves. Independent review of this report is required
+before Orchestrator accepts findings or dispatches that successor.
