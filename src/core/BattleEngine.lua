@@ -450,6 +450,7 @@ BattleEngine.EFFECT_ERUPTION = 190
 BattleEngine.EFFECT_PSYWAVE = 88
 BattleEngine.EFFECT_OHKO = 38
 BattleEngine.EFFECT_ENDEAVOR = 189
+BattleEngine.EFFECT_PAIN_SPLIT = 91
 
 -- Real Cmd_remaininghptopower: scale the attacker's remaining HP to 48,
 -- promote a positive underflow to one, then choose Flail/Reversal's dynamic
@@ -860,6 +861,7 @@ function BattleEngine:supportsMove(move)
   if move.effect == BattleEngine.EFFECT_DREAM_EATER then return false end
   return move.power > 0 or BattleEngine.STAT_STAGE_MOVES[move.effect] ~= nil
     or BattleEngine.SCREEN_MOVES[move.effect] ~= nil
+    or move.effect == BattleEngine.EFFECT_PAIN_SPLIT
 end
 
 -- Resolves one attack, appending its events. Returns nothing; the caller
@@ -1035,6 +1037,7 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
     and move.effect ~= BattleEngine.EFFECT_ALWAYS_HIT
     and move.effect ~= BattleEngine.EFFECT_VITAL_THROW
     and move.effect ~= BattleEngine.EFFECT_OHKO
+    and move.effect ~= BattleEngine.EFFECT_PAIN_SPLIT
 
   -- The FIRST_BATTLE controller deliberately skips the first player
   -- accuracy RNG independently for a damaging move and for a (DOWN-family)
@@ -1069,6 +1072,24 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
   end
 
   if move.power == 0 then
+    if move.effect == BattleEngine.EFFECT_PAIN_SPLIT then
+      -- Cmd_painsplitdmgcalc stores both signed deltas from the same
+      -- pre-mutation average; the script then updates attacker before target.
+      local average = math.floor((attacker.hp + defender.hp) / 2)
+      local function applyPainSplitHP(side, battler)
+        local beforeHP = battler.hp
+        local afterHP = math.max(0, math.min(battler.maxHP, average))
+        battler.hp = afterHP
+        events[#events + 1] = {
+          type = "painSplitHP", side = side, beforeHP = beforeHP,
+          hpRemaining = afterHP, amount = afterHP - beforeHP,
+        }
+      end
+      applyPainSplitHP(attackerSide, attacker)
+      applyPainSplitHP(defenderSide, defender)
+      events[#events + 1] = { type = "painSplit" }
+      return
+    end
     if screenStatusKey then
       self:resolveScreenMove(attackerSide, screenStatusKey, events)
       return

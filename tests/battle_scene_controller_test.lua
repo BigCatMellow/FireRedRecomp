@@ -192,6 +192,15 @@ end
 
 do
   local c = controller()
+  local messages = c:_eventMessages({ { type="painSplitHP", side="player", hpRemaining=12 },
+    { type="painSplitHP", side="foe", hpRemaining=11 }, { type="painSplit" } })
+  check("Pain Split preserves attacker then target invisible HP order before shared-pain text",
+    messages[1].hpSide == "player" and messages[1].hp == 12 and messages[2].hpSide == "foe"
+    and messages[2].hp == 11 and messages[3].text == "The battlers\nshared their pain!", messages[3] and messages[3].text)
+end
+
+do
+  local c = controller()
   local messages = c:_eventMessages({ { type = "multiHit", side = "player", hits = 4 } })
   check("multiHit reports the real hit count, matching sText_HitXTimes",
     messages[1].text == "Hit 4 time(s)!", messages[1].text)

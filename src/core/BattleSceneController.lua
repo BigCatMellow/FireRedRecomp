@@ -199,6 +199,10 @@ function BattleSceneController:_eventMessages(events)
       entries[#entries + 1] = { hpSide = event.target, hp = event.hpRemaining }
       if event.superEffective then add("It's super effective!") end
       if event.notVeryEffective then add("It's not very effective...") end
+    elseif event.type == "painSplitHP" then
+      entries[#entries + 1] = { hpSide = event.side, hp = event.hpRemaining }
+    elseif event.type == "painSplit" then
+      add("The battlers\nshared their pain!")
     elseif event.type == "noEffect" then
       add("It doesn't affect " .. name(event.target) .. "...")
     elseif event.type == "faint" then

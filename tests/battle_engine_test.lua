@@ -1503,6 +1503,44 @@ battle = makeBattle({0}, {{move=endeavorId,pp=5}}, {{move=Data.MOVE_TACKLE,pp=1}
 battle.player.hp = 5; battle.foe.hp = 20; battle.foe.types = {Data.TYPE_ROCK,Data.TYPE_ROCK}; events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER,1,events)
 check("Endeavor clears nonzero effectiveness presentation", battle.foe.hp == 5 and events[2].superEffective == false and events[2].notVeryEffective == false, events[2])
 Data.moves[endeavorId] = nil
+-- EFFECT_PAIN_SPLIT (91): effect-specific zero-power admission, no accuracy
+-- RNG, pre-mutation average, ordered own-max-clamped non-damage HP changes.
+local painSplitId, unsupportedZeroId = 220, 997
+Data.moves[painSplitId] = { effect=91,power=0,type=Data.TYPE_NORMAL,accuracy=100,pp=20,secondaryEffectChance=0,target=0,priority=0,flags=18 }
+Data.moves[unsupportedZeroId] = { effect=92,power=0,type=Data.TYPE_NORMAL,accuracy=100,pp=20,secondaryEffectChance=0,target=0,priority=0,flags=0 }
+battle = makeBattle({}, {{move=painSplitId,pp=20}}, {{move=Data.MOVE_TACKLE,pp=1}})
+check("Pain Split #220 alone is admitted among otherwise unsupported zero-power moves",
+  battle:supportsMove(Data.moves[painSplitId]) and not battle:supportsMove(Data.moves[unsupportedZeroId]))
+battle.player.hp, battle.foe.hp = 5, 15; events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
+check("Pain Split lower attacker applies pre-mutation average to attacker then target with zero RNG",
+  battle.player.hp == 10 and battle.foe.hp == 10 and battle.player.moves[1].pp == 19
+  and battle.rng.draws == 0 and events[2].type == "painSplitHP" and events[2].side == "player"
+  and events[2].beforeHP == 5 and events[2].hpRemaining == 10 and events[2].amount == 5
+  and events[3].type == "painSplitHP" and events[3].side == "foe" and events[3].beforeHP == 15
+  and events[3].hpRemaining == 10 and events[3].amount == -5 and events[4].type == "painSplit")
+battle = makeBattle({}, {{move=painSplitId,pp=20}}, {{move=Data.MOVE_TACKLE,pp=1}})
+battle.player.hp, battle.foe.hp = 15, 5; events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
+check("Pain Split higher attacker loses HP without ordinary critical or damage events",
+  battle.player.hp == 10 and battle.foe.hp == 10 and battle.rng.draws == 0
+  and events[2].amount == -5 and events[3].amount == 5 and events[4].type == "painSplit")
+battle = makeBattle({}, {{move=painSplitId,pp=20}}, {{move=Data.MOVE_TACKLE,pp=1}})
+battle.player.hp, battle.foe.hp = 5, 16; events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
+check("Pain Split floors odd pre-mutation sums", battle.player.hp == 10 and battle.foe.hp == 10)
+battle = makeBattle({}, {{move=painSplitId,pp=20}}, {{move=Data.MOVE_TACKLE,pp=1}})
+battle.player.hp, battle.foe.hp = 9, 9; events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
+check("Pain Split equal HP is successful sharing, not failure", battle.player.hp == 9 and battle.foe.hp == 9
+  and events[2].amount == 0 and events[3].amount == 0 and events[4].type == "painSplit")
+battle = makeBattle({}, {{move=painSplitId,pp=20}}, {{move=Data.MOVE_TACKLE,pp=1}})
+battle.player.maxHP, battle.player.hp, battle.foe.hp = 8, 5, 15; events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
+check("Pain Split clamps the attacker to its own lower maximum and reports actual delta", battle.player.hp == 8
+  and battle.foe.hp == 10 and events[2].amount == 3 and events[2].hpRemaining == 8)
+battle = makeBattle({}, {{move=painSplitId,pp=20}}, {{move=Data.MOVE_TACKLE,pp=1}})
+battle.player.hp, battle.foe.maxHP, battle.foe.hp = 15, 8, 5; events = {}; battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
+local painSplitFaint = false
+for _, event in ipairs(events) do painSplitFaint = painSplitFaint or event.type == "faint" end
+check("Pain Split clamps the target to its own lower maximum and never emits faint", battle.player.hp == 10
+  and battle.foe.hp == 8 and events[3].amount == 3 and events[3].hpRemaining == 8 and not painSplitFaint)
+Data.moves[painSplitId] = nil; Data.moves[unsupportedZeroId] = nil
 -- EFFECT_EXPLOSION (7): PP/Damp/self-KO precede accuracy, while target then
 -- attacker faint records are finalized together after the hit path.
 local explosionId = 999
