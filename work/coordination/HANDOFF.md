@@ -21,6 +21,14 @@ supply the already-requested trusted Phase 2 retail captures/provenance. Do not
 interrupt independent authorized work or ask the unavailable user repeatedly.
 Keep GitHub synchronized, with incomplete work explicitly marked as such.
 
+Inventory preparation is now committed locally at
+`688433a3093dc15db32d62bd5a59fd7a84ac0cd0` on `work/move-effect-inventory`
+in `/home/home/FireRedRecomp-inventory`. Exactly three allowed files, 150-file
+no-ROM suite and static/source-metadata checks pass. It classifies 354 moves
+and 214 effects, proposes effect 32 discovery, and records all ROM limits.
+Independent source/test preflight review is next; it cannot close the final
+ROM gate. Runner was checked again at 20:03 UTC and remains offline.
+
 Pain Split is closed at `a739ddc88cb44a33d5e6025e619cf1df3fe6a1a8` after
 [independent implementation PASS](../reviews/2026-09-20-pain-split-implementation-review.md).
 Guarded run `35493728001` passed both 149-file suites and the configured

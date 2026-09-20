@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_utc": "2026-09-20T12:41:33Z",
+  "updated_utc": "2026-09-20T20:05:00Z",
   "role": "ORCHESTRATOR",
   "status": "READY_FOR_WORKER",
   "task_id": "P0-02-DISCOVERY",
@@ -23,8 +23,10 @@
   "parallel_preparation": {
     "task_id": "P4-02",
     "task": "work/tasks/phase4-move-effect-inventory.md",
-    "status": "READY_FOR_WORKER",
-    "boundary": "Source/report/test preparation only in isolated worktree; three inventory paths are disjoint from route work. No request publication until exact route review and probe PASS.",
+    "status": "READY_FOR_REVIEWER",
+    "prepared_revision": "688433a3093dc15db32d62bd5a59fd7a84ac0cd0",
+    "worktree": "/home/home/FireRedRecomp-inventory",
+    "boundary": "Independent source/test preflight review only; preparation changed three allowed paths and passed 150-file no-ROM suite. Final task acceptance still requires private SHA-ROM evidence; no guarded request before probe PASS.",
     "publication_gate": "P4-02-ROUTE independent configuration PASS and separate trusted probe PASS"
   },
   "reconciliation": {
