@@ -100,6 +100,9 @@ local Battle = {
   PartyScreen = require("src.core.PartyScreen"),
   BagScreen = require("src.core.BagScreen"),
   Bag = require("src.core.Bag"),
+  PartyModel = require("src.core.PartyModel"),
+  PcBoxes = require("src.core.PcBoxes"),
+  CaptureRewards = require("src.core.CaptureRewards"),
   TrainerSightline = require("src.core.TrainerSightline"),
   TrainerApproach = require("src.core.TrainerApproach"),
   TrainerAI = require("src.core.TrainerAI"),
@@ -344,10 +347,11 @@ function GameSession.fromNewGame(identity, opts)
       bagPocket_Items={}, bagPocket_KeyItems={}, bagPocket_PokeBalls={}, bagPocket_TMHM={}, bagPocket_Berries={},
       seen1=GameSession._zeroBytes(52), flags=GameSession._setFlagBits(defaults.setFlags), vars=GameSession._initialVars(), gameStats={}, rivalName=identity.rivalName,
     },
+    pokemonStorage = Battle.PcBoxes.emptyStorage(),
   }
   return setmetatable({
     identity={ playerGender=identity.playerGender, playerName=identity.playerName, rivalName=identity.rivalName },
-    state=state, mapId=GameSession.MAP_PALLET_TOWN_PLAYERS_HOUSE_2F,
+    state=state, pcBoxes=Battle.PcBoxes.fromStorage(state.pokemonStorage), mapId=GameSession.MAP_PALLET_TOWN_PLAYERS_HOUSE_2F,
     location={ mapGroup=4, mapNum=1, warpId=start.warpId, x=start.x, y=start.y, facing="north" },
   }, { __index=GameSession })
 end
@@ -367,13 +371,14 @@ end
 function GameSession.fromSavedState(state)
   assert(state and state.saveBlock1 and state.saveBlock2, "decoded save state is required")
   local loc = assert(state.saveBlock1.location, "decoded save has no location field")
+  state.pokemonStorage = state.pokemonStorage or Battle.PcBoxes.emptyStorage()
   return setmetatable({
     identity={
       playerGender=state.saveBlock2.playerGender,
       playerName=state.saveBlock2.playerName,
       rivalName=state.saveBlock1.rivalName,
     },
-    state=state, mapId=loc.mapGroup * 256 + loc.mapNum,
+    state=state, pcBoxes=Battle.PcBoxes.fromStorage(state.pokemonStorage), mapId=loc.mapGroup * 256 + loc.mapNum,
     location={ mapGroup=loc.mapGroup, mapNum=loc.mapNum, warpId=loc.warpId, x=loc.x, y=loc.y, facing="south" },
   }, { __index=GameSession })
 end
@@ -4525,23 +4530,25 @@ function love.update(dt)
             if ok then
               local nationalDexNo = Battle.PokedexOrder.speciesToNationalDexNum(
                 romData, romAddrs.sSpeciesToNationalPokedexNum, battle.foeInstance.species)
-              -- Real GiveMonToPlayer tries the party first; PC-box overflow
-              -- (src/core/CaptureRewards.lua's giveMonToPlayer, real
-              -- SendMonToPC) needs a live PcBoxes instance this session
-              -- doesn't carry yet -- flagged, not silently dropped: a full
-              -- party still marks the Dex (real HandleSetPokedexFlag ran
-              -- regardless of where GiveMonToPlayer routed the mon) but
-              -- says plainly that the capture itself wasn't stored.
-              if (sb1.playerPartyCount or 0) < 6 then
-                sb1.playerParty = sb1.playerParty or {}
-                sb1.playerParty[sb1.playerPartyCount + 1] = caught
-                sb1.playerPartyCount = sb1.playerPartyCount + 1
+              -- GiveMonToPlayer routes to the first party slot, then
+              -- SendMonToPC starts at currentBox and wraps all 14 boxes.
+              -- Both containers directly back session state, including the
+              -- real storage sectors SaveFileCodec now writes.
+              sb1.playerParty = sb1.playerParty or {}
+              local party = setmetatable({ slots=sb1.playerParty, count=sb1.playerPartyCount or 0 },
+                { __index=Battle.PartyModel })
+              local currentBox = ((newGame.session.state.pokemonStorage.currentBox or 0) % 14) + 1
+              local dest, first, second = Battle.CaptureRewards.giveMonToPlayer(
+                party, newGame.session.pcBoxes, currentBox, caught, world.battleCatalog.moves)
+              sb1.playerPartyCount = party.count
+              if dest == "party" then
                 addLine(("Gotcha! %s was caught and added to the party!"):format(speciesName(battle.foeInstance.species)))
+              elseif dest == "pc" then
+                addLine(("Gotcha! %s was sent to PC Box %d."):format(speciesName(battle.foeInstance.species), first))
               else
-                addLine(("Gotcha! %s was caught, but the party is full and PC-box storage isn't wired into the live session yet -- this capture was NOT saved.")
-                  :format(speciesName(battle.foeInstance.species)))
+                addLine(("Gotcha! %s was caught, but every PC box is full."):format(speciesName(battle.foeInstance.species)))
               end
-              if nationalDexNo then
+              if nationalDexNo and dest then
                 newGame.story:registerCaught(nationalDexNo)
               end
             else

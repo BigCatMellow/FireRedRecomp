@@ -189,6 +189,12 @@ state2.saveBlock1.playerParty[1] = {
   hp = 20, maxHP = 20, attack = 10, defense = 10, speed = 8, spAttack = 9, spDefense = 9,
 }
 state2.saveBlock1.bagPocket_Items[1] = { itemId = 19, quantity = 3 } -- e.g. an Antidote-shaped slot
+state2.pokemonStorage = {
+  currentBox = 4, -- real 0-indexed currentBox (the fifth box)
+  boxes = { [5] = { [1] = { box = buildBoxMonBlob(0, 0x01020304, 19, 3) } } },
+  boxNames = { [5] = "CAPTURES\255" },
+  boxWallpapers = { [5] = 3 },
+}
 local FLAG_INDEX = 0x838 -- FLAG_0x838, real NewGameDefaults.setFlags entry
 state2.saveBlock1.flags = setFlagBit(state2.saveBlock1.flags, FLAG_INDEX)
 
@@ -218,6 +224,12 @@ if decoded2 then
 
   check("mutated flag bit round-trips", isFlagBitSet(decoded2.saveBlock1.flags, FLAG_INDEX) == true)
   check("an unrelated flag bit stays clear", isFlagBitSet(decoded2.saveBlock1.flags, FLAG_INDEX + 1) == false)
+  check("PC current box round-trips through storage sectors", decoded2.pokemonStorage.currentBox == 4)
+  local boxed = decoded2.pokemonStorage.boxes[5][1]
+  check("boxed Pokemon survives sectors 5-13", boxed and boxed.box == state2.pokemonStorage.boxes[5][1].box)
+  check("boxed Pokemon remains decodable", boxed and BoxPokemonCodec.decode(boxed.box).substructs[0].species == 19)
+  check("PC box name and wallpaper round-trip", decoded2.pokemonStorage.boxNames[5] == "CAPTURES\255"
+    and decoded2.pokemonStorage.boxWallpapers[5] == 3)
 end
 
 --------------------------------------------------------------------------

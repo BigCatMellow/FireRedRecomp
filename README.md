@@ -46,7 +46,8 @@ starter selection in Oak's Lab, and the mandatory Oak's-lab rival tutorial
 battle (real trainer AI, win/loss rewards and heal) are also live end to
 end, and losing a wild battle now runs a real whiteout (money loss, party
 heal, respawn at the last real heal location). Wild captures persist to the
-party and Pokédex when the party has room; PC overflow remains open. It is not
+party and Pokédex, with full parties routing through PC storage that also
+survives save/load. It is not
 yet a full game loop: full move effects, general trainer AI, and battle
 animation are still open. Every module was checked against bytes from a real, verified ROM —
 several surprises (padded record sizes, byte-offset quirks, the

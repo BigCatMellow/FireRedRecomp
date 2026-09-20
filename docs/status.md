@@ -11,8 +11,9 @@ scene. See
 [`docs/handoffs/completed/oak-lab-rival-battle-handoff.md`](handoffs/completed/oak-lab-rival-battle-handoff.md).
 
 Next open work is whatever the checklist's remaining unchecked/partial
-Phase 3-4 lines call out the remaining end-to-end replay proof, PC overflow,
-general trainer AI beyond the rival slice, and the move-effect dispatcher;
+Phase 3-4 lines call out the remaining end-to-end replay proof, capture UX
+and full-storage preflight, general trainer AI beyond the rival slice, and
+the move-effect dispatcher;
 read the checklist before starting anything to confirm it's still accurate.
 
 Repository:

@@ -15,6 +15,11 @@ end
 check("TOTAL_BOXES_COUNT is 14", PcBoxes.TOTAL_BOXES_COUNT == 14)
 check("IN_BOX_COUNT is 30", PcBoxes.IN_BOX_COUNT == 30)
 
+local storage = PcBoxes.emptyStorage()
+local backed = PcBoxes.fromStorage(storage)
+backed:add(1, { box = string.rep("\0", 80) })
+check("save-backed boxes mutate the source storage", storage.boxes[1][1] ~= nil)
+
 local pc = PcBoxes.new()
 check("box 1 not full initially", pc:isFull(1) == false)
 check("get on empty slot returns nil", pc:get(1, 1) == nil)

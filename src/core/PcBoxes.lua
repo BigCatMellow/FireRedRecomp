@@ -43,6 +43,25 @@ function PcBoxes.new()
   return self
 end
 
+-- Makes the live container directly back the save-shaped PokemonStorage
+-- table used by SaveFileCodec.  Keeping `boxes` by reference is intentional:
+-- a SendMonToPC-style add immediately changes the state that the next save
+-- serializes; there is no second, easy-to-forget sync copy.
+function PcBoxes.fromStorage(storage)
+  assert(storage and type(storage.boxes) == "table", "PokemonStorage-shaped table is required")
+  local self = setmetatable({ boxes = storage.boxes }, PcBoxes)
+  for b = 1, PcBoxes.TOTAL_BOXES_COUNT do
+    self.boxes[b] = self.boxes[b] or {}
+  end
+  return self
+end
+
+function PcBoxes.emptyStorage()
+  local storage = { currentBox = 0, boxes = {} } -- real currentBox is 0-indexed
+  for b = 1, PcBoxes.TOTAL_BOXES_COUNT do storage.boxes[b] = {} end
+  return storage
+end
+
 local function checkBox(box)
   assert(box >= 1 and box <= PcBoxes.TOTAL_BOXES_COUNT, "box out of range: " .. tostring(box))
 end

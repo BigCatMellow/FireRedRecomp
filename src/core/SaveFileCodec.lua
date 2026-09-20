@@ -40,12 +40,8 @@
 -- truncated to a u16 (the function's real return type). See
 -- calculateChecksum() below -- transcribed 1:1, not a guessed variant.
 --
--- SCOPE (per this project's SaveBlockLayout.lua, deliberately partial):
--- only sector ids 0-4 (SaveBlock2 + SaveBlock1) are modeled/produced by
--- this codec. Real sector ids 5-13 (struct PokemonStorage / PC boxes)
--- are NOT written here -- PcBoxes.lua is an in-memory container only and
--- has no real on-disk PokemonStorage layout transcribed yet (that's a
--- SaveBlockLayout.lua gap, not this codec's to invent). Real Hall of
+-- SCOPE: sectors ids 0-13 (SaveBlock2 + SaveBlock1 + PokemonStorage) are
+-- modeled. Real Hall of
 -- Fame / Trainer Tower sectors (28-31) are entirely out of scope too.
 -- The physical sector-rotation-within-a-slot behavior (HandleWriteSector
 -- rotating `gLastWrittenSector` to spread wear across flash) is also not
@@ -56,7 +52,9 @@
 -- PROJECT-SPECIFIC VERSION WRAPPER (NOT from src/save.c -- FireRed does
 -- not version its own save format): every buffer this codec produces
 -- starts with an 8-byte header, MAGIC ("FRSV") + VERSION (u8) + 3
--- reserved zero bytes, ahead of the two real 5-sector slots. decode()
+-- reserved zero bytes, ahead of the two real 14-sector slots. Version 2
+-- adds PokemonStorage's nine sectors; version-1 partial saves are refused
+-- rather than silently treating their missing PC data as empty. decode()
 -- refuses (returns nil, error) any buffer whose magic/version doesn't
 -- match, rather than guessing how to read a shape SaveBlockLayout.lua
 -- may have changed since. This is deliberately minimal -- a single
@@ -69,6 +67,8 @@
 -- used instead of a precomputed table).
 
 local SaveBlockLayout = require("src.core.SaveBlockLayout")
+local PcBoxes = require("src.core.PcBoxes")
+local BoxPokemonCodec = require("src.core.BoxPokemonCodec")
 
 local SaveFileCodec = {}
 
@@ -88,7 +88,9 @@ local SECTOR_SIGNATURE = 0x08012025
 local SECTOR_ID_SAVEBLOCK2 = 0
 local SECTOR_ID_SAVEBLOCK1_START = 1
 local SECTOR_ID_SAVEBLOCK1_END = 4
-local NUM_SECTORS_MODELED = 5 -- ids 0-4 only; see header "SCOPE" note
+local SECTOR_ID_PKMN_STORAGE_START = 5
+local SECTOR_ID_PKMN_STORAGE_END = 13
+local NUM_SECTORS_MODELED = 14
 
 SaveFileCodec.SECTOR_DATA_SIZE = SECTOR_DATA_SIZE
 SaveFileCodec.SECTOR_SIZE = SECTOR_SIZE
@@ -101,11 +103,11 @@ SaveFileCodec.SECTOR_SIGNATURE = SECTOR_SIGNATURE
 --------------------------------------------------------------------------
 
 SaveFileCodec.MAGIC = "FRSV"
-SaveFileCodec.VERSION = 1
+SaveFileCodec.VERSION = 2
 local HEADER_SIZE = 8 -- 4-byte magic + 1-byte version + 3 reserved bytes
 SaveFileCodec.HEADER_SIZE = HEADER_SIZE
 
-local SLOT_BYTES = NUM_SECTORS_MODELED * SECTOR_SIZE -- 5 * 4096 = 20480
+local SLOT_BYTES = NUM_SECTORS_MODELED * SECTOR_SIZE
 SaveFileCodec.SLOT_BYTES = SLOT_BYTES
 
 --------------------------------------------------------------------------
@@ -227,6 +229,83 @@ local function chunkInfo(structSize, chunkNum)
   end
   return offset, size
 end
+
+--------------------------------------------------------------------------
+-- PokemonStorage (0x83D0 bytes): include/pokemon_storage_system.h.
+--
+-- `currentBox` is followed by three ABI padding bytes, then 14 * 30
+-- BoxPokemon records (80 bytes each), then 14 nine-byte box names and 14
+-- wallpaper ids.  SaveBlock1 intentionally does not own this structure:
+-- save.c places it in sector ids 5-13 as a separate save block.
+--------------------------------------------------------------------------
+
+local POKEMON_STORAGE_SIZE = 0x83D0
+local STORAGE_BOXES_OFFSET = 0x0004
+local STORAGE_BOX_BYTES = 80
+local STORAGE_BOX_NAMES_OFFSET = 0x8344
+local STORAGE_BOX_NAME_BYTES = 9
+local STORAGE_WALLPAPERS_OFFSET = 0x83C2
+
+local function emptyStorage()
+  return PcBoxes.emptyStorage()
+end
+
+local function encodePokemonStorage(storage)
+  storage = storage or emptyStorage()
+  local buf = newBuffer(POKEMON_STORAGE_SIZE)
+  setU8(buf, 0, storage.currentBox or 0)
+  local boxes = storage.boxes or {}
+  for box = 1, PcBoxes.TOTAL_BOXES_COUNT do
+    local slots = boxes[box] or {}
+    for slot = 1, PcBoxes.IN_BOX_COUNT do
+      local record = slots[slot]
+      if record then
+        assert(type(record.box) == "string" and #record.box == STORAGE_BOX_BYTES,
+          "PC slot must hold an 80-byte BoxPokemon record")
+        local offset = STORAGE_BOXES_OFFSET
+          + ((box - 1) * PcBoxes.IN_BOX_COUNT + (slot - 1)) * STORAGE_BOX_BYTES
+        setBytes(buf, offset, record.box)
+      end
+    end
+  end
+  local names = storage.boxNames or {}
+  for box = 1, PcBoxes.TOTAL_BOXES_COUNT do
+    setBytes(buf, STORAGE_BOX_NAMES_OFFSET + (box - 1) * STORAGE_BOX_NAME_BYTES,
+      ((names[box] or "") .. string.rep("\0", STORAGE_BOX_NAME_BYTES)):sub(1, STORAGE_BOX_NAME_BYTES))
+    setU8(buf, STORAGE_WALLPAPERS_OFFSET + box - 1, (storage.boxWallpapers or {})[box] or 0)
+  end
+  return table.concat(buf)
+end
+
+local function decodePokemonStorage(bytes)
+  assert(#bytes == POKEMON_STORAGE_SIZE,
+    ("PokemonStorage bytes must be %d bytes, got %d"):format(POKEMON_STORAGE_SIZE, #bytes))
+  local storage = emptyStorage()
+  storage.currentBox = readU8(bytes, 0)
+  storage.boxNames, storage.boxWallpapers = {}, {}
+  for box = 1, PcBoxes.TOTAL_BOXES_COUNT do
+    for slot = 1, PcBoxes.IN_BOX_COUNT do
+      local offset = STORAGE_BOXES_OFFSET
+        + ((box - 1) * PcBoxes.IN_BOX_COUNT + (slot - 1)) * STORAGE_BOX_BYTES
+      local blob = bytes:sub(offset + 1, offset + STORAGE_BOX_BYTES)
+      -- A zeroed BoxPokemon decodes as species 0.  Looking at decoded
+      -- species rather than personality is important: personality zero is
+      -- a legal value in the real game.
+      local decoded = BoxPokemonCodec.decode(blob)
+      if decoded.substructs[0].species ~= 0 then
+        storage.boxes[box][slot] = { box = blob, boxData = decoded }
+      end
+    end
+    storage.boxNames[box] = bytes:sub(STORAGE_BOX_NAMES_OFFSET + (box - 1) * STORAGE_BOX_NAME_BYTES + 1,
+      STORAGE_BOX_NAMES_OFFSET + box * STORAGE_BOX_NAME_BYTES)
+    storage.boxWallpapers[box] = readU8(bytes, STORAGE_WALLPAPERS_OFFSET + box - 1)
+  end
+  return storage
+end
+
+SaveFileCodec.POKEMON_STORAGE_SIZE = POKEMON_STORAGE_SIZE
+SaveFileCodec.encodePokemonStorage = encodePokemonStorage
+SaveFileCodec.decodePokemonStorage = decodePokemonStorage
 
 --------------------------------------------------------------------------
 -- WarpData (8 bytes) / ItemSlot (4 bytes) / Coords16 (4 bytes) struct
@@ -594,8 +673,9 @@ end
 -- header "SCOPE" note).
 --------------------------------------------------------------------------
 
--- Real sSaveSlotLayout, restricted to ids 0-4.
-local function slotLayout(sb2Bytes, sb1Bytes)
+-- Real sSaveSlotLayout: SaveBlock2, four SaveBlock1 chunks, then nine
+-- PokemonStorage chunks (src/save.c's literal 14-entry table).
+local function slotLayout(sb2Bytes, sb1Bytes, storageBytes)
   local layout = {}
   do
     local off, size = chunkInfo(#sb2Bytes, 0)
@@ -604,6 +684,10 @@ local function slotLayout(sb2Bytes, sb1Bytes)
   for chunk = 0, SECTOR_ID_SAVEBLOCK1_END - SECTOR_ID_SAVEBLOCK1_START do
     local off, size = chunkInfo(#sb1Bytes, chunk)
     layout[SECTOR_ID_SAVEBLOCK1_START + chunk] = { source = sb1Bytes, offset = off, size = size }
+  end
+  for chunk = 0, SECTOR_ID_PKMN_STORAGE_END - SECTOR_ID_PKMN_STORAGE_START do
+    local off, size = chunkInfo(#storageBytes, chunk)
+    layout[SECTOR_ID_PKMN_STORAGE_START + chunk] = { source = storageBytes, offset = off, size = size }
   end
   return layout
 end
@@ -631,12 +715,13 @@ local function readSectorFooter(sectorBytes)
   }
 end
 
--- Encodes one real 5-sector slot (SLOT_BYTES == 20480 bytes) for
+-- Encodes one real 14-sector slot for
 -- `state` at generation `counter`.
 local function encodeSlot(state, counter)
   local sb2Bytes = SaveFileCodec.encodeSaveBlock2(state.saveBlock2)
   local sb1Bytes = SaveFileCodec.encodeSaveBlock1(state.saveBlock1, (state.saveBlock2 or {}).encryptionKey)
-  local layout = slotLayout(sb2Bytes, sb1Bytes)
+  local storageBytes = encodePokemonStorage(state.pokemonStorage)
+  local layout = slotLayout(sb2Bytes, sb1Bytes, storageBytes)
   local parts = {}
   for sectorId = 0, NUM_SECTORS_MODELED - 1 do
     parts[#parts + 1] = encodeSector(sectorId, layout[sectorId], counter)
@@ -644,13 +729,13 @@ local function encodeSlot(state, counter)
   return table.concat(parts)
 end
 
--- Real GetSaveValidStatus, restricted to the 5 modeled sectors: a slot is
+-- Real GetSaveValidStatus: a slot is
 -- only valid if EVERY modeled sector has the real signature and its
 -- checksum matches. Returns status ("OK"/"EMPTY"/"ERROR"), counter (from
 -- sector 0, or nil), and the decoded SaveBlock2/SaveBlock1 byte chunks
 -- (nil if not OK).
 local function validateSlot(slotBytes)
-  local sb2Chunk, sb1Chunks = nil, {}
+  local sb2Chunk, sb1Chunks, storageChunks = nil, {}, {}
   local anySignature = false
   local validCount = 0
   local counter = nil
@@ -672,6 +757,9 @@ local function validateSlot(slotBytes)
       elseif footer.id >= SECTOR_ID_SAVEBLOCK1_START and footer.id <= SECTOR_ID_SAVEBLOCK1_END then
         local _, size = chunkInfo(SB1_SIZE, footer.id - SECTOR_ID_SAVEBLOCK1_START)
         expectedSize = size
+      elseif footer.id >= SECTOR_ID_PKMN_STORAGE_START and footer.id <= SECTOR_ID_PKMN_STORAGE_END then
+        local _, size = chunkInfo(POKEMON_STORAGE_SIZE, footer.id - SECTOR_ID_PKMN_STORAGE_START)
+        expectedSize = size
       end
       if expectedSize and footer.id == sectorId then
         local data = sectorBytes:sub(1, SECTOR_DATA_SIZE)
@@ -680,6 +768,8 @@ local function validateSlot(slotBytes)
           counter = footer.counter
           if sectorId == SECTOR_ID_SAVEBLOCK2 then
             sb2Chunk = data:sub(1, expectedSize)
+          elseif sectorId >= SECTOR_ID_PKMN_STORAGE_START then
+            storageChunks[sectorId] = data:sub(1, expectedSize)
           else
             sb1Chunks[sectorId] = data:sub(1, expectedSize)
           end
@@ -697,16 +787,21 @@ local function validateSlot(slotBytes)
     status = "ERROR"
   end
 
-  local sb1Bytes = nil
+  local sb1Bytes, storageBytes = nil, nil
   if status == "OK" then
     local parts = {}
     for chunk = 0, SECTOR_ID_SAVEBLOCK1_END - SECTOR_ID_SAVEBLOCK1_START do
       parts[#parts + 1] = sb1Chunks[SECTOR_ID_SAVEBLOCK1_START + chunk] or ""
     end
     sb1Bytes = table.concat(parts)
+    parts = {}
+    for chunk = 0, SECTOR_ID_PKMN_STORAGE_END - SECTOR_ID_PKMN_STORAGE_START do
+      parts[#parts + 1] = storageChunks[SECTOR_ID_PKMN_STORAGE_START + chunk] or ""
+    end
+    storageBytes = table.concat(parts)
   end
 
-  return status, counter, sb2Chunk, sb1Bytes
+  return status, counter, sb2Chunk, sb1Bytes, storageBytes
 end
 
 --------------------------------------------------------------------------
@@ -762,15 +857,18 @@ end
 --------------------------------------------------------------------------
 
 function SaveFileCodec.decode(bytes)
-  if #bytes < HEADER_SIZE + NUM_SAVE_SLOTS * SLOT_BYTES then
-    return nil, "buffer too short for a save file"
-  end
   if bytes:sub(1, 4) ~= SaveFileCodec.MAGIC then
     return nil, "bad magic -- not a recognized save file"
+  end
+  if #bytes < HEADER_SIZE then
+    return nil, "buffer too short for a save-file header"
   end
   local version = readU8(bytes, 4)
   if version ~= SaveFileCodec.VERSION then
     return nil, ("unsupported save schema version %d (expected %d) -- refusing to guess"):format(version, SaveFileCodec.VERSION)
+  end
+  if #bytes < HEADER_SIZE + NUM_SAVE_SLOTS * SLOT_BYTES then
+    return nil, "buffer too short for a save file"
   end
 
   local slotBytes = {}
@@ -779,9 +877,9 @@ function SaveFileCodec.decode(bytes)
     slotBytes[slotIdx] = bytes:sub(start + 1, start + SLOT_BYTES)
   end
 
-  local status, counter, sb2, sb1 = {}, {}, {}, {}
+  local status, counter, sb2, sb1, storage = {}, {}, {}, {}, {}
   for slotIdx = 0, NUM_SAVE_SLOTS - 1 do
-    status[slotIdx], counter[slotIdx], sb2[slotIdx], sb1[slotIdx] = validateSlot(slotBytes[slotIdx])
+    status[slotIdx], counter[slotIdx], sb2[slotIdx], sb1[slotIdx], storage[slotIdx] = validateSlot(slotBytes[slotIdx])
   end
 
   -- Real GetSaveValidStatus (src/save.c lines ~534-581), transcribed:
@@ -803,7 +901,8 @@ function SaveFileCodec.decode(bytes)
 
   local sb2State = SaveFileCodec.decodeSaveBlock2(sb2[chosen])
   local sb1State = SaveFileCodec.decodeSaveBlock1(sb1[chosen], sb2State.encryptionKey)
-  return { saveBlock2 = sb2State, saveBlock1 = sb1State },
+  return { saveBlock2 = sb2State, saveBlock1 = sb1State,
+      pokemonStorage = decodePokemonStorage(storage[chosen]) },
     { status = "OK", saveCounter = counter[chosen], slotUsed = chosen }
 end
 
