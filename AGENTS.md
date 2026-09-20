@@ -40,9 +40,10 @@ Do not let README prose or an older handoff override newer direct evidence.
 ## Current dispatch
 
 Phase 3 is complete. Pain Split is independently accepted at `a739ddc`.
-The active bounded continuation is the full move-effect inventory and its
-dedicated private-runner route recorded in `STATE.json`, `HANDOFF.md`, and
-`TASK_REGISTER.md`; those live owners supersede historical task prose.
+The full move-effect inventory remains active, but its dedicated private-runner
+probe is externally blocked while `firered-mint` is offline. Independent
+save-version contract discovery proceeds locally. `STATE.json`, `HANDOFF.md`,
+and `TASK_REGISTER.md` own the current relay and supersede historical task prose.
 
 Current intended sequence:
 

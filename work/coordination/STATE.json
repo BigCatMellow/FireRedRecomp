@@ -1,18 +1,25 @@
 {
   "schema_version": 1,
-  "updated_utc": "2026-09-20T12:38:54Z",
+  "updated_utc": "2026-09-20T12:41:33Z",
   "role": "ORCHESTRATOR",
   "status": "READY_FOR_WORKER",
-  "task_id": "P4-02-ROUTE",
-  "current_phase": "Phase 4 — full Gen 3 battle engine",
+  "task_id": "P0-02-DISCOVERY",
+  "current_phase": "Phase 0 — reproducibility; Phase 4 source preparation continues while its private runner is offline",
   "canonical_status_owner": "work/roadmaps/CAPABILITY_CHECKLIST.md",
-  "active_task": "work/tasks/local-worker-bridge-phase4-move-effect-inventory-route.md",
-  "objective": "Publish the single authorized inventory route probe after independent configuration PASS; inspect trusted route/Lua/SHA evidence and verify patch/tests/publication skipped.",
-  "next_role": "WORKER",
-  "implementation_revision": "24f39c424347425be9836e16d529c7706641aa93",
-  "acceptance": "Configuration PASS at 24f39c4; only work/local-runner/probes/phase4-move-effect-inventory-route-20260920.probe may be published. Guarded trusted checkout, selector, Lua, and supported-ROM SHA pass; patch/tests/publication skip.",
-  "boundaries": "Only new route configuration and specified docs. No existing route changes, global workflow changes, runtime behavior, inventory implementation in this package, ROM content, or phase advancement.",
-  "dependencies": "Pain Split independently PASS at a739ddc; inventory/route readiness PASS in work/reviews/2026-09-20-move-effect-inventory-readiness-review.md; user selected existing private runner and autonomous continuation.",
+  "active_task": "work/tasks/phase0-save-version-contract-discovery.md",
+  "objective": "Recover the actual project save-schema compatibility/refusal/corruption contract from codec history and focused no-ROM evidence; propose one bounded successor without changing save behavior.",
+  "next_role": "RESEARCHER",
+  "acceptance": "Pinned historical schema matrix, explicit current versus proposed policy, focused codec/roundtrip checks, stale-prose and missing-fixture inventory, independent report review.",
+  "boundaries": "Only discovery task and text report; no runtime/save/test/policy changes or user-save access. Inventory preparation remains disjoint; phase status unchanged.",
+  "dependencies": "Current code/history available; accepted runtime no-ROM baseline 149 files. User requested continuous independent work and GitHub synchronization while unavailable.",
+  "runner_blocker": {
+    "task_id": "P4-02-ROUTE",
+    "status": "BLOCKED",
+    "configuration_revision": "24f39c424347425be9836e16d529c7706641aa93",
+    "configuration_review": "PASS",
+    "observed": "firered-mint offline, busy=false; no probe/request submitted",
+    "unblock": "Runner online again; resume the same single authorized inventory probe and inspect guarded SHA evidence"
+  },
   "parallel_preparation": {
     "task_id": "P4-02",
     "task": "work/tasks/phase4-move-effect-inventory.md",
@@ -32,7 +39,7 @@
     "phase4_pain_split_status": "CLOSED — REVIEWED PASS at a739ddc; guarded run 35493728001; exact review work/reviews/2026-09-20-pain-split-implementation-review.md"
   },
   "phase2_external_blocker": "Trusted, user-owned retail-reference captures with provenance/timing/crop/filter details for Oak and Pallet anchors have not been supplied.",
-  "next_after_success": "On probe PASS, complete P4-02 preparation and publish its bounded inventory request for full SHA-ROM evidence; independently review inventory and select exactly one next source-lock discovery family.",
+  "next_after_success": "Independently review save-version discovery, then dispatch its smallest accepted local successor. Continue P4-02 preparation; when private runner returns, resume its single authorized probe and subsequent guarded inventory gate.",
   "legal_content_boundary": "Never commit ROMs, BIOS dumps, generated caches, ROM-derived reference screenshots, extracted game assets, or other prohibited content.",
   "phase_completion_rule": "Phase 2 remains IN PROGRESS until the Oak/reference screenshot discrepancy gate is evidenced and independently reviewed."
 }

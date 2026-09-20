@@ -1,11 +1,25 @@
 # FireRedRecomp Coordination Handoff
 
 - Status: `READY_FOR_WORKER`
-- Task ID: `P4-02-ROUTE`, with disjoint `P4-02` preparation
+- Task ID: `P0-02-DISCOVERY`, with disjoint `P4-02` preparation
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
-- Active task: [`../tasks/local-worker-bridge-phase4-move-effect-inventory-route.md`](../tasks/local-worker-bridge-phase4-move-effect-inventory-route.md)
+- Active task: [`../tasks/phase0-save-version-contract-discovery.md`](../tasks/phase0-save-version-contract-discovery.md)
 
 ## Current relay — 2026-09-20
+
+Latest: the private runner `firered-mint` went offline before probe publication
+(`busy=false`). Worker created no probe/request/commit. Route configuration PASS
+at `24f39c4` remains valid; resume the same authorized probe when online.
+Inventory source/test preparation continues in its isolated worktree, but its
+ROM acceptance remains blocked. Independently dispatch `P0-02-DISCOVERY`:
+recover save-schema/refusal/corruption evidence locally. Current codec writes
+version 2, contradicting stale no-version charter prose; do not change policy
+or saves in discovery. A separate Reviewer must accept its findings.
+
+User-owned needs for later: restore the private runner if it remains offline;
+supply the already-requested trusted Phase 2 retail captures/provenance. Do not
+interrupt independent authorized work or ask the unavailable user repeatedly.
+Keep GitHub synchronized, with incomplete work explicitly marked as such.
 
 Pain Split is closed at `a739ddc88cb44a33d5e6025e619cf1df3fe6a1a8` after
 [independent implementation PASS](../reviews/2026-09-20-pain-split-implementation-review.md).
@@ -43,10 +57,10 @@ the user explicitly requested.
 Local checkout: `/home/home/FireRedRecomp`. Isolated Lua/LÖVE tools are in
 `/home/home/.local/share/firered-toolchain/bin`; source reference is pinned at
 `c75f3523` in `/home/home/FireRedRecomp-reference/pokefirered`. The user selected
-the existing `firered-mint` private runner, last observed online/idle, and asked
+the existing `firered-mint` private runner, now offline as recorded above, and asked
 for continuous autonomous work while unavailable. Record user-owned needs here
 and in the register; continue independent authorized tasks without repeated
-questions. The only current user-owned input is Phase 2 retail-reference media.
+questions. Current user-owned needs are recorded at the top of this relay.
 Historical Pain Split retry/review holds below have been superseded by closure.
 
 ## Published evidence

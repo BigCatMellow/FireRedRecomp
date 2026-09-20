@@ -81,8 +81,9 @@ conflicting procedures.
 | `P4-PAIN-02` | `CLOSED` | ORCHESTRATOR | Fixture-scope PASS; user selected existing private runner | [Active task](../tasks/phase4-pain-split-effect.md) permits one corrected request with exact digest | WORKER |
 | `P4-PAIN-03` | `CLOSED` | WORKER | Corrected request `bf36d94`, implementation `a739ddc` | Guarded run `35493728001`: both 149-file suites and replay passed | REVIEWER |
 | `P4-PAIN-04` | `CLOSED — REVIEWED PASS` | REVIEWER → ORCHESTRATOR | [Independent exact-revision review](../reviews/2026-09-20-pain-split-implementation-review.md) | Bounded Pain Split accepted; broader Phase 4 remains open | `P4-02` |
-| `P4-02-ROUTE` | `READY_FOR_WORKER` | WORKER | [Reviewed three-path route contract](../tasks/local-worker-bridge-phase4-move-effect-inventory-route.md) | Configure, independently review, then separately probe | `P4-02` request publication |
+| `P4-02-ROUTE` | `BLOCKED — RUNNER OFFLINE` | ORCHESTRATOR | [Configuration PASS at `24f39c4`](../reviews/2026-09-20-move-effect-inventory-route-review.md) | No probe submitted; resume same authorized probe when online | `P4-02` request publication |
 | `P4-02` | `READY_FOR_WORKER — PREPARATION ONLY` | RESEARCHER / WORKER | [Reviewed inventory contract](../tasks/phase4-move-effect-inventory.md); Pain Split PASS | Source/test preparation in disjoint paths; ROM acceptance waits for route review/probe | REVIEWER |
+| `P0-02-DISCOVERY` | `READY_FOR_WORKER` | RESEARCHER | [Local save-version discovery contract](../tasks/phase0-save-version-contract-discovery.md) | Evidence-backed compatibility/refusal matrix and smallest successor; no save changes | REVIEWER |
 
 ## Phase 0 — reproducibility and release baseline
 

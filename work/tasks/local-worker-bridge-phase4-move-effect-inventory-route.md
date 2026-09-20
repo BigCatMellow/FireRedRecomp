@@ -1,7 +1,7 @@
 # Task: dedicated move-effect inventory verification route
 
 - Task ID: `P4-02-ROUTE`
-- Status: `READY_FOR_WORKER` — separate probe only
+- Status: `BLOCKED` — private runner offline before probe publication
 - Type: `INFRASTRUCTURE / BOUNDED ROUTE`
 - Parent capability gate: Phase 4 move/effect matrix via [`phase4-move-effect-inventory.md`](phase4-move-effect-inventory.md).
 - Assigned role: `WORKER`, after independent readiness review.
@@ -117,3 +117,11 @@ request, change configuration, or claim inventory evidence. Trusted checkout,
 route selection, Lua and SHA checks must pass; patch/test/publication steps
 must be skipped. On success return exact commit/run for reconciliation and
 inventory-request eligibility. On failure record the exact blocker.
+
+## Probe preflight blocker — 2026-09-20
+
+Worker's read-only runner query returned `firered-mint: offline, busy=false`.
+No probe file, probe commit, request, or workflow was created. Configuration
+PASS remains valid. Resume the same single authorized probe when the runner
+returns online; do not manufacture a duplicate or bypass the private-ROM gate.
+Source inventory preparation and independent no-ROM roadmap work may continue.
