@@ -47,6 +47,11 @@ ORCHESTRATOR
 
 - `STATE.json` — machine-readable current relay.
 - `HANDOFF.md` — fresh-agent-readable current state and exact next action.
+- `TASK_REGISTER.md` — forward-only task lifecycle, ownership, exact revision,
+  receipt, closure/supersession, and external-blocker index; not a second
+  capability checklist.
+- `TASK_CONTRACT_TEMPLATE.md` — compilation/readiness template for new task
+  contracts.
 - `roles/WORKER.md`
 - `roles/REVIEWER.md`
 - `roles/ORCHESTRATOR.md`

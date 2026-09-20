@@ -9,7 +9,7 @@
 ## Procedure
 
 1. Recover live GitHub state independently.
-2. Read root `AGENTS.md`, coordination flow, canonical capability checklist, current `STATE.json`/`HANDOFF.md`, and the exact task under review.
+2. Read root `AGENTS.md`, coordination flow, canonical capability checklist, current `STATE.json`/`HANDOFF.md`/`TASK_REGISTER.md`, and the exact task under review.
 3. Confirm state is `READY_FOR_REVIEWER` and identify the exact implementation revision/evidence.
 4. Review only against the task's existing acceptance criteria, stop conditions, repository invariants, and claimed evidence.
 5. Inspect code/tests directly; rerun available deterministic checks where practical. Treat missing required ROM-backed evidence as missing, not implied.
@@ -19,7 +19,7 @@
    - `NEEDS_FIX` — smallest concrete correction is identifiable within current authority;
    - `BLOCK` — required evidence/authority/environment is unavailable or task must be re-scoped.
 8. Do not implement the correction yourself in the same review turn.
-9. Update `STATE.json` to `REVIEWED_PASS`, `REVIEWED_NEEDS_FIX`, or `BLOCKED`; update `HANDOFF.md` last with precise next allowance.
+9. Update `TASK_REGISTER.md`, then `STATE.json` to `REVIEWED_PASS`, `REVIEWED_NEEDS_FIX`, or `BLOCKED`; update `HANDOFF.md` last with precise next allowance.
 
 ## Independence
 

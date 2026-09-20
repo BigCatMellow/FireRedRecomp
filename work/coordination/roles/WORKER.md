@@ -9,7 +9,7 @@
 ## Procedure
 
 1. Recover live GitHub state.
-2. Read root `AGENTS.md`, `work/coordination/README.md`, current `STATE.json`, `HANDOFF.md`, canonical capability checklist, and the exact active task named by state.
+2. Read root `AGENTS.md`, `work/coordination/README.md`, current `STATE.json`, `HANDOFF.md`, `TASK_REGISTER.md`, canonical capability checklist, and the exact active task named by state.
 3. Confirm the package is `READY_FOR_WORKER` and that no newer review/state supersedes it.
 4. Run the required baseline tests where the environment supports them.
 5. Make the smallest coherent change inside the task's explicit boundary.
@@ -18,7 +18,7 @@
 8. If blocked by missing ROM/runtime/environment evidence, record the blocker exactly; do not invent results or widen scope.
 9. Worker may commit/push/publish bounded changes that remain entirely inside the active task contract under the standing human authorization recorded in root `AGENTS.md`; an older task-local publication-approval clause is superseded only to that bounded extent.
 10. Record exact revision and evidence, then route that revision to independent Reviewer. Publication does not equal approval or completion.
-11. Update `STATE.json` to `READY_FOR_REVIEWER` or `BLOCKED`, then update `HANDOFF.md` last.
+11. Update `TASK_REGISTER.md`, then `STATE.json` to `READY_FOR_REVIEWER` or `BLOCKED`, then update `HANDOFF.md` last.
 
 ## Local runner bridge
 

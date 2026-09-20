@@ -17,7 +17,7 @@ Recover live GitHub state first. Then use, in order:
 1. this file for repository-wide operating rules;
 2. `work/roadmaps/CAPABILITY_CHECKLIST.md` for project-wide capability status and dispatch order;
 3. the active file under `work/tasks/` for bounded implementation authority and acceptance;
-4. current `work/coordination/STATE.json` and `work/coordination/HANDOFF.md` for coordination state;
+4. current `work/coordination/STATE.json`, `work/coordination/HANDOFF.md`, and `work/coordination/TASK_REGISTER.md` for coordination state and task lifecycle;
 5. `docs/roadmap.md` and `docs/handoffs/firered-recomp-checklist.md` for deeper roadmap/history.
 
 Do not let README prose or an older handoff override newer direct evidence.
@@ -39,7 +39,9 @@ Do not let README prose or an older handoff override newer direct evidence.
 
 ## Current dispatch
 
-The canonical checklist currently prioritizes Phase 3 exit evidence. The active bounded continuation is `work/tasks/oak-parcel-dex-presentation-north.md` unless newer live task/review state supersedes it.
+Phase 3 is complete. The active bounded continuation is the Pain Split
+fixture-correction review recorded in `STATE.json`, `HANDOFF.md`, and
+`TASK_REGISTER.md`; those live owners supersede historical task prose.
 
 Current intended sequence:
 
