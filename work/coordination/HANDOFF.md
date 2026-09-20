@@ -1,8 +1,27 @@
 # FireRedRecomp Coordination Handoff
 
-- Status: `WORKER_REQUEST_FAILED_NEEDS_FIX_REVIEW`
+- Status: `READY_FOR_WORKER`
+- Task ID: `P4-PAIN-03`
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
 - Active task: [`../tasks/phase4-pain-split-effect.md`](../tasks/phase4-pain-split-effect.md)
+
+## Current relay — 2026-09-19
+
+The local checkout recovered live main at `d793981`. Independent
+[fixture correction review](../reviews/2026-09-19-pain-split-fixture-correction-review.md)
+passed: correct exactly two Pain Split fixture values from 51 to 18; retain
+every other failed-request byte. `P4-PAIN-01` and authorization `P4-PAIN-02`
+are reconciled. Worker `P4-PAIN-03` now has one corrected request through the
+unchanged nine-path route. The current user selected the existing private
+runner, observed online/idle. Local Lua baseline passed all 148 no-ROM files.
+
+Worker must verify the corrected digest in the active task, publish the one
+request under standing bounded publication authority, inspect all guarded
+focused/full/SHA-ROM/replay steps, then return the exact implementation commit.
+An independent implementation Reviewer owns `P4-PAIN-04`; the scope PASS is
+not implementation acceptance. On PASS, select `P4-02` inventory refresh
+without waiting for a new user prompt. Phase 2 reference media remains external.
+Historical retry holds below are superseded only by this exact authorization.
 
 ## Published evidence
 

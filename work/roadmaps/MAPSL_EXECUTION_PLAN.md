@@ -77,9 +77,9 @@ conflicting procedures.
 
 | ID | Status | Assigned role | Prerequisites | Required result / evidence | Next owner |
 | --- | --- | --- | --- | --- | --- |
-| `P4-PAIN-01` | `REVIEWED_NEEDS_FIX` | REVIEWER | Active task [`phase4-pain-split-effect.md`](../tasks/phase4-pain-split-effect.md); guarded request failed only because its #220 flags fixture expected `51` instead of verified `18` | Independently review the smallest fixture-only correction; explicitly preserve the existing nine-path allowlist and all zero-power/healing exclusions | ORCHESTRATOR |
-| `P4-PAIN-02` | blocked on `P4-PAIN-01 PASS` | ORCHESTRATOR | Reviewer authorizes the exact correction | Update the active task/state to permit one corrected Worker request, or record `BLOCK`/new discovery need | WORKER or stop |
-| `P4-PAIN-03` | blocked on `P4-PAIN-02` | WORKER | Corrected task, route, and probe remain current | Implement only effect 91, run focused/no-ROM/verified-ROM/replay evidence, publish exact revision | REVIEWER |
+| `P4-PAIN-01` | `CLOSED — REVIEWED PASS` | REVIEWER | [Correction review](../reviews/2026-09-19-pain-split-fixture-correction-review.md), base `d793981` | Exactly two flags fixtures `51` → `18`; original nine-path allowlist and exclusions preserved | ORCHESTRATOR |
+| `P4-PAIN-02` | `CLOSED` | ORCHESTRATOR | Fixture-scope PASS; user selected existing private runner | [Active task](../tasks/phase4-pain-split-effect.md) permits one corrected request with exact digest | WORKER |
+| `P4-PAIN-03` | `READY_FOR_WORKER` | WORKER | Corrected task, route, and probe remain current; 148-file local baseline PASS | Implement only effect 91, run focused/no-ROM/verified-ROM/replay evidence, publish exact revision | REVIEWER |
 | `P4-PAIN-04` | blocked on `P4-PAIN-03` | REVIEWER → ORCHESTRATOR | Exact Worker revision and evidence | Verdict; if PASS, record this leaf closed and select the next source-locked effect family | ORCHESTRATOR |
 
 ## Phase 0 — reproducibility and release baseline

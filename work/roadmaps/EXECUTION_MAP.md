@@ -45,7 +45,7 @@ Phase 2 renderer/runtime [IN PROGRESS]  ← EXTERNAL REFERENCE BLOCKER
         ├─ true 240×160 overworld camera viewport: REVIEWED PASS (`4c5456f3`)
         └─ Oak/reference screenshot discrepancy gate: remains after camera viewport PASS
                           ↓
-Phase 4 battle generalization [IN PROGRESS]  ← CURRENT ACTIVE PACKAGE: Pain Split fixture-review gate
+Phase 4 battle generalization [IN PROGRESS]  ← CURRENT ACTIVE PACKAGE: corrected Pain Split Worker request
         ↓
 Phase 5/7/6 completion toward credits
         ↓
@@ -125,7 +125,7 @@ Phase 10 mod/release engineering
 | Phase 4AG — Pain Split effect discovery | `REVIEWED PASS` | [`../tasks/phase4-pain-split-effect-discovery.md`](../tasks/phase4-pain-split-effect-discovery.md) | exact effect-91 source sequence, two-sided HP order, and zero-power admission dependency independently passed | separate bounded design only |
 | Phase 4AH — Pain Split two-sided HP/admission design | `REVIEWED PASS` | [`../tasks/phase4-pain-split-two-sided-hp-admission-design.md`](../tasks/phase4-pain-split-two-sided-hp-admission-design.md) | literal effect-91 admission and ordered non-damage HP event design independently passed | separate fail-closed route plan only |
 | Phase 4AI-pre — bridge route for Pain Split | `REVIEWED PASS / PROBE PASS` | [`../tasks/local-worker-bridge-phase4-pain-split-route.md`](../tasks/local-worker-bridge-phase4-pain-split-route.md) | configuration passed; probe `7409ad54`, guarded run `35290005345` | Phase 4AI implementation-scope review |
-| Phase 4AI — Pain Split effect | `REVIEWED_NEEDS_FIX` | **[`../tasks/phase4-pain-split-effect.md`](../tasks/phase4-pain-split-effect.md)** | Existing one Worker request failed before publication only because its #220 flags fixture expected `51`; verified ROM data is `18` | independent smallest fixture-correction review; see [`TASK_REGISTER.md`](../coordination/TASK_REGISTER.md) |
+| Phase 4AI — Pain Split effect | `READY_FOR_WORKER` | **[`../tasks/phase4-pain-split-effect.md`](../tasks/phase4-pain-split-effect.md)** | Independent fixture correction PASS at base `d793981`; one replacement request changes only two flags fixtures `51` → `18`; original nine-path route retained | guarded evidence, independent implementation review, then `P4-02` inventory refresh; see [`TASK_REGISTER.md`](../coordination/TASK_REGISTER.md) |
 | Phase 5 — overworld/field systems | `IN PROGRESS` | future | Pallet→Elite Four traversal without invalid paths | credits traversal |
 | Phase 6 — menus/inventory/progression UI | `IN PROGRESS` | future | complete player UI, no dev-key fallbacks | normal completion |
 | Phase 7 — story/scripts/cutscenes | `IN PROGRESS` | future | new game→credits without manual edits/skips | credits story parity |

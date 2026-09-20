@@ -1,13 +1,17 @@
 {
   "schema_version": 1,
-  "updated_utc": "2026-09-19T00:50:00Z",
+  "updated_utc": "2026-09-20T03:02:20Z",
   "role": "ORCHESTRATOR",
-  "status": "WORKER_REQUEST_FAILED_NEEDS_FIX_REVIEW",
+  "status": "READY_FOR_WORKER",
+  "task_id": "P4-PAIN-03",
   "current_phase": "Phase 4 — full Gen 3 battle engine",
   "canonical_status_owner": "work/roadmaps/CAPABILITY_CHECKLIST.md",
   "active_task": "work/tasks/phase4-pain-split-effect.md",
-  "objective": "Independently review the smallest Pain Split request correction after guarded run 35410055700 found only the #220 ROM flags fixture mismatch; no implementation was published.",
-  "next_role": "INDEPENDENT_REVIEWER",
+  "objective": "Publish exactly one corrected Pain Split request through the existing private runner; change only the two flags fixtures from 51 to 18 in the previously reviewed patch.",
+  "next_role": "WORKER",
+  "acceptance": "Corrected request digest c6170f42df62f45867bbf0c1330584a2c067136ff5811042fbc7d7009856cd69; unchanged nine-path route; focused, full no-ROM, SHA-verified full ROM, and configured replay pass; independent implementation review still required.",
+  "boundaries": "Effect 91 only. No generic zero-power/healing admission, excluded state, other effects, route change, or Phase 4 completion.",
+  "dependencies": "Fixture-scope PASS in work/reviews/2026-09-19-pain-split-fixture-correction-review.md at base d793981; existing route/probe PASS; 148-file local no-ROM baseline PASS; user selected private runner.",
   "reconciliation": {
     "camera_task_status": "CLOSED — REVIEWED PASS at 4c5456f3; guarded run 34753297372",
     "oak_evidence_bridge": "CLOSED — REVIEWED PASS at ff5ff890; trusted probe run 34753855210",
@@ -19,7 +23,7 @@
     "phase4_move_admission_matrix_status": "CLOSED — REVIEWED PASS at 784a5188; six effect-17 accuracy-zero records selected as one next leaf"
   },
   "phase2_external_blocker": "Trusted, user-owned retail-reference captures with provenance/timing/crop/filter details for Oak and Pallet anchors have not been supplied.",
-  "next_after_success": "If the smallest flags-fixture correction independently passes scope review, decide whether a separately authorized replacement Worker request is permissible; preserve the literal allowlist and do not infer generic zero-power admission, healing, Protect, Substitute, item/ability/status, doubles/link, or Phase 4 completion.",
+  "next_after_success": "P4-PAIN-04 independent review of the exact guarded implementation revision; on PASS close only Pain Split and dispatch P4-02 effect-family inventory refresh.",
   "legal_content_boundary": "Never commit ROMs, BIOS dumps, generated caches, ROM-derived reference screenshots, extracted game assets, or other prohibited content.",
   "phase_completion_rule": "Phase 2 remains IN PROGRESS until the Oak/reference screenshot discrepancy gate is evidenced and independently reviewed."
 }

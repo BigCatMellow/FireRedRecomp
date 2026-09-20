@@ -1,7 +1,11 @@
 # Task: Phase 4 Pain Split effect
 
-- Status: `WORKER REQUEST FAILED — NEEDS BOUNDED FIX REVIEW`
+- Task ID: `P4-PAIN-03` (authorized by `P4-PAIN-02`)
+- Status: `READY_FOR_WORKER`
 - Type: `PHASE 4 / BATTLE RULES / BOUNDED IMPLEMENTATION`
+- Parent capability gate: Phase 4 move/effect matrix in `work/roadmaps/CAPABILITY_CHECKLIST.md`.
+- Assigned role: `WORKER`; independent implementation reviewer: separate `REVIEWER` helper.
+- Risk: `MEDIUM` — battle HP mutation; guarded verification precedes publication.
 
 ## Goal
 
@@ -61,3 +65,37 @@ shows #220 has flags `18` (the source-locked Protect/Mirror-Move shape).
 No implementation commit was published. Preserve this exact failure as a
 bounded test-fixture defect; do not issue another Worker request until its
 smallest correction receives independent review.
+
+## Corrected request authorization — 2026-09-19
+
+Independent fixture-scope review now passes at
+[`../reviews/2026-09-19-pain-split-fixture-correction-review.md`](../reviews/2026-09-19-pain-split-fixture-correction-review.md),
+against base `d793981f950407ee6f469dc50c02e32529cf3cb5`. This supersedes only
+the preceding retry hold. The current user directed continued orchestration
+with helper agents and explicitly selected the existing private runner.
+
+`P4-PAIN-02` authorizes exactly one new request,
+`work/local-runner/requests/phase4-pain-split-effect-20260919-v2.patch`.
+It must preserve the failed request byte-for-byte except for Pain Split's
+synthetic `flags=51` becoming `flags=18` and `m.flags == 51` becoming
+`m.flags == 18`. Expected request SHA-256:
+`c6170f42df62f45867bbf0c1330584a2c067136ff5811042fbc7d7009856cd69`.
+The six patch targets remain inside the original nine-path implementation
+allowlist; request transport and Orchestrator review/relay records are separate
+from that implementation allowlist. Preserve the original failed artifact.
+
+Prerequisites: reviewed source/design/route/probe and the new correction review;
+private runner `firered-mint` was online and idle at dispatch. Local baseline
+passed all 148 no-ROM test files using the isolated Lua 5.1 toolchain. The
+Worker must check request digest/applicability, then publish through the existing
+`phase4-pain-split-effect` selector under standing bounded publication authority.
+Required focused, full no-ROM, SHA-verified full ROM, and configured replay
+commands remain exactly those in the route contract. The replay is an engine /
+scene deterministic script, not proof of a visible LÖVE battle animation.
+
+Stop on any extra request diff, route change, failed guarded step, unsupported
+ROM, or unavailable runner. Record exact run/commit evidence; do not improvise
+a broader retry. On success, route the exact published implementation to a
+separate independent Reviewer before closure. Eligible successor after PASS:
+`P4-02` effect-family inventory refresh from the MAPSL execution plan; no
+new move behavior or Phase 4 completion is authorized here.

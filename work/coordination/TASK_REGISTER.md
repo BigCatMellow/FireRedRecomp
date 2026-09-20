@@ -45,7 +45,9 @@ It is deliberately not a second roadmap or test-evidence database:
 
 | Task ID | Lifecycle | Assigned next role | Contract / revision | Evidence or blocker | Successor / next action |
 | --- | --- | --- | --- | --- | --- |
-| `P4-PAIN-01` | `REVIEWED_NEEDS_FIX` | `REVIEWER` | [`phase4-pain-split-effect.md`](../tasks/phase4-pain-split-effect.md); no implementation revision was published | Guarded request `87d5e72` failed because its #220 fixture expected flags `51`; verified ROM data says `18`. Scope review at `b1cb1497` remains valid only for the literal nine-path route. | Independently approve or block the smallest fixture-only correction. If approved, Orchestrator creates `P4-PAIN-02` with the exact permitted edit/test/replay boundary. |
+| `P4-PAIN-01` | `CLOSED` | `ORCHESTRATOR` | Base `d793981`; [independent correction review](../reviews/2026-09-19-pain-split-fixture-correction-review.md) | PASS for exactly two fixture substitutions, `51` → `18`; no behavior or route changes. | Reconciled into `P4-PAIN-02`. |
+| `P4-PAIN-02` | `CLOSED` | `ORCHESTRATOR` | [Corrected request authorization](../tasks/phase4-pain-split-effect.md) | User chose existing private runner; reviewed corrected digest and original nine-path boundary preserved. Local no-ROM baseline: 148 files PASS. | Dispatch `P4-PAIN-03`. |
+| `P4-PAIN-03` | `READY_FOR_WORKER` | `WORKER` | [`phase4-pain-split-effect.md`](../tasks/phase4-pain-split-effect.md); request `phase4-pain-split-effect-20260919-v2.patch` | One corrected request only; guarded focused/no-ROM/SHA-ROM/replay evidence required. | Exact published revision to independent `P4-PAIN-04` review, then `P4-02` inventory refresh. |
 | `P2-REF-01` | `BLOCKED` | `USER` | [`phase2-oak-reference-comparison.md`](../tasks/phase2-oak-reference-comparison.md) | Trusted retail Oak/Pallet reference captures with provenance have not been supplied; media must remain outside git. | User supplies captures/provenance; Orchestrator validates intake and moves comparison to `OPEN`. |
 
 ## Legacy policy
