@@ -1,6 +1,6 @@
 # FireRedRecomp Coordination Handoff
 
-- Status: `READY_FOR_WORKER`
+- Status: `READY_FOR_REVIEWER`
 - Task ID: `P0-02-DISCOVERY`, with disjoint `P4-02` preparation
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
 - Active task: [`../tasks/phase0-save-version-contract-discovery.md`](../tasks/phase0-save-version-contract-discovery.md)
@@ -16,6 +16,12 @@ recover save-schema/refusal/corruption evidence locally. Current codec writes
 version 2, contradicting stale no-version charter prose; do not change policy
 or saves in discovery. A separate Reviewer must accept its findings.
 
+Save discovery is now complete at `b53c387` and ready for independent review:
+version-1/version-2 matrix, 45/0 codec and 13/0 roundtrip checks, 24 synthetic
+checks, reproduced counter-rollover and suffix-preservation edge cases. It
+proposes only a contract/targeted-fixture successor now; behavior fixes remain
+separate bounded leaves. Reviewer owns this next critical-path action.
+
 User-owned needs for later: restore the private runner if it remains offline;
 supply the already-requested trusted Phase 2 retail captures/provenance. Do not
 interrupt independent authorized work or ask the unavailable user repeatedly.
@@ -26,8 +32,11 @@ Inventory preparation is now committed locally at
 in `/home/home/FireRedRecomp-inventory`. Exactly three allowed files, 150-file
 no-ROM suite and static/source-metadata checks pass. It classifies 354 moves
 and 214 effects, proposes effect 32 discovery, and records all ROM limits.
-Independent source/test preflight review is next; it cannot close the final
-ROM gate. Runner was checked again at 20:03 UTC and remains offline.
+Independent source/test preflight review has now passed; the exact preparation
+is backed up on GitHub branch `work/move-effect-inventory`. Overall P4-02 remains
+blocked on its final ROM gate. Runner was checked again at 20:03 UTC and remains
+offline. A later guarded request should transport only the prepared test/report,
+preserving the newer task/coordination record maintained on main.
 
 `P0-03-DISCOVERY` may independently audit current public CI against existing
 Phase 0 requirements in its own task/report paths. It may read run evidence

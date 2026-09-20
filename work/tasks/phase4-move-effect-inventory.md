@@ -1,7 +1,7 @@
 # Task: refresh the complete move-effect inventory
 
 - Task ID: `P4-02`
-- Status: `READY_FOR_WORKER` — preparation only until route review/probe PASS
+- Status: `BLOCKED` — source/test preflight PASS; private runner offline
 - Type: `RESEARCH / DETERMINISTIC INVENTORY`
 - Parent capability gate: Phase 4 move/effect and stress matrix in [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md).
 - Assigned role: `RESEARCHER` for source classification, `WORKER` for the bounded verification artifact.
@@ -91,3 +91,20 @@ These packages have disjoint writable paths; neither may change gameplay.
 Worker must wait for exact configuration review and a successful separate
 probe before publishing the inventory request. Local source counts and a
 no-ROM skip cannot close this task.
+
+## Prepared artifact and preflight result
+
+Preparation `688433a3093dc15db32d62bd5a59fd7a84ac0cd0` is preserved on GitHub
+branch `work/move-effect-inventory`. The
+[independent preflight review](../reviews/2026-09-20-move-effect-inventory-preflight-review.md)
+passes its exact source/report/test artifacts: all 354 memberships and 214
+dispatch owners matched pinned source, actual admission matched 248/106,
+150 no-ROM test files passed, and nine controlled mismatch cases failed safely.
+This is source/test evidence only; overall acceptance remains blocked on the
+separate probe and non-skipped guarded SHA-ROM execution.
+
+When the runner returns, resume the same authorized probe, then transport only
+the new test/report from the prepared revision through the dedicated route.
+This task's coordination/evidence record is already maintained on main and
+need not be replaced by its older prepared-branch copy. No effect-32 discovery
+or Phase 4 completion follows until final inventory acceptance.
