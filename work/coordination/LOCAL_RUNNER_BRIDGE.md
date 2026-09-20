@@ -44,6 +44,14 @@ Current supported request/probe prefixes are:
 - `phase4-explosion-effects...` — bounded effect-7 Self-Destruct/Explosion
   path only, including its source-locked self-KO, Damp, defense, RNG, and
   ordered-faint sequence; it excludes every other self-KO family;
+- `phase4-move-effect-inventory...` — read-only move/effect inventory route
+  allowing only `tests/phase4_move_effect_inventory_test.lua`,
+  `work/tasks/phase4-move-effect-inventory.md`, and
+  `work/reports/phase4-move-effect-inventory.md`; focused execution runs the
+  inventory test with the selected Lua interpreter and may skip without an
+  inherited ROM environment. The unchanged full SHA-verified-ROM suite must
+  execute its aggregate inventory check without skipping. No runtime replay
+  applies because this route changes no runtime behavior;
 - `runner-online...probe` — non-patch runner-readiness probe only.
 
 Adding a new route requires a bounded task that authorizes bridge maintenance. Do not add a generic fallback route.

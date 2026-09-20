@@ -1,7 +1,7 @@
 # Task: dedicated move-effect inventory verification route
 
 - Task ID: `P4-02-ROUTE`
-- Status: `READY_FOR_WORKER`
+- Status: `CONFIGURED — PENDING INDEPENDENT REVIEW`
 - Type: `INFRASTRUCTURE / BOUNDED ROUTE`
 - Parent capability gate: Phase 4 move/effect matrix via [`phase4-move-effect-inventory.md`](phase4-move-effect-inventory.md).
 - Assigned role: `WORKER`, after independent readiness review.
@@ -75,3 +75,34 @@ route/documentation paths and return the exact commit for independent review.
 The separate probe remains forbidden until that configuration review passes.
 Existing full-suite evidence is 149 no-ROM and 149 verified-ROM files; local
 toolchain is available for proportionate baseline and syntax/allowlist checks.
+
+## Worker configuration evidence — 2026-09-20
+
+Configured on local authorization base `82af910`; independent live recovery
+returned `a739ddc88cb44a33d5e6025e619cf1df3fe6a1a8`. The workflow adds exactly
+five cases: explicit request/probe selection, three literal allowed targets,
+the selected-interpreter focused inventory command, an explicit no-runtime-replay
+message, and individual staging of those same three paths. Removing these five
+added cases reproduces the previous workflow byte-for-byte, preserving all
+existing routes and shared security/test behavior. Route documentation records
+the focused-ROM skip limitation and mandatory full SHA-ROM inventory execution.
+
+Verification passed:
+
+- Before and after configuration, `PATH=/home/home/.local/share/firered-toolchain/bin:$PATH env -u POKEPORT_ROM bash scripts/test_all.sh` passed all 149 test files.
+- PyYAML parsed the workflow; `bash -n` accepted all 12 extracted run blocks.
+- Executing the actual validation case accepted all three authorized targets;
+  rejected seven unauthorized targets (source, workflow, coordination, suffix,
+  traversal, nested-path, and wildcard examples); and rejected an unknown route.
+- Executing the actual selector accepted the new request and probe names;
+  rejected unknown request/probe prefixes and an unsupported extension.
+- Focused-command and staging inspection confirmed exactly the selected Lua
+  invocation and the three individual literal paths. Executing the actual replay
+  case emitted the explicit read-only/no-runtime-behavior message.
+- `git diff --check` passed.
+
+The one-off local validation harness initially needed an indentation correction
+in its extraction regex; the final complete check passed without any workflow
+change. No inventory implementation, ROM execution, publication, or probe was
+performed in this package. Independent configuration review must pass before
+the separate probe; no capability or phase completion is claimed.

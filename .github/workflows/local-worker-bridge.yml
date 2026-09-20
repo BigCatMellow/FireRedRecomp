@@ -122,6 +122,9 @@ jobs:
             phase4-pain-split-effect*.patch|phase4-pain-split-effect*.probe)
               route='phase4-pain-split-effect'
               ;;
+            phase4-move-effect-inventory*.patch|phase4-move-effect-inventory*.probe)
+              route='phase4-move-effect-inventory'
+              ;;
             oak-parcel-dex-presentation-north*.patch|oak-parcel-dex-presentation-north*.probe)
               route='oak-parcel-dex-presentation-north'
               ;;
@@ -240,6 +243,8 @@ jobs:
               phase4-endeavor-effects:src/core/BattleEngine.lua|phase4-endeavor-effects:tests/battle_engine_test.lua|phase4-endeavor-effects:tests/phase4_endeavor_effect_rom_test.lua|phase4-endeavor-effects:scripts/runtime_phase4_endeavor_replay.sh|phase4-endeavor-effects:src/core/BattleSceneController.lua|phase4-endeavor-effects:tests/battle_scene_controller_test.lua|phase4-endeavor-effects:work/tasks/phase4-endeavor-effects.md|phase4-endeavor-effects:work/coordination/STATE.json|phase4-endeavor-effects:work/coordination/HANDOFF.md)
                 ;;
               phase4-pain-split-effect:src/core/BattleEngine.lua|phase4-pain-split-effect:src/core/BattleSceneController.lua|phase4-pain-split-effect:tests/battle_engine_test.lua|phase4-pain-split-effect:tests/battle_scene_controller_test.lua|phase4-pain-split-effect:tests/phase4_pain_split_effect_rom_test.lua|phase4-pain-split-effect:scripts/runtime_phase4_pain_split_replay.sh|phase4-pain-split-effect:work/tasks/phase4-pain-split-effect.md|phase4-pain-split-effect:work/coordination/STATE.json|phase4-pain-split-effect:work/coordination/HANDOFF.md)
+                ;;
+              phase4-move-effect-inventory:tests/phase4_move_effect_inventory_test.lua|phase4-move-effect-inventory:work/tasks/phase4-move-effect-inventory.md|phase4-move-effect-inventory:work/reports/phase4-move-effect-inventory.md)
                 ;;
               *)
                 echo "Patch target is not authorized for explicit route '$ROUTE': $target" >&2
@@ -360,6 +365,9 @@ jobs:
               "$LUA" tests/battle_scene_controller_test.lua
               "$LUA" tests/phase4_pain_split_effect_rom_test.lua
               ;;
+            phase4-move-effect-inventory)
+              "$LUA" tests/phase4_move_effect_inventory_test.lua
+              ;;
             *)
               echo "Patch execution has no focused-test route for '$ROUTE'." >&2
               exit 1
@@ -463,6 +471,9 @@ jobs:
               ;;
             phase4-pain-split-effect)
               bash scripts/runtime_phase4_pain_split_replay.sh
+              ;;
+            phase4-move-effect-inventory)
+              echo "No runtime replay is applicable: this read-only inventory route changes no runtime behavior."
               ;;
             *)
               echo "Patch execution has no runtime-replay route for '$ROUTE'." >&2
@@ -623,6 +634,13 @@ jobs:
               ;;
             phase4-pain-split-effect)
               for path in src/core/BattleEngine.lua src/core/BattleSceneController.lua tests/battle_engine_test.lua tests/battle_scene_controller_test.lua tests/phase4_pain_split_effect_rom_test.lua scripts/runtime_phase4_pain_split_replay.sh work/tasks/phase4-pain-split-effect.md work/coordination/STATE.json work/coordination/HANDOFF.md; do
+                if [[ -e "$path" ]]; then
+                  git add -- "$path"
+                fi
+              done
+              ;;
+            phase4-move-effect-inventory)
+              for path in tests/phase4_move_effect_inventory_test.lua work/tasks/phase4-move-effect-inventory.md work/reports/phase4-move-effect-inventory.md; do
                 if [[ -e "$path" ]]; then
                   git add -- "$path"
                 fi
