@@ -29,6 +29,12 @@
     "boundary": "Independent source/test preflight review only; preparation changed three allowed paths and passed 150-file no-ROM suite. Final task acceptance still requires private SHA-ROM evidence; no guarded request before probe PASS.",
     "publication_gate": "P4-02-ROUTE independent configuration PASS and separate trusted probe PASS"
   },
+  "parallel_research": {
+    "task_id": "P0-03-DISCOVERY",
+    "task": "work/tasks/phase0-ci-proof-discovery.md",
+    "status": "READY_FOR_WORKER",
+    "boundary": "Read-only public CI/source audit; only own task/report paths, disjoint from save discovery and inventory review; no workflow changes or dispatch"
+  },
   "reconciliation": {
     "camera_task_status": "CLOSED — REVIEWED PASS at 4c5456f3; guarded run 34753297372",
     "oak_evidence_bridge": "CLOSED — REVIEWED PASS at ff5ff890; trusted probe run 34753855210",

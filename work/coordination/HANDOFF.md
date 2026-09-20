@@ -29,6 +29,12 @@ and 214 effects, proposes effect 32 discovery, and records all ROM limits.
 Independent source/test preflight review is next; it cannot close the final
 ROM gate. Runner was checked again at 20:03 UTC and remains offline.
 
+`P0-03-DISCOVERY` may independently audit current public CI against existing
+Phase 0 requirements in its own task/report paths. It may read run evidence
+but cannot change or dispatch workflows. Save discovery and inventory review
+continue with no writable overlap; each needs independent review before any
+successor or capability claim.
+
 Pain Split is closed at `a739ddc88cb44a33d5e6025e619cf1df3fe6a1a8` after
 [independent implementation PASS](../reviews/2026-09-20-pain-split-implementation-review.md).
 Guarded run `35493728001` passed both 149-file suites and the configured
