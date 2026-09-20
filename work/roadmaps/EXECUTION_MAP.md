@@ -9,6 +9,7 @@
 - Strategic roadmap: [`../../docs/roadmap.md`](../../docs/roadmap.md)
 - Canonical capability status: [`CAPABILITY_CHECKLIST.md`](CAPABILITY_CHECKLIST.md)
 - Detailed implementation checklist/history: [`../../docs/handoffs/firered-recomp-checklist.md`](../../docs/handoffs/firered-recomp-checklist.md)
+- Future-orchestrator MAPSL assignment plan: [`MAPSL_EXECUTION_PLAN.md`](MAPSL_EXECUTION_PLAN.md)
 - Current coordination state: [`../coordination/STATE.json`](../coordination/STATE.json)
 
 ## Purpose
