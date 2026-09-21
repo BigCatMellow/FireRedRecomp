@@ -18,6 +18,14 @@ The encoder emits exactly **114,696 bytes**:
 The first save writes generation 1 to slot 1, leaving slot 0 blank. Normal
 subsequent saves alternate slots and preserve the entire other slot when the
 caller supplies the prior counter and an exactly sized previous buffer.
+For supported u32 counters, increment wraps through `0xFFFFFFFE` →
+`0xFFFFFFFF` → `0` → `1`; the returned generation matches all written footer
+counters. With both slots valid, zero wins over `0xFFFFFFFF` in either
+ordering. Every other unequal pair uses unsigned larger-value selection,
+and equal counters retain slot 0. This is the literal
+[retail counter special case](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/src/save.c#L534),
+not general serial-number ordering or a change to accepted file formats.
+
 SaveBlock1/2 remain partial field models. PokemonStorage includes current box,
 14×30 boxed records, names and wallpapers; Hall of Fame/Trainer Tower sectors
 and physical sector rotation are not modelled. Unmodelled fields are not
@@ -55,11 +63,9 @@ When the newer slot fails validation, an older valid slot is used. Two blank
 slots yield EMPTY; no valid slot with a partially invalid slot yields ERROR.
 A successful fallback reports OK without a separate degraded-slot indication.
 
-Known limitations remain separate tasks, documented and reproduced in the
+Other known limitations remain separate tasks, documented and reproduced in the
 [reviewed discovery](../work/reports/phase0-save-version-contract.md):
 
-- Counter rollover can select the stale `0xFFFFFFFF` generation over a newly
-  encoded zero; the returned counter also differs from the stored u32.
 - A suffix-bearing buffer can decode successfully, but its noncanonical length
   prevents preserving the previous slot on the next encode.
 - Sector counters are not required to agree; the final valid sector supplies
@@ -83,7 +89,15 @@ and cover unknown/unwrapped refusal, truncation, all nine PC-sector corruption
 fallbacks, ordinary payload corruption and normal state/PC roundtrips.
 [Session roundtrip fixtures](../tests/save_load_roundtrip_test.lua) compare all
 57,344 bytes of the preserved prior slot and verify the newer loaded position
-and generation. No binary or user-save fixture is needed.
+and generation. Counter boundary fixtures inspect all fourteen serialized
+footer counters, distinct saved content, both ordering predicates, ordinary
+and equal-counter controls, corruption fallback, and load/resave continuity
+through wrap. The new rollover assertions fail against the pre-correction
+codec; exact evidence and independent review are tracked in the
+[rollover task](../work/tasks/phase0-save-counter-rollover.md).
+Reverse physical ordering is a synthetic project-decoder control, not a
+claim that retail physical I/O ignores parity. No binary or user-save fixture
+is needed.
 
 Run `env -u POKEPORT_ROM lua5.1 tests/save_file_codec_test.lua`,
 `env -u POKEPORT_ROM lua5.1 tests/save_load_roundtrip_test.lua`, and

@@ -28,8 +28,8 @@
 --   every sector of BOTH physical slots, verifies each sector's signature
 --   + checksum, and only accepts a slot if every sector in it is valid
 --   (`validSectors == ALL_SECTORS`); when both slots are fully valid it
---   picks the one with the higher `counter` (see chooseNewerCounter()
---   below, transcribed from GetSaveValidStatus lines ~534-550).
+--   picks the higher counter except for the exact maximum-u32/zero pair,
+--   where zero is newer (GetSaveValidStatus lines 534-550).
 --
 -- REAL CHECKSUM (CalculateChecksum, src/save.c): NOT a CRC. It's a
 -- straight little-endian-u32-word additive checksum: sum every 4-byte
@@ -732,7 +732,7 @@ end
 -- Real GetSaveValidStatus: a slot is
 -- only valid if EVERY modeled sector has the real signature and its
 -- checksum matches. Returns status ("OK"/"EMPTY"/"ERROR"), counter (from
--- sector 0, or nil), and the decoded SaveBlock2/SaveBlock1 byte chunks
+-- the last valid sector, or nil), and the decoded SaveBlock2/SaveBlock1 byte chunks
 -- (nil if not OK).
 local function validateSlot(slotBytes)
   local sb2Chunk, sb1Chunks, storageChunks = nil, {}, {}
@@ -824,7 +824,7 @@ end
 
 function SaveFileCodec.encode(state, previousCounter, previousBytes)
   previousCounter = previousCounter or 0
-  local newCounter = previousCounter + 1
+  local newCounter = (previousCounter + 1) % 4294967296 -- real u32 gSaveCounter++
   local targetSlot = newCounter % NUM_SAVE_SLOTS -- real: gSaveCounter % NUM_SAVE_SLOTS
 
   local slots = { [0] = string.rep("\0", SLOT_BYTES), [1] = string.rep("\0", SLOT_BYTES) }
@@ -885,10 +885,15 @@ function SaveFileCodec.decode(bytes)
   -- Real GetSaveValidStatus (src/save.c lines ~534-581), transcribed:
   local chosen = nil
   if status[0] == "OK" and status[1] == "OK" then
-    -- Choose the higher counter (real code's -1/0 wraparound special
-    -- case collapses to plain unsigned comparison for all counters this
-    -- codec ever produces; see header note).
-    chosen = (counter[1] > counter[0]) and 1 or 0
+    -- Retail special-cases only the maximum-u32/zero pair. Preserve plain
+    -- unsigned ordering otherwise, including the existing slot-0 tie rule.
+    if counter[0] == 4294967295 and counter[1] == 0 then
+      chosen = 1
+    elseif counter[0] == 0 and counter[1] == 4294967295 then
+      chosen = 0
+    else
+      chosen = (counter[1] > counter[0]) and 1 or 0
+    end
   elseif status[0] == "OK" then
     chosen = 0
   elseif status[1] == "OK" then

@@ -1,7 +1,7 @@
 # Task: preserve newest-save selection across u32 counter rollover
 
 - Task ID: `P0-SAVE-ROLLOVER`
-- Status: `READY_FOR_WORKER`
+- Status: `IMPLEMENTED — PENDING INDEPENDENT REVIEW`
 - Type: `IMPLEMENTATION / SOURCE-LOCKED CORRECTION`
 - Parent capability gate: Phase 0 save reliability supporting the explicit P0-02 compatibility contract; broader save safety remains open.
 - Assigned role: `WORKER`; independent reviewer: separate `REVIEWER` helper.
@@ -85,3 +85,53 @@ revision. Parent coordinates publication and independent Reviewer returns
 PASS / NEEDS_FIX / BLOCK. Orchestrator closes only this defect and re-evaluates
 the parent gate. Suffix preservation and live-write safety remain separate
 design leaves; clean-clone/CI evidence can proceed independently.
+
+## Worker result — 2026-09-21
+
+Implemented the literal u32 increment and maximum-u32/zero selection correction.
+`encode` now returns the modulo-2^32 generation it writes in the footer;
+both-valid-slot decoding special-cases only `{0xFFFFFFFF, 0}` in either order.
+All other comparisons, equal-counter slot-0 selection, checksum/validation,
+single-slot fallback and EMPTY/ERROR behavior retain their existing branches.
+Directly related comments now describe the rollover exception and the actual
+last-valid-sector counter source. No caller, format, migration, suffix or
+filesystem behavior was changed.
+
+Source correspondence was checked at pinned retail revision
+`c75f352304d529f6ba92d4f74b9cf8b5c3810788`: u32 declaration at `src/save.c:85`,
+increment at 149, slot parity at 176, written footer counter at 188, and exact
+two-value ordering exception at 534–550. Reverse-slot fixtures are explicitly
+project-decoder predicate controls; retail physical I/O still uses parity.
+
+Evidence with Lua 5.1 and `POKEPORT_ROM` unset:
+
+- Baseline at dispatch `eac7d69`: codec **63/0**, roundtrip **13/0**; full suite
+  **150 files PASS** in the shared working tree, including the parallel CI
+  Worker's new repository-check test (149 previously tracked test files).
+- Added regression fixtures before changing the codec: codec **88 passed,
+  5 failed**, roundtrip **14 passed, 2 failed**, both exit 1. Failures directly
+  exposed returned 4294967296/4294967297, stale maximum-generation selection,
+  both maximum/zero ordering predicates, and stale load/resave continuity.
+- After the correction: `lua5.1 tests/save_file_codec_test.lua` **93/0** and
+  `lua5.1 tests/save_load_roundtrip_test.lua` **16/0**; full
+  `env -u POKEPORT_ROM bash scripts/test_all.sh` **150 files PASS**.
+- After CI package `3478822` landed, `lua5.1 scripts/check_repository.lua`
+  passed: **275 tracked Lua, 144 tracked Markdown, 168 local targets**.
+  `git diff --check` and the exact seven-path audit passed.
+- Boundary fixtures use literal `0xFFFFFFFE`, `0xFFFFFFFF`, zero and one,
+  inspecting all fourteen four-byte footer counters against independently
+  specified byte strings. Distinct money/location values prove content selection;
+  complete previous-slot comparisons prove canonical preservation.
+- Eleven literal slot-pair controls include both max/zero orders, ordinary
+  values, non-special distant values that must retain unsigned ordering, and
+  zero/ordinary/maximum ties. Corrupting the wrapped slot falls back to the
+  valid pre-wrap state; single-valid, both-blank and corrupt-plus-blank cases
+  preserve existing statuses. Earlier compatibility/PC corruption fixtures pass.
+
+Only the seven authorized paths belong to this change. Parallel CI paths and
+Orchestrator coordination remain outside Worker staging. Documentation updates
+only counter behavior/evidence and removes the reproduced rollover limitation;
+suffix preservation, mixed-generation acceptance, partial-field and filesystem
+limits remain documented. No ROM, real save, binary fixture or phase-status
+change is included. Independent exact-revision review and later public-CI
+evidence remain required before the defect is closed.

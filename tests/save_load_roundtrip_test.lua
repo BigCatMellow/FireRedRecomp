@@ -76,6 +76,33 @@ check("second save decodes to the newer location", decoded2 ~= nil
   and decoded2.saveBlock1.location.x == 6 and decoded2.saveBlock1.location.y == 6)
 check("second decode reports the higher generation", info2.saveCounter == 2)
 
+-- Normal session reconstruction must carry the wrapped generation into the
+-- next save. Distinct positions prove that a stale pre-wrap copy was not used.
+do
+  local before = App.GameSession.fromSavedState(decoded1)
+  before:setLocation(3 * 256, 8, 9, "west")
+  local maxBytes, maxCounter = Codec.encode(before.state, 4294967294)
+  local maxState, maxInfo = Codec.decode(maxBytes)
+  check("session reload at maximum u32 preserves its generation and position",
+    maxCounter == 4294967295 and maxState ~= nil and maxInfo.saveCounter == 4294967295
+      and maxState.saveBlock1.location.x == 8 and maxState.saveBlock1.location.y == 9)
+  local atMax = App.GameSession.fromSavedState(maxState)
+  atMax:setLocation(3 * 256, 10, 11, "north")
+  local wrapBytes, wrapCounter = Codec.encode(atMax.state, maxInfo.saveCounter, maxBytes)
+  local wrapState, wrapInfo = Codec.decode(wrapBytes)
+  check("session reload at wrapped zero selects the current position",
+    wrapCounter == 0 and wrapState ~= nil and wrapInfo.saveCounter == 0
+      and wrapState.saveBlock1.location.x == 10 and wrapState.saveBlock1.location.y == 11)
+  local after = App.GameSession.fromSavedState(wrapState)
+  after:setLocation(4 * 256 + 1, 6, 7, "south")
+  local nextBytes, nextCounter = Codec.encode(after.state, wrapInfo.saveCounter, wrapBytes)
+  local nextState, nextInfo = Codec.decode(nextBytes)
+  check("resaving a reloaded wrapped session advances to one with current map and position",
+    nextCounter == 1 and nextState ~= nil and nextInfo.saveCounter == 1
+      and nextState.saveBlock1.location.mapGroup == 4 and nextState.saveBlock1.location.mapNum == 1
+      and nextState.saveBlock1.location.x == 6 and nextState.saveBlock1.location.y == 7)
+end
+
 -- Corrupting the file must fall back cleanly rather than crash or invent
 -- a session (SaveFileCodec.decode already has dedicated corruption
 -- coverage; this just confirms the flow this project's loadGameFile()

@@ -351,6 +351,99 @@ do
 end
 
 --------------------------------------------------------------------------
+-- u32 generation rollover: expectations are literal counters/footer bytes,
+-- not arithmetic copied from the encoder's increment or selection logic.
+--------------------------------------------------------------------------
+
+do
+  local function slotBytes(bytes, slot)
+    local start = 8 + slot * 57344
+    return bytes:sub(start + 1, start + 57344)
+  end
+  local cases = {
+    { counter=4294967294, footer=string.char(254,255,255,255), slot=0, money=1111 },
+    { counter=4294967295, footer=string.char(255,255,255,255), slot=1, money=2222 },
+    { counter=0, footer=string.char(0,0,0,0), slot=0, money=3333 },
+    { counter=1, footer=string.char(1,0,0,0), slot=1, money=4444 },
+  }
+  local previous, previousCounter, snapshots = nil, 4294967293, {}
+  for index, expected in ipairs(cases) do
+    local state = freshState()
+    state.saveBlock1.money = expected.money
+    local bytes, counter = SaveFileCodec.encode(state, previousCounter, previous)
+    check("rollover encode returns literal generation " .. expected.counter,
+      counter == expected.counter, counter)
+    local allFootersMatch = true
+    for sectorId = 0, 13 do
+      local footerOffset = 8 + expected.slot * 57344 + sectorId * 4096 + 4092
+      allFootersMatch = allFootersMatch
+        and bytes:sub(footerOffset + 1, footerOffset + 4) == expected.footer
+    end
+    check("all fourteen footer counters match generation " .. expected.counter .. " in slot " .. expected.slot,
+      allFootersMatch)
+    local decoded, info = SaveFileCodec.decode(bytes)
+    check("rollover decode selects generation " .. expected.counter .. " and its current content",
+      decoded ~= nil and info.saveCounter == expected.counter and info.slotUsed == expected.slot
+        and decoded.saveBlock1.money == expected.money, info and info.saveCounter)
+    if previous then
+      check("generation " .. expected.counter .. " preserves the complete prior slot",
+        slotBytes(bytes, 1 - expected.slot) == slotBytes(previous, 1 - expected.slot))
+    end
+    snapshots[index], previous, previousCounter = bytes, bytes, counter
+  end
+
+  -- Both physical orderings exercise the project decoder's predicate.
+  -- Retail writers/loaders still use counter parity; swapping/relabeling
+  -- these synthetic slots is not a claim about retail physical-slot I/O.
+  local function withCounter(slot, counter)
+    local sectors = {}
+    for id = 0, 13 do
+      sectors[#sectors + 1] = slot:sub(id * 4096 + 1, id * 4096 + 4092) .. u32le(counter)
+    end
+    return table.concat(sectors)
+  end
+  local controls = {
+    {0, 4294967295, 0}, {4294967295, 0, 1},
+    {10, 11, 1}, {11, 10, 0},
+    {0, 4294967294, 1}, {4294967294, 0, 0},
+    {1, 4294967295, 1}, {4294967295, 1, 0},
+    {0, 0, 0}, {10, 10, 0}, {4294967295, 4294967295, 0},
+  }
+  for _, control in ipairs(controls) do
+    local bytes = bytes1:sub(1, 8)
+      .. withCounter(slotBytes(bytes1, 1), control[1])
+      .. withCounter(slotBytes(bytes2, 0), control[2])
+    local decoded, info = SaveFileCodec.decode(bytes)
+    local expectedMoney = control[3] == 0 and 3000 or 45250
+    check("counter pair " .. control[1] .. "/" .. control[2] .. " selects slot " .. control[3],
+      decoded ~= nil and info.slotUsed == control[3]
+        and info.saveCounter == control[control[3] + 1]
+        and decoded.saveBlock1.money == expectedMoney, info and info.slotUsed)
+  end
+
+  local function corruptSlot(bytes, slot)
+    local offset = 8 + slot * 57344 + 10
+    local changed = (string.byte(bytes, offset + 1) + 1) % 256
+    return bytes:sub(1, offset) .. string.char(changed) .. bytes:sub(offset + 2)
+  end
+  local wrapped = snapshots[3]
+  local fallback, fallbackInfo = SaveFileCodec.decode(corruptSlot(wrapped, 0))
+  check("corrupt wrapped generation falls back to valid maximum-u32 content",
+    fallback ~= nil and fallbackInfo.saveCounter == 4294967295 and fallbackInfo.slotUsed == 1
+      and fallback.saveBlock1.money == 2222)
+  local single, singleInfo = SaveFileCodec.decode(corruptSlot(wrapped, 1))
+  check("single valid wrapped slot remains selectable",
+    single ~= nil and singleInfo.saveCounter == 0 and singleInfo.slotUsed == 0
+      and single.saveBlock1.money == 3333)
+  local empty, emptyInfo = SaveFileCodec.decode(wrapped:sub(1, 8) .. string.rep("\0", 114688))
+  check("two blank slots retain EMPTY status", empty == nil and emptyInfo.status == "EMPTY")
+  local invalid = corruptSlot(wrapped, 0):sub(1, 8 + 57344) .. string.rep("\0", 57344)
+  local rejected, rejectedInfo = SaveFileCodec.decode(invalid)
+  check("corrupt wrapped slot plus blank slot retains ERROR status",
+    rejected == nil and rejectedInfo.status == "ERROR")
+end
+
+--------------------------------------------------------------------------
 -- End-to-end demonstration with real io.open file I/O (not wired into
 -- the live game loop -- explicitly out of scope per the handoff brief --
 -- just proves the byte buffer this codec produces is a real writable/
