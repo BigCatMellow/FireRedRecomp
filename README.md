@@ -83,11 +83,30 @@ love .
 
 ## Verification and project status
 
-Run every checked-in test without a ROM:
+From the repository root, with Git, Lua 5.1 (`lua5.1`) and Bash installed,
+run the repository checks and every checked-in test without a ROM:
 
 ```
+lua5.1 scripts/check_repository.lua
 bash scripts/test_all.sh
 ```
+
+Public CI runs both commands on a clean checkout without a ROM. The repository
+checker enumerates Git-tracked files (stage new files to include them), compiles
+every tracked `*.lua` without executing its chunks, and checks local file targets
+in tracked `*.md` documents. Enumeration/read failures or invalid Lua fail the
+check; file counts are computed from the current tracked tree.
+
+The bounded documentation policy covers inline Markdown links/images and
+reference destinations outside fenced/indented code and inline code spans.
+Local relative destinations resolve from the document directory, with percent
+escapes decoded and query/fragment suffixes removed for file lookup. Each target
+must be a tracked file or a repository directory containing tracked files, and
+must exist in the checkout; an untracked local file cannot satisfy a link.
+External URL schemes/protocol-relative URLs, fragment-only or empty self-links,
+bare/code-formatted paths and raw HTML are excluded. The checker does not fetch
+links, validate heading anchors, lint prose/style, or claim full Markdown
+validation. ROM/replay opt-ins below are unchanged.
 
 With a legally obtained, verified FireRed US v1.0 ROM, run the ROM-backed
 checks as well:

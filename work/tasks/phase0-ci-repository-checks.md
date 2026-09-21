@@ -1,7 +1,7 @@
 # Task: enforce Lua syntax and local documentation targets in public CI
 
 - Task ID: `P0-03-CHECKS`
-- Status: `READY_FOR_WORKER`
+- Status: `LOCAL PASS — READY FOR PUBLIC CI AND INDEPENDENT REVIEW`
 - Type: `IMPLEMENTATION / REPRODUCIBILITY`
 - Parent capability gate: Phase 0 reproducibility, MAPSL `P0-03`.
 - Assigned role: `WORKER`; independent reviewer: separate `REVIEWER` helper.
@@ -71,3 +71,53 @@ PASS / NEEDS_FIX / BLOCK. Orchestrator then reconciles only the P0-03 gate and
 selects the remaining clean-clone proof or other evidenced Phase 0 leaf.
 Parallel save work is disjoint; allow its in-flight files to be committed
 before interpreting a shared-tree checker result as an exact-revision receipt.
+
+## Worker handoff — 2026-09-21
+
+Implemented only the five literal allowed paths. Dispatch/base recovery was
+`6181171a9ce13bd2a4075198f25b41a56645863c`; parent-only coordination commits
+advanced the shared checkout to `12c5d8ee3d5107f42118de5f7fc7acbd285c0755`
+before this package was staged. No runtime, existing test, test-runner, private
+workflow, dependency, trigger, permission, upload or ROM-policy changes belong
+to this package.
+
+The new checker uses NUL-delimited Git tracked-file enumeration, with an
+explicit success trailer because Lua 5.1 pipe close does not reliably convey
+the child's exit status. Enumeration/read failures cannot yield an empty PASS.
+Lua chunks are compiled, never invoked. Markdown file-target checks implement
+the documented bounded policy; existing-but-untracked targets fail. Focused
+fixtures are entirely in memory and make no shell/network/user-file requests.
+
+Evidence (toolchain `PATH=/home/home/.local/share/firered-toolchain/bin:$PATH`):
+
+- Pre-implementation baseline at `6181171`: 149-file no-ROM suite PASS.
+- `lua5.1 tests/repository_checks_test.lua`: **47 passed, 0 failed**. Coverage
+  includes syntax errors, non-execution, Git/read failures, missing/untracked
+  targets, relative directories, percent/query/fragment handling and exclusions.
+  Four added assertions first failed the draft and then passed: linked-image
+  destinations, missing linked images, reference titles and quoted HTML angles.
+- `lua5.1 scripts/check_repository.lua`, with the new files tracked:
+  **275 tracked Lua, 144 tracked Markdown, 166 local targets — PASS**. Counts
+  are observations, not hardcoded acceptance values.
+- An actual command invocation outside a Git repository returned exit 1 with
+  `Git tracked-file enumeration failed`; no empty success was accepted.
+- `env -u POKEPORT_ROM -u POKEPORT_RUNTIME_REPLAY bash scripts/test_all.sh`:
+  **150 test files PASS** in an isolated snapshot of the exact staged tree.
+  The snapshot was populated with `git checkout-index`, indexed in its own
+  temporary Git repository, and its tree hash matched the source index.
+- `git diff --cached --check` and the exact five-path staged audit pass.
+
+The first full-suite attempt in the shared working tree encountered five
+expected red-phase rollover assertions in the parallel Worker's unstaged save
+tests (88 passed, 5 failed at the codec file). Those files were neither altered
+nor staged by this Worker. The clean index snapshot excludes those unfinished
+changes and preserves the last committed save implementation; it is the local
+full-suite receipt for this package. This is not a claim that parallel rollover
+work passed or was incorporated here.
+
+Parent Orchestrator must publish this exact bounded commit and attach the normal
+push-triggered clean-checkout public run/job/SHA showing both the named
+repository check and no-ROM suite passing. That public receipt and independent
+exact-revision review are still pending; local PASS does not close P0-03,
+P0-04, Phase 0, or any private-ROM gate. No workflow was manually dispatched or
+rerun, and no push was performed by this Worker.
