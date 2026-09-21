@@ -1,7 +1,7 @@
 # Task: audit the current reproducibility checks
 
 - Task ID: `P0-03-DISCOVERY`
-- Status: `READY_FOR_WORKER`
+- Status: `READY_FOR_REVIEWER — RESEARCH COMPLETE`
 - Type: `RESEARCH / READ-ONLY CI AUDIT`
 - Parent capability gate: Phase 0 reproducibility in [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md); MAPSL `P0-03`.
 - Assigned role: `RESEARCHER`.
@@ -55,3 +55,26 @@ Researcher commits only the two text artifacts and returns exact source/run/
 command evidence. Reviewer returns PASS / NEEDS_FIX / BLOCK. Orchestrator
 reconciles and selects only an evidenced successor; Phase 0 stays IN PROGRESS
 until its complete exit criteria are met.
+
+## Research handoff — 2026-09-21
+
+Completed [the public CI proof report](../reports/phase0-ci-proof.md) against
+live main/source `ea0960efdb5e790b995067af587b2726d09097a4`. Current public run
+`35549967862` / job `106182752633` passed all 149 test files in explicit no-ROM
+mode from a fresh hosted checkout. Earliest available workflow run number 1,
+`32798335573` / job `97654137947` at `e511f08f52778b7eda8a9e9886245ca397e07f54`,
+has independently retrieved checkout/skip/117-file PASS logs. Empty old-run
+output from `gh run view --log` was resolved via the direct job-log API.
+
+Local read-only checks: all 273 tracked Lua files parse; candidate extraction
+from 135 tracked Markdown files finds 128 local destinations, zero missing
+targets and zero targets absent from the pinned tracked tree. This is not a
+full Markdown/external-link/heading audit. No full local suite rerun is claimed.
+
+Only evidenced missing P0-03 enforcement is all-tracked-Lua syntax plus an
+explicit executable local-documentation link/check policy. The report proposes
+one four-file successor, with no known baseline code/link defect, new dependency,
+permission change, or historical cleanup. No workflow/script/test/runtime was
+changed or dispatched. Independent discovery review must precede successor
+authorization; Orchestrator owns shared-checkout commit/publication and status
+reconciliation. Phase 0 is not closed by these receipts.
