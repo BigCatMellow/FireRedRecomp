@@ -1,7 +1,7 @@
 # Task: audit the current reproducibility checks
 
 - Task ID: `P0-03-DISCOVERY`
-- Status: `READY_FOR_REVIEWER — RESEARCH COMPLETE`
+- Status: `CLOSED — REVIEWED PASS`
 - Type: `RESEARCH / READ-ONLY CI AUDIT`
 - Parent capability gate: Phase 0 reproducibility in [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md); MAPSL `P0-03`.
 - Assigned role: `RESEARCHER`.
@@ -78,3 +78,12 @@ permission change, or historical cleanup. No workflow/script/test/runtime was
 changed or dispatched. Independent discovery review must precede successor
 authorization; Orchestrator owns shared-checkout commit/publication and status
 reconciliation. Phase 0 is not closed by these receipts.
+
+## Orchestrator reconciliation — 2026-09-21
+
+Exact report revision `b5b317b` independently
+[passed review](../reviews/2026-09-20-ci-proof-discovery-review.md).
+The first/current public-run facts are accepted, not the presence of the
+proposed safeguards. Dispatch only the bounded
+[repository-check package](phase0-ci-repository-checks.md); P0-03 and Phase 0
+remain open until their remaining evidence gates pass.

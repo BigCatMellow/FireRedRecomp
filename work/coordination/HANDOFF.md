@@ -1,28 +1,33 @@
 # FireRedRecomp Coordination Handoff
 
-- Status: `READY_FOR_WORKER`
-- Task ID: `P0-02-CONTRACT`, with disjoint CI discovery
+- Status: `READY_FOR_REVIEWER`
+- Task ID: `P0-02-CONTRACT`, with disjoint CI-check implementation
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
 - Active task: [`../tasks/phase0-save-version-contract.md`](../tasks/phase0-save-version-contract.md)
 
-## Current relay — 2026-09-20
+## Current relay — 2026-09-21
 
-Critical local task: `P0-02-CONTRACT` is `READY_FOR_WORKER`.
+Critical local task: `P0-02-CONTRACT` is `READY_FOR_REVIEWER` at `63592c3`.
 [Save discovery `b53c387`](../reports/phase0-save-version-contract.md) has
 [independent PASS](../reviews/2026-09-20-save-version-discovery-review.md):
 historical version/refusal matrix, 45/0 codec, 13/0 roundtrip and 24/24
-synthetic checks. Worker now documents existing version-2/refusal behavior and
-adds focused compatibility/full-slot fixtures in the task's seven paths.
+synthetic checks. Worker documented existing version-2/refusal behavior and
+added focused compatibility/full-slot fixtures in the task's seven paths.
+Worker evidence: codec 63/0, roundtrip 13/0 and 149-file no-ROM suite PASS;
+historical-fixture and discarded-prior-slot mutation witnesses also passed.
 Runtime, version-1 refusal and phase status remain unchanged. Independently
 review the exact result before selecting a separate rollover fix or other gate.
 The reproduced rollover/suffix defects and unproven file-write safety are
 separate future leaves, not permission to bundle repairs.
 
-`P0-03-DISCOVERY` is `READY_FOR_REVIEWER` at exact `b5b317b`.
-Its report recovers first-run 117-file and current 149-file public no-ROM
-receipts, plus 273 local Lua parses and 128 characterized local link targets.
-The independent Reviewer verifies these findings and the proposed syntax/docs
-check package; no CI implementation is authorized until that review passes.
+`P0-03-DISCOVERY` is closed after
+[independent PASS](../reviews/2026-09-20-ci-proof-discovery-review.md) at exact
+`b5b317b`: first-run/current public receipts and pinned syntax/docs
+characterization were reproduced. `P0-03-CHECKS` is now `READY_FOR_WORKER`
+for four implementation paths plus its task: tracked Lua parsing, bounded
+local-document target checks, focused fixtures, public workflow step and README
+policy. It is disjoint from save work and requires an exact published-revision
+public run plus independent review. First-run proof alone does not close P0-03.
 
 `P4-02` is blocked on the private runner. Source/test preparation
 `688433a3093dc15db32d62bd5a59fd7a84ac0cd0` is on GitHub branch
@@ -31,7 +36,7 @@ check package; no CI implementation is authorized until that review passes.
 covers the exhaustive 354-move/214-effect source inventory, 150-file no-ROM
 suite and mismatch checks. This is not private-ROM acceptance. Route
 configuration `24f39c4` has independent PASS; no probe/request was submitted.
-`firered-mint` was still offline at 2026-09-21 01:18 UTC. When online, resume
+`firered-mint` was still offline at 2026-09-21 09:44 UTC. When online, resume
 the single authorized `phase4-move-effect-inventory-route-20260920.probe`,
 then transport only the prepared test/report through the guarded route,
 preserving the newer task record on main. Final non-skipped SHA-ROM evidence
