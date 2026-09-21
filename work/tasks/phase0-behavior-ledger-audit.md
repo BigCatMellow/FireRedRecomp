@@ -2,6 +2,7 @@
 
 - Task ID: `P0-01-DISCOVERY`
 - Status: `READY_FOR_WORKER`
+- Execution: paused by user on 2026-09-21; partial report committed for recovery, not accepted.
 - Type: `RESEARCH / READ-ONLY EVIDENCE AUDIT`
 - Parent capability gate: Phase 0 behavior ledger, MAPSL `P0-01`.
 - Assigned role: `RESEARCHER`; independent reviewer: a separate helper.

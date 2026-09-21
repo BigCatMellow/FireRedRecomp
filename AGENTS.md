@@ -39,6 +39,11 @@ Do not let README prose or an older handoff override newer direct evidence.
 
 ## Current dispatch
 
+**User-requested pause, 2026-09-21:** stop autonomous execution to conserve
+weekly tokens. Resume only when the user asks. Read the checkpoint at the top
+of `work/coordination/HANDOFF.md` before dispatching anything; it supersedes
+the historical continuous-work instruction and older runner-offline notes.
+
 Phase 3 is complete. Pain Split is independently accepted at `a739ddc`.
 The full move-effect inventory remains active, but its dedicated private-runner
 probe is externally blocked while `firered-mint` is offline. Independent

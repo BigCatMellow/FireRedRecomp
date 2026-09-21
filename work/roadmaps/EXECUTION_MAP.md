@@ -33,6 +33,12 @@ Default to one critical-path Worker package at a time.
 
 ## Current critical path
 
+User paused execution on 2026-09-21 to conserve tokens. The stopping checkpoint
+in [HANDOFF](../coordination/HANDOFF.md) supersedes older active/offline labels
+below: rollover `aec377a` awaits review; CI `3478822` has public PASS but review
+is incomplete; the private runner is online but no inventory probe was sent.
+Do not dispatch until the user resumes.
+
 ```text
 Phase 1 importer/model [DONE]
         ↓

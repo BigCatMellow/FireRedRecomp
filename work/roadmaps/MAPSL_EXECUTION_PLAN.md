@@ -91,6 +91,10 @@ conflicting procedures.
 
 ## Phase 0 — reproducibility and release baseline
 
+Execution paused by user on 2026-09-21. Read the
+[stopping checkpoint](../coordination/HANDOFF.md) before any dispatch; the
+exact review queue and runner-online observation there supersede older labels.
+
 | ID | Assigned role | Dependency | Deliverable and acceptance | Evidence / next handoff |
 | --- | --- | --- | --- | --- |
 | `P0-01` Behavior-ledger audit | RESEARCHER | Existing ledger and implemented subsystems | Enumerate renderer, importer, save, battle, map/script rows with source location, runtime owner, and test/replay link; mark unknowns | Reviewer checks no subsystem claim lacks evidence; Orchestrator updates ledger task status |

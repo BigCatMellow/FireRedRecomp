@@ -1,11 +1,69 @@
 # FireRedRecomp Coordination Handoff
 
-- Status: `READY_FOR_WORKER`
+- Status: `PAUSED BY USER — review queue preserved`
 - Task ID: `P0-SAVE-ROLLOVER`, with disjoint CI-check implementation
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
 - Active task: [`../tasks/phase0-save-counter-rollover.md`](../tasks/phase0-save-counter-rollover.md)
 
 ## Current relay — 2026-09-21
+
+### STOPPING CHECKPOINT — 22:59 UTC
+
+The user explicitly requested a stopping point to conserve weekly tokens.
+**Do not continue autonomously. Resume only on a new user request.** This
+checkpoint supersedes older active-dispatch/runner-offline prose below and in
+derived maps. No phase has been newly marked complete.
+
+Completed and independently accepted: Pain Split `a739ddc`, save-version/refusal
+contract `63592c3`, and CI discovery `b5b317b`. Do not repeat their passed work.
+
+Resume queue, in order:
+
+1. Recover live GitHub and local status. CI implementation `3478822` is pushed;
+   public run `35624624210`, job `106415819660`, exact SHA passed both the named
+   repository check and no-ROM suite. Worker local evidence: 47/0 focused,
+   275 Lua/144 Markdown/166 local targets and 150-file full suite. Finish its
+   [independent review checkpoint](../reviews/2026-09-21-ci-repository-checks-review.md)
+   against `phase0-ci-repository-checks.md`; no PASS yet. Pending: actual job
+   logs/checkout proof, isolated focused/checker/full-suite execution and final
+   failure/policy review. Temporary snapshot: `/tmp/firered-ci-review.7x4RP2`;
+   recreate from exact Git revision if it no longer exists.
+2. Rollover correction `aec377a07e73fb5e5edab5163c0be51c7881bb65` is committed
+   and published. Exactly seven authorized files; Worker 93/0 codec, 16/0
+   roundtrip, 150-file suite and repository checks PASS. Old-code regressions
+   failed 5 codec and 2 roundtrip assertions. Recover its push-triggered public
+   CI receipt and assign an independent Reviewer; do not implement it again.
+3. Preserve/finish the explicitly incomplete
+   [ledger audit](../reports/phase0-behavior-ledger-audit.md), pinned `eac7d69`.
+   It is not ready for acceptance or ledger edits. PC-overflow wording is stale,
+   but a dedicated full-party capture-to-PC-to-restart acceptance receipt was
+   not located; supported-but-unhooked script callbacks need separate wording.
+   Complete all nine row mappings, then independent report review.
+4. `firered-mint` returned **online, busy=false** at 22:59 UTC. Recheck on resume.
+   Route configuration `24f39c4` already passed review. No probe/request exists
+   yet: execute only the previously authorized single
+   `work/local-runner/probes/phase4-move-effect-inventory-route-20260920.probe`.
+   Require probe PASS before transporting only test/report from reviewed
+   inventory `688433a` on published branch `work/move-effect-inventory`.
+   Preserve newer main task records; do not merge its stale task hunk. Required
+   private SHA-ROM execution and final independent review still gate inventory
+   acceptance and effect-32 discovery. Do not bypass the existing runner.
+
+After those gates, select the smallest unmet Phase0 clean-clone/ledger gate or
+the reviewed inventory's next battle family. Suffix preservation and filesystem
+write safety remain separate design tasks; Phase2 still needs user-owned
+trusted retail captures. No new migration/overwrite policy is authorized.
+
+Toolchain: prepend `/home/home/.local/share/firered-toolchain/bin` to PATH.
+Repository `/home/home/FireRedRecomp`; inventory worktree
+`/home/home/FireRedRecomp-inventory`; pinned source
+`/home/home/FireRedRecomp-reference/pokefirered` at `c75f3523`.
+Network git/gh commands require escalation in this environment. Git identity:
+`git -c user.name=Codex -c user.email=codex@users.noreply.github.com commit ...`.
+Coordinate the shared index; stage explicit task paths only. Root orchestrates,
+Worker implements, a different helper reviews. Never commit ROMs or assets.
+
+### Historical working relay (superseded where noted above)
 
 Critical local task: `P0-SAVE-ROLLOVER` is `READY_FOR_WORKER`.
 The explicit save-version/refusal contract is closed at `63592c3` after
