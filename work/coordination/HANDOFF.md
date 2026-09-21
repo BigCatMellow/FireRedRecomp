@@ -16,7 +16,10 @@ derived maps. No phase has been newly marked complete.
 
 The user later supplied an external assessment. Its reconciled, non-authorizing
 [triage](../reports/2026-09-21-external-project-review-triage.md) is recorded
-for resume planning; it does not replace the queue or independent evidence.
+for resume planning; its
+[MAPS_Lean-source addendum](../reports/2026-09-21-external-project-review-addendum-triage.md)
+corrects the nonbinding-compliance framing. Neither replaces the queue or
+independent evidence.
 
 Completed and independently accepted: Pain Split `a739ddc`, save-version/refusal
 contract `63592c3`, and CI discovery `b5b317b`. Do not repeat their passed work.

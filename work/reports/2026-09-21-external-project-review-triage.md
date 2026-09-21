@@ -9,7 +9,14 @@
 - Purpose: preserve actionable observations for later bounded work while the
   user-requested execution pause remains in effect. This report is not an
   independent acceptance, security audit, or replacement for source/test/ROM
-  evidence.
+ evidence.
+
+The subsequent
+[MAPS_Lean-source addendum triage](2026-09-21-external-project-review-addendum-triage.md)
+corrects the prior compliance framing: MAPS_Lean has no binding completed
+external-pilot standard for this repository. Read its local-human-decision
+guidance alongside this report before treating a process recommendation as a
+candidate task.
 
 ## Reconciliation of time-sensitive observations
 
