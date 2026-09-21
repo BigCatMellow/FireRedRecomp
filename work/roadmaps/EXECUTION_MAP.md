@@ -60,7 +60,7 @@ Phase 10 mod/release engineering
 
 | Phase / gate | Current state | Active or canonical task | Evidence required to unlock | Next |
 | --- | --- | --- | --- | --- |
-| Phase 0 — charter/reproducibility | `IN PROGRESS` | [`../tasks/phase0-save-version-contract-discovery.md`](../tasks/phase0-save-version-contract-discovery.md), independent local discovery while ROM runner is offline | save-version compatibility evidence and remaining Phase 0 gates | stronger release baseline |
+| Phase 0 — charter/reproducibility | `IN PROGRESS` | [`../tasks/phase0-save-version-contract.md`](../tasks/phase0-save-version-contract.md), with independent CI audit while ROM runner is offline | Discovery `b53c387` independently PASS; explicit compatibility contract/fixtures and remaining CI/clean-clone evidence | stronger release baseline |
 | Phase 1 — ROM importer/canonical model | `DONE` | none | already met | downstream systems consume canonical data |
 | Phase 2A-pre — Local Worker Bridge route for camera proof | `REVIEWED PASS` | [`../tasks/local-worker-bridge-phase2-camera-route.md`](../tasks/local-worker-bridge-phase2-camera-route.md) | PASS at `27867add`; trusted probe `34735602055` | Phase 2A Worker eligibility |
 | Phase 2A-fix — camera bridge corrections | `REVIEWED PASS` | bridge correction tasks | exact test-route and optional-staging fixes independently passed | camera publication enabled |

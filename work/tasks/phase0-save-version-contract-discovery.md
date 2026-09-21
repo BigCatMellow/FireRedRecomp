@@ -1,7 +1,7 @@
 # Task: recover the save-version compatibility contract
 
 - Task ID: `P0-02-DISCOVERY`
-- Status: `DISCOVERY COMPLETE — PENDING INDEPENDENT REVIEW`
+- Status: `CLOSED — REVIEWED PASS`
 - Type: `RESEARCH / READ-ONLY COMPATIBILITY DISCOVERY`
 - Parent capability gate: Phase 0 save-version contract in [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md), MAPSL `P0-02`.
 - Assigned role: `RESEARCHER`.

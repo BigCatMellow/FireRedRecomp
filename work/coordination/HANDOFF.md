@@ -1,90 +1,56 @@
 # FireRedRecomp Coordination Handoff
 
-- Status: `READY_FOR_REVIEWER`
-- Task ID: `P0-02-DISCOVERY`, with disjoint `P4-02` preparation
+- Status: `READY_FOR_WORKER`
+- Task ID: `P0-02-CONTRACT`, with disjoint CI discovery
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
-- Active task: [`../tasks/phase0-save-version-contract-discovery.md`](../tasks/phase0-save-version-contract-discovery.md)
+- Active task: [`../tasks/phase0-save-version-contract.md`](../tasks/phase0-save-version-contract.md)
 
 ## Current relay — 2026-09-20
 
-Latest: the private runner `firered-mint` went offline before probe publication
-(`busy=false`). Worker created no probe/request/commit. Route configuration PASS
-at `24f39c4` remains valid; resume the same authorized probe when online.
-Inventory source/test preparation continues in its isolated worktree, but its
-ROM acceptance remains blocked. Independently dispatch `P0-02-DISCOVERY`:
-recover save-schema/refusal/corruption evidence locally. Current codec writes
-version 2, contradicting stale no-version charter prose; do not change policy
-or saves in discovery. A separate Reviewer must accept its findings.
+Critical local task: `P0-02-CONTRACT` is `READY_FOR_WORKER`.
+[Save discovery `b53c387`](../reports/phase0-save-version-contract.md) has
+[independent PASS](../reviews/2026-09-20-save-version-discovery-review.md):
+historical version/refusal matrix, 45/0 codec, 13/0 roundtrip and 24/24
+synthetic checks. Worker now documents existing version-2/refusal behavior and
+adds focused compatibility/full-slot fixtures in the task's seven paths.
+Runtime, version-1 refusal and phase status remain unchanged. Independently
+review the exact result before selecting a separate rollover fix or other gate.
+The reproduced rollover/suffix defects and unproven file-write safety are
+separate future leaves, not permission to bundle repairs.
 
-Save discovery is now complete at `b53c387` and ready for independent review:
-version-1/version-2 matrix, 45/0 codec and 13/0 roundtrip checks, 24 synthetic
-checks, reproduced counter-rollover and suffix-preservation edge cases. It
-proposes only a contract/targeted-fixture successor now; behavior fixes remain
-separate bounded leaves. Reviewer owns this next critical-path action.
+`P0-03-DISCOVERY` independently audits public CI against the existing Phase 0
+requirements in its own task/report paths. It may read run evidence but cannot
+change or dispatch workflows. Its source/run findings require independent
+review before a CI implementation task.
+
+`P4-02` is blocked on the private runner. Source/test preparation
+`688433a3093dc15db32d62bd5a59fd7a84ac0cd0` is on GitHub branch
+`work/move-effect-inventory` and in `/home/home/FireRedRecomp-inventory`.
+[Independent preflight PASS](../reviews/2026-09-20-move-effect-inventory-preflight-review.md)
+covers the exhaustive 354-move/214-effect source inventory, 150-file no-ROM
+suite and mismatch checks. This is not private-ROM acceptance. Route
+configuration `24f39c4` has independent PASS; no probe/request was submitted.
+`firered-mint` was still offline at 2026-09-21 01:09 UTC. When online, resume
+the single authorized `phase4-move-effect-inventory-route-20260920.probe`,
+then transport only the prepared test/report through the guarded route,
+preserving the newer task record on main. Final non-skipped SHA-ROM evidence
+and independent review must precede inventory closure or effect-32 discovery.
+
+Pain Split is closed at `a739ddc` after independent implementation PASS and
+guarded run `35493728001` (both 149-file suites and deterministic replay).
+Its exclusions and broader Phase 4 gate remain intact. Historical Pain Split
+holds below are superseded by this closure.
 
 User-owned needs for later: restore the private runner if it remains offline;
-supply the already-requested trusted Phase 2 retail captures/provenance. Do not
-interrupt independent authorized work or ask the unavailable user repeatedly.
-Keep GitHub synchronized, with incomplete work explicitly marked as such.
+supply the trusted Phase 2 retail captures/provenance. The user requested
+continuous independent work while unavailable, without repeated questions,
+and explicit GitHub synchronization. Keep main and task handoffs current;
+preserve incomplete preparation on its named branch without claiming acceptance.
 
-Inventory preparation is now committed locally at
-`688433a3093dc15db32d62bd5a59fd7a84ac0cd0` on `work/move-effect-inventory`
-in `/home/home/FireRedRecomp-inventory`. Exactly three allowed files, 150-file
-no-ROM suite and static/source-metadata checks pass. It classifies 354 moves
-and 214 effects, proposes effect 32 discovery, and records all ROM limits.
-Independent source/test preflight review has now passed; the exact preparation
-is backed up on GitHub branch `work/move-effect-inventory`. Overall P4-02 remains
-blocked on its final ROM gate. Runner was checked again at 20:03 UTC and remains
-offline. A later guarded request should transport only the prepared test/report,
-preserving the newer task/coordination record maintained on main.
-
-`P0-03-DISCOVERY` may independently audit current public CI against existing
-Phase 0 requirements in its own task/report paths. It may read run evidence
-but cannot change or dispatch workflows. Save discovery and inventory review
-continue with no writable overlap; each needs independent review before any
-successor or capability claim.
-
-Pain Split is closed at `a739ddc88cb44a33d5e6025e619cf1df3fe6a1a8` after
-[independent implementation PASS](../reviews/2026-09-20-pain-split-implementation-review.md).
-Guarded run `35493728001` passed both 149-file suites and the configured
-engine/controller replay. The Reviewer independently reproduced the local suite
-and 12,168 living-HP cases. No broader effect or visual-parity claim follows.
-
-The next bounded package is `P4-02`: complete move/effect inventory with
-actual admission separate from represented mechanics. Its dedicated runner
-route is the critical prerequisite. Both contracts have
-[readiness PASS](../reviews/2026-09-20-move-effect-inventory-readiness-review.md).
-Route Worker may change only the new literal workflow cases and specified docs;
-exact configuration review must precede a separate probe. Source/test preparation
-may proceed in an isolated worktree under the three-path inventory contract.
-These outputs do not overlap. Do not publish the inventory request until route
-review and probe both pass; its non-skipped full SHA-ROM execution is mandatory.
-
-Configuration is now ready for independent review at
-`24f39c424347425be9836e16d529c7706641aa93` (base `82af910`). Worker changed
-only the three route-task paths, added five cases, proved old workflow text
-unchanged after removing those additions, and passed 149-file before/after
-no-ROM suites plus syntax/selector/allowlist checks. No push or probe occurred.
-Reviewer owns the next critical-path action; inventory preparation continues
-independently in its isolated worktree.
-
-That exact configuration now has
-[independent PASS](../reviews/2026-09-20-move-effect-inventory-route-review.md).
-Worker may publish the single separate
-`phase4-move-effect-inventory-route-20260920.probe`; no inventory request is
-authorized until its trusted route/Lua/SHA steps pass and patch/tests/publication
-are confirmed skipped. Main is synchronized through `0353572`, whose public
-Lua CI also passed (`35511166788`). Keep GitHub and coordination current as
-the user explicitly requested.
-
-Local checkout: `/home/home/FireRedRecomp`. Isolated Lua/LÖVE tools are in
-`/home/home/.local/share/firered-toolchain/bin`; source reference is pinned at
-`c75f3523` in `/home/home/FireRedRecomp-reference/pokefirered`. The user selected
-the existing `firered-mint` private runner, now offline as recorded above, and asked
-for continuous autonomous work while unavailable. Record user-owned needs here
-and in the register; continue independent authorized tasks without repeated
-questions. Current user-owned needs are recorded at the top of this relay.
-Historical Pain Split retry/review holds below have been superseded by closure.
+Local checkout: `/home/home/FireRedRecomp`. Isolated Lua/LÖVE tools:
+`/home/home/.local/share/firered-toolchain/bin`. Pinned source `c75f3523`:
+`/home/home/FireRedRecomp-reference/pokefirered`. Completed reviews and the
+task register preserve exact revisions; no need to repeat passed evidence.
 
 ## Published evidence
 

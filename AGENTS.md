@@ -42,7 +42,7 @@ Do not let README prose or an older handoff override newer direct evidence.
 Phase 3 is complete. Pain Split is independently accepted at `a739ddc`.
 The full move-effect inventory remains active, but its dedicated private-runner
 probe is externally blocked while `firered-mint` is offline. Independent
-save-version contract discovery proceeds locally. `STATE.json`, `HANDOFF.md`,
+save-version contract/fixture work and CI discovery proceed locally. `STATE.json`, `HANDOFF.md`,
 and `TASK_REGISTER.md` own the current relay and supersede historical task prose.
 
 Current intended sequence:
