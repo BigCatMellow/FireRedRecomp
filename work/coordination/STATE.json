@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_utc": "2026-09-21T16:12:00Z",
+  "updated_utc": "2026-09-21T16:17:00Z",
   "role": "ORCHESTRATOR",
   "status": "READY_FOR_WORKER",
   "task_id": "P0-SAVE-ROLLOVER",
@@ -34,7 +34,9 @@
   "parallel_checks": {
     "task_id": "P0-03-CHECKS",
     "task": "work/tasks/phase0-ci-repository-checks.md",
-    "status": "READY_FOR_WORKER",
+    "status": "READY_FOR_REVIEWER",
+    "implementation_revision": "347882212625791c6be1d201f06c92973edfb756",
+    "public_evidence": "Exact implementation pushed; required normal public check/suite receipt pending",
     "discovery_revision": "b5b317b — independently PASS",
     "boundary": "Four implementation paths plus own task, disjoint from save contract; read-only Lua syntax/local-doc checks with exact public CI and independent-review gates"
   },

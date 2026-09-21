@@ -22,11 +22,11 @@ Suffix preservation, live-write safety and whole Phase 0 remain open.
 `P0-03-DISCOVERY` is closed after
 [independent PASS](../reviews/2026-09-20-ci-proof-discovery-review.md) at exact
 `b5b317b`: first-run/current public receipts and pinned syntax/docs
-characterization were reproduced. `P0-03-CHECKS` is now `READY_FOR_WORKER`
-for four implementation paths plus its task: tracked Lua parsing, bounded
-local-document target checks, focused fixtures, public workflow step and README
-policy. It is disjoint from save work and requires an exact published-revision
-public run plus independent review. First-run proof alone does not close P0-03.
+characterization were reproduced. `P0-03-CHECKS` is `READY_FOR_REVIEWER`
+at published `3478822`: 47/0 focused, 275 Lua/144 Markdown/166 local targets,
+and 150-file full suite passed in an exact committed-tree snapshot, excluding
+parallel unfinished save edits. Its required exact public run and independent
+implementation review are pending. First-run proof alone does not close P0-03.
 
 `P0-01-DISCOVERY` now audits the existing behavior-ledger rows against pinned
 `eac7d69` source/runtime/test/review evidence. Only its own task/report may
