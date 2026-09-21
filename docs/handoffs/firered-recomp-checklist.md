@@ -86,7 +86,7 @@ ambiguity.
 - [x] Record supported ROM SHA-1 and revision policy (`PARITY_CONTRACT.md`, `README.md`)
 - [x] Define what "parity" means (`PARITY_CONTRACT.md`)
 - [x] Establish a behavior ledger linking runtime subsystems to source/data/checks (`docs/behavior-ledger.md`)
-- [ ] Define save migration/versioning — version 2 and explicit version-1 refusal already exist. [Compatibility contract](../save-format.md) and targeted synthetic fixtures document canonical output, historical shapes and limits; exact package awaits independent review before gate closure.
+- [x] Define save migration/versioning — [compatibility contract](../save-format.md) and targeted synthetic fixtures independently passed at `63592c3` ([review](../../work/reviews/2026-09-21-save-version-contract-review.md)): version 2, explicit version-1 refusal, canonical output, historical shapes and limits. This closes the explicit contract only; rollover/suffix and live-file safety remain separate gaps.
 - [x] Set contribution rules: no ROMs, generated caches excluded, no-ROM `.gitignore`
 - [x] CI pipeline (`.github/workflows/test.yml` runs the no-ROM Lua suite)
 

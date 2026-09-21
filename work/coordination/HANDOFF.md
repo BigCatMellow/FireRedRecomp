@@ -1,24 +1,23 @@
 # FireRedRecomp Coordination Handoff
 
-- Status: `READY_FOR_REVIEWER`
-- Task ID: `P0-02-CONTRACT`, with disjoint CI-check implementation
+- Status: `READY_FOR_WORKER`
+- Task ID: `P0-SAVE-ROLLOVER`, with disjoint CI-check implementation
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
-- Active task: [`../tasks/phase0-save-version-contract.md`](../tasks/phase0-save-version-contract.md)
+- Active task: [`../tasks/phase0-save-counter-rollover.md`](../tasks/phase0-save-counter-rollover.md)
 
 ## Current relay — 2026-09-21
 
-Critical local task: `P0-02-CONTRACT` is `READY_FOR_REVIEWER` at `63592c3`.
-[Save discovery `b53c387`](../reports/phase0-save-version-contract.md) has
-[independent PASS](../reviews/2026-09-20-save-version-discovery-review.md):
-historical version/refusal matrix, 45/0 codec, 13/0 roundtrip and 24/24
-synthetic checks. Worker documented existing version-2/refusal behavior and
-added focused compatibility/full-slot fixtures in the task's seven paths.
-Worker evidence: codec 63/0, roundtrip 13/0 and 149-file no-ROM suite PASS;
-historical-fixture and discarded-prior-slot mutation witnesses also passed.
-Runtime, version-1 refusal and phase status remain unchanged. Independently
-review the exact result before selecting a separate rollover fix or other gate.
-The reproduced rollover/suffix defects and unproven file-write safety are
-separate future leaves, not permission to bundle repairs.
+Critical local task: `P0-SAVE-ROLLOVER` is `READY_FOR_WORKER`.
+The explicit save-version/refusal contract is closed at `63592c3` after
+[independent PASS](../reviews/2026-09-21-save-version-contract-review.md):
+codec 63/0, roundtrip 13/0, 149-file suite, historical-fixture validity and a
+targeted discarded-prior-slot mutation were independently reproduced.
+Only the counter defect is now dispatched: modulo-u32 increment and the
+pinned retail maximum/zero selection exception, with footer/content continuity,
+ordinary/tie/fallback controls and an old-code regression witness. Seven literal
+code/test/document paths; no format, refusal, suffix or filesystem policy change.
+Independent exact-revision review is required before closing this defect.
+Suffix preservation, live-write safety and whole Phase 0 remain open.
 
 `P0-03-DISCOVERY` is closed after
 [independent PASS](../reviews/2026-09-20-ci-proof-discovery-review.md) at exact

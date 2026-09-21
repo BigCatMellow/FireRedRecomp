@@ -1,18 +1,17 @@
 {
   "schema_version": 1,
-  "updated_utc": "2026-09-21T09:46:16Z",
+  "updated_utc": "2026-09-21T09:53:44Z",
   "role": "ORCHESTRATOR",
-  "status": "READY_FOR_REVIEWER",
-  "task_id": "P0-02-CONTRACT",
+  "status": "READY_FOR_WORKER",
+  "task_id": "P0-SAVE-ROLLOVER",
   "current_phase": "Phase 0 — reproducibility; Phase 4 source preparation continues while its private runner is offline",
   "canonical_status_owner": "work/roadmaps/CAPABILITY_CHECKLIST.md",
-  "active_task": "work/tasks/phase0-save-version-contract.md",
-  "objective": "Document existing version-2/refusal behavior and add targeted synthetic compatibility, corruption, and full previous-slot fixtures without changing runtime behavior.",
-  "next_role": "REVIEWER",
-  "implementation_revision": "63592c31051d6f9034355ed978d4e68e5354c2fd",
-  "acceptance": "Exact seven-path task; meaningful version-1/current/truncation/PC-corruption/full-slot fixtures; focused codec/roundtrip and full no-ROM suites; independent exact revision review.",
-  "boundaries": "Documentation and specified tests only. No codec/runtime, versions, refusal/migration policy, user-save access, known-defect repair, workflow, or phase change.",
-  "dependencies": "Save discovery b53c387 independently PASS; exact implementation63592c3 awaits review. Worker63/0 codec,13/0 roundtrip,149-file no-ROM PASS. User requested continuous independent work and GitHub synchronization while unavailable.",
+  "active_task": "work/tasks/phase0-save-counter-rollover.md",
+  "objective": "Correct u32 generation increment and the literal maximum-u32/zero newest-save selection without changing the save format or unrelated policy.",
+  "next_role": "WORKER",
+  "acceptance": "Exact seven-path task; literal source ordering, serialized footer/content continuity, old-code regression failure, focused/full no-ROM suites and independent exact-revision review.",
+  "boundaries": "Only counter arithmetic/selection and related tests/docs. No schema, checksum, suffix, migration/refusal, filesystem/UI/callers, user saves, workflow or phase changes.",
+  "dependencies": "Save discovery b53c387 and explicit contract 63592c3 independently PASS. Pinned source c75f3523 establishes the exact counter correction. User requested continuous independent work and GitHub synchronization while unavailable.",
   "runner_blocker": {
     "task_id": "P4-02-ROUTE",
     "status": "BLOCKED",
@@ -51,7 +50,7 @@
     "phase4_pain_split_status": "CLOSED — REVIEWED PASS at a739ddc; guarded run 35493728001; exact review work/reviews/2026-09-20-pain-split-implementation-review.md"
   },
   "phase2_external_blocker": "Trusted, user-owned retail-reference captures with provenance/timing/crop/filter details for Oak and Pallet anchors have not been supplied.",
-  "next_after_success": "Independently review save contract/fixtures, reconcile only proven compatibility evidence, then scope a separate source-locked rollover repair or reviewed CI gap. When runner returns, resume inventory probe and guarded evidence.",
+  "next_after_success": "Independently review and close only the rollover defect; finish disjoint public CI checks, then select clean-clone proof or a separately designed save-safety leaf. When runner returns, resume inventory probe and guarded evidence.",
   "legal_content_boundary": "Never commit ROMs, BIOS dumps, generated caches, ROM-derived reference screenshots, extracted game assets, or other prohibited content.",
   "phase_completion_rule": "Phase 2 remains IN PROGRESS until the Oak/reference screenshot discrepancy gate is evidenced and independently reviewed."
 }

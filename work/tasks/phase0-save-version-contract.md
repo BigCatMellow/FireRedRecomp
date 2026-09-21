@@ -1,7 +1,7 @@
 # Task: document and verify the existing save-version contract
 
 - Task ID: `P0-02-CONTRACT`
-- Status: `IMPLEMENTED — PENDING INDEPENDENT REVIEW`
+- Status: `CLOSED — REVIEWED PASS`
 - Type: `DOCUMENTATION / COMPATIBILITY FIXTURES`
 - Parent capability gate: Phase 0 save-version contract, MAPSL `P0-02`.
 - Assigned role: `WORKER`; independent reviewer: separate `REVIEWER` helper.
@@ -122,3 +122,13 @@ directory for final checks; generated compatibility/corruption buffers remain
 in memory. No ROM/replay or filesystem failure-injection claim is made.
 Independent exact-revision review remains required before any gate closure;
 Orchestrator owns coordination and publication.
+
+## Orchestrator reconciliation — 2026-09-21
+
+Exact implementation `63592c3` independently
+[passed review](../reviews/2026-09-21-save-version-contract-review.md):
+63/0 codec, 13/0 roundtrip and 149-file no-ROM suite, plus historical-fixture
+and targeted prior-slot mutation witnesses. Close only this package and the
+explicit save-version/refusal contract gate. The separate
+[counter-rollover correction](phase0-save-counter-rollover.md) is the next
+save leaf; suffix preservation, live-file safety and Phase 0 remain open.
