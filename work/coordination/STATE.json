@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_utc": "2026-09-21T09:53:44Z",
+  "updated_utc": "2026-09-21T16:12:00Z",
   "role": "ORCHESTRATOR",
   "status": "READY_FOR_WORKER",
   "task_id": "P0-SAVE-ROLLOVER",
@@ -17,7 +17,7 @@
     "status": "BLOCKED",
     "configuration_revision": "24f39c424347425be9836e16d529c7706641aa93",
     "configuration_review": "PASS",
-    "observed": "firered-mint offline, busy=false; no probe/request submitted",
+    "observed": "firered-mint offline, busy=false at 2026-09-21 16:12 UTC; no probe/request submitted",
     "unblock": "Runner online again; resume the same single authorized inventory probe and inspect guarded SHA evidence"
   },
   "parallel_preparation": {
@@ -37,6 +37,13 @@
     "status": "READY_FOR_WORKER",
     "discovery_revision": "b5b317b — independently PASS",
     "boundary": "Four implementation paths plus own task, disjoint from save contract; read-only Lua syntax/local-doc checks with exact public CI and independent-review gates"
+  },
+  "parallel_research": {
+    "task_id": "P0-01-DISCOVERY",
+    "task": "work/tasks/phase0-behavior-ledger-audit.md",
+    "status": "READY_FOR_WORKER",
+    "source_revision": "eac7d69",
+    "boundary": "Read-only audit of existing ledger rows in own task/report; no ledger/runtime changes; independent implementation reviews take priority"
   },
   "reconciliation": {
     "camera_task_status": "CLOSED — REVIEWED PASS at 4c5456f3; guarded run 34753297372",

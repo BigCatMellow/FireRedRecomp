@@ -28,6 +28,11 @@ local-document target checks, focused fixtures, public workflow step and README
 policy. It is disjoint from save work and requires an exact published-revision
 public run plus independent review. First-run proof alone does not close P0-03.
 
+`P0-01-DISCOVERY` now audits the existing behavior-ledger rows against pinned
+`eac7d69` source/runtime/test/review evidence. Only its own task/report may
+change; no ledger edit or new completeness claim is authorized. It can proceed
+independently of both implementations; their reviews take priority when ready.
+
 `P4-02` is blocked on the private runner. Source/test preparation
 `688433a3093dc15db32d62bd5a59fd7a84ac0cd0` is on GitHub branch
 `work/move-effect-inventory` and in `/home/home/FireRedRecomp-inventory`.
@@ -35,7 +40,7 @@ public run plus independent review. First-run proof alone does not close P0-03.
 covers the exhaustive 354-move/214-effect source inventory, 150-file no-ROM
 suite and mismatch checks. This is not private-ROM acceptance. Route
 configuration `24f39c4` has independent PASS; no probe/request was submitted.
-`firered-mint` was still offline at 2026-09-21 09:44 UTC. When online, resume
+`firered-mint` was still offline at 2026-09-21 16:12 UTC. When online, resume
 the single authorized `phase4-move-effect-inventory-route-20260920.probe`,
 then transport only the prepared test/report through the guarded route,
 preserving the newer task record on main. Final non-skipped SHA-ROM evidence
