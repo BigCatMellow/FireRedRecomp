@@ -14,6 +14,10 @@ The user explicitly requested a stopping point to conserve weekly tokens.
 checkpoint supersedes older active-dispatch/runner-offline prose below and in
 derived maps. No phase has been newly marked complete.
 
+The user later supplied an external assessment. Its reconciled, non-authorizing
+[triage](../reports/2026-09-21-external-project-review-triage.md) is recorded
+for resume planning; it does not replace the queue or independent evidence.
+
 Completed and independently accepted: Pain Split `a739ddc`, save-version/refusal
 contract `63592c3`, and CI discovery `b5b317b`. Do not repeat their passed work.
 
