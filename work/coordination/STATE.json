@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_utc": "2026-09-21T01:13:06Z",
+  "updated_utc": "2026-09-21T01:19:12Z",
   "role": "ORCHESTRATOR",
   "status": "READY_FOR_WORKER",
   "task_id": "P0-02-CONTRACT",
@@ -34,8 +34,9 @@
   "parallel_research": {
     "task_id": "P0-03-DISCOVERY",
     "task": "work/tasks/phase0-ci-proof-discovery.md",
-    "status": "READY_FOR_WORKER",
-    "boundary": "Read-only public CI/source audit; only own task/report paths, disjoint from save discovery and inventory review; no workflow changes or dispatch"
+    "status": "READY_FOR_REVIEWER",
+    "revision": "b5b317b",
+    "boundary": "Independent review of report-only CI discovery; own review path only, disjoint from save contract Worker; no workflow changes or dispatch"
   },
   "reconciliation": {
     "camera_task_status": "CLOSED — REVIEWED PASS at 4c5456f3; guarded run 34753297372",

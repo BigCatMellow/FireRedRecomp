@@ -18,10 +18,11 @@ review the exact result before selecting a separate rollover fix or other gate.
 The reproduced rollover/suffix defects and unproven file-write safety are
 separate future leaves, not permission to bundle repairs.
 
-`P0-03-DISCOVERY` independently audits public CI against the existing Phase 0
-requirements in its own task/report paths. It may read run evidence but cannot
-change or dispatch workflows. Its source/run findings require independent
-review before a CI implementation task.
+`P0-03-DISCOVERY` is `READY_FOR_REVIEWER` at exact `b5b317b`.
+Its report recovers first-run 117-file and current 149-file public no-ROM
+receipts, plus 273 local Lua parses and 128 characterized local link targets.
+The independent Reviewer verifies these findings and the proposed syntax/docs
+check package; no CI implementation is authorized until that review passes.
 
 `P4-02` is blocked on the private runner. Source/test preparation
 `688433a3093dc15db32d62bd5a59fd7a84ac0cd0` is on GitHub branch
@@ -30,7 +31,7 @@ review before a CI implementation task.
 covers the exhaustive 354-move/214-effect source inventory, 150-file no-ROM
 suite and mismatch checks. This is not private-ROM acceptance. Route
 configuration `24f39c4` has independent PASS; no probe/request was submitted.
-`firered-mint` was still offline at 2026-09-21 01:09 UTC. When online, resume
+`firered-mint` was still offline at 2026-09-21 01:18 UTC. When online, resume
 the single authorized `phase4-move-effect-inventory-route-20260920.probe`,
 then transport only the prepared test/report through the guarded route,
 preserving the newer task record on main. Final non-skipped SHA-ROM evidence
