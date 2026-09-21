@@ -158,6 +158,10 @@ local state1 = freshState()
 local bytes1, counter1 = SaveFileCodec.encode(state1, 0, nil)
 check("first encode produces the expected total buffer size",
   #bytes1 == SaveFileCodec.HEADER_SIZE + 2 * SaveFileCodec.SLOT_BYTES, #bytes1)
+check("canonical schema-2 header is FRSV, version 2, and three zero reserved bytes",
+  bytes1:sub(1, 8) == "FRSV" .. string.char(2, 0, 0, 0))
+check("canonical schema-2 file is exactly 114696 bytes (two fourteen-sector slots)",
+  #bytes1 == 114696, #bytes1)
 check("first encode's counter is 1", counter1 == 1, counter1)
 
 local decoded1, info1 = SaveFileCodec.decode(bytes1)
@@ -238,6 +242,29 @@ end
 --------------------------------------------------------------------------
 
 do
+  -- Historical schema 1 (a01040e): two five-sector slots, each containing
+  -- SaveBlock2 and four SaveBlock1 chunks. Construct this independently of
+  -- the current encoder/constants: all-zero payloads have checksum zero,
+  -- followed by the real id/checksum/signature/counter footer at 0xFF4.
+  -- This is a valid old shape, not a version-byte edit of a schema-2 file.
+  local function legacySlot(counter)
+    local sectors = {}
+    for id = 0, 4 do
+      sectors[#sectors + 1] = string.rep("\0", 4084)
+        .. u16le(id) .. u16le(0) .. u32le(0x08012025) .. u32le(counter)
+    end
+    return table.concat(sectors)
+  end
+  local legacy = "FRSV" .. string.char(1, 0, 0, 0) .. legacySlot(2) .. legacySlot(1)
+  check("independent schema-1 fixture has two five-sector slots (40968 bytes)",
+    #legacy == 40968, #legacy)
+  local result, err = SaveFileCodec.decode(legacy)
+  check("genuine schema-1 shape is refused by version, without inventing PC data",
+    result == nil and type(err) == "string"
+      and err:find("unsupported save schema version 1 (expected 2)", 1, true) ~= nil, err)
+end
+
+do
   local corruptedVersion = bytes1:sub(1, 4) .. string.char(99) .. bytes1:sub(6)
   local result, err = SaveFileCodec.decode(corruptedVersion)
   check("unsupported version is refused", result == nil)
@@ -248,6 +275,18 @@ do
   local badMagic = "XXXX" .. bytes1:sub(5)
   local result, err = SaveFileCodec.decode(badMagic)
   check("bad magic is refused", result == nil, err)
+end
+
+do
+  local result, err = SaveFileCodec.decode(bytes2:sub(9))
+  check("unwrapped sector bytes are refused by the project magic guard",
+    result == nil and type(err) == "string" and err:find("bad magic", 1, true) ~= nil, err)
+  for _, size in ipairs({4, 7, 8, 114695}) do
+    local truncated, reason = SaveFileCodec.decode(bytes2:sub(1, size))
+    local expected = size < 8 and "buffer too short for a save-file header" or "buffer too short for a save file"
+    check("truncated current save is refused at " .. size .. " bytes",
+      truncated == nil and reason == expected, reason)
+  end
 end
 
 --------------------------------------------------------------------------
@@ -276,6 +315,23 @@ do
       decoded3.saveBlock1.money == 3000, decoded3.saveBlock1.money)
     check("fallback party is empty (original fresh save had no party member)",
       decoded3.saveBlock1.playerPartyCount == 0)
+  end
+end
+
+-- Every PC chunk must participate in slot validation, including the shorter
+-- final chunk. Corrupt a payload byte, leaving its footer untouched; decoding
+-- must select the entire earlier generation, including its empty PC storage.
+do
+  local newerSlotStart = 8 + (counter2 % 2) * 57344
+  for sectorId = 5, 13 do
+    local flipAt = newerSlotStart + sectorId * 4096 + 10
+    local flippedByte = (string.byte(bytes2, flipAt + 1) + 1) % 256
+    local corrupted = bytes2:sub(1, flipAt) .. string.char(flippedByte) .. bytes2:sub(flipAt + 2)
+    local decoded, info = SaveFileCodec.decode(corrupted)
+    check("newest PC sector " .. sectorId .. " corruption selects complete older save",
+      decoded ~= nil and info.status == "OK" and info.saveCounter == 1 and info.slotUsed == 1
+        and decoded.saveBlock1.money == 3000 and decoded.pokemonStorage.currentBox == 0
+        and decoded.pokemonStorage.boxes[5][1] == nil, info and info.status)
   end
 end
 

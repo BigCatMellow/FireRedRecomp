@@ -1,7 +1,7 @@
 # Task: document and verify the existing save-version contract
 
 - Task ID: `P0-02-CONTRACT`
-- Status: `READY_FOR_WORKER`
+- Status: `IMPLEMENTED — PENDING INDEPENDENT REVIEW`
 - Type: `DOCUMENTATION / COMPATIBILITY FIXTURES`
 - Parent capability gate: Phase 0 save-version contract, MAPSL `P0-02`.
 - Assigned role: `WORKER`; independent reviewer: separate `REVIEWER` helper.
@@ -77,3 +77,48 @@ Discovery `b53c387` independently passed
 may execute this exact documentation/fixture package. The existing refusal
 policy requires no new human migration decision. Counter-rollover, suffix and
 live-file safety changes remain separate future tasks.
+
+## Worker result — 2026-09-21
+
+Implemented only the seven listed documentation/test paths, based on dispatch
+`2686e44`. The intervening CI research/relay commits through `3a6443f` do not
+change the codec, runtime, layout, storage, or focused-test baseline. Their
+disjoint work was preserved.
+
+[`docs/save-format.md`](../../docs/save-format.md) now records canonical
+version-2 output, both historical shapes, existing refusal policy, decoder
+tolerance and separate corruption/filesystem limits. The charter's save section,
+relevant checklist save prose and ledger row link that contract without changing
+phase/checklist completion states. Counter rollover, suffix preservation,
+filesystem failure safety and migration remain separate work.
+
+The codec test independently builds two valid five-sector version-1 slots in
+memory, with literal historical footer/layout definitions and zero payload
+checksums. It verifies explicit version refusal, literal current header/length,
+unwrapped refusal, truncation at 4/7/8/114695 bytes, and complete older-generation
+fallback after payload corruption in each PC sector 5–13. The roundtrip test
+compares all 57,344 bytes of the preserved previous slot, replacing the former
+five-header-byte comparison; existing newer-generation/location checks remain.
+
+Evidence, using the isolated Lua 5.1 toolchain with `POKEPORT_ROM` unset:
+
+- Before edits: codec **45 passed, 0 failed**; roundtrip **13 passed, 0 failed**;
+  full no-ROM suite **149 files PASS**.
+- After edits: `lua5.1 tests/save_file_codec_test.lua` **63/0**;
+  `lua5.1 tests/save_load_roundtrip_test.lua` **13/0**;
+  `env -u POKEPORT_ROM bash scripts/test_all.sh` **149 files PASS**.
+- One-off historical witness: the exact new legacy-fixture constructor,
+  extracted from the test, is accepted by codec `a01040e` as generation 2,
+  slot 0, with no PokemonStorage. This confirms a valid historical shape;
+  normal tests have no git-history, ROM or external-fixture dependency.
+- One-off in-memory mutation: an encoder wrapper that discards prior bytes
+  triggers exactly the strengthened full-slot assertion, while the other
+  twelve roundtrip checks remain satisfied. No runtime file was edited.
+- `git diff --check` passed; only the seven allowed text/Lua paths are included
+  in the implementation commit. No binary/user-save/ROM content was added.
+
+The existing synthetic scratch-file fixture ran under a fresh temporary
+directory for final checks; generated compatibility/corruption buffers remain
+in memory. No ROM/replay or filesystem failure-injection claim is made.
+Independent exact-revision review remains required before any gate closure;
+Orchestrator owns coordination and publication.

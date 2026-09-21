@@ -30,11 +30,14 @@ update a row in that ledger.
 
 ## Save format versioning
 
-`SaveFileCodec` already writes and reads the current bounded session state;
-its incomplete-sector limitations are documented in the Phase 3 checklist.
-It does not yet carry an explicit project schema version. Before the first
-save-layout change, add a version field and an explicit migration function;
-never use best-effort field patching.
+`SaveFileCodec` writes project schema version 2 and explicitly refuses
+version 1, unknown versions, and unwrapped saves. No automatic migration is
+supported. The [save-format contract](docs/save-format.md) defines canonical
+output, current decoder tolerance, historical shapes, and remaining safety
+limits; codec slot fallback does not prove atomic filesystem writes.
+Future save-layout changes must specify supported migrations or explicit
+refusals, with deterministic evidence for any supported migration. Never use
+best-effort field patching or invent missing legacy data.
 
 ## Contribution rules
 

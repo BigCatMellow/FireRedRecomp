@@ -61,8 +61,14 @@ check("loaded money/PC items survive the round trip",
 loaded:setLocation(4 * 256 + 1, 6, 6, "north")
 local bytes2, counter2 = Codec.encode(loaded.state, counter1, bytes1)
 check("second save increments the generation", counter2 == 2)
-check("second save keeps the first slot's bytes untouched (alternating slots)",
-  bytes2:sub(1, 5) == bytes1:sub(1, 5)) -- shared header at least stays byte-identical
+-- The first generation occupies slot 1, after the eight-byte header and
+-- slot 0's fourteen 4096-byte sectors. Compare the entire previous slot,
+-- not merely a shared header that would also survive discarding old data.
+local previousSlotStart = 8 + 14 * 4096
+check("second save preserves all 57344 bytes of the previous generation's slot",
+  #bytes1 == 114696 and #bytes2 == 114696
+    and bytes2:sub(previousSlotStart + 1, previousSlotStart + 57344)
+      == bytes1:sub(previousSlotStart + 1, previousSlotStart + 57344))
 
 local decoded2, info2 = Codec.decode(bytes2)
 check("second save decodes to the newer location", decoded2 ~= nil
