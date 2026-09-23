@@ -1,18 +1,25 @@
 # FireRedRecomp Coordination Handoff
 
-- Status: `PAUSED BY USER — review queue preserved`
+- Status: `READY_FOR_REVIEWER — exact review queue resumed`
 - Task ID: `P0-SAVE-ROLLOVER`, with disjoint CI-check implementation
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
 - Active task: [`../tasks/phase0-save-counter-rollover.md`](../tasks/phase0-save-counter-rollover.md)
 
 ## Current relay — 2026-09-21
 
-### STOPPING CHECKPOINT — 22:59 UTC
+### Resume update — 2026-09-23
+
+The user explicitly resumed execution. First finish independent review of CI
+checks `3478822` and rollover `aec377a`; each has a successful exact public
+run, but neither is accepted until that review passes. The behavior-ledger
+audit proceeds read-only in parallel. `firered-mint` was offline again at
+resume, so the inventory probe remains blocked; no probe/request was sent.
+
+### Prior stopping checkpoint — 2026-09-21 22:59 UTC
 
 The user explicitly requested a stopping point to conserve weekly tokens.
-**Do not continue autonomously. Resume only on a new user request.** This
-checkpoint supersedes older active-dispatch/runner-offline prose below and in
-derived maps. No phase has been newly marked complete.
+That pause ended on 2026-09-23; retain this section only as recovery history.
+No phase has been newly marked complete.
 
 The user later supplied an external assessment. Its reconciled, non-authorizing
 [triage](../reports/2026-09-21-external-project-review-triage.md) is recorded
