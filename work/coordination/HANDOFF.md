@@ -9,11 +9,13 @@
 
 ### Resume update — 2026-09-23
 
-The user explicitly resumed execution. First finish independent review of CI
-checks `3478822` and rollover `aec377a`; each has a successful exact public
-run, but neither is accepted until that review passes. The behavior-ledger
-audit proceeds read-only in parallel. `firered-mint` was offline again at
-resume, so the inventory probe remains blocked; no probe/request was sent.
+The user explicitly resumed execution. CI checks `3478822` are closed after
+[independent PASS](../reviews/2026-09-21-ci-repository-checks-review.md):
+public run `35624624210` / job `106415819660`, isolated focused/checker/full
+evidence and failure-policy checks passed. Rollover `aec377a` still awaits
+review. The behavior-ledger audit proceeds read-only in parallel.
+`firered-mint` was offline again at resume, so the inventory probe remains
+blocked; no probe/request was sent.
 
 ### Prior stopping checkpoint — 2026-09-21 22:59 UTC
 

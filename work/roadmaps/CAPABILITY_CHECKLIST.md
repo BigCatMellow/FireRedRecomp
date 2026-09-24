@@ -13,7 +13,7 @@ This is the project-wide status surface. Detailed history and checkboxes live in
 
 | Capability | Status | Evidence | Remaining gate |
 | --- | --- | --- | --- |
-| Phase 0 — charter and reproducibility | IN PROGRESS | [Save-version/refusal contract PASS at `63592c3`](../reviews/2026-09-21-save-version-contract-review.md); [first/current public CI receipts verified](../reviews/2026-09-20-ci-proof-discovery-review.md); behavior ledger | CI syntax/docs enforcement and clean-clone proof remain; source-locked rollover correction active and broader save safety separate; behavior ledger needs rows as subsystems grow |
+| Phase 0 — charter and reproducibility | IN PROGRESS | [Save-version/refusal contract PASS at `63592c3`](../reviews/2026-09-21-save-version-contract-review.md); [public syntax/docs enforcement PASS at `3478822`](../reviews/2026-09-21-ci-repository-checks-review.md); behavior ledger | Clean-clone proof, rollover review and broader save safety remain; behavior ledger needs rows as subsystems grow |
 | Phase 1 — ROM importer and canonical model | DONE | 117-test suite; `tests/full_sweep_validation_test.lua`; data viewer | All supported data-viewer records are reachable and decoded |
 | Phase 2 — rendering, input, scene runtime | IN PROGRESS | Rendering, sprite, title, palette, viewport tests, and camera proof at `4c5456f3` | Oak-intro/reference screenshot gate |
 | Phase 3 — playable vertical slice | DONE | Independently reviewed continuous normal boot → title/Oak/identity → bedroom/Pallet → Route 1 defeat → normal save → fresh reload evidence at `4f4f29ec` | Visual/presentation parity remains Phase 2/8 work, not a Phase 3 exit blocker |

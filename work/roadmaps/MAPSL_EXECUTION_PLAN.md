@@ -87,7 +87,7 @@ conflicting procedures.
 | `P0-02-CONTRACT` | `CLOSED — REVIEWED PASS` | ORCHESTRATOR | [Independent review](../reviews/2026-09-21-save-version-contract-review.md), `63592c3` | Explicit compatibility contract; 63/0, 13/0, 149-file suite and mutation evidence reproduced | `P0-SAVE-ROLLOVER` |
 | `P0-SAVE-ROLLOVER` | `READY_FOR_WORKER` | WORKER | [Counter correction task](../tasks/phase0-save-counter-rollover.md) | Literal u32 increment/maximum-zero selection, synthetic regression and full no-ROM evidence | REVIEWER |
 | `P0-03-DISCOVERY` | `CLOSED — REVIEWED PASS` | ORCHESTRATOR | [Independent review](../reviews/2026-09-20-ci-proof-discovery-review.md), `b5b317b` | First/current public CI receipts verified; syntax/docs enforcement absent | `P0-03-CHECKS` |
-| `P0-03-CHECKS` | `READY_FOR_WORKER` | WORKER | [Repository-check task](../tasks/phase0-ci-repository-checks.md) | Four implementation paths plus own evidence; exact public-run proof required | REVIEWER |
+| `P0-03-CHECKS` | `CLOSED — REVIEWED PASS` | ORCHESTRATOR | [Independent review](../reviews/2026-09-21-ci-repository-checks-review.md), `3478822` | Public run `35624624210` and isolated 47/0/dynamic/150-file evidence PASS | `P0-04` clean-clone proof after remaining prerequisites |
 
 ## Phase 0 — reproducibility and release baseline
 

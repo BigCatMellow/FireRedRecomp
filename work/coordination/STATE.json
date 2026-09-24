@@ -37,9 +37,9 @@
   "parallel_checks": {
     "task_id": "P0-03-CHECKS",
     "task": "work/tasks/phase0-ci-repository-checks.md",
-    "status": "READY_FOR_REVIEWER",
+    "status": "CLOSED — REVIEWED PASS",
     "implementation_revision": "347882212625791c6be1d201f06c92973edfb756",
-    "public_evidence": "Run35624624210/job106415819660 at exact3478822 succeeded, including named repository-check and no-ROM steps; independent implementation review remains pending",
+    "public_evidence": "Run35624624210/job106415819660 at exact3478822 and independent review PASS; P0-03 enforcement closed",
     "discovery_revision": "b5b317b — independently PASS",
     "boundary": "Four implementation paths plus own task, disjoint from save contract; read-only Lua syntax/local-doc checks with exact public CI and independent-review gates"
   },

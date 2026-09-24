@@ -1,7 +1,7 @@
 # Task: enforce Lua syntax and local documentation targets in public CI
 
 - Task ID: `P0-03-CHECKS`
-- Status: `LOCAL PASS — READY FOR PUBLIC CI AND INDEPENDENT REVIEW`
+- Status: `CLOSED — REVIEWED PASS`
 - Type: `IMPLEMENTATION / REPRODUCIBILITY`
 - Parent capability gate: Phase 0 reproducibility, MAPSL `P0-03`.
 - Assigned role: `WORKER`; independent reviewer: separate `REVIEWER` helper.
@@ -121,3 +121,12 @@ repository check and no-ROM suite passing. That public receipt and independent
 exact-revision review are still pending; local PASS does not close P0-03,
 P0-04, Phase 0, or any private-ROM gate. No workflow was manually dispatched or
 rerun, and no push was performed by this Worker.
+
+## Orchestrator reconciliation — 2026-09-23
+
+Exact implementation `3478822` independently
+[passed review](../reviews/2026-09-21-ci-repository-checks-review.md). Public
+run `35624624210` / job `106415819660` verified the named repository check and
+unchanged no-ROM suite from a clean checkout. Close only this P0-03 enforcement
+package; clean-clone proof, ledger audit, save rollover review and Phase 0
+remain separate.
