@@ -1,8 +1,8 @@
 # Task: recover evidence gaps in the behavior ledger
 
 - Task ID: `P0-01-DISCOVERY`
-- Status: `READY_FOR_WORKER`
-- Execution: paused by user on 2026-09-21; partial report committed for recovery, not accepted.
+- Status: `READY_FOR_REVIEWER`
+- Execution: resumed by the user; nine-row report completed on 2026-09-27, pending exact-revision independent review.
 - Type: `RESEARCH / READ-ONLY EVIDENCE AUDIT`
 - Parent capability gate: Phase 0 behavior ledger, MAPSL `P0-01`.
 - Assigned role: `RESEARCHER`; independent reviewer: a separate helper.
@@ -58,3 +58,28 @@ owns the shared-checkout commit/publication. Independent Reviewer returns
 PASS / NEEDS_FIX / BLOCK, then Orchestrator selects only an evidenced successor.
 This read-only audit is disjoint from current save/CI implementations; their
 independent implementation reviews take priority when ready.
+
+## Research evidence and handoff — 2026-09-27
+
+The [completed report](../reports/phase0-behavior-ledger-audit.md) maps all nine
+rows at exact `eac7d6985e6bbf1c33c3c4b6e9c338c08f3d0990`, separating reference
+source, runtime call sites, inspected assertions, recorded execution and
+independent acceptance. It identifies the stale blanket PC-overflow negative,
+decoded-but-unhooked script behavior and omitted accepted trainer/replacement
+and input/scene evidence. Unsupported completeness claims remain UNKNOWN.
+
+One ledger-only successor is proposed, conditional on independent report PASS.
+No ledger edit, runtime/test/workflow/coordination change, new suite/ROM/replay
+execution or phase advancement was performed. Later accepted rollover
+`aec377a`, reconciled at `9c81b90`, is explicitly separate from the historical
+pin; any successor must preserve its already-corrected save row.
+
+Read-only checks: source/history comparison, review receipts and target paths;
+`git diff --check` PASS, all 89 local link occurrences resolve, and the commit
+is restricted to the exact two allowed paths. The resumed parent
+dispatch explicitly authorizes the Researcher to commit only this task/report
+with Codex identity, without pushing; this supersedes only the older parent-
+owned commit sentence above. Parent retains publication and coordination.
+Independent Reviewer next: judge the exact report against the six existing
+criteria, without treating this handoff as acceptance or reopening unrelated
+implementation reviews.
