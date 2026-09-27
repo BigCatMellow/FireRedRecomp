@@ -1,7 +1,7 @@
 # Task: refresh the complete move-effect inventory
 
 - Task ID: `P4-02`
-- Status: `BLOCKED` — source/test preflight PASS; private runner offline
+- Status: `READY_FOR_WORKER` — source/test preflight and route/probe PASS
 - Type: `RESEARCH / DETERMINISTIC INVENTORY`
 - Parent capability gate: Phase 4 move/effect and stress matrix in [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md).
 - Assigned role: `RESEARCHER` for source classification, `WORKER` for the bounded verification artifact.
@@ -108,3 +108,13 @@ the new test/report from the prepared revision through the dedicated route.
 This task's coordination/evidence record is already maintained on main and
 need not be replaced by its older prepared-branch copy. No effect-32 discovery
 or Phase 4 completion follows until final inventory acceptance.
+
+## Dispatch — 2026-09-27
+
+The route/probe prerequisite is closed at `97dcae0` after
+[independent PASS](../reviews/2026-09-27-move-effect-inventory-probe-review.md).
+Worker may create exactly one `phase4-move-effect-inventory` bridge request
+that transports only the prepared test and report from `688433a`; this current
+task record stays on main. The guarded route must provide focused, full no-ROM
+and non-skipped SHA-verified-ROM aggregate evidence before independent final
+review. No effect discovery or runtime change is authorized.

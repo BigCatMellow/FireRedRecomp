@@ -37,7 +37,9 @@ User paused execution on 2026-09-21 to conserve tokens. The stopping checkpoint
 in [HANDOFF](../coordination/HANDOFF.md) supersedes older active/offline labels
 below: rollover `aec377a` awaits review; CI `3478822` has public PASS but review
 is incomplete; the private runner is online but no inventory probe was sent.
-Do not dispatch until the user resumes.
+The user resumed on 2026-09-23; CI and rollover reviews are closed. Inventory
+route probe is also independently PASS at `97dcae0`; only its prepared
+test/report request is now eligible, not inventory completion.
 
 ```text
 Phase 1 importer/model [DONE]

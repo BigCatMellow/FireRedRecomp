@@ -1,7 +1,7 @@
 # Task: dedicated move-effect inventory verification route
 
 - Task ID: `P4-02-ROUTE`
-- Status: `BLOCKED` — private runner offline before probe publication
+- Status: `CLOSED — REVIEWED PASS`
 - Type: `INFRASTRUCTURE / BOUNDED ROUTE`
 - Parent capability gate: Phase 4 move/effect matrix via [`phase4-move-effect-inventory.md`](phase4-move-effect-inventory.md).
 - Assigned role: `WORKER`, after independent readiness review.
@@ -125,3 +125,13 @@ No probe file, probe commit, request, or workflow was created. Configuration
 PASS remains valid. Resume the same single authorized probe when the runner
 returns online; do not manufacture a duplicate or bypass the private-ROM gate.
 Source inventory preparation and independent no-ROM roadmap work may continue.
+
+## Orchestrator reconciliation — 2026-09-27
+
+The single authorized probe `97dcae0` independently
+[passed review](../reviews/2026-09-27-move-effect-inventory-probe-review.md).
+Guarded run `36335570606` / job `108665649123` verified its trusted checkout,
+explicit selector, Lua 5.1.5 and private supported-ROM SHA; all patch-only
+steps were skipped. Close only the route/probe prerequisite. `P4-02` may now
+transport the prepared test/report through this route; it still requires the
+full guarded evidence and final independent inventory review.
