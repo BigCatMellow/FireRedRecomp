@@ -1,7 +1,7 @@
 # Task: preserve newest-save selection across u32 counter rollover
 
 - Task ID: `P0-SAVE-ROLLOVER`
-- Status: `IMPLEMENTED — PENDING INDEPENDENT REVIEW`
+- Status: `CLOSED — REVIEWED PASS`
 - Type: `IMPLEMENTATION / SOURCE-LOCKED CORRECTION`
 - Parent capability gate: Phase 0 save reliability supporting the explicit P0-02 compatibility contract; broader save safety remains open.
 - Assigned role: `WORKER`; independent reviewer: separate `REVIEWER` helper.
@@ -135,3 +135,13 @@ suffix preservation, mixed-generation acceptance, partial-field and filesystem
 limits remain documented. No ROM, real save, binary fixture or phase-status
 change is included. Independent exact-revision review and later public-CI
 evidence remain required before the defect is closed.
+
+## Orchestrator reconciliation — 2026-09-27
+
+Exact implementation `aec377a` independently
+[passed review](../reviews/2026-09-23-save-counter-rollover-review.md): public
+run `35665565029` / job `106550408501`, codec 93/0, roundtrip 16/0, dynamic
+repository checks and the 150-file no-ROM suite passed. Old-code regression and
+literal boundary witnesses were independently reproduced. Close only the u32
+rollover defect. Suffix/prior-buffer policy, filesystem failure safety,
+migration and broader Phase 0 remain separate.

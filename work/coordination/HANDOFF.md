@@ -12,10 +12,13 @@
 The user explicitly resumed execution. CI checks `3478822` are closed after
 [independent PASS](../reviews/2026-09-21-ci-repository-checks-review.md):
 public run `35624624210` / job `106415819660`, isolated focused/checker/full
-evidence and failure-policy checks passed. Rollover `aec377a` still awaits
-review. The behavior-ledger audit proceeds read-only in parallel.
-`firered-mint` was offline again at resume, so the inventory probe remains
-blocked; no probe/request was sent.
+evidence and failure-policy checks passed. Rollover `aec377a` is also closed
+after [independent PASS](../reviews/2026-09-23-save-counter-rollover-review.md):
+public run `35665565029`, old-code regression witnesses, literal counter
+boundaries and all stated no-ROM checks passed. Only the rollover defect closed;
+broader save safety remains open. `P0-01-DISCOVERY` is now the active read-only
+behavior-ledger audit. `firered-mint` was online/idle at 2026-09-27 recovery;
+resume the existing single authorized inventory probe only.
 
 ### Prior stopping checkpoint — 2026-09-21 22:59 UTC
 
