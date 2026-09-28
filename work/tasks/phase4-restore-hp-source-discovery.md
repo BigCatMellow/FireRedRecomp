@@ -10,7 +10,8 @@
 ## Goal and source of truth
 
 Lock the narrow Gen 3 behavior of `EFFECT_RESTORE_HP` for Recover (move ID 105)
-and Milk Drink (ID 303), before any design or implementation. Use only pinned
+and Slack Off (ID 303), before any design or implementation. Milk Drink is move
+ID 208 with `EFFECT_SOFTBOILED` (157) and is explicitly outside this task. Use only pinned
 `pret/pokefirered c75f352304d529f6ba92d4f74b9cf8b5c3810788`, especially the
 move records, `BattleScript_EffectRestoreHp`, `Cmd_tryhealhalfhealth`, its
 cancellation/announcement/PP sequence, and the accepted engine baseline. The
@@ -26,12 +27,13 @@ inventory's selection and limits are evidence, not a substitute for this lock.
 Runtime/engine/controller/UI code, admission policy, generic healing APIs,
 tests, workflows, save state, AI, task routes, supported ROM policy, or
 canonical Phase 4 status. Do not implement recovery, bundle Softboiled/Milk
-Drink field behavior, Rest, Present, Wish, Swallow, Ingrain, weather healing,
+Drink behavior, Rest, Present, Wish, Swallow, Ingrain, weather healing,
 or any other family. No ROM/media/data dump or private runner access.
 
 ## Acceptance criteria
 
-1. Establish exact move IDs/effect/power/flags and reference source anchors.
+1. Establish exact Recover/Slack Off IDs/effect/power/flags and reference source
+anchors; record Milk Drink/effect 157 only as an explicit exclusion.
 2. Describe the successful and full-HP failure paths, including half-max
 integer rounding/minimum-one rule, clamping owner, PP timing, RNG/accuracy
 absence, cancellation/announcement ordering, and source-visible events.

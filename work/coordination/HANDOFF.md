@@ -21,8 +21,9 @@ remains open.
 Guarded run `36336096049` verified the private supported ROM, passed both
 151-file suites, and ran the inventory non-skipped; its no-replay branch is not
 gameplay evidence. The sole permitted continuation is
-`P4-F1-RESTORE-HP-DISCOVERY` (Recover/Milk Drink effect 32 source lock). Do not
-implement healing or select another effect before its own review.
+`P4-F1-RESTORE-HP-DISCOVERY` (Recover/Slack Off effect 32 source lock; Milk
+Drink is effect 157 and excluded). Do not implement healing or select another
+effect before its own review.
 
 ### Resume update — 2026-09-23
 
