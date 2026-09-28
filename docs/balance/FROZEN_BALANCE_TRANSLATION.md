@@ -27,14 +27,17 @@ These are translation inputs from the completed balance research, not permission
 - Twineedle: 30 BP per hit.
 - Selective Poison access: Arbok Poison Fang ~30; Golbat Poison Fang 35; Nidoqueen line Poison Fang 30; Nidoking line Poison Tail 30.
 - Rock: Rock Tomb 60/90 and Rock Blast 25/90; selective natural access. Do not globally repeat Rock Slide.
-- Giga Drain: 70 BP / 10 PP; preserve TM19 as a finite/single-copy resource and regression-test allocation pressure.
+- Giga Drain: keep vanilla 60 BP / raise to 10 PP; preserve TM19 as a finite/single-copy resource and regression-test allocation pressure.
 - Flying: Wing Attack 65; Air Cutter 65/95. Air Cutter 70 is not preferred.
 - Omastar: no buff; role is bulky attacker / physical wall.
 - Dodrio: Drill Peck stage mirroring at level 37, not level 35.
 - Flareon: Flame Wheel 36 as identity repair under the modern-category branch.
 - Gengar natural Shadow Ball progression is separate from TM30 policy.
 - TM30 must not become repeatable Game Corner coverage; typed allocation is the relevant regression, not only neutral damage.
-- Hybrid-modern category policy is the preferred research branch; physical Poison/progression exceptions remain deliberate policy points rather than importer changes.
+- Later per-move categories are frozen for the rebalance ruleset, with Sludge and Sludge Bomb explicitly Physical.
+- Aurora Beam: 70 BP; Jynx learns it at level 25.
+- Seaking: Waterfall at level 38.
+- Hybrid-modern category policy is frozen for the rebalance ruleset; category exceptions remain overlay policy rather than importer changes.
 
 ## Acceptance criteria for this infrastructure slice
 
@@ -43,5 +46,7 @@ These are translation inputs from the completed balance research, not permission
 3. Applying an overlay does not mutate imported move or learnset records.
 4. Unsupported override fields fail closed.
 5. No ROM-derived data/assets are committed.
+
+Canonical frozen source: `BigCatMellow/Pilot_Projects` PR #14, `pokemon-firered-balance/data/integrated_player_package_v1.csv`, blob `ed4c75e54435f4b8e8889b47fd8e1c292a8a705f`, frozen by `FINAL_SPECIFICATION_FREEZE_DECISION.md` on 2026-09-15. Do not substitute earlier Wave-1 notes when they conflict with that package.
 
 The next slice should encode the frozen move/category table and exact stage-mirrored learnset additions, then run the repository suite plus focused battle regressions before touching trainer balance.
