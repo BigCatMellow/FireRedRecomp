@@ -1,8 +1,8 @@
 # Task: recover evidence gaps in the behavior ledger
 
 - Task ID: `P0-01-DISCOVERY`
-- Status: `READY_FOR_REVIEWER`
-- Execution: resumed by the user; nine-row report completed on 2026-09-27, pending exact-revision independent review.
+- Status: `CLOSED — REVIEWED PASS`
+- Execution: exact report commit `61f1a77` passed independent review on 2026-09-27; its ledger-only successor is separately bounded.
 - Type: `RESEARCH / READ-ONLY EVIDENCE AUDIT`
 - Parent capability gate: Phase 0 behavior ledger, MAPSL `P0-01`.
 - Assigned role: `RESEARCHER`; independent reviewer: a separate helper.
@@ -53,9 +53,10 @@ and continue the other existing rows; do not invent completeness or widen scope.
 
 ## Completion and handoff
 
-Researcher reports exact findings and writes only the two artifacts. Parent
-owns the shared-checkout commit/publication. Independent Reviewer returns
-PASS / NEEDS_FIX / BLOCK, then Orchestrator selects only an evidenced successor.
+Researcher reported exact findings in `61f1a77`; the independent
+[review](../reviews/2026-09-27-behavior-ledger-audit-review.md) returned PASS.
+Parent owns reconciliation. A separately tasked ledger-only correction may use
+the evidence, but this audit neither closes Phase 0 nor approves runtime work.
 This read-only audit is disjoint from current save/CI implementations; their
 independent implementation reviews take priority when ready.
 

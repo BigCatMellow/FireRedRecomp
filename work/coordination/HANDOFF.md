@@ -1,11 +1,28 @@
 # FireRedRecomp Coordination Handoff
 
-- Status: `READY_FOR_REVIEWER — exact review queue resumed`
-- Task ID: `P0-SAVE-ROLLOVER`, with disjoint CI-check implementation
+- Status: `READY_FOR_WORKER — bounded documentation and source-lock research`
+- Task ID: `P0-01-CORRECTION` and `P4-F1-RESTORE-HP-DISCOVERY`
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
-- Active task: [`../tasks/phase0-save-counter-rollover.md`](../tasks/phase0-save-counter-rollover.md)
+- Active tasks: [`../tasks/phase0-behavior-ledger-correction.md`](../tasks/phase0-behavior-ledger-correction.md) and [`../tasks/phase4-restore-hp-source-discovery.md`](../tasks/phase4-restore-hp-source-discovery.md)
 
 ## Current relay — 2026-09-21
+
+### Reconciliation update — 2026-09-27
+
+`P0-01-DISCOVERY` is closed after exact audit `61f1a77` and
+[independent PASS](../reviews/2026-09-27-behavior-ledger-audit-review.md).
+The only successor is `P0-01-CORRECTION`: documentation-only changes to
+`docs/behavior-ledger.md`, preserving all UNKNOWN boundaries and later accepted
+save rollover wording. It requires a separate independent review; Phase 0
+remains open.
+
+`P4-02` is closed after bridge implementation `c10bfa7` and
+[independent PASS](../reviews/2026-09-27-move-effect-inventory-review.md).
+Guarded run `36336096049` verified the private supported ROM, passed both
+151-file suites, and ran the inventory non-skipped; its no-replay branch is not
+gameplay evidence. The sole permitted continuation is
+`P4-F1-RESTORE-HP-DISCOVERY` (Recover/Milk Drink effect 32 source lock). Do not
+implement healing or select another effect before its own review.
 
 ### Resume update — 2026-09-23
 

@@ -4,15 +4,15 @@
   "execution_paused": false,
   "role": "ORCHESTRATOR",
   "status": "READY_FOR_WORKER",
-  "task_id": "P0-01-DISCOVERY",
-  "current_phase": "Phase 0 and Phase 4 remain IN PROGRESS; behavior-ledger discovery active",
+  "task_id": "P0-01-CORRECTION",
+  "current_phase": "Phase 0 and Phase 4 remain IN PROGRESS; bounded behavior-ledger correction and final inventory review active",
   "canonical_status_owner": "work/roadmaps/CAPABILITY_CHECKLIST.md",
-  "active_task": "work/tasks/phase0-behavior-ledger-audit.md",
-  "objective": "Complete a pinned read-only map of each behavior-ledger row's source, runtime, test and acceptance evidence; identify at most one bounded ledger-only successor.",
-  "next_role": "RESEARCHER",
-  "acceptance": "All current ledger rows mapped or explicitly UNKNOWN; no ledger/runtime/test changes; independent report review before any correction package.",
-  "boundaries": "Only own audit task/report. No behavior-ledger edits, runtime/tests/workflows, status changes, ROM/media or external state.",
-  "dependencies": "CI checks3478822 and rolloveraec377a independently PASS. Audit pinned eac7d69 excludes later changes. User requested continuous work and GitHub synchronization.",
+  "active_task": "work/tasks/phase0-behavior-ledger-correction.md",
+  "objective": "Apply only the independently accepted audit's bounded evidence correction to the behavior ledger, preserving UNKNOWN limits and canonical phase state.",
+  "next_role": "WORKER",
+  "acceptance": "Only docs/behavior-ledger.md changes; exact independent documentation review before reconciliation; Phase 0 stays open.",
+  "boundaries": "Ledger documentation only. No runtime/tests/workflows/status changes, ROM/media, external state, or new proof program.",
+  "dependencies": "Audit61f1a77 independently PASS; post-pin rollover9c81b90 wording must be preserved. P4-02 final review remains separate. User requested continuous work and GitHub synchronization.",
   "runner_blocker": {
     "task_id": "P4-02-ROUTE",
     "status": "CLOSED — REVIEWED PASS",
@@ -24,13 +24,13 @@
   "parallel_preparation": {
     "task_id": "P4-02",
     "task": "work/tasks/phase4-move-effect-inventory.md",
-    "status": "READY_FOR_WORKER",
+    "status": "CLOSED — REVIEWED PASS",
     "prepared_revision": "688433a3093dc15db32d62bd5a59fd7a84ac0cd0",
     "prepared_branch": "work/move-effect-inventory (published to origin)",
     "preflight_review": "PASS — work/reviews/2026-09-20-move-effect-inventory-preflight-review.md",
     "worktree": "/home/home/FireRedRecomp-inventory",
-    "boundary": "Source/test preflight and route/probe PASS. Transport only test/report from prepared revision; preserve current main task. Final acceptance still requires guarded focused/full no-ROM/non-skipped SHA-ROM evidence and independent review.",
-    "publication_gate": "One exact P4-02 request through reviewed route; no inventory claim before guarded evidence"
+    "boundary": "P4-02 closed by exact review of guarded implementationc10bfa7/run36336096049. Only selected effect-32 source discovery may proceed; no behavior change.",
+    "publication_gate": "Closed; final PASS unlocks P4-F1-RESTORE-HP-DISCOVERY only"
   },
   "parallel_checks": {
     "task_id": "P0-03-CHECKS",
@@ -42,11 +42,11 @@
     "boundary": "Four implementation paths plus own task, disjoint from save contract; read-only Lua syntax/local-doc checks with exact public CI and independent-review gates"
   },
   "parallel_research": {
-    "task_id": "P0-01-DISCOVERY",
-    "task": "work/tasks/phase0-behavior-ledger-audit.md",
+    "task_id": "P0-01-CORRECTION",
+    "task": "work/tasks/phase0-behavior-ledger-correction.md",
     "status": "READY_FOR_WORKER",
-    "source_revision": "eac7d69",
-    "boundary": "Read-only audit of existing ledger rows in own task/report; no ledger/runtime changes; independent implementation reviews take priority"
+    "source_revision": "audit61f1a77 / historicaleac7d69",
+    "boundary": "Only docs/behavior-ledger.md and own task completion; preserve later rollover wording, UNKNOWN proof gaps and canonical state; independent final review required"
   },
   "reconciliation": {
     "camera_task_status": "CLOSED — REVIEWED PASS at 4c5456f3; guarded run 34753297372",

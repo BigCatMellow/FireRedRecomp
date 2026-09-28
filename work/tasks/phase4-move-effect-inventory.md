@@ -1,7 +1,7 @@
 # Task: refresh the complete move-effect inventory
 
 - Task ID: `P4-02`
-- Status: `READY_FOR_WORKER` — source/test preflight and route/probe PASS
+- Status: `CLOSED — REVIEWED PASS` — guarded SHA-ROM evidence and exact final review accepted
 - Type: `RESEARCH / DETERMINISTIC INVENTORY`
 - Parent capability gate: Phase 4 move/effect and stress matrix in [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md).
 - Assigned role: `RESEARCHER` for source classification, `WORKER` for the bounded verification artifact.
@@ -74,11 +74,12 @@ never invent evidence or bypass the route.
 
 ## Completion and handoff
 
-Worker records exact paths, source pin, partition counts, checks, guarded run,
-and published revision. Reviewer returns PASS / NEEDS_FIX / BLOCK. Orchestrator
-reconciles `P4-02`, updates derived routing, and dispatches the one selected
-discovery family. Phase 2's external references and Phase 4's broader exit gate
-remain open.
+Worker published exact test/report revision `c10bfa7` from the authorized
+request. The independent [final review](../reviews/2026-09-27-move-effect-inventory-review.md)
+returned PASS after guarded run `36336096049` verified the supported ROM and
+both 151-file suites. Orchestrator may dispatch only the selected effect-32
+source-lock discovery. Phase 2's external references and Phase 4's broader exit
+gate remain open.
 
 ## Dispatch — 2026-09-20
 
