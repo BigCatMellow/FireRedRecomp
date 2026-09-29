@@ -21,10 +21,16 @@ Phase 0 remains open.
 [independent PASS](../reviews/2026-09-27-move-effect-inventory-review.md).
 Guarded run `36336096049` verified the private supported ROM, passed both
 151-file suites, and ran the inventory non-skipped; its no-replay branch is not
-gameplay evidence. The sole permitted continuation is
-`P4-F1-RESTORE-HP-DISCOVERY` (Recover/Slack Off effect 32 source lock; Milk
-Drink is effect 157 and excluded). Do not implement healing or select another
-effect before its own review.
+gameplay evidence. Its sole source-lock continuation was
+`P4-F1-RESTORE-HP-DISCOVERY` (Recover/Slack Off effect 32; Milk Drink is effect
+157 and excluded). Do not implement healing or select another effect before
+the current design review.
+
+The Recover/Slack Off source lock is closed at `1f89f0d` after
+[independent PASS](../reviews/2026-09-29-restore-hp-source-discovery-review.md).
+Only `P4-F2-RESTORE-HP-DESIGN` may proceed, for the ordinary non-intercepted
+path. Snatch, shared cancellation/MoveEnd, status/item/ability, persistence,
+UI parity, doubles/links and Milk Drink/effect 157 remain excluded.
 
 ### Resume update — 2026-09-23
 

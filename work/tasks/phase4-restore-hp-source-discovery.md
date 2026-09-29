@@ -1,7 +1,7 @@
 # Task: source-lock Recover's restore-HP effect
 
 - Task ID: `P4-F1-RESTORE-HP-DISCOVERY`
-- Status: `READY_FOR_REVIEWER`
+- Status: `CLOSED — REVIEWED PASS`
 - Type: `RESEARCH / SOURCE-LOCK DISCOVERY`
 - Parent capability gate: Phase 4 move-effect family chain.
 - Prerequisite: [P4-02 final PASS](../reviews/2026-09-27-move-effect-inventory-review.md), exact `c10bfa7`.
@@ -52,9 +52,10 @@ and stop; do not guess, add a fallback, or widen into healing generally.
 
 ## Completion and handoff
 
-Researcher writes the exact bounded report. A separate Reviewer evaluates the
-exact revision. Only after PASS may the Orchestrator consider a dedicated
-effect-32 design task; Phase 4 remains IN PROGRESS.
+Researcher published exact report `1f89f0d`; the independent
+[review](../reviews/2026-09-29-restore-hp-source-discovery-review.md) returned
+PASS. Only a dedicated ordinary-path effect-32 design task may follow; Phase 4
+remains IN PROGRESS.
 
 ## Research handoff — 2026-09-29
 
