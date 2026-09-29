@@ -4,15 +4,15 @@
   "execution_paused": false,
   "role": "ORCHESTRATOR",
   "status": "READY_FOR_WORKER",
-  "task_id": "P0-01-CORRECTION",
-  "current_phase": "Phase 0 and Phase 4 remain IN PROGRESS; bounded behavior-ledger correction and final inventory review active",
+  "task_id": "P0-04",
+  "current_phase": "Phase 0 and Phase 4 remain IN PROGRESS; clean-clone verification and Restore HP source-lock review active",
   "canonical_status_owner": "work/roadmaps/CAPABILITY_CHECKLIST.md",
-  "active_task": "work/tasks/phase0-behavior-ledger-correction.md",
-  "objective": "Apply only the independently accepted audit's bounded evidence correction to the behavior ledger, preserving UNKNOWN limits and canonical phase state.",
+  "active_task": "work/tasks/phase0-clean-clone-verification.md",
+  "objective": "Observe a fresh public checkout following documented no-ROM setup/test and safe invalid-ROM refusal paths without modifying project state.",
   "next_role": "WORKER",
-  "acceptance": "Only docs/behavior-ledger.md changes; exact independent documentation review before reconciliation; Phase 0 stays open.",
-  "boundaries": "Ledger documentation only. No runtime/tests/workflows/status changes, ROM/media, external state, or new proof program.",
-  "dependencies": "Audit61f1a77 independently PASS; post-pin rollover9c81b90 wording must be preserved. P4-02 final review remains separate. User requested continuous work and GitHub synchronization.",
+  "acceptance": "Fresh-clone aggregate report and separate exact review; no Phase 0 closure unless canonical remaining gates are met.",
+  "boundaries": "Report/task only. No project modification, ROM/media/save/cache, credentials, dependency install or repair authorization.",
+  "dependencies": "Save contract63592c3, CI checks3478822 and ledger correctionfc43daf independently PASS. Restore HP source-lock review remains separate. User requested continuous work and GitHub synchronization.",
   "runner_blocker": {
     "task_id": "P4-02-ROUTE",
     "status": "CLOSED — REVIEWED PASS",
@@ -42,11 +42,11 @@
     "boundary": "Four implementation paths plus own task, disjoint from save contract; read-only Lua syntax/local-doc checks with exact public CI and independent-review gates"
   },
   "parallel_research": {
-    "task_id": "P0-01-CORRECTION",
-    "task": "work/tasks/phase0-behavior-ledger-correction.md",
+    "task_id": "P0-04",
+    "task": "work/tasks/phase0-clean-clone-verification.md",
     "status": "READY_FOR_WORKER",
-    "source_revision": "audit61f1a77 / historicaleac7d69",
-    "boundary": "Only docs/behavior-ledger.md and own task completion; preserve later rollover wording, UNKNOWN proof gaps and canonical state; independent final review required"
+    "source_revision": "public main after fc43daf",
+    "boundary": "Fresh disposable clone/report only; no ROM, cache, credentials, dependency install or repair; independent final review required"
   },
   "reconciliation": {
     "camera_task_status": "CLOSED — REVIEWED PASS at 4c5456f3; guarded run 34753297372",

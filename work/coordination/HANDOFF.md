@@ -11,10 +11,11 @@
 
 `P0-01-DISCOVERY` is closed after exact audit `61f1a77` and
 [independent PASS](../reviews/2026-09-27-behavior-ledger-audit-review.md).
-The only successor is `P0-01-CORRECTION`: documentation-only changes to
-`docs/behavior-ledger.md`, preserving all UNKNOWN boundaries and later accepted
-save rollover wording. It requires a separate independent review; Phase 0
-remains open.
+Its sole correction successor is closed at `fc43daf` after
+[independent PASS](../reviews/2026-09-29-behavior-ledger-correction-review.md).
+The ledger now preserves its UNKNOWN boundaries and later accepted save rollover
+wording. `P0-04` clean-clone verification is the active report-only successor;
+Phase 0 remains open.
 
 `P4-02` is closed after bridge implementation `c10bfa7` and
 [independent PASS](../reviews/2026-09-27-move-effect-inventory-review.md).

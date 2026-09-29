@@ -1,7 +1,7 @@
 # Task: apply the bounded behavior-ledger evidence correction
 
 - Task ID: `P0-01-CORRECTION`
-- Status: `READY_FOR_WORKER`
+- Status: `CLOSED — REVIEWED PASS`
 - Type: `DOCUMENTATION / EVIDENCE RECONCILIATION`
 - Parent capability gate: Phase 0 behavior ledger.
 - Prerequisite: [P0-01 audit PASS](../reviews/2026-09-27-behavior-ledger-audit-review.md) for exact report `61f1a77`.
@@ -55,9 +55,10 @@ specific boundary, and do not widen scope.
 
 ## Completion and handoff
 
-Worker records exact changed paths and local checks. A different independent
-Reviewer returns PASS / NEEDS_FIX / BLOCK. Parent reconciles only after PASS;
-Phase 0 remains open for clean-clone and broader save-safety gates.
+Worker published `fc43daf`; the independent
+[review](../reviews/2026-09-29-behavior-ledger-correction-review.md) returned
+PASS for its exact two-path change. Phase 0 remains open for clean-clone and
+broader save-safety gates.
 
 ### Worker completion — 2026-09-29
 
