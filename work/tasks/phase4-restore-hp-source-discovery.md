@@ -1,7 +1,7 @@
 # Task: source-lock Recover's restore-HP effect
 
 - Task ID: `P4-F1-RESTORE-HP-DISCOVERY`
-- Status: `READY_FOR_WORKER`
+- Status: `READY_FOR_REVIEWER`
 - Type: `RESEARCH / SOURCE-LOCK DISCOVERY`
 - Parent capability gate: Phase 4 move-effect family chain.
 - Prerequisite: [P4-02 final PASS](../reviews/2026-09-27-move-effect-inventory-review.md), exact `c10bfa7`.
@@ -55,3 +55,37 @@ and stop; do not guess, add a fallback, or widen into healing generally.
 Researcher writes the exact bounded report. A separate Reviewer evaluates the
 exact revision. Only after PASS may the Orchestrator consider a dedicated
 effect-32 design task; Phase 4 remains IN PROGRESS.
+
+## Research handoff — 2026-09-29
+
+The [source-lock report](../reports/phase4-restore-hp-source-discovery.md) is
+complete for the ordinary represented-state path, not unrestricted retail
+effect-32 behavior. Source pin is
+`c75f352304d529f6ba92d4f74b9cf8b5c3810788`; project inspection base is
+`e80f9f2cffde02a7987d5c55b45f8a7cd3b834d2`.
+
+Two boundaries were explicitly escalated before continuing:
+
+- Task move naming was corrected at `e80f9f2`: Recover 105 and Slack Off 303
+  are effect 32; Milk Drink 208/effect 157 remains excluded.
+- Source flags 8 reach unsupported Snatch interception. The Orchestrator's
+  resumed 2026-09-29 decision authorizes completing the ordinary represented-
+  state source lock only, with Snatch, general cancellation and MoveEnd
+  interactions recorded as hard unresolved exclusions. This resolves the
+  research stop for that bounded report; it does not authorize approximation,
+  full retail parity, design or implementation.
+
+The report locks source metadata, announcement/PP-before-viability ordering,
+integer half-max/minimum-one healing, later own-max clamp, distinct HP-full
+failure, ordered HP/presentation operations and effect-body accuracy/RNG
+absence. It maps each action to existing engine/controller/persistence seams,
+marks missing contracts, and proposes only the smallest future design boundary.
+Current admission still rejects the effect.
+
+Read-only verification passed: source identities/anchors, unchanged accepted-
+baseline history comparison, eight local link occurrences, fourteen pinned-
+source path/line occurrences, whitespace and exact two-path authored scope.
+No ROM/private-runner access, gameplay tests/full suite, runtime changes,
+design task, implementation or self-review occurred. Commit/push of these two
+research artifacts is explicitly authorized by the Orchestrator; independent
+exact-report review is the next gate, with coordination owned by the parent.
