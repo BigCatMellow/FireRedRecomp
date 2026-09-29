@@ -58,3 +58,39 @@ specific boundary, and do not widen scope.
 Worker records exact changed paths and local checks. A different independent
 Reviewer returns PASS / NEEDS_FIX / BLOCK. Parent reconciles only after PASS;
 Phase 0 remains open for clean-clone and broader save-safety gates.
+
+### Worker completion — 2026-09-29
+
+Ready for independent exact-revision review, not self-accepted. The change is
+limited to `docs/behavior-ledger.md` and this completion/handoff section.
+Preparation began at `6235fee`; resumed local and public main both resolved to
+`e80f9f2cffde02a7987d5c55b45f8a7cd3b834d2` before publication. The implementation
+revision is the commit containing this handoff.
+
+The ledger now distinguishes source, runtime owners, assertion coverage,
+recorded execution and accepted scope for all nine existing rows, and adds
+exactly one adjacent ordinary-trainer/replacement row with all five accepted
+leaves. It replaces the stale PC-negative claim without inventing full-party
+live PC/restart acceptance; retains every named UNKNOWN, Pain Split exclusions,
+supported-ROM policy and post-pin accepted rollover evidence; and indexes the
+omitted input/scheduler/title-entry/camera evidence. No canonical status,
+runtime, test, workflow, coordination or other documentation changed.
+
+Documentation-local validation:
+
+- `git diff --check` passed.
+- A Lua 5.1 read-only check reused `scripts.check_repository` destination
+  parsing and tracked-file enumeration for these two Markdown files: all
+  **99 local link occurrences** resolve to tracked, readable targets. The
+  draft's nonexistent standalone GameSession link was corrected to its owner
+  in `main.lua` before the passing check. No network/link-anchor check is claimed.
+- Literal guards passed: ten ledger data rows, exactly one bounded trainer
+  row, stale blanket-PC text absent, full-party PC/restart UNKNOWN retained,
+  and accepted source-locked u32 rollover fixtures retained.
+- Exact changed-path inspection contains only the two permitted text paths;
+  final staged diff/whitespace checks are required before commit.
+
+No game test suite, ROM check, media capture or replay was run for this
+documentation-only package. Parent must route the published exact commit to a
+different Reviewer; only independent PASS permits reconciliation. Phase 0,
+Phase 2 visual parity, broader battle coverage and save safety remain open.
