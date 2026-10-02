@@ -42,11 +42,11 @@
     "boundary": "Four implementation paths plus own task, disjoint from save contract; read-only Lua syntax/local-doc checks with exact public CI and independent-review gates"
   },
   "parallel_research": {
-    "task_id": "P0-04-DISCOVERY",
-    "task": "work/tasks/phase0-first-run-reproducibility-discovery.md",
+    "task_id": "P5-01",
+    "task": "work/tasks/phase5-world-coverage-inventory.md",
     "status": "READY_FOR_WORKER",
-    "source_revision": "P0-04 reportd0e0bad / review2026-10-01",
-    "boundary": "Read-only repair/reverification discovery only; no docs/tooling/package/desktop/ROM change; independent review before any repair contract"
+    "source_revision": "current public source/runtime/Phase3 evidence",
+    "boundary": "Read-only first progression-segment inventory only; no ROM/media/traversal/implementation; independent review before any Phase5 leaf"
   },
   "reconciliation": {
     "camera_task_status": "CLOSED — REVIEWED PASS at 4c5456f3; guarded run 34753297372",

@@ -72,6 +72,7 @@ Read HANDOFF first.
 | `P0-04-DISCOVERY` | `CLOSED` | `ORCHESTRATOR` | [Exact independent PASS](../reviews/2026-10-02-first-run-reproducibility-discovery-review.md), `8c92f67` | One conditional docs-only repair/reverification boundary; desktop remains unverified. | Dispatch only `P0-04-DOCS`. |
 | `P0-04-DOCS` | `CLOSED` | `ORCHESTRATOR` | [Exact independent PASS](../reviews/2026-10-02-first-run-documentation-repair-review.md), `d4f7fe8` | Conditional profile and safe guidance documented; no desktop proof claimed. | Dispatch only P0-04-REVERIFY. |
 | `P0-04-REVERIFY` | `BLOCKED — REVIEWED EVIDENCE` | `ORCHESTRATOR` | [Exact independent review](../reviews/2026-10-02-clean-clone-reverification-review.md), `93c4654` | Fresh target lacks lua5.1/LÖVE; dependent checks correctly NOT RUN with no workaround. | Separate supported-target preparation decision before retry. |
+| `P5-01` | `READY_FOR_WORKER` | `RESEARCHER` | [Bounded world coverage inventory](../tasks/phase5-world-coverage-inventory.md) | First Pallet-to-gym map/script/warp/gate inventory; select one missing primitive only. | Independent review before any Phase 5 leaf. |
 | `P2-REF-01` | `BLOCKED` | `USER` | [`phase2-oak-reference-comparison.md`](../tasks/phase2-oak-reference-comparison.md) | Trusted retail Oak/Pallet reference captures with provenance have not been supplied; media must remain outside git. | User supplies captures/provenance; Orchestrator validates intake and moves comparison to `OPEN`. |
 
 ## Legacy policy
