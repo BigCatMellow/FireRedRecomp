@@ -52,3 +52,33 @@ decision/blocker; do not select a platform or modify the environment.
 Researcher publishes only this task/report. A separate Reviewer returns PASS /
 NEEDS_FIX / BLOCK. Only reviewed PASS may permit one narrow repair and then a
 fresh P0-04 verification; Phase 0 remains open.
+
+## Research evidence and handoff — 2026-10-02
+
+Discovery complete at public/inspection pin
+`1a7c9958ab4ba42a8efac1fab42a8913e97acf36`; independent exact-review required.
+The [report](../reports/phase0-first-run-reproducibility-discovery.md) maps all
+three accepted P0-04 blockers and proposes only one documentation-only successor
+(`README.md` and `docs/FIRST_RUN.md`), conditional on a declared already
+provisioned target rather than a new platform/bootstrap promise.
+
+Read-only inspection confirmed that the relevant README/runtime/importer/test
+runner/replay/public-CI owners are unchanged since observed clone `7a2e7ad`.
+Default PATH still lacks Lua/LÖVE; the suite already fails clearly for absent
+`lua5.1`. Standalone invalid-input verification also needs `sha1sum`. The
+built-in screenshot hook does not cover normal no-ROM/status-only first-run,
+and the existing runtime replay requires a valid ROM. A present DISPLAY
+variable is not display proof; no GUI retry or root-cause claim was made.
+
+The report separates required documentation, prerequisite/tool discovery,
+conditional host-support decisions and later desktop observation, with a fresh
+CLI/refusal/desktop/isolation matrix and explicit current-CI limits. Existing
+151-file evidence is preserved, not rerun or relabeled as repair acceptance.
+No installs/downloads, persistent environment/session changes, ROM access,
+runtime/tests/workflow/docs repairs or phase advancement occurred. Only this
+handoff and report may be published; parent owns review and later task creation.
+
+Authored-package validation, using the pre-existing Lua interpreter by explicit
+path without changing PATH, passed: 276 Lua / 171 Markdown / 484 local targets;
+zero checker errors and clean whitespace. This checks the text package, not
+clean-target or desktop behavior.
