@@ -1,7 +1,7 @@
 # Task: plan Local Worker Bridge route for Restore HP
 
 - Task ID: `P4-F3-ROUTE`
-- Status: `CONFIGURED — PENDING INDEPENDENT CONFIGURATION REVIEW`
+- Status: `CONFIGURATION REVIEWED PASS — PROBE READY`
 - Type: `INFRASTRUCTURE / EXECUTION SUBSTRATE / PLAN`
 - Authority: [P4-F3 implementation contract](phase4-restore-hp-implementation.md) and [F2 design PASS](../reviews/2026-10-01-restore-hp-design-review.md).
 
@@ -62,5 +62,6 @@ probe before any Worker request.
 
 The plan passed independent review. The workflow now contains only the reviewed
 selector, nine-path validation/staging surface, four focused commands and
-headless replay branch. Exact independent configuration review remains required;
-no probe or Worker request is authorized yet.
+headless replay branch. Its [independent configuration review](../reviews/2026-10-02-restore-hp-route-configuration-review.md)
+passed exact `4350aa1`. One substrate-only probe is authorized; no Worker request
+is authorized until that probe passes.
