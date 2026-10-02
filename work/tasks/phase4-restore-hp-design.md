@@ -52,3 +52,35 @@ and stop; do not silently broaden the feature.
 Designer publishes the report only. A separate Reviewer returns PASS / NEEDS_FIX
 / BLOCK. Only a reviewed PASS may permit a narrowly scoped implementation
 contract; Phase 4 remains open.
+
+## Designer evidence and handoff — 2026-10-01
+
+The [proposed design](../reports/phase4-restore-hp-design.md) is ready for
+independent exact-revision review, not implementation. Inspection/public base:
+`1a312f67751ccdd8fdb1b38ea9d85884cd6ed7d8`; accepted F1 source lock:
+`1f89f0d53b1df3b22ea974eb99d9caed6f86c7f1`.
+
+The contract defines ID-aware admission only for Recover 105 / Slack Off 303
+with effect 32, ordinary PP-before-viability and own-half-max rounding/clamp,
+separate success/full-HP events, ordered controller snapshot/feedback, and exact
+existing owner seams. The parser has no ID field, so the proposed optional
+admission ID is forwarded from existing slot keys; importer and non-32 behavior
+remain unchanged. The later acceptance outline explicitly accounts for the
+inventory's ID-less probe and historical rejection counts.
+
+All source-lock exclusions remain hard boundaries, especially Snatch, shared
+cancellation/MoveEnd, status/items/abilities, Substitute, persistence and retail
+animation/timing. No generic healing API, cross-turn state, implementation task
+or broader support claim is introduced. No runtime, tests, ROM/private runner,
+routes, save, coordination or canonical Phase 4 state is changed. Parent owns
+reconciliation; this handoff does not self-approve design or effect completion.
+
+Read-only checks: recovered matching public/local base; verified source pin and
+clean tracked reference state; confirmed six runtime/importer owners unchanged
+from accepted `a739ddc`; inspected both runtime admission callers, event and
+party-bridge seams, and inventory probe. The read-only repository checker over
+the tracked list plus the pending new report passed: 276 Lua files, 162 Markdown
+files, 449 local targets, zero errors; the design pair contains 12 local link
+occurrences. Whitespace and exact two-path authored-scope checks passed. The
+published revision is handed to the Orchestrator for separate review. Gameplay
+tests/full suite are not new evidence for this design-only package.
