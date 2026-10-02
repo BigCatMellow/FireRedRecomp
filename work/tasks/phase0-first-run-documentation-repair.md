@@ -1,7 +1,7 @@
 # Task: document the supported first-run verification profile
 
 - Task ID: `P0-04-DOCS`
-- Status: `READY_FOR_WORKER`
+- Status: `CLOSED — REVIEWED PASS`
 - Type: `DOCUMENTATION / REPRODUCIBILITY REPAIR`
 - Prerequisite: [P0-04 discovery PASS](../reviews/2026-10-02-first-run-reproducibility-discovery-review.md), exact `8c92f67`.
 
@@ -44,6 +44,12 @@ review must accept the exact revision before a fresh P0-04 verification.
 Stop if accuracy requires platform/package-manager selection, host mutation,
 valid ROM access, or a claim not established by discovery. Record it; do not
 widen scope.
+
+## Review
+
+Exact `d4f7fe8` passed [independent review](../reviews/2026-10-02-first-run-documentation-repair-review.md).
+The repair does not itself prove desktop first-run; a separate fresh P0-04
+verification remains required.
 
 ## Completion and handoff — 2026-10-02
 
