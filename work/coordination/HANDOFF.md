@@ -17,6 +17,12 @@ The ledger now preserves its UNKNOWN boundaries and later accepted save rollover
 wording. `P0-04` clean-clone verification is the active report-only successor;
 Phase 0 remains open.
 
+`P0-04` is now **BLOCKED — REVIEWED EVIDENCE**: report `d0e0bad` and its
+[independent review](../reviews/2026-10-01-clean-clone-verification-review.md)
+confirm fresh-clone CLI checks/refusals, but `docs/FIRST_RUN.md` is absent,
+default PATH lacks the required tools, and no isolated desktop first-run proof
+was captured. Do not repair within the verification task.
+
 `P4-02` is closed after bridge implementation `c10bfa7` and
 [independent PASS](../reviews/2026-09-27-move-effect-inventory-review.md).
 Guarded run `36336096049` verified the private supported ROM, passed both

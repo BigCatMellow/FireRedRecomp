@@ -1,7 +1,7 @@
 # Task: clean-clone reproducibility verification
 
 - Task ID: `P0-04`
-- Status: `READY_FOR_WORKER`
+- Status: `BLOCKED — REVIEWED EVIDENCE`
 - Type: `VERIFICATION / CLEAN CHECKOUT`
 - Parent gate: Phase 0 reproducibility and release baseline.
 - Prerequisites: accepted save contract `63592c3`, CI checks `3478822`, and
@@ -53,9 +53,12 @@ blocker and preserve the clean checkout; do not install, modify or bypass it.
 
 ## Completion and handoff
 
-Worker publishes only this task/report. A separate Reviewer examines the exact
-revision and evidence. Even a PASS does not close Phase 0 unless the canonical
-checklist's remaining save-safety terms are independently satisfied.
+Worker published the constrained evidence at `d0e0bad`. Its independent
+[review](../reviews/2026-10-01-clean-clone-verification-review.md) passes the
+report but retains an overall BLOCK: missing `docs/FIRST_RUN.md`, default-PATH
+tool prerequisites, and unavailable isolated desktop observation prevent a
+clean first-run claim. No repair is authorized by this task. Phase 0 remains
+open for these and its canonical save-safety gates.
 
 ## Worker evidence and handoff — 2026-10-01
 

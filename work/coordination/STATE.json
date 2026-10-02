@@ -4,15 +4,15 @@
   "execution_paused": false,
   "role": "ORCHESTRATOR",
   "status": "READY_FOR_WORKER",
-  "task_id": "P0-04",
-  "current_phase": "Phase 0 and Phase 4 remain IN PROGRESS; clean-clone verification and Restore HP design active",
+  "task_id": "P4-F2-RESTORE-HP-DESIGN",
+  "current_phase": "Phase 0 and Phase 4 remain IN PROGRESS; clean-clone evidence is blocked and Restore HP design awaits review",
   "canonical_status_owner": "work/roadmaps/CAPABILITY_CHECKLIST.md",
-  "active_task": "work/tasks/phase0-clean-clone-verification.md",
-  "objective": "Observe a fresh public checkout following documented no-ROM setup/test and safe invalid-ROM refusal paths without modifying project state.",
-  "next_role": "WORKER",
-  "acceptance": "Fresh-clone aggregate report and separate exact review; no Phase 0 closure unless canonical remaining gates are met.",
-  "boundaries": "Report/task only. No project modification, ROM/media/save/cache, credentials, dependency install or repair authorization.",
-  "dependencies": "Save contract63592c3, CI checks3478822 and ledger correctionfc43daf independently PASS. Restore HP source-lock review remains separate. User requested continuous work and GitHub synchronization.",
+  "active_task": "work/tasks/phase4-restore-hp-design.md",
+  "objective": "Obtain exact independent review of the ordinary Recover/Slack Off design before any implementation contract is considered.",
+  "next_role": "REVIEWER",
+  "acceptance": "Design report exact review only; no implementation/route work without a separate permitted contract.",
+  "boundaries": "P0-04 remains evidence-blocked with no repair authorization. P4-F2 is report/design only; no runtime/tests/ROM/route work.",
+  "dependencies": "P0-04 reportd0e0bad independently passes as a BLOCK. Restore HP design4863567 awaits independent review. User requested continuous work and GitHub synchronization.",
   "runner_blocker": {
     "task_id": "P4-02-ROUTE",
     "status": "CLOSED — REVIEWED PASS",
@@ -44,9 +44,9 @@
   "parallel_research": {
     "task_id": "P0-04",
     "task": "work/tasks/phase0-clean-clone-verification.md",
-    "status": "READY_FOR_WORKER",
-    "source_revision": "public main after fc43daf",
-    "boundary": "Fresh disposable clone/report only; no ROM, cache, credentials, dependency install or repair; independent final review required"
+    "status": "BLOCKED — REVIEWED EVIDENCE",
+    "source_revision": "reportd0e0bad",
+    "boundary": "CLI path/refusals pass; absent first-run guide/default PATH and unverified desktop require a separately bounded resolution, not a verification repair"
   },
   "reconciliation": {
     "camera_task_status": "CLOSED — REVIEWED PASS at 4c5456f3; guarded run 34753297372",
