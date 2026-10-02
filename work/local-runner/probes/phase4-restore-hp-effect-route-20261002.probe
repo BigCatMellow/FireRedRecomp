@@ -1,0 +1,7 @@
+P4-F3-ROUTE substrate-only probe.
+
+Authorized by the independently reviewed `phase4-restore-hp-effect` route
+configuration. This file must be the sole bridge request/probe changed by its
+commit. It authorizes route selection, trusted checkout, Lua toolchain and
+private supported-ROM SHA verification only. Patch validation/application,
+focused/full tests, runtime replay and publication must be skipped.
