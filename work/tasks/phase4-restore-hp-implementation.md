@@ -1,7 +1,7 @@
 # Task: implement bounded ordinary Recover / Slack Off
 
 - Task ID: `P4-F3-RESTORE-HP-IMPLEMENTATION`
-- Status: `READY_FOR_PREPARATION`
+- Status: `READY_FOR_WORKER — ONE GUARDED REQUEST AUTHORIZED`
 - Type: `IMPLEMENTATION — GUARDED ROUTE REQUIRED`
 - Prerequisites: [source lock](../reviews/2026-09-29-restore-hp-source-discovery-review.md) and [design PASS](../reviews/2026-10-01-restore-hp-design-review.md).
 - Risk: `HIGH` — battle behavior, event ordering and private-ROM evidence.
@@ -40,3 +40,10 @@ non-skipped SHA-ROM evidence plus independent exact implementation review.
 
 Stop for any needed generic abstraction, excluded interaction, route absence,
 source ambiguity or ROM failure. Record the blocker; do not broaden scope.
+
+## Route readiness
+
+The dedicated route configuration and probe independently passed. Worker may
+publish exactly one `phase4-restore-hp-effect` request using the reviewed
+nine-path allowlist. The guarded run and independent exact implementation review
+remain required; no completion claim follows request publication.

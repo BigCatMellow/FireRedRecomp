@@ -1,7 +1,7 @@
 # Task: plan Local Worker Bridge route for Restore HP
 
 - Task ID: `P4-F3-ROUTE`
-- Status: `CONFIGURATION REVIEWED PASS — PROBE READY`
+- Status: `CLOSED — CONFIGURATION AND PROBE REVIEWED PASS`
 - Type: `INFRASTRUCTURE / EXECUTION SUBSTRATE / PLAN`
 - Authority: [P4-F3 implementation contract](phase4-restore-hp-implementation.md) and [F2 design PASS](../reviews/2026-10-01-restore-hp-design-review.md).
 
@@ -65,3 +65,11 @@ selector, nine-path validation/staging surface, four focused commands and
 headless replay branch. Its [independent configuration review](../reviews/2026-10-02-restore-hp-route-configuration-review.md)
 passed exact `4350aa1`. One substrate-only probe is authorized; no Worker request
 is authorized until that probe passes.
+
+## Probe
+
+Probe `3c03876` passed guarded run `36981539166`; the independent
+[review](../reviews/2026-10-02-restore-hp-route-probe-review.md) confirms trusted
+checkout, route selection, Lua 5.1.5 and the supported-ROM SHA gate, while all
+patch/test/replay/publication steps skipped. One bounded P4-F3 request is now
+eligible; this is not implementation or Phase 4 acceptance.
