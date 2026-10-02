@@ -1,7 +1,7 @@
 # Task: discover the minimum first-run reproducibility repair
 
 - Task ID: `P0-04-DISCOVERY`
-- Status: `READY_FOR_WORKER`
+- Status: `CLOSED — REVIEWED PASS`
 - Type: `RESEARCH / READ-ONLY REPRODUCIBILITY DISCOVERY`
 - Parent gate: Phase 0 clean-clone evidence block at `d0e0bad`.
 - Risk: `LOW` — report only; it must not silently repair or broaden support.
@@ -49,9 +49,10 @@ decision/blocker; do not select a platform or modify the environment.
 
 ## Completion and handoff
 
-Researcher publishes only this task/report. A separate Reviewer returns PASS /
-NEEDS_FIX / BLOCK. Only reviewed PASS may permit one narrow repair and then a
-fresh P0-04 verification; Phase 0 remains open.
+Researcher published `8c92f67`; the independent
+[review](../reviews/2026-10-02-first-run-reproducibility-discovery-review.md)
+returned PASS. Only one narrow documentation repair may follow, then a fresh
+P0-04 verification; Phase 0 remains open.
 
 ## Research evidence and handoff — 2026-10-02
 
