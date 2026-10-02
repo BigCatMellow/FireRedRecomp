@@ -1,7 +1,7 @@
 # Task: design the bounded ordinary restore-HP contract
 
 - Task ID: `P4-F2-RESTORE-HP-DESIGN`
-- Status: `READY_FOR_WORKER`
+- Status: `CLOSED — REVIEWED PASS`
 - Type: `DESIGN / NO IMPLEMENTATION`
 - Parent chain: effect-32 source lock accepted at `1f89f0d`.
 - Risk: `MEDIUM` — design determines any later battle/controller contract.
@@ -49,9 +49,10 @@ and stop; do not silently broaden the feature.
 
 ## Completion and handoff
 
-Designer publishes the report only. A separate Reviewer returns PASS / NEEDS_FIX
-/ BLOCK. Only a reviewed PASS may permit a narrowly scoped implementation
-contract; Phase 4 remains open.
+Designer published `4863567`; the independent
+[review](../reviews/2026-10-01-restore-hp-design-review.md) returned PASS.
+Only a separately bounded implementation contract may follow; Phase 4 remains
+open.
 
 ## Designer evidence and handoff — 2026-10-01
 
