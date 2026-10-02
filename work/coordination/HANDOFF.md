@@ -38,6 +38,12 @@ Only `P4-F2-RESTORE-HP-DESIGN` may proceed, for the ordinary non-intercepted
 path. Snatch, shared cancellation/MoveEnd, status/item/ability, persistence,
 UI parity, doubles/links and Milk Drink/effect 157 remain excluded.
 
+`P4-F3-ROUTE` configuration passed at `4350aa1`; the sole authorized probe is
+`3c03876` / GitHub run `36981539166`. It is **queued** because self-hosted
+`firered-mint` is offline (not busy) as observed 2026-10-02. Do not create a
+second probe, a request or a bypass. When the existing run completes, recover
+its readiness-only evidence and obtain independent probe review first.
+
 ### Resume update — 2026-09-23
 
 The user explicitly resumed execution. CI checks `3478822` are closed after
