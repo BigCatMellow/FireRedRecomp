@@ -1,7 +1,7 @@
 # Task: reverify documented first-run on a fresh checkout
 
 - Task ID: `P0-04-REVERIFY`
-- Status: `READY_FOR_WORKER`
+- Status: `BLOCKED — REVIEWED EVIDENCE`
 - Type: `VERIFICATION / CLEAN CHECKOUT`
 - Prerequisites: P0-04 evidence block and [P0-04-DOCS PASS](../reviews/2026-10-02-first-run-documentation-repair-review.md), exact `d4f7fe8`.
 
@@ -60,3 +60,10 @@ results are retained at their original pin, not relabeled as new evidence.
 Publish only this handoff and report for independent exact review. Parent owns
 blocker reconciliation and any separately authorized target/preparation choice;
 this retry does not supply clean-target or Phase 0 completion evidence.
+
+## Review
+
+Exact `93c4654` passed [independent review](../reviews/2026-10-02-clean-clone-reverification-review.md)
+as an accurate BLOCK. The fresh target lacked both `lua5.1` and LÖVE; no wrapper,
+PATH change, installation or dependent check occurred. A separate preparation
+decision is required before another retry.
