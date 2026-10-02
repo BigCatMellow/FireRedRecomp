@@ -52,6 +52,12 @@ Current supported request/probe prefixes are:
   inherited ROM environment. The unchanged full SHA-verified-ROM suite must
   execute its aggregate inventory check without skipping. No runtime replay
   applies because this route changes no runtime behavior;
+- `phase4-restore-hp-effect...` — bounded ordinary Recover/Slack Off effect-32
+  route. It admits exactly the nine paths in its reviewed route plan, runs
+  engine/controller/inventory/ROM-focused tests plus shared no-ROM and
+  SHA-verified-ROM suites, and requires a deterministic headless replay. It
+  excludes `main.lua`, importer, generic healing, Milk Drink and every
+  interception/cancellation/state expansion;
 - `runner-online...probe` — non-patch runner-readiness probe only.
 
 Adding a new route requires a bounded task that authorizes bridge maintenance. Do not add a generic fallback route.
