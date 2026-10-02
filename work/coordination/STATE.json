@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_utc": "2026-09-27T00:00:00Z",
+  "updated_utc": "2026-10-02T00:00:00Z",
   "execution_paused": false,
   "role": "ORCHESTRATOR",
   "status": "READY_FOR_WORKER",
@@ -60,7 +60,7 @@
     "phase4_pain_split_status": "CLOSED — REVIEWED PASS at a739ddc; guarded run 35493728001; exact review work/reviews/2026-09-20-pain-split-implementation-review.md"
   },
   "phase2_external_blocker": "Trusted, user-owned retail-reference captures with provenance/timing/crop/filter details for Oak and Pallet anchors have not been supplied.",
-  "next_after_success": "Independently review the ledger audit, then select a bounded ledger-only correction or P0-04 clean-clone proof. While runner is online, resume the existing single inventory probe and guarded evidence.",
+  "next_after_success": "Recover/review existing Restore HP probe, then one bounded implementation request. In parallel compile P0 first-run/tooling/desktop discovery; retain Phase 2 retail-reference intake as external blocked.",
   "legal_content_boundary": "Never commit ROMs, BIOS dumps, generated caches, ROM-derived reference screenshots, extracted game assets, or other prohibited content.",
   "phase_completion_rule": "Phase 2 remains IN PROGRESS until the Oak/reference screenshot discrepancy gate is evidenced and independently reviewed."
 }

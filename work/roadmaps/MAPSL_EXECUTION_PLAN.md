@@ -11,6 +11,7 @@
 - Live relay: [`../coordination/STATE.json`](../coordination/STATE.json) and [`../coordination/HANDOFF.md`](../coordination/HANDOFF.md)
 - Detailed history: [`../../docs/handoffs/firered-recomp-checklist.md`](../../docs/handoffs/firered-recomp-checklist.md)
 - Companion routing index: [`EXECUTION_MAP.md`](EXECUTION_MAP.md)
+- Current delivery horizon: [`RECALIBRATED_DELIVERY_PLAN.md`](RECALIBRATED_DELIVERY_PLAN.md)
 
 ## Purpose
 
@@ -73,7 +74,17 @@ conflicting procedures.
    after the Orchestrator compiles its task contract and records it in
    `STATE.json`/`HANDOFF.md`.
 
-## Current relay — do this before any new roadmap work
+## Current authoritative relay — 2026-10-02
+
+| ID | Status | Next action |
+| --- | --- | --- |
+| `P4-F3-ROUTE` | `QUEUED — RUNNER OFFLINE` | Recover existing probe `3c03876` / run `36981539166`, independently review it, then authorize one Restore HP request only on PASS. |
+| `P0-04` | `BLOCKED — REVIEWED EVIDENCE` | Compile a separate first-run/tooling/desktop-observation discovery; do not repair inside verification. |
+| Phase 2 reference comparison | `BLOCKED — USER INPUT` | Await provenance-rich retail Oak/Pallet captures; do not manufacture substitutes. |
+
+The following relay is historical task history, not the current dispatch queue.
+
+## Historical relay
 
 | ID | Status | Assigned role | Prerequisites | Required result / evidence | Next owner |
 | --- | --- | --- | --- | --- | --- |
@@ -84,7 +95,7 @@ conflicting procedures.
 | `P4-02-ROUTE` | `CLOSED — REVIEWED PASS` | ORCHESTRATOR | [Configuration PASS](../reviews/2026-09-20-move-effect-inventory-route-review.md), [probe PASS](../reviews/2026-09-27-move-effect-inventory-probe-review.md) at `97dcae0` | Guarded run `36335570606` verified route substrate only | P4-02 request publication |
 | `P4-02` | `CLOSED — REVIEWED PASS` | ORCHESTRATOR | [Exact final review](../reviews/2026-09-27-move-effect-inventory-review.md), `c10bfa7` | Guarded SHA-ROM evidence and both 151-file suites verified; no behavior change | `P4-F1-RESTORE-HP-DISCOVERY` only |
 | `P4-F1-RESTORE-HP-DISCOVERY` | `CLOSED — REVIEWED PASS` | ORCHESTRATOR | [Exact independent review](../reviews/2026-09-29-restore-hp-source-discovery-review.md), `1f89f0d` | Ordinary Recover/Slack Off source lock; Milk Drink and intercept/cancellation state excluded | `P4-F2-RESTORE-HP-DESIGN` only |
-| `P4-F2-RESTORE-HP-DESIGN` | `READY_FOR_WORKER` | RESEARCHER | [Bounded ordinary-path design](../tasks/phase4-restore-hp-design.md) | Specify event/admission contract only; no code/test/route work | final REVIEWER |
+| `P4-F2-RESTORE-HP-DESIGN` | `CLOSED — REVIEWED PASS` | ORCHESTRATOR | [Exact independent review](../reviews/2026-10-01-restore-hp-design-review.md), `4863567` | Literal admission/events/inventory delta and exclusions accepted as design only | P4-F3 route/probe then one implementation request |
 | `P0-01-DISCOVERY` | `CLOSED — REVIEWED PASS` | ORCHESTRATOR | [Exact audit review](../reviews/2026-09-27-behavior-ledger-audit-review.md), `61f1a77` | Nine-row historical evidence map; no status or runtime promotion | `P0-01-CORRECTION` only |
 | `P0-01-CORRECTION` | `CLOSED — REVIEWED PASS` | ORCHESTRATOR | [Exact independent review](../reviews/2026-09-29-behavior-ledger-correction-review.md), `fc43daf` | Ten bounded ledger rows with evidence/UNKNOWN limits preserved | `P0-04` only; Phase 0 remains open |
 | `P0-04` | `BLOCKED — REVIEWED EVIDENCE` | ORCHESTRATOR | [Exact independent review](../reviews/2026-10-01-clean-clone-verification-review.md), `d0e0bad` | CLI verification/refusals pass; missing first-run guide/default tool path and unverified desktop block full claim | Separate bounded resolution; do not repair within verification |

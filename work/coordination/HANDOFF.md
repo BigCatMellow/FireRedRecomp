@@ -1,11 +1,11 @@
 # FireRedRecomp Coordination Handoff
 
-- Status: `READY_FOR_WORKER — bounded documentation and source-lock research`
-- Task ID: `P0-01-CORRECTION` and `P4-F1-RESTORE-HP-DISCOVERY`
+- Status: `QUEUED — P4-F3 probe awaits offline private runner`
+- Task ID: `P4-F3-ROUTE`; parallel P0 first-run discovery is next to compile
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
-- Active tasks: [`../tasks/phase0-behavior-ledger-correction.md`](../tasks/phase0-behavior-ledger-correction.md) and [`../tasks/phase4-restore-hp-source-discovery.md`](../tasks/phase4-restore-hp-source-discovery.md)
+- Current plan: [`../roadmaps/RECALIBRATED_DELIVERY_PLAN.md`](../roadmaps/RECALIBRATED_DELIVERY_PLAN.md)
 
-## Current relay — 2026-09-21
+## Current relay — 2026-10-02
 
 ### Reconciliation update — 2026-09-27
 

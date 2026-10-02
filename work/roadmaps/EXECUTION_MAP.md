@@ -31,7 +31,16 @@ strategic phase
 
 Default to one critical-path Worker package at a time.
 
-## Current critical path
+## Current authoritative critical path — 2026-10-02
+
+Restore HP is the active gated leaf: F1 source lock and F2 design passed; its
+F3 route configuration passed; the sole probe `3c03876` / run `36981539166` is
+queued because `firered-mint` is offline. Recover that exact probe, independently
+review it, then allow one route-bounded implementation request. In parallel,
+compile P0 first-run/tooling/desktop discovery; Phase 2 remains external-blocked
+on user-owned retail captures. See [recalibrated delivery plan](RECALIBRATED_DELIVERY_PLAN.md).
+
+## Historical critical-path snapshot
 
 User paused execution on 2026-09-21 to conserve tokens. The stopping checkpoint
 in [HANDOFF](../coordination/HANDOFF.md) supersedes older active/offline labels
