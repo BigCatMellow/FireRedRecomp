@@ -44,3 +44,26 @@ review must accept the exact revision before a fresh P0-04 verification.
 Stop if accuracy requires platform/package-manager selection, host mutation,
 valid ROM access, or a claim not established by discovery. Record it; do not
 widen scope.
+
+## Completion and handoff — 2026-10-02
+
+Documentation authored from exact public base
+`c08494181a91f8c487561af6431b4bd2ed1c775f`; independent exact review required.
+README now links the [first-run guide](../../docs/FIRST_RUN.md), explicitly
+disables ROM/replay for no-ROM commands, and limits screenshot/runtime claims.
+The guide describes the conditional already-provisioned Linux profile,
+read-only preflight, synthetic missing/invalid-input refusals, private verified
+ROM policy and later isolated desktop/clean-target evidence requirements.
+
+No installer, package source, new platform guarantee, runtime/test/workflow
+change, host/toolchain/desktop mutation or ROM access is introduced. No fresh
+clone, game suite or desktop launch was performed or claimed. P0-04 remains
+BLOCK pending a separately authorized fresh verification after documentation
+review; parent owns reconciliation. Only README, FIRST_RUN and this handoff may
+be published.
+
+Documentation validation passed using the pre-existing Lua interpreter by
+explicit path, without changing PATH: 276 tracked Lua / 174 Markdown / 498
+local targets, zero errors with the new guide included. All four guide Bash
+blocks pass syntax-only `bash -n`; whitespace and exact three-path scope checks
+pass. These are documentation checks, not fresh-target execution or self-review.

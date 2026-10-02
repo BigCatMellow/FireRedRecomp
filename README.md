@@ -77,6 +77,13 @@ itself.
 
 ## Running
 
+Start with the [first-run guide](docs/FIRST_RUN.md). Its verification profile
+assumes an already provisioned Linux host with Git, Bash, Lua 5.1 (`lua5.1`),
+`sha1sum` and LÖVE 11.5; desktop observation also needs a usable display.
+Missing prerequisites are a stop condition, not an automatic installation.
+This is not a clean-OS or universal-platform support promise, and desktop
+first-run/refusal evidence remains pending.
+
 ```
 love .
 ```
@@ -87,8 +94,8 @@ From the repository root, with Git, Lua 5.1 (`lua5.1`) and Bash installed,
 run the repository checks and every checked-in test without a ROM:
 
 ```
-lua5.1 scripts/check_repository.lua
-bash scripts/test_all.sh
+env -u POKEPORT_ROM -u POKEPORT_RUNTIME_REPLAY lua5.1 scripts/check_repository.lua
+env -u POKEPORT_ROM -u POKEPORT_RUNTIME_REPLAY bash scripts/test_all.sh
 ```
 
 Public CI runs both commands on a clean checkout without a ROM. The repository
@@ -176,11 +183,14 @@ interaction to walk in and talk to the clerk isn't wired yet.
 specific viewer record. Set `POKEPORT_SCREENSHOT=1` to save a screenshot
 (`screenshot.png` in LÖVE's save directory, e.g.
 `~/.local/share/love/firered-recomp/` on Linux) and quit automatically —
-useful for headless verification. Save files are separate from the ROM-derived
+useful for loaded-scene headless verification. This hook does not capture the
+normal unset-ROM or refusal-only screen; ROM-backed replay likewise does not
+prove no-ROM first-run behavior. Save files are separate from the ROM-derived
 cache and are written only when the player saves.
 
-A LÖVE 11.x runtime is required to launch the desktop app. The Lua test suite
-uses `lua5.1` and does not require a display.
+The documented desktop verification profile uses LÖVE 11.5, matching `conf.lua`;
+it does not certify other runtime versions. The Lua test suite uses `lua5.1`
+and does not require LÖVE or a display.
 
 ## Directory layout
 
