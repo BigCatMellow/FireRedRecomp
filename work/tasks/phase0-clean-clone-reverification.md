@@ -37,3 +37,26 @@ not a workaround. Independently review the exact report before reconciling P0.
 This retry may close only the documentation/tool-discovery portion of P0-04.
 Phase 0 remains open unless all canonical clean-target and save-safety gates are
 independently evidenced.
+
+## Worker evidence and handoff — 2026-10-02
+
+Result: **BLOCK — missing documented prerequisites**, not CLI/refusal/desktop
+PASS. The [aggregate report](../reports/phase0-clean-clone-reverification.md)
+records a new public HTTPS clone detached at exact
+`6dcb2e609a702d0d02b2547dc133b594800b87b6`, with unchanged reviewed README and
+FIRST_RUN documentation and clean tracked/untracked/ignored final state.
+
+The guide's exact CLI preflight exits 127 with `Missing prerequisite: lua5.1`;
+the separate `love --version` command also exits 127 because LÖVE is absent.
+Git 2.43.0, Bash 5.2.21 and `sha1sum` 9.4 are available on Linux Mint
+22.2/x86_64. No isolated wrapper or alternate tool path was injected.
+
+Repository checker, full suite, missing/invalid-input refusals and every
+desktop observation are explicitly **NOT RUN** after the prerequisite stop.
+No valid ROM, synthetic fixture, application launch, display injection,
+installation, environment repair or phase change occurred. Historical CLI
+results are retained at their original pin, not relabeled as new evidence.
+
+Publish only this handoff and report for independent exact review. Parent owns
+blocker reconciliation and any separately authorized target/preparation choice;
+this retry does not supply clean-target or Phase 0 completion evidence.
