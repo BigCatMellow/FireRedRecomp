@@ -56,3 +56,31 @@ blocker and preserve the clean checkout; do not install, modify or bypass it.
 Worker publishes only this task/report. A separate Reviewer examines the exact
 revision and evidence. Even a PASS does not close Phase 0 unless the canonical
 checklist's remaining save-safety terms are independently satisfied.
+
+## Worker evidence and handoff — 2026-10-01
+
+Result: **BLOCK** for complete first-run/desktop verification; constrained
+README CLI observation PASS. The
+[aggregate report](../reports/phase0-clean-clone-verification.md) records the
+fresh public clone at `7a2e7ad7f6eec1a41c97f613143598b5de9c5a10`, tool versions,
+commands, explicit deviations and evidence limits, without machine paths or
+private ROM information. The clone remained clean.
+
+Observed with pre-existing tools exposed through an explicitly authorized PATH
+prefix: repository checker **276 Lua / 158 Markdown / 428 targets PASS** and
+full **151-file no-ROM PASS**, both exit 0. The documented test entrypoint
+refused a configured nonexistent file and separately authored invalid ASCII
+input, both exit 1 at ROM verification. No valid ROM or project state was used.
+
+The task-named `docs/FIRST_RUN.md` does not exist at the pin, and Lua/LÖVE were
+absent from default PATH. A single isolated Xvfb/XDG `love .` observation could
+not capture its display; a visible first-run/refusal result is therefore
+unverified. The owned process was stopped, later GUI cases were not attempted,
+and no installation, repair, runtime/test/workflow/documentation correction or
+phase change was made. Public CI command coverage was compared statically;
+local observations are not new CI/private-ROM/replay receipts.
+
+Only this evidence section and the report may be published. Independent review
+must assess the exact result; parent owns blocker/status reconciliation and any
+separately scoped prerequisite/documentation/desktop follow-up. Preserve the
+constrained CLI evidence without claiming pristine-machine or Phase 0 success.
