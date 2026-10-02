@@ -42,11 +42,11 @@
     "boundary": "Four implementation paths plus own task, disjoint from save contract; read-only Lua syntax/local-doc checks with exact public CI and independent-review gates"
   },
   "parallel_research": {
-    "task_id": "P0-04",
-    "task": "work/tasks/phase0-clean-clone-verification.md",
-    "status": "BLOCKED — REVIEWED EVIDENCE",
-    "source_revision": "reportd0e0bad",
-    "boundary": "CLI path/refusals pass; absent first-run guide/default PATH and unverified desktop require a separately bounded resolution, not a verification repair"
+    "task_id": "P0-04-DISCOVERY",
+    "task": "work/tasks/phase0-first-run-reproducibility-discovery.md",
+    "status": "READY_FOR_WORKER",
+    "source_revision": "P0-04 reportd0e0bad / review2026-10-01",
+    "boundary": "Read-only repair/reverification discovery only; no docs/tooling/package/desktop/ROM change; independent review before any repair contract"
   },
   "reconciliation": {
     "camera_task_status": "CLOSED — REVIEWED PASS at 4c5456f3; guarded run 34753297372",
