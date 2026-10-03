@@ -1,7 +1,7 @@
 # Task: design bounded Viridian scene/template projection
 
 - Task ID: `P5-03-OLD-MAN-DESIGN`
-- Status: `READY_FOR_WORKER`
+- Status: `CLOSED — REVIEWED PASS`
 - Type: `DESIGN / NO IMPLEMENTATION`
 - Prerequisite: [P5-02 source-lock PASS](../reviews/2026-10-02-viridian-old-man-projection-discovery-review.md), exact `4fbd0d6`.
 
@@ -34,6 +34,12 @@ review is required.
 
 Stop for a required persistent-state model, general callback/VM, or unrelated
 object/renderer behavior. Record the dependency rather than broadening scope.
+
+## Review
+
+Exact `87644b2` passed [independent review](../reviews/2026-10-02-viridian-old-man-projection-design-review.md).
+Only a separately routed map-specific helper/integration/test implementation
+may follow; no generic callback or traversal work is authorized.
 
 ## Design handoff — 2026-10-02
 
