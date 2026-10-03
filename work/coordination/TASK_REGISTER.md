@@ -78,6 +78,7 @@ Read HANDOFF first.
 | `P5-04-OLD-MAN-PROJECTION` | `READY_FOR_PREPARATION` | `WORKER` | [Guarded implementation task](../tasks/phase5-viridian-old-man-projection-implementation.md) | One map/local-ID projection only; no patch before route PASS. | Route plan/config/review/probe then one request. |
 | `P5-04-ROUTE` | `CLOSED` | `ORCHESTRATOR` | [Plan PASS](../reviews/2026-10-03-viridian-old-man-projection-route-plan-review.md), `4678b4d` | Five literal later Worker paths and justified no-replay branch independently accepted. | Dispatch only P5-04-ROUTE-CONFIG. |
 | `P5-04-ROUTE-CONFIG` | `CLOSED` | `ORCHESTRATOR` | [Configuration PASS](../reviews/2026-10-03-viridian-old-man-projection-route-configuration-review.md), `7a45118` | Five literal route arms and explicit no-replay path accepted; shared guards preserved. | Authorizes one P5-04 route probe only. |
+| `P6-01-FIELD-MENU-INVENTORY` | `READY_FOR_WORKER` | `RESEARCHER` | [Read-only field-menu inventory](../tasks/phase6-field-menu-coverage-inventory.md) | Normal START/Party/Bag/Mart/PC boundary only; no UI behavior or runner work. | Independent report review before any P6 leaf. |
 | `P2-REF-01` | `BLOCKED` | `USER` | [`phase2-oak-reference-comparison.md`](../tasks/phase2-oak-reference-comparison.md) | Trusted retail Oak/Pallet reference captures with provenance have not been supplied; media must remain outside git. | User supplies captures/provenance; Orchestrator validates intake and moves comparison to `OPEN`. |
 
 ## Legacy policy
