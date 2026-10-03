@@ -1,7 +1,7 @@
 # Task: plan Local Worker Bridge route for Viridian Old Man projection
 
 - Task ID: `P5-04-ROUTE`
-- Status: `READY_FOR_REVIEWER`
+- Status: `CLOSED — REVIEWED PASS`
 - Type: `INFRASTRUCTURE / EXECUTION SUBSTRATE / PLAN`
 - Authority: [P5-04 implementation contract](phase5-viridian-old-man-projection-implementation.md) and [P5-03 design PASS](../reviews/2026-10-02-viridian-old-man-projection-design-review.md).
 
@@ -56,3 +56,10 @@ for a new contract rather than widening this route.
 Independent review must accept this exact plan before the Orchestrator
 configures the workflow. Configuration then requires its own review and one
 substrate-only probe before any Worker request.
+
+## Review
+
+The independent [route-plan review](../reviews/2026-10-03-viridian-old-man-projection-route-plan-review.md)
+accepted exact `4678b4d50f13064e56d23214da20a30267d3da74`. It unlocks only the
+separately reviewed configuration task; no request, probe, or implementation
+is authorized by this plan review.
