@@ -1,18 +1,18 @@
 {
   "schema_version": 1,
-  "updated_utc": "2026-10-02T00:00:00Z",
+  "updated_utc": "2026-10-03T13:08:19Z",
   "execution_paused": false,
   "role": "ORCHESTRATOR",
-  "status": "READY_FOR_WORKER",
+  "status": "QUEUED_ON_PRIVATE_RUNNER",
   "task_id": "P4-F3-RESTORE-HP-IMPLEMENTATION",
-  "current_phase": "Phase 0 and Phase 4 remain IN PROGRESS; clean-target preparation needs a decision and one guarded Restore HP request is authorized",
+  "current_phase": "Phase 0, Phase 4, and Phase 5 remain IN PROGRESS; clean-target preparation needs a decision, Restore HP is queued, and one P5 route probe is pending",
   "canonical_status_owner": "work/roadmaps/CAPABILITY_CHECKLIST.md",
   "active_task": "work/tasks/phase4-restore-hp-implementation.md",
-  "objective": "Publish exactly one route-allowlisted ordinary Recover/Slack Off request, recover guarded evidence, and require independent exact review.",
-  "next_role": "WORKER",
-  "acceptance": "Focused/no-ROM/SHA-ROM/replay evidence and independent exact implementation review; no generic healing or excluded interaction expansion.",
-  "boundaries": "P0 clean target remains evidence-blocked pending preparation decision. P4-F3 has one nine-path request only; no route widening or second request.",
-  "dependencies": "Restore HP source/design and route/probe independently PASS; runner online. P0 reverify93c4654 independently BLOCK. User requested continuous work and GitHub synchronization.",
+  "objective": "Recover the single guarded Restore HP request when the runner returns, then require independent exact review; recover the queued P5 route probe separately before any P5 request.",
+  "next_role": "ORCHESTRATOR",
+  "acceptance": "Restore HP: focused/no-ROM/SHA-ROM/replay evidence plus independent exact review. P5: route-probe readiness evidence plus independent review before one request. No generic healing or map/script expansion.",
+  "boundaries": "P0 clean target remains evidence-blocked pending preparation decision. P4-F3 has one nine-path request only; P5 has one readiness probe only. No route widening, duplicate request, or P5 behavior patch.",
+  "dependencies": "Restore HP source/design/route/probe independently PASS; its request run 37080060017 awaits runner. P5 plan/config independently PASS; probe run 37125167854 awaits runner. P0 reverify93c4654 independently BLOCK.",
   "runner_blocker": {
     "task_id": "P4-F3-ROUTE",
     "status": "CLOSED — REVIEWED PASS",
@@ -42,11 +42,11 @@
     "boundary": "Four implementation paths plus own task, disjoint from save contract; read-only Lua syntax/local-doc checks with exact public CI and independent-review gates"
   },
   "parallel_research": {
-    "task_id": "P5-01",
-    "task": "work/tasks/phase5-world-coverage-inventory.md",
-    "status": "READY_FOR_WORKER",
-    "source_revision": "current public source/runtime/Phase3 evidence",
-    "boundary": "Read-only first progression-segment inventory only; no ROM/media/traversal/implementation; independent review before any Phase5 leaf"
+    "task_id": "P5-04-ROUTE",
+    "task": "work/tasks/local-worker-bridge-phase5-viridian-old-man-projection-configuration.md",
+    "status": "QUEUED_ON_PRIVATE_RUNNER",
+    "source_revision": "route configuration 7a45118 independently PASS; probe f6b9148 / run 37125167854 pending",
+    "boundary": "P5 probe proves substrate readiness only; no implementation request or behavior change before an independently reviewed probe PASS"
   },
   "reconciliation": {
     "camera_task_status": "CLOSED — REVIEWED PASS at 4c5456f3; guarded run 34753297372",
@@ -60,7 +60,7 @@
     "phase4_pain_split_status": "CLOSED — REVIEWED PASS at a739ddc; guarded run 35493728001; exact review work/reviews/2026-09-20-pain-split-implementation-review.md"
   },
   "phase2_external_blocker": "Trusted, user-owned retail-reference captures with provenance/timing/crop/filter details for Oak and Pallet anchors have not been supplied.",
-  "next_after_success": "Recover/review existing Restore HP probe, then one bounded implementation request. In parallel compile P0 first-run/tooling/desktop discovery; retain Phase 2 retail-reference intake as external blocked.",
+  "next_after_success": "When run 37080060017 succeeds, recover its published implementation and assign independent exact review. When run 37125167854 succeeds, review readiness only, then authorize one bounded P5 request. Retain P0 preparation decision and Phase 2 retail-reference intake as external blocked.",
   "legal_content_boundary": "Never commit ROMs, BIOS dumps, generated caches, ROM-derived reference screenshots, extracted game assets, or other prohibited content.",
   "phase_completion_rule": "Phase 2 remains IN PROGRESS until the Oak/reference screenshot discrepancy gate is evidenced and independently reviewed."
 }

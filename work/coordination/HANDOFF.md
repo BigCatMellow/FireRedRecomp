@@ -1,11 +1,28 @@
 # FireRedRecomp Coordination Handoff
 
-- Status: `QUEUED — P4-F3 probe awaits offline private runner`
-- Task ID: `P4-F3-ROUTE`; parallel P0 first-run discovery is next to compile
+- Status: `QUEUED — private runner offline; Restore HP request and P5 route probe await execution`
+- Task ID: `P4-F3-RESTORE-HP-IMPLEMENTATION`; P5-04 route probe is separately queued
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
 - Current plan: [`../roadmaps/RECALIBRATED_DELIVERY_PLAN.md`](../roadmaps/RECALIBRATED_DELIVERY_PLAN.md)
 
 ## Current relay — 2026-10-02
+
+### Queue update — 2026-10-03
+
+The sole Restore HP implementation request (`6395a47`, run `37080060017`) is
+still queued: `firered-mint` is offline and idle. Do not submit a second
+Restore HP request. The Worker implementation files presently in the local
+checkout are the request patch's allowed surface and must remain unstaged until
+the guarded run publishes (or fails) its own result.
+
+P5 first-corridor inventory, Viridian Old Man source discovery, and projection
+design are independently accepted. The dedicated route plan (`4678b4d`) and
+configuration (`7a45118`) also passed independent review. The one authorized
+readiness probe is `f6b9148`, GitHub run `37125167854`, currently pending on
+the same offline runner. It proves only checkout/selector/Lua/private-SHA
+readiness and must not be mistaken for a P5 implementation request. Do not
+duplicate it. Once it succeeds, obtain independent probe review before a
+single five-path P5 implementation request.
 
 ### Reconciliation update — 2026-09-27
 
