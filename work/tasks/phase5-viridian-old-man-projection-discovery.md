@@ -41,3 +41,13 @@ exclusions.
 Stop if the behavior requires a private ROM, a general script VM design, or a
 product decision about persistent world-state semantics. Record the boundary;
 do not expand the task.
+
+## Research handoff — 2026-10-02
+
+The source-lock report identifies the exact scene-variable transition projection
+for local ID 4 and its dynamic graphics slot without implementing it. The
+report records scene 0/1/2+ order, decoded-template facts, current session,
+object-state, graphics and script-hook seams, and the tutorial/coordinate/battle
+exclusions. Only this task and its report changed. A separate independent
+exact-revision review is required; at most one later design-only projection
+contract may be considered after PASS.
