@@ -1,7 +1,7 @@
 # Task: source-lock Viridian Old Man state projection
 
 - Task ID: `P5-02-OLD-MAN-DISCOVERY`
-- Status: `READY_FOR_WORKER`
+- Status: `CLOSED — REVIEWED PASS`
 - Type: `RESEARCH / SOURCE-LOCK DISCOVERY`
 - Prerequisite: [P5-01 inventory PASS](../reviews/2026-10-02-world-coverage-inventory-review.md), exact `7712d63`.
 
@@ -41,6 +41,12 @@ exclusions.
 Stop if the behavior requires a private ROM, a general script VM design, or a
 product decision about persistent world-state semantics. Record the boundary;
 do not expand the task.
+
+## Review
+
+Exact `4fbd0d6` passed [independent review](../reviews/2026-10-02-viridian-old-man-projection-discovery-review.md).
+Only a bounded scene/template projection design may follow; tutorial, movement,
+battle, UI and generic script work remain excluded.
 
 ## Research handoff — 2026-10-02
 
