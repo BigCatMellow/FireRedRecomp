@@ -128,6 +128,9 @@ jobs:
             phase4-restore-hp-effect*.patch|phase4-restore-hp-effect*.probe)
               route='phase4-restore-hp-effect'
               ;;
+            phase5-viridian-old-man-projection*.patch|phase5-viridian-old-man-projection*.probe)
+              route='phase5-viridian-old-man-projection'
+              ;;
             oak-parcel-dex-presentation-north*.patch|oak-parcel-dex-presentation-north*.probe)
               route='oak-parcel-dex-presentation-north'
               ;;
@@ -250,6 +253,8 @@ jobs:
               phase4-move-effect-inventory:tests/phase4_move_effect_inventory_test.lua|phase4-move-effect-inventory:work/tasks/phase4-move-effect-inventory.md|phase4-move-effect-inventory:work/reports/phase4-move-effect-inventory.md)
                 ;;
               phase4-restore-hp-effect:src/core/BattleEngine.lua|phase4-restore-hp-effect:src/core/BattleSceneController.lua|phase4-restore-hp-effect:tests/battle_engine_test.lua|phase4-restore-hp-effect:tests/battle_scene_controller_test.lua|phase4-restore-hp-effect:tests/phase4_move_effect_inventory_test.lua|phase4-restore-hp-effect:tests/phase4_restore_hp_effect_rom_test.lua|phase4-restore-hp-effect:scripts/runtime_phase4_restore_hp_replay.sh|phase4-restore-hp-effect:work/tasks/phase4-restore-hp-implementation.md|phase4-restore-hp-effect:work/reports/phase4-restore-hp-implementation.md)
+                ;;
+              phase5-viridian-old-man-projection:src/core/ViridianOldManProjection.lua|phase5-viridian-old-man-projection:main.lua|phase5-viridian-old-man-projection:tests/phase5_viridian_old_man_projection_test.lua|phase5-viridian-old-man-projection:work/tasks/phase5-viridian-old-man-projection-implementation.md|phase5-viridian-old-man-projection:work/reports/phase5-viridian-old-man-projection-implementation.md)
                 ;;
               *)
                 echo "Patch target is not authorized for explicit route '$ROUTE': $target" >&2
@@ -379,6 +384,9 @@ jobs:
               "$LUA" tests/phase4_move_effect_inventory_test.lua
               "$LUA" tests/phase4_restore_hp_effect_rom_test.lua
               ;;
+            phase5-viridian-old-man-projection)
+              "$LUA" tests/phase5_viridian_old_man_projection_test.lua
+              ;;
             *)
               echo "Patch execution has no focused-test route for '$ROUTE'." >&2
               exit 1
@@ -488,6 +496,9 @@ jobs:
               ;;
             phase4-restore-hp-effect)
               bash scripts/runtime_phase4_restore_hp_replay.sh
+              ;;
+            phase5-viridian-old-man-projection)
+              echo "No runtime replay is applicable: this route projects pre-spawn data and excludes traversal, tutorial, rendering, and generic scripts."
               ;;
             *)
               echo "Patch execution has no runtime-replay route for '$ROUTE'." >&2
@@ -662,6 +673,13 @@ jobs:
               ;;
             phase4-restore-hp-effect)
               for path in src/core/BattleEngine.lua src/core/BattleSceneController.lua tests/battle_engine_test.lua tests/battle_scene_controller_test.lua tests/phase4_move_effect_inventory_test.lua tests/phase4_restore_hp_effect_rom_test.lua scripts/runtime_phase4_restore_hp_replay.sh work/tasks/phase4-restore-hp-implementation.md work/reports/phase4-restore-hp-implementation.md; do
+                if [[ -e "$path" ]]; then
+                  git add -- "$path"
+                fi
+              done
+              ;;
+            phase5-viridian-old-man-projection)
+              for path in src/core/ViridianOldManProjection.lua main.lua tests/phase5_viridian_old_man_projection_test.lua work/tasks/phase5-viridian-old-man-projection-implementation.md work/reports/phase5-viridian-old-man-projection-implementation.md; do
                 if [[ -e "$path" ]]; then
                   git add -- "$path"
                 fi

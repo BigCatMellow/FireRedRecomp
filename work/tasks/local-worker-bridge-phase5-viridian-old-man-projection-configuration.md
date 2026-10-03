@@ -39,3 +39,12 @@ and inspect all five route arms together. An independent exact configuration
 review must PASS before a single substrate-only probe is authorized. The probe
 is not an implementation request and must skip patch/test/replay/publication
 steps.
+
+## Worker configuration handoff — 2026-10-03
+
+The workflow adds only the five reviewed route arms: explicit request/probe
+selection, literal validation, one focused Lua command, explicit no-replay
+message, and individual literal staging. Bridge documentation records the same
+five-path/no-replay boundary. No probe, request, implementation, test or
+canonical status change is included. Independent exact configuration review is
+required before the one authorized substrate-only probe.

@@ -58,6 +58,12 @@ Current supported request/probe prefixes are:
   SHA-verified-ROM suites, and requires a deterministic headless replay. It
   excludes `main.lua`, importer, generic healing, Milk Drink and every
   interception/cancellation/state expansion;
+- `phase5-viridian-old-man-projection...` — bounded pre-spawn Viridian local-ID
+  4 scene projection route. It admits only its reviewed helper, `main.lua`, one
+  focused projection test, and implementation task/report paths. It runs that
+  focused Lua test plus the shared no-ROM and SHA-verified-ROM suites. No
+  runtime replay applies because traversal, tutorial, rendering and generic
+  script behavior are excluded;
 - `runner-online...probe` — non-patch runner-readiness probe only.
 
 Adding a new route requires a bounded task that authorizes bridge maintenance. Do not add a generic fallback route.
