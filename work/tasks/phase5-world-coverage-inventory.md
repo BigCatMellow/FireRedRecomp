@@ -1,7 +1,7 @@
 # Task: inventory progression-critical world coverage
 
 - Task ID: `P5-01`
-- Status: `READY_FOR_WORKER`
+- Status: `CLOSED — REVIEWED PASS`
 - Type: `RESEARCH / READ-ONLY COVERAGE INVENTORY`
 - Parent capability: Phase 5 overworld and field systems.
 - Risk: `LOW` — report only; it cannot claim traversal or implement scripts.
@@ -49,6 +49,12 @@ next source-lock discovery. No complete-world or playable-route claim.
 Stop when source behavior needs a ROM/private data or when the first missing
 primitive cannot be selected without a product decision. Record the fact and
 do not widen to all Kanto.
+
+## Review
+
+Exact `7712d63` passed [independent review](../reviews/2026-10-02-world-coverage-inventory-review.md).
+Only the Viridian Old Man on-transition state projection may receive a separate
+source-lock task; no traversal or implementation is authorized.
 
 ## Evidence / Worker handoff — 2026-10-02
 
