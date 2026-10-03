@@ -34,3 +34,11 @@ review is required.
 
 Stop for a required persistent-state model, general callback/VM, or unrelated
 object/renderer behavior. Record the dependency rather than broadening scope.
+
+## Design handoff — 2026-10-02
+
+The report specifies a single map-load, temporary local-ID-4 projection driven
+only by the already-persisted scene var. It records exact three-state values,
+owner/timing, refusal policy, source-vs-project lifetime boundary and one
+future implementation boundary. No implementation, route, status or broader
+world-state authority follows without independent design review.
