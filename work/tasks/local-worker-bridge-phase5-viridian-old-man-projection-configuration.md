@@ -1,7 +1,7 @@
 # Task: configure Local Worker Bridge route for Viridian Old Man projection
 
 - Task ID: `P5-04-ROUTE-CONFIG`
-- Status: `READY_FOR_WORKER`
+- Status: `CLOSED — REVIEWED PASS`
 - Type: `INFRASTRUCTURE / EXECUTION SUBSTRATE / CONFIGURATION`
 - Authority: [reviewed P5-04 route plan](local-worker-bridge-phase5-viridian-old-man-projection-route.md).
 
@@ -39,6 +39,13 @@ and inspect all five route arms together. An independent exact configuration
 review must PASS before a single substrate-only probe is authorized. The probe
 is not an implementation request and must skip patch/test/replay/publication
 steps.
+
+## Review
+
+The independent [configuration review](../reviews/2026-10-03-viridian-old-man-projection-route-configuration-review.md)
+accepted exact `7a45118319a9458b2c762e34a652fb26c35c91bf`. It authorizes one
+substrate-only probe under the reviewed filename convention, not a P5
+implementation request.
 
 ## Worker configuration handoff — 2026-10-03
 
