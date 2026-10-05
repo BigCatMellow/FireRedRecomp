@@ -1,6 +1,6 @@
 # FireRedRecomp Coordination Handoff
 
-- Status: `QUEUED — private runner offline; Restore HP request and P5 route probe await execution`
+- Status: `BLOCKED — private runner offline; Restore HP request and P5 route probe were canceled before execution`
 - Task ID: `P4-F3-RESTORE-HP-IMPLEMENTATION`; P5-04 route probe is separately queued
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
 - Current plan: [`../roadmaps/RECALIBRATED_DELIVERY_PLAN.md`](../roadmaps/RECALIBRATED_DELIVERY_PLAN.md)
@@ -8,6 +8,15 @@
 ## Current relay — 2026-10-02
 
 ### Queue update — 2026-10-03
+
+### Cancellation update — 2026-10-05
+
+GitHub reports Restore HP run `37080060017` and P5 route-probe run
+`37125167854` **CANCELLED** after their offline waits; each job has no steps.
+`firered-mint` remains offline and idle. These are not failed implementation or
+probe results and authorize neither review nor a duplicate submission. Retain
+the request/probe artifacts as durable input, reconcile a bounded retry only
+after live runner availability, and preserve the existing exact route scopes.
 
 The sole Restore HP implementation request (`6395a47`, run `37080060017`) is
 still queued: `firered-mint` is offline and idle. Do not submit a second
