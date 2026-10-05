@@ -1,7 +1,7 @@
 # Task: authorize retry of canceled guarded bridge runs
 
 - Task ID: `BRIDGE-CANCELLED-RUNS-RETRY`
-- Status: `READY_FOR_REVIEWER`
+- Status: `CLOSED — REVIEWED PASS`
 - Type: `COORDINATION / EXECUTION SUBSTRATE / RETRY AUTHORIZATION`
 
 ## Goal
@@ -45,3 +45,10 @@ different from a duplicate push.
 
 Independent review must PASS before this authorization takes effect. A PASS is
 not runner availability and does not itself invoke either re-run.
+
+## Review
+
+The independent [retry review](../reviews/2026-10-05-canceled-bridge-runs-retry-review.md)
+accepted exact `98540c588c0c7fa2074f9cb1b8302948b8e6f28b`. This closes only the
+coordination authorization. Fresh live online/idle evidence remains required
+immediately before each original-run re-run.

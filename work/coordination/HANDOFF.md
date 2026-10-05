@@ -18,6 +18,11 @@ probe results and authorize neither review nor a duplicate submission. Retain
 the request/probe artifacts as durable input, reconcile a bounded retry only
 after live runner availability, and preserve the existing exact route scopes.
 
+The bounded retry authorization is now independently accepted at `98540c5`.
+After a fresh online/idle observation, re-run each original GitHub run once
+only; do not push any new request/probe artifact. Stop and record the outcome
+if GitHub refuses a re-run, the runner state changes, or either re-run fails.
+
 The sole Restore HP implementation request (`6395a47`, run `37080060017`) is
 still queued: `firered-mint` is offline and idle. Do not submit a second
 Restore HP request. The Worker implementation files presently in the local

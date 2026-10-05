@@ -8,11 +8,11 @@
   "current_phase": "Phase 0, Phase 4, and Phase 5 remain IN PROGRESS; clean-target preparation needs a decision, and the offline runner canceled the Restore HP request and P5 route probe before execution",
   "canonical_status_owner": "work/roadmaps/CAPABILITY_CHECKLIST.md",
   "active_task": "work/tasks/phase4-restore-hp-implementation.md",
-  "objective": "Reconcile retry authority for the canceled guarded Restore HP request and P5 route probe, then recover them only after the private runner returns; retain independent-review gates.",
+  "objective": "Use the independently accepted one-rerun authority to recover the canceled Restore HP request and P5 route probe only after the private runner returns; retain independent-review gates.",
   "next_role": "ORCHESTRATOR",
   "acceptance": "Restore HP: focused/no-ROM/SHA-ROM/replay evidence plus independent exact review. P5: route-probe readiness evidence plus independent review before one request. No generic healing or map/script expansion.",
   "boundaries": "P0 clean target remains evidence-blocked pending preparation decision. P4-F3's sole request and P5's sole readiness probe were canceled without execution; no route widening, unreviewed retry, or P5 behavior patch.",
-  "dependencies": "Restore HP run 37080060017 and P5 probe run 37125167854 are terminal CANCELLED with no steps because firered-mint is offline. Reconcile a bounded retry decision only after live runner availability. P0 reverify93c4654 independently BLOCK.",
+  "dependencies": "Restore HP run 37080060017 and P5 probe run 37125167854 are terminal CANCELLED with no steps because firered-mint is offline. Retry authorization independently PASS; fresh online/idle evidence is still required before at most one re-run each. P0 reverify93c4654 independently BLOCK.",
   "runner_blocker": {
     "task_id": "P4-F3-ROUTE",
     "status": "CLOSED — REVIEWED PASS",
