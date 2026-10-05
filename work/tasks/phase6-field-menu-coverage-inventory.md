@@ -1,7 +1,7 @@
 # Task: inventory normal-field menu coverage and developer fallbacks
 
 - Task ID: `P6-01-FIELD-MENU-INVENTORY`
-- Status: `READY_FOR_WORKER`
+- Status: `CLOSED — REVIEWED PASS`
 - Type: `RESEARCH / READ-ONLY COVERAGE INVENTORY`
 - Parent capability: Phase 6 menus, inventory, progression UI.
 
@@ -39,6 +39,13 @@ absence of persisted PC backing merely from a missing player-facing screen.
 Stop and record UNKNOWN rather than inferring a normal route from a hotkey,
 developer override, parser, or storage model. Independent report review must
 PASS before any Phase 6 design/implementation task.
+
+## Review
+
+The independent [inventory review](../reviews/2026-10-05-field-menu-coverage-inventory-review.md)
+accepted exact `ee7535d6d9007afa12eecc25c0af894be4379ce8` as read-only
+evidence. It closes P6-01 only; a later P6 design task must select one bounded
+frontier without treating developer keys or PC backing as player-facing proof.
 
 ## Worker evidence / handoff — 2026-10-03
 
