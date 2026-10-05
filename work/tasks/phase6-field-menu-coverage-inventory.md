@@ -39,3 +39,25 @@ absence of persisted PC backing merely from a missing player-facing screen.
 Stop and record UNKNOWN rather than inferring a normal route from a hotkey,
 developer override, parser, or storage model. Independent report review must
 PASS before any Phase 6 design/implementation task.
+
+## Worker evidence / handoff — 2026-10-03
+
+- [Inventory report](../reports/phase6-field-menu-coverage-inventory.md) is ready
+  for independent review against repository
+  `8f9924bfaf96e2889627a56eff5a1e899cab135e` and reference
+  `c75f352304d529f6ba92d4f74b9cf8b5c3810788`.
+- Matrix covers three START profiles/seven actions plus navigation; all 18
+  declared START/Party/Bag/Mart model states; ordinary versus developer Mart
+  entry and return; separate PC persistence and player-access boundaries.
+  Every behavior row names source/runtime anchors, transition/mutation timing,
+  assertion/receipt limits and status. Normal-route gaps remain UNKNOWN.
+- Explicit boundaries include Party/Bag/START placeholders, missing live Dex
+  sanity-count input, immediate SAVE versus retail confirmation, K/L replay
+  usage, Mart transaction callback ordering, and persisted PC backing without
+  a demonstrated player-facing screen. No playable-menu or parity claim.
+- Evidence method: source and assertion-body inspection plus existing review
+  receipts only. No tests, ROM, gameplay, runner, environment changes or
+  implementation; concurrent P4 working-tree changes remain untouched.
+- No commit/publication performed by Worker. Parent owns exact-revision
+  publication/review dispatch and coordination; this handoff does not update
+  canonical status or authorize a Phase 6 successor.
