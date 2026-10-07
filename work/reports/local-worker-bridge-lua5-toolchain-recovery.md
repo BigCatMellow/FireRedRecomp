@@ -12,11 +12,9 @@ checkout, request identification, explicit `runner-readiness` route selection,
 and `Verify local toolchain` step. The workflow reported Lua 5.1.5.
 
 It then failed in `Locate and verify private FireRed ROM` before hashing or
-reading a ROM. `POKEPORT_ROM` was unset and the configured private default
-tree did not contain `pokefirered.gba`. A local read-only filename check under
-the runner's ordinary Documents/Games locations likewise found no FireRed ROM
-candidate. No path, credential, ROM bytes, extracted content, or derived
-artifact is recorded here.
+reading a ROM. `POKEPORT_ROM` was unset and the workflow's configured private
+default tree did not contain `pokefirered.gba`. No path, credential, ROM
+bytes, extracted content, or derived artifact is recorded here.
 
 ## Boundary and consequence
 
