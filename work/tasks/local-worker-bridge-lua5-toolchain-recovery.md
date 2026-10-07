@@ -1,7 +1,7 @@
 # Task: prove repaired private-runner toolchain
 
 - Task ID: `RUNNER-LUA5-RECOVERY`
-- Status: `REVIEWED_PASS`
+- Status: `READY_FOR_REVIEWER`
 - Type: `RECONCILIATION / EXECUTION SUBSTRATE / READINESS PROBE`
 - Parent capability gate: guarded bridge availability; no capability row changes
 - Assigned role: `ORCHESTRATOR`
@@ -113,3 +113,11 @@ accepted the one-probe boundary after the factual correction at
 prior reruns completed trusted checkout and route selection but failed before
 ROM discovery/access at the missing-Lua guard. Fresh online/idle observation
 remains mandatory immediately before dispatch.
+
+## Executed result
+
+The sole authorized probe was dispatched at `992c0719` and terminally failed
+as run `37554725384`: checkout, selection, and Lua 5.1.5 verification passed,
+but the private-ROM location guard found no file before hashing or access. See
+[the result report](../reports/local-worker-bridge-lua5-toolchain-recovery.md).
+This task now awaits independent evidence review; it authorizes no retry.
