@@ -25,6 +25,17 @@ bounded and independently reviewed runner-toolchain repair; it must establish
 `lua5.1` without changing ROM handling, request/probe bytes, routes, or
 behavior scope.
 
+### Lua recovery preparation — 2026-10-07
+
+`lua5.1 -v` now reports Lua 5.1.5 on `MediaCenter`; GitHub independently
+reports runner `24` online, idle, and labeled `firered-local`. These are local
+repair observations, not a new execution authority. The fresh
+[`RUNNER-LUA5-RECOVERY`](../tasks/local-worker-bridge-lua5-toolchain-recovery.md)
+contract is **READY_FOR_REVIEWER**. It permits, only after an independent PASS,
+one literal `runner-online-lua5-recovery-20261007.probe` using the existing
+`runner-readiness` route. It does not retry or replace P4/P5 artifacts and
+cannot advance either capability.
+
 ### Cancellation update — 2026-10-05
 
 GitHub reports Restore HP run `37080060017` and P5 route-probe run
