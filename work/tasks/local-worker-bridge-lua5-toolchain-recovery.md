@@ -1,7 +1,7 @@
 # Task: prove repaired private-runner toolchain
 
 - Task ID: `RUNNER-LUA5-RECOVERY`
-- Status: `READY_FOR_REVIEWER`
+- Status: `REVIEWED_PASS`
 - Type: `RECONCILIATION / EXECUTION SUBSTRATE / READINESS PROBE`
 - Parent capability gate: guarded bridge availability; no capability row changes
 - Assigned role: `ORCHESTRATOR`
@@ -104,3 +104,12 @@ probe or substitute either exhausted P4/P5 run.
   do not advance P4 or P5 without their own new reviewed authority.
 - Eligible successor: explicit, separately compiled recovery authority for the
   smallest affected P4 or P5 artifact; no successor is implied by this task.
+
+## Review
+
+Independent [PASS review](../reviews/2026-10-06-lua5-toolchain-recovery-review.md)
+accepted the one-probe boundary after the factual correction at
+`571b452444e37796258ed7f1aa1a48d10b057d74`. The review confirms that both
+prior reruns completed trusted checkout and route selection but failed before
+ROM discovery/access at the missing-Lua guard. Fresh online/idle observation
+remains mandatory immediately before dispatch.

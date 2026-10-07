@@ -36,6 +36,10 @@ one literal `runner-online-lua5-recovery-20261007.probe` using the existing
 `runner-readiness` route. It does not retry or replace P4/P5 artifacts and
 cannot advance either capability.
 
+The independent [review](../reviews/2026-10-06-lua5-toolchain-recovery-review.md)
+now returns **PASS** at correction revision `571b452`. Fresh online/idle
+observation immediately before the one literal probe remains required.
+
 ### Cancellation update — 2026-10-05
 
 GitHub reports Restore HP run `37080060017` and P5 route-probe run
