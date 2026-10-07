@@ -1,18 +1,18 @@
 {
   "schema_version": 1,
-  "updated_utc": "2026-10-05T00:00:00Z",
+  "updated_utc": "2026-10-07T00:48:00Z",
   "execution_paused": false,
   "role": "ORCHESTRATOR",
-  "status": "BLOCKED_ON_PRIVATE_RUNNER",
+  "status": "BLOCKED_ON_PRIVATE_RUNNER_TOOLCHAIN",
   "task_id": "P4-F3-RESTORE-HP-IMPLEMENTATION",
-  "current_phase": "Phase 0, Phase 4, and Phase 5 remain IN PROGRESS; clean-target preparation needs a decision, and the offline runner canceled the Restore HP request and P5 route probe before execution",
+  "current_phase": "Phase 0, Phase 4, and Phase 5 remain IN PROGRESS; clean-target preparation needs a decision, and the recovered private runner rejected both exact retries before ROM access because lua5.1 is absent",
   "canonical_status_owner": "work/roadmaps/CAPABILITY_CHECKLIST.md",
   "active_task": "work/tasks/phase4-restore-hp-implementation.md",
-  "objective": "Use the independently accepted one-rerun authority to recover the canceled Restore HP request and P5 route probe only after the private runner returns; retain independent-review gates.",
+  "objective": "Record the exhausted one-rerun authority faithfully, prepare a separately bounded private-runner toolchain repair, and retain all implementation and independent-review gates.",
   "next_role": "ORCHESTRATOR",
   "acceptance": "Restore HP: focused/no-ROM/SHA-ROM/replay evidence plus independent exact review. P5: route-probe readiness evidence plus independent review before one request. No generic healing or map/script expansion.",
   "boundaries": "P0 clean target remains evidence-blocked pending preparation decision. P4-F3's sole request and P5's sole readiness probe were canceled without execution; no route widening, unreviewed retry, or P5 behavior patch.",
-  "dependencies": "Restore HP run 37080060017 and P5 probe run 37125167854 are terminal CANCELLED with no steps because firered-mint is offline. Retry authorization independently PASS; fresh online/idle evidence is still required before at most one re-run each. P0 reverify93c4654 independently BLOCK.",
+  "dependencies": "MediaCenter runner 24 is online, idle, and carries firered-local. The one authorized re-run of Restore HP 37080060017 and P5 probe 37125167854 each terminally FAILED at Verify local toolchain: lua5.1 is absent, before checkout/ROM access. No further retry is authorized; a separate reviewed repair contract is required. P0 reverify93c4654 independently BLOCK.",
   "runner_blocker": {
     "task_id": "P4-F3-ROUTE",
     "status": "CLOSED — REVIEWED PASS",
@@ -44,9 +44,9 @@
   "parallel_research": {
     "task_id": "P5-04-ROUTE",
     "task": "work/tasks/local-worker-bridge-phase5-viridian-old-man-projection-configuration.md",
-    "status": "BLOCKED_ON_PRIVATE_RUNNER",
-    "source_revision": "route configuration 7a45118 independently PASS; probe f6b9148 / run 37125167854 CANCELLED without steps",
-    "boundary": "P5 probe proves substrate readiness only; reconcile retry authority after live runner recovery. No implementation request or behavior change before an independently reviewed probe PASS"
+    "status": "BLOCKED_ON_PRIVATE_RUNNER_TOOLCHAIN",
+    "source_revision": "route configuration 7a45118 independently PASS; probe f6b9148 / run 37125167854 terminal FAILURE at Verify local toolchain",
+    "boundary": "P5 probe produced no checkout, ROM, selector, or behavior evidence because lua5.1 is absent. No implementation request or behavior change before a separately authorized recovery and independently reviewed probe PASS"
   },
   "reconciliation": {
     "camera_task_status": "CLOSED — REVIEWED PASS at 4c5456f3; guarded run 34753297372",
@@ -60,7 +60,7 @@
     "phase4_pain_split_status": "CLOSED — REVIEWED PASS at a739ddc; guarded run 35493728001; exact review work/reviews/2026-09-20-pain-split-implementation-review.md"
   },
   "phase2_external_blocker": "Trusted, user-owned retail-reference captures with provenance/timing/crop/filter details for Oak and Pallet anchors have not been supplied.",
-  "next_after_success": "After the runner returns and bounded retry authority is reconciled: recover Restore HP implementation evidence for independent review, and separately recover/review P5 readiness before one bounded P5 request. Retain P0 preparation decision and Phase 2 retail-reference intake as external blocked.",
+  "next_after_success": "After a separately reviewed runner-toolchain repair: obtain fresh route/retry authority before any guarded rerun, then recover Restore HP implementation evidence for independent review and separately recover/review P5 readiness before one bounded P5 request. Retain P0 preparation decision and Phase 2 retail-reference intake as external blocked.",
   "legal_content_boundary": "Never commit ROMs, BIOS dumps, generated caches, ROM-derived reference screenshots, extracted game assets, or other prohibited content.",
   "phase_completion_rule": "Phase 2 remains IN PROGRESS until the Oak/reference screenshot discrepancy gate is evidenced and independently reviewed."
 }

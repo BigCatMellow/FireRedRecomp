@@ -1,13 +1,29 @@
 # FireRedRecomp Coordination Handoff
 
-- Status: `BLOCKED — private runner offline; Restore HP request and P5 route probe were canceled before execution`
-- Task ID: `P4-F3-RESTORE-HP-IMPLEMENTATION`; P5-04 route probe is separately queued
+- Status: `BLOCKED — private runner toolchain lacks lua5.1; exact retries are exhausted`
+- Task ID: `P4-F3-RESTORE-HP-IMPLEMENTATION`; P5-04 route probe is separately blocked
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
 - Current plan: [`../roadmaps/RECALIBRATED_DELIVERY_PLAN.md`](../roadmaps/RECALIBRATED_DELIVERY_PLAN.md)
 
 ## Current relay — 2026-10-02
 
 ### Queue update — 2026-10-03
+
+### Retry outcome — 2026-10-07
+
+`MediaCenter` (GitHub runner `24`) was freshly observed **online**, **idle**,
+and labeled `firered-local`. The independent retry authority at `98540c5` was
+therefore used exactly once for each original run. Restore HP `37080060017`
+and P5 readiness probe `37125167854` both terminally **FAILED** in `Verify
+local toolchain` with `Lua is not installed on the self-hosted runner.`
+
+Both failures occurred before checkout, selector execution, ROM discovery, or
+ROM access. They provide no implementation or P5 readiness evidence and do
+not authorize review, a duplicate request/probe, or another rerun. The exact
+retry authority is exhausted. The next permissible action is a separately
+bounded and independently reviewed runner-toolchain repair; it must establish
+`lua5.1` without changing ROM handling, request/probe bytes, routes, or
+behavior scope.
 
 ### Cancellation update — 2026-10-05
 
