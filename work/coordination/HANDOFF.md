@@ -17,8 +17,8 @@ therefore used exactly once for each original run. Restore HP `37080060017`
 and P5 readiness probe `37125167854` both terminally **FAILED** in `Verify
 local toolchain` with `Lua is not installed on the self-hosted runner.`
 
-Both failures occurred before checkout, selector execution, ROM discovery, or
-ROM access. They provide no implementation or P5 readiness evidence and do
+Both failures occurred after checkout and selector execution, but before ROM
+discovery or access. They provide no implementation or P5 readiness evidence and do
 not authorize review, a duplicate request/probe, or another rerun. The exact
 retry authority is exhausted. The next permissible action is a separately
 bounded and independently reviewed runner-toolchain repair; it must establish

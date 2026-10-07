@@ -24,8 +24,9 @@ ROM hash.
 
 - `.github/workflows/local-worker-bridge.yml`: existing `runner-online*.probe`
   selector and its checkout, Lua, and ROM-hash guards.
-- `work/coordination/HANDOFF.md`: both prior exact reruns failed before checkout
-  and ROM access only because `lua5.1` was absent.
+- `work/coordination/HANDOFF.md`: both prior exact reruns completed checkout
+  and route selection, then failed before ROM discovery/access only because
+  `lua5.1` was absent.
 - `work/coordination/STATE.json`: live runner and exhausted-retry authority.
 
 Unknowns requiring discovery: none. This task is not a repair to the workflow,
