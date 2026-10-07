@@ -1,7 +1,7 @@
 # Task: prove repaired private-runner toolchain
 
 - Task ID: `RUNNER-LUA5-RECOVERY`
-- Status: `READY_FOR_REVIEWER`
+- Status: `BLOCKED — REVIEWED EVIDENCE`
 - Type: `RECONCILIATION / EXECUTION SUBSTRATE / READINESS PROBE`
 - Parent capability gate: guarded bridge availability; no capability row changes
 - Assigned role: `ORCHESTRATOR`
@@ -120,4 +120,9 @@ The sole authorized probe was dispatched at `992c0719` and terminally failed
 as run `37554725384`: checkout, selection, and Lua 5.1.5 verification passed,
 but the private-ROM location guard found no file before hashing or access. See
 [the result report](../reports/local-worker-bridge-lua5-toolchain-recovery.md).
-This task now awaits independent evidence review; it authorizes no retry.
+This task authorizes no retry.
+
+The independent [outcome review](../reviews/2026-10-07-lua5-toolchain-recovery-outcome-review.md)
+is **PASS** after evidence-only correction `b82aeb6`. The task is blocked only
+on operator-side private-ROM availability to the service; it remains terminal
+for the authorized probe and creates no further execution authority.

@@ -46,9 +46,16 @@ The sole probe (`992c071`, run `37554725384`) passed checkout, route selection,
 and Lua 5.1.5 verification, then stopped at the private-ROM location guard
 before hashing or access. `POKEPORT_ROM` was unset and no default-location ROM
 was found. The local [result report](../reports/local-worker-bridge-lua5-toolchain-recovery.md)
-contains no path or ROM data. It awaits independent evidence review. Do not
+contains no path or ROM data. Do not
 retry it, revive the exhausted P4/P5 runs, or treat the toolchain success as
 ROM or gameplay evidence.
+
+The independent [outcome review](../reviews/2026-10-07-lua5-toolchain-recovery-outcome-review.md)
+is **PASS**. The exact remaining unblock is user-side: place a legally owned
+FireRed US v1.0 ROM where the service can read it at the workflow's configured
+private default location, without committing or disclosing it. This is not
+authority to rerun any completed workflow; compile a separate decision only
+after the file is available.
 
 ### Cancellation update — 2026-10-05
 
