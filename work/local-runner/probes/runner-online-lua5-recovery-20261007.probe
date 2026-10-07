@@ -1,0 +1,3 @@
+task=runner-readiness
+reason=verify-lua5-recovery
+scope=checkout-route-lua-rom-hash-only
