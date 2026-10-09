@@ -1,7 +1,7 @@
 # P6-04 — Read-only Party SUMMARY interaction
 
 - Task ID: `P6-04-PARTY-SUMMARY`
-- Status: `IN PROGRESS — DRAFT IMPLEMENTATION; INDEPENDENT REVIEW REQUIRED`
+- Status: `READY_FOR_REVIEWER` — bounded draft implementation, not merged or accepted
 - Parent capability: Phase 6 (no phase-status update)
 - Basis: accepted P6-01 inventory (`ee7535d6`); P6-02 draft design PR #3 remains unreviewed, so this branch cannot be merged or treated as independently accepted until its prerequisite/design and this implementation are reviewed.
 - Human dispatch: 2026-10-09 request to continue gameplay code progress.
@@ -33,3 +33,11 @@ Do not implement SWITCH, ITEM, field moves, PC, Pokédex screens, any mutation t
 4. Independent reviewer of exact substantive head and CI receipts, including state/mutation boundary and prerequisite design, before merge/acceptance.
 
 Stop and leave the PR draft if a verified-ROM test, broader field actions, or unapproved design expansion becomes necessary. Do not self-approve.
+
+## Worker evidence — 2026-10-09
+
+- Draft [PR #6](https://github.com/BigCatMellow/FireRedRecomp/pull/6) on branch `work/p6-party-summary-20261009`; substantive implementation head `d3d9175bb3d88402215d1f5e8833bb60686ce217` (docs/status additions afterward are non-substantive).
+- Exactly the six authorized paths changed relative to base, including this task. New pure state machine `PartySelectionFlow` takes control only after the confirmed list selection; B unwinds SUMMARY→action list→Party list→START without session writes.
+- [Public no-ROM CI 37946867516](https://github.com/BigCatMellow/FireRedRecomp/actions/runs/37946867516) passed at substantive head. Previous [run 37946553780](https://github.com/BigCatMellow/FireRedRecomp/actions/runs/37946553780) explicitly reported 278 tracked Lua, 204 Markdown, 616 local link targets and 152 test files PASS, with expected ROM-dependent SKIPs.
+- Local runtime, headless LÖVE field replay and ROM-backed tests **NOT RUN** here. Public checks prove only no-ROM tests and syntax/link checks, not graphical parity or live Party navigation.
+- Prerequisite P6-02 source-lock design resides in draft [PR #3](https://github.com/BigCatMellow/FireRedRecomp/pull/3) and is awaiting independent review. An independent Reviewer must inspect the design and exact PR #6 head/CI, including whether this reduced-summary UI is an acceptable increment, before any approval/merge or capability advancement.
