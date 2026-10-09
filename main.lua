@@ -92,6 +92,7 @@ local Battle = {
   ViridianMartParcelPresentation = require("src.core.ViridianMartParcelPresentation"),
   OakParcelDexPresentation = require("src.core.OakParcelDexPresentation"),
   PokedexOrder = require("import.PokedexOrder"),
+  DexTracker = require("src.core.DexTracker"),
   Item = require("import.Item"),
   SessionBagBridge = require("src.core.SessionBagBridge"),
   PokemonMart = require("src.core.PokemonMart"),
@@ -2125,12 +2126,18 @@ end
 -- exact real item gating). Real FLAG_SYS_POKEMON_GET/FLAG_SYS_POKEDEX_GET
 -- values already live on EarlyStory (Battle.EarlyStory.FLAG_SYS_POKEMON_GET
 -- = 0x828); FLAG_SYS_POKEDEX_GET = 0x829 is the same SYS_FLAGS+0x29 real id
--- (include/constants/flags.h) -- this project has no Pokedex-acquisition
--- flow yet, so that flag is always unset today, correctly hiding POKéDEX.
+-- (include/constants/flags.h). After the Parcel/Dex acquisition sequence,
+-- the POKÉDEX item is shown; its real zero-seen-entry admission guard must
+-- be driven by the live SaveBlock2 Pokedex bitfield, not an omitted option.
 world.openStartMenu = function()
   local hasPokemon = newGame.session and newGame.session:getFlag(Battle.EarlyStory.FLAG_SYS_POKEMON_GET) or false
   local hasPokedex = newGame.session and newGame.session:getFlag(0x829) or false
-  world.startMenu = Battle.StartMenu.new({ hasPokemon = hasPokemon, hasPokedex = hasPokedex })
+  local sb2 = newGame.session and newGame.session.state.saveBlock2
+  local rawSeen = sb2 and sb2.pokedex and sb2.pokedex.seen
+  local nationalDexCount = rawSeen and Battle.DexTracker.countSeenSaveBytes(rawSeen)
+  world.startMenu = Battle.StartMenu.new({
+    hasPokemon = hasPokemon, hasPokedex = hasPokedex, nationalDexCount = nationalDexCount,
+  })
   world.startMenuActive = true
 end
 
