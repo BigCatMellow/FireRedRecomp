@@ -120,6 +120,15 @@ function PartyScreen:isDone()
   return self.state ~= PartyScreen.BROWSING
 end
 
+-- The action menu returns to the same slot on B/CANCEL; a fresh PartyScreen
+-- would lose the cursor. Only a confirmed selection can be resumed.
+function PartyScreen:resumeBrowsing()
+  if self.state ~= PartyScreen.CONFIRMED then return false end
+  self.state = PartyScreen.BROWSING
+  self.confirmedSlot = nil
+  return true
+end
+
 -- 0-based row index currently under the cursor (0..party:size()-1 are
 -- mons, party:size() is the CANCEL row).
 function PartyScreen:cursorRow()
@@ -173,6 +182,25 @@ function PartyScreen:rowData(slot)
     status = record.status or 0,
     isEgg = isEgg,
   }
+end
+
+-- A bounded read-only Info/Summary data projection from the already
+-- validated party record. The caller must never modify this return value
+-- expecting changes to the saved party. Real summary art, move names,
+-- page switching and editing actions are not implemented here.
+function PartyScreen:summaryData(slot)
+  local data = self:rowData(slot)
+  local record = self.party:get(slot)
+  local decoded, reason = BattlePartyBridge.decodeRecord(record)
+  assert(decoded, reason)
+  data.attack = record.attack
+  data.defense = record.defense
+  data.speed = record.speed
+  data.spAttack = record.spAttack
+  data.spDefense = record.spDefense
+  data.experience = decoded.substructs[0].experience
+  data.otName = Charmap.decode(decoded.otName, true)
+  return data
 end
 
 -- Iterates every row a caller should render, in real display order: filled
