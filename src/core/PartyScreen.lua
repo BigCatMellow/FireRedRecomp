@@ -6,18 +6,14 @@
 -- Same "pure state machine before its ROM-backed scene" pattern as
 -- PokemonMartMenu.lua/StartMenu.lua.
 --
--- SCOPE BOUNDARY (confirmed against real source, not assumed): selecting a
--- living party slot in this real context (PARTY_ACTION_CHOOSE_MON) falls
--- into `HandleChooseMonSelection`'s `default:` case (src/party_menu.c line
--- ~1206), which calls `Task_TryCreateSelectionWindow` -- the real SUMMARY/
--- SWITCH/ITEM/CANCEL per-mon submenu. That submenu is real UI/asset/task
--- machinery (a whole second window + its own cursor state, real per-action
--- effects like opening the Summary screen or the Bag) clearly bigger scope
--- than this bounded slice, so per the brief this module stops at "list a
--- filled party + CANCEL, move the cursor, and report which slot (or
--- CANCEL) was confirmed" -- it does NOT implement the SUMMARY/SWITCH/ITEM
--- submenu. A caller wires `:selectedSlot()` to whatever it wants to do next
--- (e.g. eventually open that submenu, or just stop here for now).
+-- SCOPE BOUNDARY (confirmed against real source): a confirmed field
+-- party slot enters `Task_TryCreateSelectionWindow` rather than returning
+-- immediately to START. This module owns the original list only: its
+-- CONFIRMED state is consumed by the separate, reduced read-only
+-- PartySelectionFlow (SUMMARY/CANCEL). Retail SWITCH/ITEM/field move actions
+-- and full GBA SUMMARY graphics/pages remain outside this slice. After
+-- the reduced action menu closes, :resumeBrowsing() preserves the selected
+-- list row. The ordinary list B/CANCEL still returns to START.
 --
 -- List shape (real `UpdatePartySelectionSingleLayout`, src/party_menu.c
 -- line ~1358, used because `gPartyMenu.layout == PARTY_LAYOUT_SINGLE` --
