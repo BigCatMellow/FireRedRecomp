@@ -148,5 +148,35 @@ check("solo party has 1 mon row + CANCEL", soloScreen.cursor.maxCursorPos == 1)
 tap(soloScreen, InputState.buildMask({ DPAD_UP = true }))
 check("Up from the only mon wraps to CANCEL in a 1-mon party", soloScreen:cursorRow() == 1)
 
+-- 9. SUMMARY projection reads the actual decoded save-compatible record
+-- without modifying it, and cancelling its action menu returns the cursor
+-- to the exact selected party slot rather than a new list at slot 1.
+local summaryScreen = PartyScreen.new(party)
+tap(summaryScreen, InputState.buildMask({ DPAD_DOWN = true })) -- slot 2
+tap(summaryScreen, InputState.buildMask({ A_BUTTON = true }))
+local before = party:get(2).box
+local stats = summaryScreen:summaryData(2)
+check("summary uses selected valid slot and cached battle stats",
+  stats.slot == 2 and stats.level == 5
+    and stats.attack == party:get(2).attack
+    and stats.defense == party:get(2).defense
+    and stats.speed == party:get(2).speed
+    and stats.spAttack == party:get(2).spAttack
+    and stats.spDefense == party:get(2).spDefense)
+check("summary includes decoded EXP and original trainer name",
+  type(stats.experience) == "number" and stats.experience >= 0
+    and type(stats.otName) == "string" and #stats.otName > 0)
+check("summary is read-only", party:get(2).box == before)
+check("confirmed list can resume at selected row",
+  summaryScreen:resumeBrowsing() == true
+    and summaryScreen.state == PartyScreen.BROWSING
+    and summaryScreen.confirmedSlot == nil
+    and summaryScreen:cursorRow() == 1)
+check("cannot resume an already browsing list", summaryScreen:resumeBrowsing() == false)
+tap(summaryScreen, InputState.buildMask({ B_BUTTON = true }))
+check("list B after returning from summary closes to START",
+  summaryScreen.state == PartyScreen.CLOSED)
+check("cannot resume a closed list", summaryScreen:resumeBrowsing() == false)
+
 print(("%d passed, %d failed"):format(passed, failed))
 os.exit(failed == 0 and 0 or 1)
