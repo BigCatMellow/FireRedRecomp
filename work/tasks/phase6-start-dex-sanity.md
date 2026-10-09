@@ -1,7 +1,7 @@
 # P6-03 — Wire the normal START Pokédex count guard
 
 - Task ID: `P6-03-START-DEX-SANITY`
-- Status: `READY_FOR_WORKER` (user requested independent code progress on 2026-10-09; publication only to a review branch)
+- Status: `READY_FOR_REVIEWER` — implementation published to draft PR #5; no phase completion claim
 - Type: `IMPLEMENTATION / BOUNDED, NO-ROM-TESTABLE`
 - Parent: Phase 6; disjoint from pending Party-selection design PR #3 and blocked private-ROM P4/P5 tasks
 - Baseline: `main` at `503ea1e674baed88a27050dc54efd961baed1c9e`
@@ -29,3 +29,11 @@ Check a clean diff for only the four allowed paths; run `lua5.1 tests/dex_tracke
 ## Stop conditions
 
 Stop if reference source disagrees with seen-count semantics, save-block seen is not a 52-byte string, a private ROM becomes necessary, or a required edit leaves the four-path boundary.
+
+## Worker handoff — 2026-10-09
+
+- Branch: `work/p6-start-menu-dex-count-20261009`; implementation and no-ROM tests at `01d2eeaa188fe44f58d1b50df22c4f52731a51bf`; draft PR #5.
+- Diff inspected against pinned base `503ea1e674baed88a27050dc54efd961baed1c9e`: exactly the four allowed paths (`main.lua`, `src/core/DexTracker.lua`, `tests/dex_tracker_test.lua`, this task).
+- [Exact-head public run 37945534748](https://github.com/BigCatMellow/FireRedRecomp/actions/runs/37945534748): PASS; [same-head parallel run 37945504804](https://github.com/BigCatMellow/FireRedRecomp/actions/runs/37945504804): PASS. Workflow installs Lua 5.1, invokes repository checks and `scripts/test_all.sh` without ROM. Local Lua is unavailable to this worker; no local execution/ROM/gameplay proof claimed.
+- Semantics tested: zero/first/cross-byte seen entries, valid #411, ignored #412–416 trailing bits, all 411 seen, and absent/malformed bitfields; `StartMenu` already has its own blocked/unblocked test cases.
+- **Reviewer needed:** independently inspect exact substantive diff and source semantics, including actual `main.lua` live session wiring. Re-run tests if warranted. No merged change, runtime gameplay proof or Phase 6 status advancement follows solely from these passing checks.
