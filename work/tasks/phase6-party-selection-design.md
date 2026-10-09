@@ -1,7 +1,7 @@
 # P6-02 proposal — normal Party selection design
 
 - Task ID: `P6-02-PARTY-SELECTION-DESIGN`
-- Status: `PROPOSED — INDEPENDENT REVIEW REQUIRED`
+- Status: `READY_FOR_REVIEWER` — evidence-only design, no implementation acceptance
 - Type: `DESIGN / SOURCE-LOCK; NO IMPLEMENTATION AUTHORITY`
 - Parent: Phase 6; separate from the blocked P4/P5 private-ROM bridge
 - Basis: independently accepted `P6-01-FIELD-MENU-INVENTORY` at `ee7535d6`; see [inventory](../reports/phase6-field-menu-coverage-inventory.md)
@@ -43,3 +43,7 @@ Stop if the selected action requires broad new UI infrastructure, an unverified 
 ## Relationship to current blocker
 
 This is disjoint research that can proceed while `RUNNER-LUA5-RECOVERY` remains terminally blocked by private ROM availability. It grants no retry of probe `37554725384`, P4 implementation, or P5 readiness; those require operator-side ROM availability plus separate recovery authorization.
+
+## Evidence handoff — 2026-10-09
+
+The source-locked [design report](../reports/phase6-party-selection-design.md) was prepared at `e46652afd7998a142e6c418ace7ecf9a046f5332` using pinned `pret/pokefirered` source symbols and current production Party/START code. It selects reduced read-only SUMMARY/CANCEL navigation with explicit exclusions for SWITCH/ITEM/field moves, documents the input/return chain and test matrix, and does not change runtime or canonical status. Independent acceptance of this design is required before implementation acceptance. Separate draft PR #6 is **not** approved by this handoff.
