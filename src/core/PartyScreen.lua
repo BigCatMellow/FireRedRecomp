@@ -6,18 +6,14 @@
 -- Same "pure state machine before its ROM-backed scene" pattern as
 -- PokemonMartMenu.lua/StartMenu.lua.
 --
--- SCOPE BOUNDARY (confirmed against real source, not assumed): selecting a
--- living party slot in this real context (PARTY_ACTION_CHOOSE_MON) falls
--- into `HandleChooseMonSelection`'s `default:` case (src/party_menu.c line
--- ~1206), which calls `Task_TryCreateSelectionWindow` -- the real SUMMARY/
--- SWITCH/ITEM/CANCEL per-mon submenu. That submenu is real UI/asset/task
--- machinery (a whole second window + its own cursor state, real per-action
--- effects like opening the Summary screen or the Bag) clearly bigger scope
--- than this bounded slice, so per the brief this module stops at "list a
--- filled party + CANCEL, move the cursor, and report which slot (or
--- CANCEL) was confirmed" -- it does NOT implement the SUMMARY/SWITCH/ITEM
--- submenu. A caller wires `:selectedSlot()` to whatever it wants to do next
--- (e.g. eventually open that submenu, or just stop here for now).
+-- SCOPE BOUNDARY (confirmed against real source): a confirmed field
+-- party slot enters `Task_TryCreateSelectionWindow` rather than returning
+-- immediately to START. This module owns the original list only: its
+-- CONFIRMED state is consumed by the separate, reduced read-only
+-- PartySelectionFlow (SUMMARY/CANCEL). Retail SWITCH/ITEM/field move actions
+-- and full GBA SUMMARY graphics/pages remain outside this slice. After
+-- the reduced action menu closes, :resumeBrowsing() preserves the selected
+-- list row. The ordinary list B/CANCEL still returns to START.
 --
 -- List shape (real `UpdatePartySelectionSingleLayout`, src/party_menu.c
 -- line ~1358, used because `gPartyMenu.layout == PARTY_LAYOUT_SINGLE` --
@@ -120,6 +116,15 @@ function PartyScreen:isDone()
   return self.state ~= PartyScreen.BROWSING
 end
 
+-- The action menu returns to the same slot on B/CANCEL; a fresh PartyScreen
+-- would lose the cursor. Only a confirmed selection can be resumed.
+function PartyScreen:resumeBrowsing()
+  if self.state ~= PartyScreen.CONFIRMED then return false end
+  self.state = PartyScreen.BROWSING
+  self.confirmedSlot = nil
+  return true
+end
+
 -- 0-based row index currently under the cursor (0..party:size()-1 are
 -- mons, party:size() is the CANCEL row).
 function PartyScreen:cursorRow()
@@ -173,6 +178,25 @@ function PartyScreen:rowData(slot)
     status = record.status or 0,
     isEgg = isEgg,
   }
+end
+
+-- A bounded read-only Info/Summary data projection from the already
+-- validated party record. The caller must never modify this return value
+-- expecting changes to the saved party. Real summary art, move names,
+-- page switching and editing actions are not implemented here.
+function PartyScreen:summaryData(slot)
+  local data = self:rowData(slot)
+  local record = self.party:get(slot)
+  local decoded, reason = BattlePartyBridge.decodeRecord(record)
+  assert(decoded, reason)
+  data.attack = record.attack
+  data.defense = record.defense
+  data.speed = record.speed
+  data.spAttack = record.spAttack
+  data.spDefense = record.spDefense
+  data.experience = decoded.substructs[0].experience
+  data.otName = Charmap.decode(decoded.otName, true)
+  return data
 end
 
 -- Iterates every row a caller should render, in real display order: filled

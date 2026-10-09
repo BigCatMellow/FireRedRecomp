@@ -98,6 +98,7 @@ local Battle = {
   MartMenu = require("src.core.PokemonMartMenu"),
   StartMenu = require("src.core.StartMenu"),
   PartyScreen = require("src.core.PartyScreen"),
+  PartySelectionFlow = require("src.core.PartySelectionFlow"),
   BagScreen = require("src.core.BagScreen"),
   Bag = require("src.core.Bag"),
   PartyModel = require("src.core.PartyModel"),
@@ -2139,6 +2140,7 @@ world.closeStartMenu = function()
   world.startMenuActive = false
   world.partyScreen = nil
   world.partyScreenActive = false
+  world.partySelection = nil
   if world.bagScreen and newGame.session then
     Battle.SessionBagBridge.toSaveBlock1(world.bagScreen.bag, newGame.session.state.saveBlock1)
   end
@@ -2184,6 +2186,7 @@ world.handleStartMenuSelection = function()
         get = function(_, slot) return sb1.playerParty[slot] end,
       }
       world.partyScreen = Battle.PartyScreen.new(partyView)
+      world.partySelection = nil
       world.partyScreenActive = true
     else
       addLine("No active session party to show.")
@@ -3299,6 +3302,27 @@ world.startMenuLines = function()
 end
 
 world.partyScreenLines = function()
+  local flow = world.partySelection
+  if flow and flow.state == Battle.PartySelectionFlow.ACTIONS then
+    local d = flow.partyScreen:rowData(flow.slot)
+    local lines = { d.nickname .. "  (Up/Down, A: select, B: back)" }
+    for i, action in ipairs({ Battle.PartySelectionFlow.ACTION_SUMMARY,
+        Battle.PartySelectionFlow.ACTION_CANCEL }) do
+      lines[#lines + 1] = (flow.cursor.cursorPos == i - 1 and "> " or "  ") .. action
+    end
+    return lines
+  elseif flow and flow.state == Battle.PartySelectionFlow.SUMMARY then
+    local d = flow:summaryData()
+    -- Minimal read-only info page; not the GBA summary screen or move pages.
+    return {
+      ("SUMMARY  %s  (B: back)"):format(d.nickname),
+      ("Species #%d  Lv%d%s"):format(d.species, d.level, d.isEgg and "  EGG" or ""),
+      ("HP %d/%d  STATUS %s"):format(d.hp, d.maxHp, d.status == 0 and "OK" or "AFFECTED"),
+      ("ATK %d   DEF %d   SPD %d"):format(d.attack, d.defense, d.speed),
+      ("SP.ATK %d   SP.DEF %d"):format(d.spAttack, d.spDefense),
+      ("EXP %d   OT %s"):format(d.experience, d.otName),
+    }
+  end
   local p = world.partyScreen
   local lines = { "PARTY  (Up/Down, A: select, B: back)" }
   for row, isCancel, data in p:iterateRows() do
@@ -4567,18 +4591,24 @@ function love.update(dt)
       world.martMenu:processInput(inputState)
       if world.martMenu:isDone() then world.closeMart() end
     elseif world.partyScreenActive and world.partyScreen then
-      world.partyScreen:processInput(inputState)
-      if world.partyScreen:isDone() then
-        -- Real B/CANCEL and a real confirmed-slot selection both return to
-        -- the (still open) Start menu -- see PartyScreen.lua's header:
-        -- selecting a living mon would real-open the SUMMARY/SWITCH/ITEM
-        -- submenu, out of scope here, so a confirmed slot just reports
-        -- which one and falls back to the Start menu like CANCEL does.
-        if world.partyScreen.state == Battle.PartyScreen.CONFIRMED then
-          addLine(("Selected party slot %d (no SUMMARY/SWITCH/ITEM menu yet)."):format(world.partyScreen.confirmedSlot))
+      -- The normal Party menu keeps exclusive field input ownership through
+      -- list -> selected-slot actions -> read-only SUMMARY -> actions -> list.
+      -- No input in this branch can move the player or mutate the party.
+      if world.partySelection then
+        world.partySelection:processInput(inputState)
+        if world.partySelection:isDone() then
+          world.partySelection = nil
+          assert(world.partyScreen:resumeBrowsing(), "party action returned without confirmed slot")
         end
-        world.partyScreen = nil
-        world.partyScreenActive = false
+      else
+        world.partyScreen:processInput(inputState)
+        if world.partyScreen.state == Battle.PartyScreen.CONFIRMED then
+          world.partySelection = Battle.PartySelectionFlow.new(world.partyScreen)
+        elseif world.partyScreen.state == Battle.PartyScreen.CLOSED then
+          -- The list-level B/CANCEL returns to the still-open START menu.
+          world.partyScreen = nil
+          world.partyScreenActive = false
+        end
       end
     elseif world.bagScreenActive and world.bagScreen then
       world.bagScreen:processInput(inputState)
