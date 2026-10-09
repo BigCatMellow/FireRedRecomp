@@ -48,5 +48,27 @@ check("dex #412 (past NATIONAL_DEX_COUNT) rejected", ok2 == false)
 check("DEX_FLAGS_NO is 52", DexTracker.DEX_FLAGS_NO == 52)
 check("NATIONAL_DEX_COUNT is 411", DexTracker.NATIONAL_DEX_COUNT == 411)
 
+-- Serialized SaveBlock2 seen bytes drive the normal field START Pokedex
+-- zero-seen-entry admission guard; the owned field must not be substituted.
+local zeroSeen = string.rep("\0", 52)
+check("serialized zero seen count is zero", DexTracker.countSeenSaveBytes(zeroSeen) == 0)
+local firstSeen = string.char(1) .. string.rep("\0", 51)
+check("serialized first national entry counted", DexTracker.countSeenSaveBytes(firstSeen) == 1)
+local crossByteSeen = string.char(128, 1) .. string.rep("\0", 50)
+check("serialized #8 and #9 counted across byte boundary",
+  DexTracker.countSeenSaveBytes(crossByteSeen) == 2)
+-- National Dex #411 is bit 2 in byte 52; bits 3-7 are beyond the real
+-- NATIONAL_DEX_COUNT and must not inflate GetNationalPokedexCount.
+local trailingSeen = string.rep("\0", 51) .. string.char(252)
+check("serialized #411 counted, but bits #412-416 ignored",
+  DexTracker.countSeenSaveBytes(trailingSeen) == 1)
+check("all serialized valid national bits count to 411",
+  DexTracker.countSeenSaveBytes(string.rep(string.char(255), 52)) == 411)
+local absentCount, absentReason = DexTracker.countSeenSaveBytes(nil)
+check("missing serialized seen field is unknown, not fabricated zero",
+  absentCount == nil and absentReason ~= nil)
+local truncatedCount = DexTracker.countSeenSaveBytes(string.rep("\0", 51))
+check("truncated serialized seen field is not accepted", truncatedCount == nil)
+
 print(("%d passed, %d failed"):format(passed, failed))
 os.exit(failed == 0 and 0 or 1)
