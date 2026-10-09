@@ -100,4 +100,23 @@ function DexTracker:setOwned(nationalDexNo)
   set(self.owned, nationalDexNo)
 end
 
+-- Count only real National Dex seen entries from the serialized SaveBlock2
+-- 52-byte pokedex.seen field (1-based bit n-1), matching pokefirered's
+-- GetNationalPokedexCount(FLAG_GET_SEEN). The final byte also has bits
+-- beyond NATIONAL_DEX_COUNT; those bits must not count.
+-- Returns nil for absent/malformed data rather than manufacturing zero.
+function DexTracker.countSeenSaveBytes(rawSeen)
+  if type(rawSeen) ~= "string" or #rawSeen ~= DexTracker.DEX_FLAGS_NO then
+    return nil, "expected 52-byte serialized seen flags"
+  end
+  local count = 0
+  for n = 1, DexTracker.NATIONAL_DEX_COUNT do
+    local index, bit = byteBitFor(n)
+    if isBitSet(string.byte(rawSeen, index + 1), bit) then
+      count = count + 1
+    end
+  end
+  return count
+end
+
 return DexTracker
