@@ -1,7 +1,7 @@
 # FireRedRecomp Coordination Handoff
 
-- Status: `READY_FOR_REVIEWER — separate P4/P5 recovery authorities proposed; prior artifacts remain exhausted`
-- Task ID: `P4-F3-RESTORE-HP-RECOVERY`; `P5-04-ROUTE-PROBE-RECOVERY`
+- Status: `READY_FOR_WORKER — one independently authorized P5 route-probe recovery pending fresh runner check`
+- Task ID: `P5-04-ROUTE-PROBE-RECOVERY`
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
 - Current plan: [`../roadmaps/RECALIBRATED_DELIVERY_PLAN.md`](../roadmaps/RECALIBRATED_DELIVERY_PLAN.md)
 
@@ -68,6 +68,21 @@ and [P5 route probe](../reviews/2026-10-09-viridian-old-man-route-probe-recovery
 Dispatch remains one at a time. The active next action is only the P4
 byte-identical recovery artifact after a fresh runner observation; hold P5
 until the P4 guarded outcome has been recorded and independently reviewed.
+
+### Restore HP recovery outcome — 2026-10-09
+
+The sole P4 recovery artifact `dad1274` executed successfully as GitHub run
+`38008842308` / job `114083864362` and published `dc8ad06`. The job passed
+checkout, P4 route selection, Lua, private-ROM validation, bounded target
+validation/application, focused/no-ROM/SHA-ROM checks, deterministic replay,
+and publication. The independent [exact outcome review](../reviews/2026-10-09-restore-hp-implementation-outcome-review.md)
+is **PASS**. Restore HP is closed only as its accepted ordinary leaf; Phase 4
+and all excluded behavior remain open.
+
+P5 has not been dispatched. Its independently accepted recovery probe is now
+the active next action and still needs a fresh online/idle `firered-local`
+observation immediately before its one literal dispatch, followed by a
+separate outcome review before any P5 patch authority is compiled.
 
 `MediaCenter` (GitHub runner `24`) was freshly observed **online**, **idle**,
 and labeled `firered-local`. The independent retry authority at `98540c5` was
