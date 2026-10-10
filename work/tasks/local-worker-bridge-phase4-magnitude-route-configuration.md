@@ -1,7 +1,7 @@
 # Task: configure Local Worker Bridge route for bounded Magnitude
 
 - Task ID: `P4-F3-MAGNITUDE-ROUTE-CONFIG`
-- Status: `READY_FOR_REVIEWER`
+- Status: `CLOSED — REVIEWED PASS`
 - Type: `INFRASTRUCTURE / EXECUTION SUBSTRATE / CONFIGURATION`
 - Parent: [reviewed Magnitude route plan](local-worker-bridge-phase4-magnitude-route-plan.md).
 - Assigned role: `WORKER`
@@ -115,3 +115,10 @@ ROM, test suite, replay, implementation, coordination, or capability-status
 action occurred. Static configuration evidence is recorded in
 `work/reports/local-worker-bridge-phase4-magnitude-route-configuration.md`.
 Independent exact configuration review remains required before any probe.
+
+## Independent review — 2026-10-10
+
+The independent [exact configuration review](../reviews/2026-10-10-magnitude-route-configuration-review.md)
+returned **PASS** for published revision `57d6b053226452a4835c9ad829306e9beb367330`.
+It closes configuration only and permits compilation of the one-file readiness
+probe authority; it does not authorize a probe dispatch or Magnitude behavior.
