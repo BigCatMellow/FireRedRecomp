@@ -147,6 +147,20 @@ function BattleFormulas.isSpecialType(moveType)
   return moveType > BattleFormulas.TYPE_MYSTERY
 end
 
+-- Vanilla FireRed has no per-move category. A project-owned balance overlay
+-- may add one to a derived move record without changing imported ROM truth.
+-- Nil means exact Gen-III type-based behavior.
+function BattleFormulas.moveCategory(move)
+  if move.category ~= nil then
+    assert(move.category == "physical" or move.category == "special",
+      "move category must be physical or special")
+    return move.category
+  end
+  if BattleFormulas.isPhysicalType(move.type) then return "physical" end
+  if BattleFormulas.isSpecialType(move.type) then return "special" end
+  return nil
+end
+
 -- Real stat stages are stored 0..12 with 6 == neutral (MIN_STAT_STAGE 0,
 -- DEFAULT_STAT_STAGE 6, MAX_STAT_STAGE 12, include/constants/pokemon.h).
 -- This module keeps that real 0..12 encoding rather than a -6..+6 one so
@@ -227,7 +241,9 @@ function BattleFormulas.calculateBaseDamage(attacker, defender, move, isCrit, de
   local power = move.power
   local damage = 0
 
-  if BattleFormulas.isPhysicalType(moveType) then
+  local category = BattleFormulas.moveCategory(move)
+
+  if category == "physical" then
     -- Real: on a crit, a LOWERED attack stage is ignored (raw stat used),
     -- a raised one is still applied.
     local atkStage = stageOf(attacker, "attack")
@@ -279,7 +295,7 @@ function BattleFormulas.calculateBaseDamage(attacker, defender, move, isCrit, de
     damage = 0 -- real: the ??? type does 0 damage
   end
 
-  if BattleFormulas.isSpecialType(moveType) then
+  if category == "special" then
     local spAtkStage = stageOf(attacker, "spAttack")
     if isCrit and spAtkStage <= BattleFormulas.DEFAULT_STAT_STAGE then
       damage = attacker.spAttack
