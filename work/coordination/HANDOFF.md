@@ -25,6 +25,10 @@ metadata-only `runner-readiness` probe to prove checkout, route selection, Lua,
 private-ROM discovery, and the existing SHA guard. It must not record a private
 path or alter P4/P5 artifacts, scope, status, or retry limits.
 
+The independent [review](../reviews/2026-10-09-rom-configuration-recovery-review.md)
+is **PASS** at `196dfdc`. Fresh online/idle observation immediately before the
+one literal probe remains required.
+
 `MediaCenter` (GitHub runner `24`) was freshly observed **online**, **idle**,
 and labeled `firered-local`. The independent retry authority at `98540c5` was
 therefore used exactly once for each original run. Restore HP `37080060017`

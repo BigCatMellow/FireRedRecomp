@@ -1,7 +1,7 @@
 # Task: prove private-ROM runner configuration
 
 - Task ID: `RUNNER-ROM-CONFIG-RECOVERY`
-- Status: `READY_FOR_REVIEWER`
+- Status: `REVIEWED_PASS`
 - Type: `RECONCILIATION / EXECUTION SUBSTRATE / READINESS PROBE`
 - Parent capability gate: guarded bridge availability; no capability row changes
 - Assigned role: `ORCHESTRATOR`
@@ -107,3 +107,12 @@ probe or substitute any exhausted P4/P5 artifact.
   not advance P4 or P5 without their own newly reviewed authority.
 - Eligible successor: explicit, separately compiled recovery authority for the
   smallest affected P4 or P5 artifact; no successor is implied by this task.
+
+## Review
+
+Independent [PASS review](../reviews/2026-10-09-rom-configuration-recovery-review.md)
+accepted exact `196dfdc46afbe674460e2c4f7a3816fa028db01e`. It confirms the
+literal one-file existing-route boundary, the exhaustion of the prior P4/P5
+and readiness-probe authority, and private-configuration non-disclosure. A
+fresh GitHub online/idle observation remains mandatory immediately before
+dispatch.
