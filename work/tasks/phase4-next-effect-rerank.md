@@ -1,7 +1,7 @@
 # Task: rerank the next bounded Phase 4 effect discovery
 
 - Task ID: `P4-NEXT-EFFECT-RERANK`
-- Status: `READY_FOR_WORKER`
+- Status: `CLOSED — REVIEWED PASS`
 - Type: `RESEARCH / READ-ONLY`
 - Parent capability gate: Phase 4 move/effect matrix
 - Assigned role: `RESEARCHER`
@@ -56,6 +56,12 @@ the blocker; do not implement or widen scope.
 - Researcher records ranked evidence and one successor recommendation.
 - Reviewer decides `PASS | NEEDS_FIX | BLOCK`.
 - Orchestrator compiles only the selected source-lock task after PASS.
+
+## Result
+
+Independent [PASS review](../reviews/2026-10-10-next-effect-rerank-review.md)
+accepted `23d0b46`. The sole successor is `P4-F1-MAGNITUDE-DISCOVERY`; no
+implementation, route, ROM, or capability authority follows.
 
 ## Researcher handoff — 2026-10-10
 
