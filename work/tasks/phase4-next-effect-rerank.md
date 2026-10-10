@@ -56,3 +56,13 @@ the blocker; do not implement or widen scope.
 - Researcher records ranked evidence and one successor recommendation.
 - Reviewer decides `PASS | NEEDS_FIX | BLOCK`.
 - Orchestrator compiles only the selected source-lock task after PASS.
+
+## Researcher handoff — 2026-10-10
+
+[`phase4-next-effect-rerank.md`](../reports/phase4-next-effect-rerank.md)
+reconciles accepted Restore HP coverage and selects exactly one successor:
+read-only `P4-F1-MAGNITUDE-DISCOVERY` for effect 126 / move 222. Defense Curl,
+Trap, and poison-hit remain explicitly blocked on unmodeled state/lifecycle;
+Haze ranks below Magnitude on demonstrated early-story priority. The report is
+source-only, retains all exclusions, and authorizes neither implementation nor
+route/ROM work. Independent exact-revision review is required.
