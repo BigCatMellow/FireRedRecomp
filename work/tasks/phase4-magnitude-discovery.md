@@ -58,3 +58,19 @@ unmodeled multi-target state. Record `UNKNOWN`; do not implement.
 - Researcher records source anchors, table/order, unknowns and one design successor.
 - Reviewer decides `PASS | NEEDS_FIX | BLOCK`.
 - Orchestrator compiles only that accepted design successor after PASS.
+
+### Researcher handoff — 2026-10-10
+
+- Report: [phase4-magnitude-source-discovery.md](../reports/phase4-magnitude-source-discovery.md).
+- Locked source fact: `BattleScript_EffectMagnitude` does cancellation,
+  announcement, PP reduction, and first-target selection before its one
+  `Random() % 100` Magnitude table draw; it announces the rolled level before
+  the shared Underground-aware, all-target hit loop.
+- Locked table: rolls `0-4/5-14/15-34/35-64/65-84/85-94/95-99` map to
+  levels `4/5/6/7/8/9/10` and powers `10/30/50/70/90/110/150`.
+- Project uncertainty: current bounded-singles events have no settled
+  Magnitude-strength event/presentation shape and no target-loop or
+  Underground state.  The report records these as `UNKNOWN`, not behavior.
+- Proposed sole successor after review: design-only `P4-F2-MAGNITUDE-DESIGN`;
+  it must preserve singleton, no-Underground/no-doubles/no-generic-framework
+  boundaries.  No implementation or bridge action is authorized by this task.
