@@ -1,7 +1,7 @@
 # Task: implement bounded Magnitude singles behavior
 
 - Task ID: `P4-F3-MAGNITUDE-IMPLEMENTATION`
-- Status: `READY_FOR_REVIEWER`
+- Status: `CLOSED — REVIEWED PASS`
 - Type: `IMPLEMENTATION AUTHORITY / GUARDED ROUTE`
 - Parent capability gate: Phase 4 effect 126 / Magnitude move 222
 - Assigned role: `ORCHESTRATOR`; independent authorization reviewer: `REVIEWER`
