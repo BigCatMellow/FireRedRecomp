@@ -103,6 +103,11 @@ paths and the accepted local-ID-4, scene-variable projection. It does not
 authorize code, a bridge artifact, or any generic callback/traversal work until
 an independent authorization review passes.
 
+The independent [authorization review](../reviews/2026-10-09-viridian-old-man-projection-recovery-authorization-review.md)
+is now **PASS** at `0a6df85`. The contract is ready for one bounded Worker
+patch after a fresh online/idle runner observation; guarded evidence and a
+separate exact outcome review remain mandatory.
+
 `MediaCenter` (GitHub runner `24`) was freshly observed **online**, **idle**,
 and labeled `firered-local`. The independent retry authority at `98540c5` was
 therefore used exactly once for each original run. Restore HP `37080060017`
