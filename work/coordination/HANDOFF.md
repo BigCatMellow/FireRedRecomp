@@ -1,7 +1,7 @@
 # FireRedRecomp Coordination Handoff
 
-- Status: `BLOCKED — private runner toolchain lacks lua5.1; exact retries are exhausted`
-- Task ID: `P4-F3-RESTORE-HP-IMPLEMENTATION`; P5-04 route probe is separately blocked
+- Status: `READY_FOR_REVIEWER — one private-ROM service-configuration probe proposed; prior retries remain exhausted`
+- Task ID: `RUNNER-ROM-CONFIG-RECOVERY`; P4-F3 and P5-04 remain separately blocked
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
 - Current plan: [`../roadmaps/RECALIBRATED_DELIVERY_PLAN.md`](../roadmaps/RECALIBRATED_DELIVERY_PLAN.md)
 
@@ -10,6 +10,20 @@
 ### Queue update — 2026-10-03
 
 ### Retry outcome — 2026-10-07
+
+### ROM-configuration recovery preparation — 2026-10-09
+
+The operator reports a private service-environment configuration and local
+verification of a supported FireRed US v1.0 file. GitHub freshly reports
+`MediaCenter` runner `24` online, idle, and labeled `firered-local`; Lua 5.1.5
+is locally available. This does not prove a GitHub job inherits the private
+environment and it does not revive any exhausted run.
+
+[`RUNNER-ROM-CONFIG-RECOVERY`](../tasks/local-worker-bridge-rom-config-recovery.md)
+is **READY_FOR_REVIEWER**. After independent PASS, it may push exactly one new
+metadata-only `runner-readiness` probe to prove checkout, route selection, Lua,
+private-ROM discovery, and the existing SHA guard. It must not record a private
+path or alter P4/P5 artifacts, scope, status, or retry limits.
 
 `MediaCenter` (GitHub runner `24`) was freshly observed **online**, **idle**,
 and labeled `firered-local`. The independent retry authority at `98540c5` was
