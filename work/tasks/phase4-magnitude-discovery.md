@@ -1,0 +1,60 @@
+# Task: source-lock bounded Magnitude behavior
+
+- Task ID: `P4-F1-MAGNITUDE-DISCOVERY`
+- Status: `READY_FOR_WORKER`
+- Type: `RESEARCH / SOURCE LOCK`
+- Parent capability gate: Phase 4 move/effect matrix
+- Assigned role: `RESEARCHER`
+- Independent reviewer: `REVIEWER`
+- Prerequisite: [accepted rerank](../reviews/2026-10-10-next-effect-rerank-review.md)
+- Risk: `LOW` — source misreading could misroute later design; this task changes
+  no runtime behavior, admission, route, or ROM content.
+
+## Goal
+
+Lock the exact represented-singles source contract for Magnitude, effect 126 /
+move 222, including RNG, dynamic-power, event/message order and exclusions.
+
+## Source of truth
+
+- Pinned `pret/pokefirered` `c75f352304d529f6ba92d4f74b9cf8b5c3810788`:
+  Magnitude script and command implementation named by the accepted rerank.
+- Current `BattleEngine` RNG, ordinary hit/event, PP and move-admission seams.
+
+## MAY CHANGE
+
+- `work/reports/phase4-magnitude-source-discovery.md`
+- this task's handoff/result section
+
+## MUST NOT CHANGE
+
+Runtime/tests/admission, bridge route/workflow, runner/ROM configuration,
+save/UI/AI, current effect implementations, coordination/capability status,
+and implementation artifacts. No ROM or derived content in git.
+
+## Acceptance criteria
+
+1. State exact `Random() % 100` threshold-to-level/power table and draw order.
+2. Trace cancellation, announcement, PP, target, magnitude message and shared
+   hit ordering, distinguishing source fact from project seam uncertainty.
+3. Identify the smallest later design boundary and literal exclusions:
+   Underground, target loops/doubles, abilities/items, cancellation expansion,
+   visual timing, and generic dynamic-power abstractions.
+4. Make no implementation, admission, ROM, or parity claim.
+
+## Required evidence
+
+- Baseline/focused: pinned source plus current code inspection.
+- Full: N/A; `git diff --check` required.
+- Review: independent exact report/task review.
+
+## Stop / escalate when
+
+Source cannot settle a required branch, or a conclusion requires code/ROM or
+unmodeled multi-target state. Record `UNKNOWN`; do not implement.
+
+## Completion and handoff
+
+- Researcher records source anchors, table/order, unknowns and one design successor.
+- Reviewer decides `PASS | NEEDS_FIX | BLOCK`.
+- Orchestrator compiles only that accepted design successor after PASS.
