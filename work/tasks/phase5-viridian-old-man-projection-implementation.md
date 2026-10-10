@@ -1,7 +1,7 @@
 # Task: implement bounded Viridian Old Man state projection
 
 - Task ID: `P5-04-OLD-MAN-PROJECTION`
-- Status: `READY_FOR_PREPARATION`
+- Status: `PREPARED — GUARDED EVIDENCE PENDING`
 - Type: `IMPLEMENTATION — GUARDED ROUTE REQUIRED`
 - Prerequisite: [P5-03 design PASS](../reviews/2026-10-02-viridian-old-man-projection-design-review.md), exact `87644b2`.
 
@@ -14,8 +14,14 @@ configuration, review and probe must PASS before any Worker request.
 
 ## MAY CHANGE after route PASS
 
-Only the exact helper/integration/test/report/task paths named by the later
-route plan. No path is implied now.
+The accepted [recovery authority](phase5-viridian-old-man-projection-recovery.md)
+and reviewed route admit exactly:
+
+1. `src/core/ViridianOldManProjection.lua`
+2. `main.lua`
+3. `tests/phase5_viridian_old_man_projection_test.lua`
+4. `work/tasks/phase5-viridian-old-man-projection-implementation.md`
+5. `work/reports/phase5-viridian-old-man-projection-implementation.md`
 
 ## MUST NOT CHANGE
 
@@ -34,3 +40,21 @@ playable Viridian or full traversal.
 
 Stop for any need to generalize callback/state semantics, change unrelated map
 objects, or widen beyond the reviewed route. Record the blocker; do not patch.
+
+## Worker preparation evidence — 2026-10-09
+
+- Prepared only in isolated worktree `/tmp/firered-p5-worker`, based on
+  `8ec48cfe7e131ab62d54021ed5d382514314b2a2`; main checkout untouched.
+- [Implementation report](../reports/phase5-viridian-old-man-projection-implementation.md)
+  records the exact projection, refusal, immutable-input and pre-spawn limits.
+- Baseline no-ROM suite: 152 test files PASS. Focused test: 115 passed,
+  zero failed. Post-change no-ROM suite: 153 test files PASS, including the
+  focused test. Lua 5.1 syntax and whitespace checks passed; repository checks
+  passed 279 Lua files, 219 Markdown files and 675 local targets.
+- Focused tests execute the actual production loader body with synthetic
+  templates and stubbed external field/ROM services; this is not a LÖVE,
+  private-ROM, rendered, tutorial or traversal replay.
+- No bridge artifact, runner dispatch, push, workflow/coordination edit or
+  independent acceptance was performed. Guarded focused/no-ROM/SHA-ROM
+  evidence and independent exact-result review remain required. The route's
+  explicit no-replay branch must not be reported as gameplay evidence.

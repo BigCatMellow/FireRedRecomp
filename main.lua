@@ -1817,6 +1817,15 @@ local function loadMapObjectEvents(data, events, mapId)
     end
   end
 
+  -- Only this source-locked Viridian object gets a temporary pre-spawn
+  -- projection. Keep decoded templates and generic graphics/scripts intact.
+  if mapId == 3 * 256 + 1 then
+    local diagnostic
+    objectEvents, diagnostic = require("src.core.ViridianOldManProjection").apply(
+      mapId, objectEvents, newGame.session)
+    if diagnostic then addLine("Viridian Old Man projection skipped: " .. diagnostic) end
+  end
+
   local ok, npcs, skippedClones = pcall(ObjectEventState.new, objectEvents, {
     rng = world.globalRng,
     isBlocked = isWalkTileBlocked,
