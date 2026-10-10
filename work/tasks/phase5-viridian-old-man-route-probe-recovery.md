@@ -1,7 +1,7 @@
 # Task: recover one Viridian Old Man route-readiness probe
 
 - Task ID: `P5-04-ROUTE-PROBE-RECOVERY`
-- Status: `READY_FOR_REVIEWER`
+- Status: `REVIEWED_PASS — READY_FOR_WORKER`
 - Type: `RECONCILIATION / GUARDED READINESS PROBE`
 - Parent capability gate: P5-04 route readiness; no implementation authority or capability-completion change
 - Assigned role: `ORCHESTRATOR`
@@ -64,3 +64,10 @@ Runner state changes, GitHub refuses dispatch, digest differs, any readiness gua
 - Reviewer decides: `PASS | NEEDS_FIX | BLOCK` for authorization and separately for exact probe outcome.
 - Orchestrator reconciles only after outcome review and preserves original exhaustion history.
 - Eligible successor: separately compiled and independently reviewed P5 implementation authority only after this probe is accepted.
+
+## Review
+
+Independent [correction review](../reviews/2026-10-09-viridian-old-man-route-probe-recovery-authorization-correction-review.md)
+is **PASS** at `fae1fae72422dd017679503ecf591932791eb2b7`. It accepts only
+the literal recovery filename and pinned digest. A fresh online/idle runner
+observation remains mandatory immediately before dispatch.

@@ -1,7 +1,7 @@
 # Task: recover one bounded Restore HP guarded request
 
 - Task ID: `P4-F3-RESTORE-HP-RECOVERY`
-- Status: `READY_FOR_REVIEWER`
+- Status: `REVIEWED_PASS — READY_FOR_WORKER`
 - Type: `RECONCILIATION / GUARDED IMPLEMENTATION RECOVERY`
 - Parent capability gate: Phase 4 smallest unmet Restore HP leaf; no phase-completion change
 - Assigned role: `ORCHESTRATOR`
@@ -65,3 +65,10 @@ Runner state changes, GitHub refuses dispatch, digest differs, validation/applic
 - Reviewer decides: `PASS | NEEDS_FIX | BLOCK` for authorization and separately for exact output.
 - Orchestrator reconciles only after outcome review and preserves original exhaustion history.
 - Eligible successor: none until outcome review decides whether the existing implementation task can be reconciled.
+
+## Review
+
+Independent [correction review](../reviews/2026-10-09-restore-hp-recovery-authorization-correction-review.md)
+is **PASS** at `fae1fae72422dd017679503ecf591932791eb2b7`. It accepts only
+the literal recovery filename and pinned digest. A fresh online/idle runner
+observation remains mandatory immediately before dispatch.

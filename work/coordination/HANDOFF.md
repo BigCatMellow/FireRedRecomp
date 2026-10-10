@@ -62,6 +62,13 @@ Each contract requires a fresh online/idle `firered-local` observation just
 before its sole dispatch and a separate independent review of its resulting
 job. A PASS on either contract does not grant authority for the other.
 
+Both corrected contracts are now independently **PASS** at `fae1fae`:
+[Restore HP](../reviews/2026-10-09-restore-hp-recovery-authorization-correction-review.md)
+and [P5 route probe](../reviews/2026-10-09-viridian-old-man-route-probe-recovery-authorization-correction-review.md).
+Dispatch remains one at a time. The active next action is only the P4
+byte-identical recovery artifact after a fresh runner observation; hold P5
+until the P4 guarded outcome has been recorded and independently reviewed.
+
 `MediaCenter` (GitHub runner `24`) was freshly observed **online**, **idle**,
 and labeled `firered-local`. The independent retry authority at `98540c5` was
 therefore used exactly once for each original run. Restore HP `37080060017`
