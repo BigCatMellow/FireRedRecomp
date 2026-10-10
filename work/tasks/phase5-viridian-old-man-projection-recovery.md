@@ -1,7 +1,7 @@
 # Task: implement bounded Viridian Old Man projection
 
 - Task ID: `P5-04-OLD-MAN-PROJECTION-RECOVERY`
-- Status: `REVIEWED_PASS — READY_FOR_WORKER`
+- Status: `CLOSED — REVIEWED PASS`
 - Type: `IMPLEMENTATION / GUARDED ROUTE`
 - Parent capability gate: P5-04 single map-specific projection; no traversal or phase-completion change
 - Assigned role: `WORKER`
@@ -84,3 +84,10 @@ is **PASS** at `0a6df8506bc7f021891a20a1a2744e8405ebf8bc`. It confirms the
 literal five-path route, accepted scene/refusal boundaries, and prohibition on
 code or bridge artifacts before acceptance. Fresh runner observation remains
 mandatory immediately before any future one-patch dispatch.
+
+## Executed outcome
+
+The sole request `5a7fbc3` published `d280751` after guarded run `38037052963`
+/ job `114169565555` passed all route-required checks. Independent
+[outcome review](../reviews/2026-10-10-viridian-old-man-projection-outcome-review.md)
+is **PASS**. This recovery authority is closed; it does not broaden P5.

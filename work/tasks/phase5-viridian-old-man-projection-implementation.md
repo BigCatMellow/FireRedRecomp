@@ -1,7 +1,7 @@
 # Task: implement bounded Viridian Old Man state projection
 
 - Task ID: `P5-04-OLD-MAN-PROJECTION`
-- Status: `PREPARED — GUARDED EVIDENCE PENDING`
+- Status: `CLOSED — REVIEWED PASS`
 - Type: `IMPLEMENTATION — GUARDED ROUTE REQUIRED`
 - Prerequisite: [P5-03 design PASS](../reviews/2026-10-02-viridian-old-man-projection-design-review.md), exact `87644b2`.
 
@@ -56,5 +56,14 @@ objects, or widen beyond the reviewed route. Record the blocker; do not patch.
   private-ROM, rendered, tutorial or traversal replay.
 - No bridge artifact, runner dispatch, push, workflow/coordination edit or
   independent acceptance was performed. Guarded focused/no-ROM/SHA-ROM
-  evidence and independent exact-result review remain required. The route's
-  explicit no-replay branch must not be reported as gameplay evidence.
+evidence and independent exact-result review remain required. The route's
+explicit no-replay branch must not be reported as gameplay evidence.
+
+## Guarded outcome — 2026-10-10
+
+The reviewed five-path patch `5a7fbc3` published implementation `d280751`
+through GitHub run `38037052963` / job `114169565555`. The guarded route passed
+focused, no-ROM, and SHA-ROM suites and its explicit no-replay branch.
+Independent [outcome review](../reviews/2026-10-10-viridian-old-man-projection-outcome-review.md)
+is **PASS**. This closes only the bounded pre-spawn projection; no traversal,
+renderer, tutorial, or generic callback claim follows.

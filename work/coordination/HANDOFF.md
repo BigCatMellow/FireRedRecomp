@@ -108,6 +108,16 @@ is now **PASS** at `0a6df85`. The contract is ready for one bounded Worker
 patch after a fresh online/idle runner observation; guarded evidence and a
 separate exact outcome review remain mandatory.
 
+### P5 implementation outcome — 2026-10-10
+
+The sole five-path P5 request `5a7fbc3` published `d280751` after GitHub run
+`38037052963` / job `114169565555` passed focused/no-ROM/SHA-ROM evidence and
+the route's explicit no-replay branch. Independent
+[outcome review](../reviews/2026-10-10-viridian-old-man-projection-outcome-review.md)
+is **PASS**. This closes only the pre-spawn Viridian Old Man projection. The
+active next action is roadmap recalibration: select the smallest unblocked
+capability gate rather than expanding P5 behavior.
+
 `MediaCenter` (GitHub runner `24`) was freshly observed **online**, **idle**,
 and labeled `firered-local`. The independent retry authority at `98540c5` was
 therefore used exactly once for each original run. Restore HP `37080060017`
