@@ -451,6 +451,7 @@ BattleEngine.EFFECT_PSYWAVE = 88
 BattleEngine.EFFECT_OHKO = 38
 BattleEngine.EFFECT_ENDEAVOR = 189
 BattleEngine.EFFECT_PAIN_SPLIT = 91
+BattleEngine.EFFECT_RESTORE_HP = 32
 
 -- Real Cmd_remaininghptopower: scale the attacker's remaining HP to 48,
 -- promote a positive underflow to one, then choose Flail/Reversal's dynamic
@@ -856,9 +857,13 @@ function BattleEngine:finalizeFaintSequence(events)
   return self.awaitingForcedSwitch ~= nil
 end
 
-function BattleEngine:supportsMove(move)
+function BattleEngine:supportsMove(move, moveId)
   if not move then return false end
   if move.effect == BattleEngine.EFFECT_DREAM_EATER then return false end
+  if move.effect == BattleEngine.EFFECT_RESTORE_HP then
+    return (moveId == 105 or moveId == 303)
+      and move.power == 0 and move.target == MOVE_TARGET_USER
+  end
   return move.power > 0 or BattleEngine.STAT_STAGE_MOVES[move.effect] ~= nil
     or BattleEngine.SCREEN_MOVES[move.effect] ~= nil
     or move.effect == BattleEngine.EFFECT_PAIN_SPLIT
@@ -914,7 +919,8 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
     end
   end
 
-  if not self:supportsMove(move) then
+  local effectiveMoveId = slot and slot.move or BattleEngine.MOVE_STRUGGLE
+  if not self:supportsMove(move, effectiveMoveId) then
     error(("unsupported move effect %d for non-damaging move %d")
       :format(move.effect or -1, slot and slot.move or BattleEngine.MOVE_STRUGGLE))
   end
@@ -947,7 +953,7 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
     return
   end
 
-  local moveId = slot and slot.move or BattleEngine.MOVE_STRUGGLE
+  local moveId = effectiveMoveId
   events[#events + 1] = { type = "useMove", side = attackerSide, move = moveId }
   local isExplosion = move.effect == BattleEngine.EFFECT_EXPLOSION
   if isExplosion then
@@ -1038,6 +1044,7 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
     and move.effect ~= BattleEngine.EFFECT_VITAL_THROW
     and move.effect ~= BattleEngine.EFFECT_OHKO
     and move.effect ~= BattleEngine.EFFECT_PAIN_SPLIT
+    and move.effect ~= BattleEngine.EFFECT_RESTORE_HP
 
   -- The FIRST_BATTLE controller deliberately skips the first player
   -- accuracy RNG independently for a damaging move and for a (DOWN-family)
@@ -1072,6 +1079,20 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
   end
 
   if move.power == 0 then
+    if move.effect == BattleEngine.EFFECT_RESTORE_HP then
+      if attacker.hp == attacker.maxHP then
+        events[#events + 1] = { type = "restoreHPFull", side = attackerSide }
+        return
+      end
+      local beforeHP = attacker.hp
+      local requested = math.max(1, math.floor(attacker.maxHP / 2))
+      attacker.hp = math.min(attacker.maxHP, attacker.hp + requested)
+      events[#events + 1] = {
+        type = "restoreHP", side = attackerSide, beforeHP = beforeHP,
+        hpRemaining = attacker.hp, amount = attacker.hp - beforeHP,
+      }
+      return
+    end
     if move.effect == BattleEngine.EFFECT_PAIN_SPLIT then
       -- Cmd_painsplitdmgcalc stores both signed deltas from the same
       -- pre-mutation average; the script then updates attacker before target.

@@ -203,6 +203,11 @@ function BattleSceneController:_eventMessages(events)
       entries[#entries + 1] = { hpSide = event.side, hp = event.hpRemaining }
     elseif event.type == "painSplit" then
       add("The battlers\nshared their pain!")
+    elseif event.type == "restoreHP" then
+      entries[#entries + 1] = { hpSide = event.side, hp = event.hpRemaining }
+      add(name(event.side) .. " recovered HP!")
+    elseif event.type == "restoreHPFull" then
+      add(name(event.side) .. " is already at full HP!")
     elseif event.type == "noEffect" then
       add("It doesn't affect " .. name(event.target) .. "...")
     elseif event.type == "faint" then
@@ -331,7 +336,7 @@ function BattleSceneController:_runTurn(playerAction)
     local move = slot and self.engine.moves[slot.move]
     -- Keep effects beyond the engine's explicit bounded subset visible,
     -- rather than routing an unknown power-zero move into fabricated rules.
-    if move and not self.engine:supportsMove(move) then
+    if move and not self.engine:supportsMove(move, slot.move) then
       self:_setMessages({ { text = "That move's effect is not available yet." } },
         BattleSceneController.MOVE)
       return

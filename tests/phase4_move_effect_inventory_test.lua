@@ -41,7 +41,7 @@ local inventory = {
   [29] = {"represented", true, 1, {3,4,31,42,131,140,154,198,292,331,333,350}}, -- EFFECT_MULTI_HIT
   [30] = {"candidate", false, 0, {160}}, -- EFFECT_CONVERSION
   [31] = {"blocked_on_state", true, 1, {27,29,44,125,157,158}}, -- EFFECT_FLINCH_HIT
-  [32] = {"candidate", false, 0, {105,303}}, -- EFFECT_RESTORE_HP
+  [32] = {"represented", true, 0, {105,303}}, -- EFFECT_RESTORE_HP: Recover / Slack Off only
   [33] = {"blocked_on_state", false, 0, {92}}, -- EFFECT_TOXIC
   [34] = {"blocked_on_state", true, 1, {6}}, -- EFFECT_PAY_DAY
   [35] = {"represented", true, 0, {113}}, -- EFFECT_LIGHT_SCREEN
@@ -227,12 +227,12 @@ local inventory = {
 
 local expectedTotals = {
   moves = 354, defined = 214, used = 198, unused = 16,
-  positive = 216, zero = 138, admitted = 248, rejected = 106,
+  positive = 216, zero = 138, admitted = 250, rejected = 104,
   admitted_uncovered_positive = 111,
 }
 local expectedClasses = {
-  represented = {families = 50, moves = 137, positive = 104, zero = 33},
-  candidate = {families = 20, moves = 25, positive = 10, zero = 15},
+  represented = {families = 51, moves = 139, positive = 104, zero = 35},
+  candidate = {families = 19, moves = 23, positive = 10, zero = 13},
   blocked_on_state = {families = 127, moves = 191, positive = 101, zero = 90},
   intentionally_rejected = {families = 1, moves = 1, positive = 1, zero = 0},
   unused = {families = 16, moves = 0, positive = 0, zero = 0},
@@ -330,7 +330,7 @@ for id=1,354 do
     check((positive and 1 or 0)==expected.power, "rom_power_class")
     local powerKey=positive and "positive" or "zero"
     actual[powerKey]=actual[powerKey]+1
-    local ok, admitted=pcall(probe.supportsMove, probe, move)
+    local ok, admitted=pcall(probe.supportsMove, probe, move, id)
     check(ok and type(admitted)=="boolean", "admission_execution")
     check(ok and admitted==expected.admitted, "admission_expectation")
     local admitKey=ok and admitted and "admitted" or "rejected"

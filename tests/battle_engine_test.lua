@@ -1601,6 +1601,36 @@ check("an immunity still lets Explosion faint its user after normal RNG", battle
 Data.moves[explosionId] = nil
 Data.moves[ordinaryId] = nil
 
+-- EFFECT_RESTORE_HP (32) admits only the two source-locked zero-power USER
+-- moves. It spends PP before full-HP viability and never consumes action RNG.
+local recoverId, slackOffId = 105, 303
+Data.moves[recoverId] = { effect=32,power=0,type=Data.TYPE_NORMAL,accuracy=0,pp=20,secondaryEffectChance=0,target=16,priority=0,flags=8 }
+Data.moves[slackOffId] = { effect=32,power=0,type=Data.TYPE_NORMAL,accuracy=100,pp=10,secondaryEffectChance=0,target=16,priority=0,flags=8 }
+battle = makeBattle({123}, {{move=recoverId,pp=20}}, {{move=Data.MOVE_TACKLE,pp=1}})
+battle.player.maxHP=101; battle.player.hp=100; events={}; battle:resolveMove(BattleEngine.SIDE_PLAYER,1,events)
+check("Recover clamps a near-full odd-max self heal and reports actual gain", battle.player.hp == 101
+  and battle.player.moves[1].pp == 19 and battle.rng.draws == 0 and events[2].type == "restoreHP"
+  and events[2].side == "player" and events[2].beforeHP == 100 and events[2].hpRemaining == 101 and events[2].amount == 1)
+battle = makeBattle({123}, {{move=Data.MOVE_TACKLE,pp=1}}, {{move=slackOffId,pp=10}})
+battle.foe.maxHP=100; battle.foe.hp=1; events={}; battle:resolveMove(BattleEngine.SIDE_FOE,1,events)
+check("Slack Off heals its own foe-side HP by floor half max without RNG", battle.foe.hp == 51
+  and battle.foe.moves[1].pp == 9 and battle.player.hp == battle.player.maxHP and battle.rng.draws == 0
+  and events[2].type == "restoreHP" and events[2].side == "foe" and events[2].amount == 50)
+battle = makeBattle({123}, {{move=recoverId,pp=20}}, {{move=Data.MOVE_TACKLE,pp=1}})
+events={}; battle:resolveMove(BattleEngine.SIDE_PLAYER,1,events)
+check("full HP spends one PP and emits restoreHPFull without a success event", battle.player.moves[1].pp == 19
+  and battle.rng.draws == 0 and #events == 2 and events[1].type == "useMove" and events[2].type == "restoreHPFull")
+battle = makeBattle({123}, {{move=recoverId,pp=0},{move=Data.MOVE_TACKLE,pp=1}}, {{move=Data.MOVE_TACKLE,pp=1}})
+events={}; battle:resolveMove(BattleEngine.SIDE_PLAYER,1,events)
+check("chosen zero-PP Recover preserves noPP behavior before healing", #events == 1 and events[1].type == "noPP"
+  and battle.player.moves[1].pp == 0 and battle.player.hp == battle.player.maxHP and battle.rng.draws == 0)
+check("Restore HP admission refuses absent or wrong IDs and malformed shapes", not battle:supportsMove(Data.moves[recoverId])
+  and not battle:supportsMove(Data.moves[recoverId], 999) and not battle:supportsMove({effect=32,power=1,target=16}, recoverId)
+  and not battle:supportsMove({effect=32,power=0,target=0}, recoverId) and battle:supportsMove(Data.moves[recoverId], recoverId)
+  and battle:supportsMove(Data.moves[slackOffId], slackOffId))
+Data.moves[recoverId] = nil
+Data.moves[slackOffId] = nil
+
 if romPath then
   local RomImporter = require("import.RomImporter")
   local RomAddresses = require("import.RomAddresses")

@@ -201,6 +201,18 @@ end
 
 do
   local c = controller()
+  local messages = c:_eventMessages({ { type="useMove", side="player", move=105 },
+    { type="restoreHP", side="player", beforeHP=10, hpRemaining=19, amount=9 } })
+  check("Restore HP keeps the move announcement before an invisible own-HP snapshot and feedback",
+    messages[1].text:find("used", 1, true) and messages[2].hpSide == "player" and messages[2].hp == 19
+      and messages[3].text == "BULBASAUR recovered HP!", messages[3] and messages[3].text)
+  messages = c:_eventMessages({ { type="restoreHPFull", side="foe" } })
+  check("Restore HP full result has feedback without an HP snapshot",
+    #messages == 1 and messages[1].hpSide == nil and messages[1].text == "CHARMANDER is already at full HP!", messages[1] and messages[1].text)
+end
+
+do
+  local c = controller()
   local messages = c:_eventMessages({ { type = "multiHit", side = "player", hits = 4 } })
   check("multiHit reports the real hit count, matching sText_HitXTimes",
     messages[1].text == "Hit 4 time(s)!", messages[1].text)
