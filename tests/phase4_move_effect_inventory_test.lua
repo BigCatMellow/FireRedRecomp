@@ -135,7 +135,7 @@ local inventory = {
   [123] = {"blocked_on_state", true, 1, {218}}, -- EFFECT_FRUSTRATION
   [124] = {"blocked_on_state", false, 0, {219}}, -- EFFECT_SAFEGUARD
   [125] = {"blocked_on_state", true, 1, {172,221}}, -- EFFECT_THAW_HIT
-  [126] = {"candidate", true, 1, {222}}, -- EFFECT_MAGNITUDE
+  [126] = {"represented", true, 1, {222}}, -- EFFECT_MAGNITUDE (Magnitude only)
   [127] = {"blocked_on_state", false, 0, {226}}, -- EFFECT_BATON_PASS
   [128] = {"blocked_on_state", true, 1, {228}}, -- EFFECT_PURSUIT
   [129] = {"blocked_on_state", true, 1, {229}}, -- EFFECT_RAPID_SPIN
@@ -228,11 +228,11 @@ local inventory = {
 local expectedTotals = {
   moves = 354, defined = 214, used = 198, unused = 16,
   positive = 216, zero = 138, admitted = 250, rejected = 104,
-  admitted_uncovered_positive = 111,
+  admitted_uncovered_positive = 110,
 }
 local expectedClasses = {
-  represented = {families = 51, moves = 139, positive = 104, zero = 35},
-  candidate = {families = 19, moves = 23, positive = 10, zero = 13},
+  represented = {families = 52, moves = 140, positive = 105, zero = 35},
+  candidate = {families = 18, moves = 22, positive = 9, zero = 13},
   blocked_on_state = {families = 127, moves = 191, positive = 101, zero = 90},
   intentionally_rejected = {families = 1, moves = 1, positive = 1, zero = 0},
   unused = {families = 16, moves = 0, positive = 0, zero = 0},

@@ -186,6 +186,11 @@ function BattleSceneController:_eventMessages(events)
   for _, event in ipairs(events) do
     if event.type == "useMove" then
       add(name(event.side) .. " used " .. self.moveName(event.move) .. "!")
+    elseif event.type == "magnitude" then
+      -- The engine has already selected the level and completed its model
+      -- work. Presentation only announces that literal event; it neither
+      -- infers transient power/target nor touches RNG or engine state.
+      add(("Magnitude %d!"):format(event.level))
     elseif event.type == "miss" then
       add(possessive(name(event.side)) .. " attack missed!")
     elseif event.type == "moveFailed" then

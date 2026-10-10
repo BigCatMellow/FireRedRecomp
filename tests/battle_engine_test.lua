@@ -67,6 +67,69 @@ check("second Ember faints the player", events[3].type == "damage" and events[3]
 check("faint ends the 1v1 battle as playerLost", battle.outcome == "playerLost")
 check("fainted player does not get a second action", #events == 5, #events)
 
+-- Magnitude is the bounded effect-126 leaf: its nominal catalog power stays
+-- one, while exactly one pre-accuracy roll selects an ephemeral power/level.
+local magnitudeMoves = {}
+for k, v in pairs(Data.moves) do magnitudeMoves[k] = v end
+magnitudeMoves[222] = { effect=126, power=1, type=Data.TYPE_GROUND, accuracy=95,
+  pp=30, secondaryEffectChance=0, target=0, priority=0, flags=0x12 }
+local function magnitudeBattle(values, side)
+  local playerMoves = { {move=222,pp=30} }
+  local foeMoves = { {move=222,pp=30} }
+  local b = BattleEngine.new({
+    player=BattleEngine.makeBattler({species=1,level=5,stats=bulbaStats,types=Data.BULBASAUR.types,moves=playerMoves}),
+    foe=BattleEngine.makeBattler({species=4,level=5,stats=charStats,types=Data.CHARMANDER.types,moves=foeMoves}),
+    moves=magnitudeMoves,typeChart=Data.typeChart,rng=scriptedRng(values),
+  })
+  return b, side or BattleEngine.SIDE_PLAYER
+end
+local magnitudeTable = {
+  {0,4,10},{4,4,10},{5,5,30},{14,5,30},{15,6,50},{34,6,50},
+  {35,7,70},{64,7,70},{65,8,90},{84,8,90},{85,9,110},{94,9,110},{95,10,150},{99,10,150},
+}
+for _, row in ipairs(magnitudeTable) do
+  local level, power = BattleEngine.magnitudeResultFromRoll(row[1])
+  check(("Magnitude residue %d maps to literal level/power"):format(row[1]), level == row[2] and power == row[3])
+end
+local magnitudeBattleHit = magnitudeBattle({35,0,1,0})
+events = {}; magnitudeBattleHit:resolveMove(BattleEngine.SIDE_PLAYER,1,events)
+check("Magnitude hit deducts one PP, preserves nominal power, and orders use/level/result",
+  magnitudeBattleHit.player.moves[1].pp == 29 and magnitudeMoves[222].power == 1
+    and events[1].type == "useMove" and events[2].type == "magnitude" and events[2].level == 7
+    and events[3].type == "damage", events[3] and events[3].type)
+check("ordinary Magnitude hit consumes strength, accuracy, critical, and damage draws", magnitudeBattleHit.rng.draws == 4, magnitudeBattleHit.rng.draws)
+local magnitudeBattleMiss = magnitudeBattle({0,95})
+events = {}; magnitudeBattleMiss:resolveMove(BattleEngine.SIDE_PLAYER,1,events)
+check("Magnitude miss retains PP and level event before miss with two draws",
+  magnitudeBattleMiss.player.moves[1].pp == 29 and events[1].type == "useMove"
+    and events[2].type == "magnitude" and events[3].type == "miss" and magnitudeBattleMiss.rng.draws == 2,
+  magnitudeBattleMiss.rng.draws)
+local magnitudeFoe = magnitudeBattle({95,0,1,0})
+events = {}; magnitudeFoe:resolveMove(BattleEngine.SIDE_FOE,1,events)
+check("Magnitude foe side retains the same singleton event and four-draw contract",
+  events[1].side == "foe" and events[2].type == "magnitude" and events[2].side == "foe" and magnitudeFoe.rng.draws == 4,
+  magnitudeFoe.rng.draws)
+local magnitudeTutorial = magnitudeBattle({65,1,0})
+magnitudeTutorial.firstBattle = true
+events = {}; magnitudeTutorial:resolveMove(BattleEngine.SIDE_PLAYER,1,events)
+check("firstBattle player Magnitude bypasses accuracy but retains one strength/crit/damage draw each",
+  events[2].type == "magnitude" and events[3].type == "damage" and magnitudeTutorial.rng.draws == 3,
+  magnitudeTutorial.rng.draws)
+local magnitudeNoEffect = magnitudeBattle({0,0,1,0})
+magnitudeNoEffect.moves[222].type = Data.TYPE_ELECTRIC
+magnitudeNoEffect.foe.types = {Data.TYPE_GROUND,Data.TYPE_GROUND}
+events = {}; magnitudeNoEffect:resolveMove(BattleEngine.SIDE_PLAYER,1,events)
+check("Magnitude no-effect follows post-accuracy critical/damage draws after level event",
+  events[1].type == "useMove" and events[2].type == "magnitude" and events[3].type == "noEffect"
+    and magnitudeNoEffect.rng.draws == 4, magnitudeNoEffect.rng.draws)
+local ordinaryAfterMagnitude = magnitudeBattle({0,1,0})
+ordinaryAfterMagnitude.moves[222] = {effect=0,power=35,type=Data.TYPE_NORMAL,accuracy=95,pp=35,priority=0}
+ordinaryAfterMagnitude.player.moves[1].move = 222
+events = {}; ordinaryAfterMagnitude:resolveMove(BattleEngine.SIDE_PLAYER,1,events)
+check("non-126 path retains prior use/damage ordering and three draws",
+  events[1].type == "useMove" and events[2].type == "damage" and ordinaryAfterMagnitude.rng.draws == 3,
+  ordinaryAfterMagnitude.rng.draws)
+
 -- Misses still consume PP, but neither crit nor random-damage RNG.
 battle = makeBattle({ 95 }, { { move = Data.MOVE_TACKLE, pp = 1 } }, { { move = Data.MOVE_TACKLE, pp = 1 } })
 events = battle:runTurn({ action = "move", moveSlot = 1 }, { action = "move", moveSlot = 1 })

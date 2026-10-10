@@ -452,6 +452,8 @@ BattleEngine.EFFECT_OHKO = 38
 BattleEngine.EFFECT_ENDEAVOR = 189
 BattleEngine.EFFECT_PAIN_SPLIT = 91
 BattleEngine.EFFECT_RESTORE_HP = 32
+BattleEngine.EFFECT_MAGNITUDE = 126
+BattleEngine.MOVE_MAGNITUDE = 222
 
 -- Real Cmd_remaininghptopower: scale the attacker's remaining HP to 48,
 -- promote a positive underflow to one, then choose Flail/Reversal's dynamic
@@ -472,6 +474,20 @@ end
 -- this helper derives the effect-190 transient power without mutating move data.
 function BattleEngine.eruptionPowerFromHP(hp, maxHP, storedPower)
   return math.max(1, math.floor(hp * storedPower / maxHP))
+end
+
+-- Magnitude's source command selects a transient base power with exactly one
+-- Random() % 100 result. This leaf is deliberately Magnitude-specific: it is
+-- not a shared dynamic-power abstraction and never changes catalog data.
+function BattleEngine.magnitudeResultFromRoll(roll)
+  assert(roll >= 0 and roll < 100, "Magnitude roll must be a residue 0..99")
+  if roll <= 4 then return 4, 10 end
+  if roll <= 14 then return 5, 30 end
+  if roll <= 34 then return 6, 50 end
+  if roll <= 64 then return 7, 70 end
+  if roll <= 84 then return 8, 90 end
+  if roll <= 94 then return 9, 110 end
+  return 10, 150
 end
 
 -- Real Cmd_psywavedamageeffect: discard 11..15 from Random() % 16, then
@@ -955,6 +971,21 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
 
   local moveId = effectiveMoveId
   events[#events + 1] = { type = "useMove", side = attackerSide, move = moveId }
+  local isMagnitude = moveId == BattleEngine.MOVE_MAGNITUDE
+    and move.effect == BattleEngine.EFFECT_MAGNITUDE
+  if isMagnitude then
+    -- BattleScript_EffectMagnitude performs ppreduce, then its one strength
+    -- roll/message, before it enters the ordinary single-defender hit path.
+    -- Keep the selected power local, just as Flail/Eruption do, so the ROM
+    -- record's nominal power 1 remains immutable.
+    slot.pp = slot.pp - 1
+    local level, power = BattleEngine.magnitudeResultFromRoll(self.rng:next16() % 100)
+    local magnitudeMove = {}
+    for k, v in pairs(move) do magnitudeMove[k] = v end
+    magnitudeMove.power = power
+    move = magnitudeMove
+    events[#events + 1] = { type = "magnitude", side = attackerSide, level = level }
+  end
   local isExplosion = move.effect == BattleEngine.EFFECT_EXPLOSION
   if isExplosion then
     -- Real EffectExplosion reaches ppreduce before tryexplosion. Damp scans
@@ -1069,7 +1100,7 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
   -- runs ppreduce). Real HITMARKER_NO_PPDEDUCT means Struggle (no `slot`,
   -- see above) skips this step entirely -- there is no move slot of its
   -- own to decrement.
-  if slot and not isEndeavor then
+  if slot and not isEndeavor and not isMagnitude then
     slot.pp = slot.pp - 1
   end
 

@@ -174,6 +174,22 @@ end
 
 do
   local c = controller()
+  local playerHP, foeHP, revision = c.engine.player.hp, c.engine.foe.hp, c.revision
+  local messages = c:_eventMessages({
+    { type = "useMove", side = "player", move = 222 },
+    { type = "magnitude", side = "player", level = 7 },
+    { type = "miss", side = "player" },
+  })
+  check("Magnitude announces its supplied level exactly once between use and result messages",
+    #messages == 3 and messages[1].text:find("used", 1, true)
+      and messages[2].text == "Magnitude 7!" and messages[3].text:find("missed", 1, true),
+    messages[2] and messages[2].text)
+  check("Magnitude presentation does not mutate engine state or controller revision",
+    c.engine.player.hp == playerHP and c.engine.foe.hp == foeHP and c.revision == revision)
+end
+
+do
+  local c = controller()
   local messages = c:_eventMessages({ { type = "recoil", side = "foe", amount = 5, hpRemaining = 10 } })
   check("recoil names the attacker, matching real sText_PkmnHitWithRecoil",
     messages[1].text == "CHARMANDER is hit\nwith recoil!", messages[1].text)

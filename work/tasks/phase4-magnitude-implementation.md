@@ -131,3 +131,12 @@ one request after a fresh runner observation; it does not certify behavior or
 Phase 4. The subsequent guarded result requires its own independent outcome
 review before Orchestrator reconciliation. No runner or ROM action has occurred
 while compiling this authority.
+
+## Guarded request content — 2026-10-10
+
+The sole authorized bridge input carries only the nine literal paths above.
+It implements the reviewed Magnitude 222/effect-126 singles projection and
+its focused evidence. Its existence is not guarded-result evidence: the Local
+Worker Bridge must independently apply, test, replay, and publish it before a
+fresh outcome reviewer may assess the result. A failed guard is terminal for
+this authority and does not permit a replacement request.
