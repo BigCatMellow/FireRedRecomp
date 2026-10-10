@@ -1,7 +1,7 @@
 # Task: prove private-ROM runner configuration
 
 - Task ID: `RUNNER-ROM-CONFIG-RECOVERY`
-- Status: `READY_FOR_REVIEWER`
+- Status: `CLOSED — REVIEWED PASS`
 - Type: `RECONCILIATION / EXECUTION SUBSTRATE / READINESS PROBE`
 - Parent capability gate: guarded bridge availability; no capability row changes
 - Assigned role: `ORCHESTRATOR`
@@ -125,3 +125,9 @@ Lua, private-ROM SHA, and probe completion; every patch/test/replay/publication
 step skipped in probe mode. See the
 [result report](../reports/local-worker-bridge-rom-config-recovery.md). This
 task now awaits independent outcome review and authorizes no retry.
+
+The independent [outcome review](../reviews/2026-10-09-rom-configuration-recovery-outcome-review.md)
+is **PASS** for exact `ff3fef7cf60606e0aff861a9ee3dd8bbb8c44934` and GitHub
+run `38007994084` / job `114081150936`. The service substrate is proven only
+through the existing readiness guards. This closes the one-probe recovery task;
+it does not authorize any Restore HP or P5 artifact.

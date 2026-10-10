@@ -36,8 +36,14 @@ The sole authorized probe (`8c59ab6`, GitHub run `38007994084`, job
 ROM discovery/SHA verification, and `Probe complete`. Patch validation,
 application, focused/full tests, replay, and publication all skipped in probe
 mode. The [result report](../reports/local-worker-bridge-rom-config-recovery.md)
-contains no private path or ROM data. It awaits independent outcome review and
-does not authorize P4/P5 recovery or another probe.
+contains no private path or ROM data. It does not authorize P4/P5 recovery or
+another probe.
+
+The independent [outcome review](../reviews/2026-10-09-rom-configuration-recovery-outcome-review.md)
+is **PASS**. `RUNNER-ROM-CONFIG-RECOVERY` is closed: the private runner
+substrate is now proven. Its completion does not revive any exhausted P4/P5
+artifact. The next action is to compile and independently review separate,
+one-artifact recovery authority for Restore HP and P5.
 
 `MediaCenter` (GitHub runner `24`) was freshly observed **online**, **idle**,
 and labeled `firered-local`. The independent retry authority at `98540c5` was
