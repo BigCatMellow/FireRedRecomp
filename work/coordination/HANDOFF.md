@@ -1,7 +1,7 @@
 # FireRedRecomp Coordination Handoff
 
-- Status: `READY_FOR_WORKER — one independently authorized P5 route-probe recovery pending fresh runner check`
-- Task ID: `P5-04-ROUTE-PROBE-RECOVERY`
+- Status: `READY_FOR_ORCHESTRATOR — compile separate P5 implementation authority`
+- Task ID: `ORCHESTRATOR-P5-IMPLEMENTATION-AUTHORITY`
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
 - Current plan: [`../roadmaps/RECALIBRATED_DELIVERY_PLAN.md`](../roadmaps/RECALIBRATED_DELIVERY_PLAN.md)
 
@@ -83,6 +83,17 @@ P5 has not been dispatched. Its independently accepted recovery probe is now
 the active next action and still needs a fresh online/idle `firered-local`
 observation immediately before its one literal dispatch, followed by a
 separate outcome review before any P5 patch authority is compiled.
+
+### P5 route-probe recovery outcome — 2026-10-09
+
+The sole P5 recovery probe `b8dc901` completed successfully as GitHub run
+`38009195083` / job `114084995737`. Checkout, the explicit P5 selector, Lua,
+private-ROM SHA verification, and `Probe complete` all passed; every
+patch/test/replay/publication branch skipped in probe mode. The independent
+[outcome review](../reviews/2026-10-09-viridian-old-man-route-probe-recovery-outcome-review.md)
+is **PASS**. This closes P5 readiness only. The active next action is to
+compile and independently review a new bounded P5 implementation authority;
+do not create a P5 patch yet.
 
 `MediaCenter` (GitHub runner `24`) was freshly observed **online**, **idle**,
 and labeled `firered-local`. The independent retry authority at `98540c5` was

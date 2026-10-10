@@ -1,7 +1,7 @@
 # Task: recover one Viridian Old Man route-readiness probe
 
 - Task ID: `P5-04-ROUTE-PROBE-RECOVERY`
-- Status: `REVIEWED_PASS — READY_FOR_WORKER`
+- Status: `CLOSED — REVIEWED PASS`
 - Type: `RECONCILIATION / GUARDED READINESS PROBE`
 - Parent capability gate: P5-04 route readiness; no implementation authority or capability-completion change
 - Assigned role: `ORCHESTRATOR`
@@ -71,3 +71,13 @@ Independent [correction review](../reviews/2026-10-09-viridian-old-man-route-pro
 is **PASS** at `fae1fae72422dd017679503ecf591932791eb2b7`. It accepts only
 the literal recovery filename and pinned digest. A fresh online/idle runner
 observation remains mandatory immediately before dispatch.
+
+## Executed outcome
+
+The sole authorized probe was `b8dc901`; GitHub run `38009195083` / job
+`114084995737` passed checkout, the explicit P5 selector, Lua, private-ROM SHA,
+and `Probe complete`. Patch validation/application, focused/full tests, replay,
+and publication were skipped in probe mode. Independent
+[outcome review](../reviews/2026-10-09-viridian-old-man-route-probe-recovery-outcome-review.md)
+is **PASS**. This closes readiness only; a separate reviewed implementation
+authority remains required before any P5 patch exists.
