@@ -33,7 +33,9 @@ Its bytes and SHA-256 must exactly equal the canonical patch/digest above. Its t
 ## MUST NOT CHANGE
 
 - Do not modify the canonical patch, implementation source/tests/replay/task/report payload, workflow, route allowlist, runner service, private configuration, or ROM files.
-- Do not create another Restore HP artifact, retry `37080060017`, or amend `6395a47` / the original request.
+- Do not create any Restore HP bridge artifact other than the one literal
+  recovery filename authorized above; do not retry `37080060017` or amend
+  `6395a47` / the original request.
 - Do not change P5 artifacts, capability status, general healing, source/design scope, or legal-content boundary.
 - Do not record a private ROM path, ROM bytes, private hash output, credential, or derived ROM asset.
 - Do not claim Phase 4, the effect family, or implementation completion from runner substrate evidence alone.

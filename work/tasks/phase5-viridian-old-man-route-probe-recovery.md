@@ -33,7 +33,8 @@ Its bytes and SHA-256 must exactly equal the canonical probe/digest above. Recor
 ## MUST NOT CHANGE
 
 - Do not create a patch/request, modify `main.lua`, introduce a helper, change tests/task/report implementation files, workflow, route allowlist, runner service, private configuration, or ROM files.
-- Do not retry `37125167854`, amend `f6b9148`, or create another P5 probe.
+- Do not create any P5 bridge probe other than the one literal recovery
+  filename authorized above; do not retry `37125167854` or amend `f6b9148`.
 - Do not modify P4 artifacts, P5 design/behavior scope, map/script behavior, capability status, or legal-content boundary.
 - Do not record a private ROM path, ROM bytes, private hash output, credential, or derived ROM asset.
 - Do not treat success as gameplay, projection, or implementation evidence.
