@@ -95,6 +95,14 @@ is **PASS**. This closes P5 readiness only. The active next action is to
 compile and independently review a new bounded P5 implementation authority;
 do not create a P5 patch yet.
 
+### P5 implementation authority preparation — 2026-10-09
+
+[`P5-04-OLD-MAN-PROJECTION-RECOVERY`](../tasks/phase5-viridian-old-man-projection-recovery.md)
+is **READY_FOR_REVIEWER**. It names only the existing route's five literal
+paths and the accepted local-ID-4, scene-variable projection. It does not
+authorize code, a bridge artifact, or any generic callback/traversal work until
+an independent authorization review passes.
+
 `MediaCenter` (GitHub runner `24`) was freshly observed **online**, **idle**,
 and labeled `firered-local`. The independent retry authority at `98540c5` was
 therefore used exactly once for each original run. Restore HP `37080060017`
