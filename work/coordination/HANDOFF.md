@@ -1,27 +1,30 @@
 # FireRedRecomp Coordination Handoff
 
-- Status: `READY_FOR_WORKER — configure reviewed Magnitude bridge route`
-- Task ID: `P4-F3-MAGNITUDE-ROUTE-CONFIG`
+- Status: `READY_FOR_REVIEWER — review Magnitude implementation authority`
+- Task ID: `P4-F3-MAGNITUDE-IMPLEMENTATION`
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
 - Current plan: [`../roadmaps/RECALIBRATED_DELIVERY_PLAN.md`](../roadmaps/RECALIBRATED_DELIVERY_PLAN.md)
 
 ## Current relay — 2026-10-02
 
-### Magnitude route-plan reconciliation — 2026-10-10
+### Magnitude implementation-authority preparation — 2026-10-10
 
-`P4-F3-MAGNITUDE-ROUTE-PLAN` is closed after the independently reviewed,
-documentation-only plan at `1347e5e`. The [route-plan report](../reports/phase4-magnitude-route-plan.md)
-and [exact PASS](../reviews/2026-10-10-magnitude-route-plan-review.md) define
-only `phase4-magnitude-effect`: a future nine-path patch surface, four focused
-Lua commands, retained no-ROM/SHA-ROM suites, mandatory deterministic replay,
-and a later substrate-only probe gate. No workflow, probe/request, runner,
-ROM, or Magnitude behavior changed.
+The independently accepted route plan (`1347e5e`), route configuration
+(`57d6b05`), and readiness-probe outcome (`92cbba8`, run `38068726115` / job
+`114261585566`) establish only a fail-closed, ready bridge. The probe passed
+checkout, Magnitude selector, Lua, supported private-ROM SHA, and completion;
+all seven patch-only branches skipped. It neither exercised the nine-path
+allowlist nor authorized behavior.
 
-The sole active successor is
-[`P4-F3-MAGNITUDE-ROUTE-CONFIG`](../tasks/local-worker-bridge-phase4-magnitude-route-configuration.md).
-It may encode the reviewed route only and requires an independent exact review
-before any separately authorized one-file readiness probe. No Magnitude patch
-or implementation task is authorized.
+[`P4-F3-MAGNITUDE-IMPLEMENTATION`](../tasks/phase4-magnitude-implementation.md)
+is now **READY_FOR_REVIEWER**. It is a documentation-only authority for the
+accepted Magnitude 222/effect-126 singleton design: exact local table/draw/PP/
+event/presentation behavior, four focused commands, no-ROM and SHA-ROM suites,
+required replay, and the existing nine literal route paths. It permits no
+request, runner, ROM, test, replay, or behavior action now. Only an independent
+authorization PASS may unlock one fresh-runner-observation-gated future
+`phase4-magnitude-effect` request; its guarded result then needs a separate
+independent outcome review.
 
 ### Queue update — 2026-10-03
 

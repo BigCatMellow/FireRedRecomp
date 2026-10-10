@@ -3,13 +3,13 @@
   "updated_utc": "2026-10-10T00:00:00Z",
   "execution_paused": false,
   "role": "ORCHESTRATOR",
-  "status": "READY_FOR_ORCHESTRATOR_MAGNITUDE_IMPLEMENTATION_AUTHORITY",
-  "task_id": "ORCHESTRATOR-P4-MAGNITUDE-IMPLEMENTATION-AUTHORITY",
+  "status": "READY_FOR_REVIEWER_MAGNITUDE_IMPLEMENTATION_AUTHORITY",
+  "task_id": "P4-F3-MAGNITUDE-IMPLEMENTATION",
   "current_phase": "Phase 0, Phase 4, and Phase 5 remain IN PROGRESS; Restore HP and bounded P5 Viridian projection are independently accepted",
   "canonical_status_owner": "work/roadmaps/CAPABILITY_CHECKLIST.md",
-  "active_task": "NONE — separate Magnitude implementation authority requires independent acceptance",
-  "objective": "Magnitude readiness is independently accepted; do not authorize or implement behavior without a separately reviewed bounded request authority.",
-  "next_role": "ORCHESTRATOR",
+  "active_task": "P4-F3-MAGNITUDE-IMPLEMENTATION — independent authorization review only; no request, runner, ROM, or behavior action yet",
+  "objective": "Magnitude readiness is independently accepted; review the literal nine-path, one-request implementation authority before any behavior action.",
+  "next_role": "REVIEWER",
   "acceptance": "Restore HP: focused/no-ROM/SHA-ROM/replay evidence plus independent exact review. P5: route-probe readiness evidence plus independent review before one request. No generic healing or map/script expansion.",
   "boundaries": "P0 clean target remains evidence-blocked pending preparation decision. P4-F3's sole request and P5's sole readiness probe were canceled without execution; no route widening, unreviewed retry, or P5 behavior patch.",
   "dependencies": "MediaCenter runner 24 independently passed private-ROM configuration evidence: 8c59ab6/run38007994084/job114081150936 completed checkout, route, Lua, private-ROM SHA, and Probe complete while patch/test/replay/publication steps skipped. P4/P5 and prior readiness-probe retries remain exhausted until separately authorized. P0 reverify93c4654 independently BLOCK.",
@@ -60,7 +60,7 @@
     "phase4_pain_split_status": "CLOSED — REVIEWED PASS at a739ddc; guarded run 35493728001; exact review work/reviews/2026-09-20-pain-split-implementation-review.md"
   },
   "phase2_external_blocker": "Trusted, user-owned retail-reference captures with provenance/timing/crop/filter details for Oak and Pallet anchors have not been supplied.",
-  "next_after_success": "After P5 implementation authority review PASS, freshly observe runner state and dispatch at most one bounded P5 patch, then require independent outcome review. Retain P0 preparation decision and Phase 2 retail-reference intake as external blocked.",
+  "next_after_success": "After an independent PASS on P4-F3-MAGNITUDE-IMPLEMENTATION, freshly observe runner state and dispatch at most one literal Magnitude request, then require independent outcome review. Retain P0 preparation decision and Phase 2 retail-reference intake as external blocked.",
   "legal_content_boundary": "Never commit ROMs, BIOS dumps, generated caches, ROM-derived reference screenshots, extracted game assets, or other prohibited content.",
   "phase_completion_rule": "Phase 2 remains IN PROGRESS until the Oak/reference screenshot discrepancy gate is evidenced and independently reviewed."
 }
