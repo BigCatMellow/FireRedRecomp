@@ -49,3 +49,15 @@ cannot be named literally; record `BLOCKED` rather than broadening scope.
 Reviewer returns `PASS | NEEDS_FIX | BLOCK`. Only an independently accepted
 route-configuration successor may modify the bridge; no Magnitude patch follows
 from this task.
+
+## Researcher handoff — 2026-10-10
+
+Drafted `work/reports/phase4-magnitude-route-plan.md` from the accepted
+Magnitude source/design chain, the current bridge workflow, and reviewed
+Restore HP/P5 route records.  It proposes only the later explicit
+`phase4-magnitude-effect` selector; equal nine-path validation/staging lists;
+four focused Lua commands; preserved no-ROM and SHA-ROM suites; one required
+headless Magnitude replay; and one required post-configuration substrate-only
+probe.  No workflow, configuration, request/probe, runtime, test, ROM, runner,
+implementation, status, or coordination file changed.  Await independent
+exact-draft review before compiling any configuration successor.
