@@ -1,7 +1,7 @@
 # Task: configure Local Worker Bridge route for bounded Magnitude
 
 - Task ID: `P4-F3-MAGNITUDE-ROUTE-CONFIG`
-- Status: `READY_FOR_WORKER`
+- Status: `READY_FOR_REVIEWER`
 - Type: `INFRASTRUCTURE / EXECUTION SUBSTRATE / CONFIGURATION`
 - Parent: [reviewed Magnitude route plan](local-worker-bridge-phase4-magnitude-route-plan.md).
 - Assigned role: `WORKER`
@@ -101,3 +101,17 @@ Record `BLOCKED` instead of widening the route.
 - Eligible successor: a reviewed one-file
   `phase4-magnitude-effect-route-YYYYMMDD.probe` authority; no implementation
   task is eligible yet.
+
+## Worker configuration handoff — 2026-10-10
+
+The workflow adds only the five reviewed `phase4-magnitude-effect` arms:
+explicit `.patch`/`.probe` selection, a nine-literal-path validation allowlist,
+four selected-interpreter focused tests in reviewed order, the required
+Magnitude replay, and individual staging of the same nine paths. The shared
+no-ROM and SHA-verified-ROM suite commands and every neighboring route remain
+unchanged. The bridge procedure records the same nine-path scope, required
+replay, and post-review substrate-only probe gate. No probe, request, runner,
+ROM, test suite, replay, implementation, coordination, or capability-status
+action occurred. Static configuration evidence is recorded in
+`work/reports/local-worker-bridge-phase4-magnitude-route-configuration.md`.
+Independent exact configuration review remains required before any probe.

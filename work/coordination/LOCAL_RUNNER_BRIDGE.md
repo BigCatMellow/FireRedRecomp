@@ -58,6 +58,19 @@ Current supported request/probe prefixes are:
   SHA-verified-ROM suites, and requires a deterministic headless replay. It
   excludes `main.lua`, importer, generic healing, Milk Drink and every
   interception/cancellation/state expansion;
+- `phase4-magnitude-effect...` — bounded Magnitude effect-126 route. It admits
+  exactly `src/core/BattleEngine.lua`, `src/core/BattleSceneController.lua`,
+  `tests/battle_engine_test.lua`, `tests/battle_scene_controller_test.lua`,
+  `tests/phase4_move_effect_inventory_test.lua`,
+  `tests/phase4_magnitude_effect_rom_test.lua`,
+  `scripts/runtime_phase4_magnitude_replay.sh`,
+  `work/tasks/phase4-magnitude-implementation.md`, and
+  `work/reports/phase4-magnitude-implementation.md`; it runs the four focused
+  Lua tests, shared no-ROM and SHA-verified-ROM suites, and the required
+  deterministic headless Magnitude replay. Configuration PASS permits only one
+  later substrate-only probe before any separately reviewed implementation
+  request; it excludes `main.lua`, importer/data-model, save/AI/UI-scene,
+  coordination, generic dynamic-power work, and every other effect family;
 - `phase5-viridian-old-man-projection...` — bounded pre-spawn Viridian local-ID
   4 scene projection route. It admits only its reviewed helper, `main.lua`, one
   focused projection test, and implementation task/report paths. It runs that
