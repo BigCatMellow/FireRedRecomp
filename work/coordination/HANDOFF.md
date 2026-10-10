@@ -1,7 +1,7 @@
 # FireRedRecomp Coordination Handoff
 
-- Status: `READY_FOR_REVIEWER — one private-ROM service-configuration probe proposed; prior retries remain exhausted`
-- Task ID: `RUNNER-ROM-CONFIG-RECOVERY`; P4-F3 and P5-04 remain separately blocked
+- Status: `READY_FOR_REVIEWER — separate P4/P5 recovery authorities proposed; prior artifacts remain exhausted`
+- Task ID: `P4-F3-RESTORE-HP-RECOVERY`; `P5-04-ROUTE-PROBE-RECOVERY`
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
 - Current plan: [`../roadmaps/RECALIBRATED_DELIVERY_PLAN.md`](../roadmaps/RECALIBRATED_DELIVERY_PLAN.md)
 
@@ -44,6 +44,23 @@ is **PASS**. `RUNNER-ROM-CONFIG-RECOVERY` is closed: the private runner
 substrate is now proven. Its completion does not revive any exhausted P4/P5
 artifact. The next action is to compile and independently review separate,
 one-artifact recovery authority for Restore HP and P5.
+
+### Separate recovery authority preparation — 2026-10-09
+
+Two deliberately independent contracts now await authorization review:
+
+- [`P4-F3-RESTORE-HP-RECOVERY`](../tasks/phase4-restore-hp-recovery.md) permits
+  review of exactly one new `phase4-restore-hp-effect` artifact only if it is
+  byte-identical to the pinned canonical patch. It does not authorize artifact
+  creation yet, alter the nine-path route, or claim implementation success.
+- [`P5-04-ROUTE-PROBE-RECOVERY`](../tasks/phase5-viridian-old-man-route-probe-recovery.md)
+  permits review of exactly one new P5 readiness probe only if it is
+  byte-identical to the pinned canonical probe. It does not authorize any P5
+  behavior patch or implementation preparation.
+
+Each contract requires a fresh online/idle `firered-local` observation just
+before its sole dispatch and a separate independent review of its resulting
+job. A PASS on either contract does not grant authority for the other.
 
 `MediaCenter` (GitHub runner `24`) was freshly observed **online**, **idle**,
 and labeled `firered-local`. The independent retry authority at `98540c5` was
