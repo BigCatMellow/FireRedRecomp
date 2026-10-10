@@ -1,7 +1,7 @@
 # Task: prove private-ROM runner configuration
 
 - Task ID: `RUNNER-ROM-CONFIG-RECOVERY`
-- Status: `REVIEWED_PASS`
+- Status: `READY_FOR_REVIEWER`
 - Type: `RECONCILIATION / EXECUTION SUBSTRATE / READINESS PROBE`
 - Parent capability gate: guarded bridge availability; no capability row changes
 - Assigned role: `ORCHESTRATOR`
@@ -116,3 +116,12 @@ literal one-file existing-route boundary, the exhaustion of the prior P4/P5
 and readiness-probe authority, and private-configuration non-disclosure. A
 fresh GitHub online/idle observation remains mandatory immediately before
 dispatch.
+
+## Executed result
+
+The sole authorized probe was dispatched at `8c59ab6` and completed successfully
+as GitHub run `38007994084` / job `114081150936`. It passed checkout, route,
+Lua, private-ROM SHA, and probe completion; every patch/test/replay/publication
+step skipped in probe mode. See the
+[result report](../reports/local-worker-bridge-rom-config-recovery.md). This
+task now awaits independent outcome review and authorizes no retry.

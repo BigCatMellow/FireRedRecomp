@@ -29,6 +29,16 @@ The independent [review](../reviews/2026-10-09-rom-configuration-recovery-review
 is **PASS** at `196dfdc`. Fresh online/idle observation immediately before the
 one literal probe remains required.
 
+### ROM-configuration recovery result — 2026-10-10
+
+The sole authorized probe (`8c59ab6`, GitHub run `38007994084`, job
+`114081150936`) passed checkout, explicit route selection, Lua 5.1.5, private
+ROM discovery/SHA verification, and `Probe complete`. Patch validation,
+application, focused/full tests, replay, and publication all skipped in probe
+mode. The [result report](../reports/local-worker-bridge-rom-config-recovery.md)
+contains no private path or ROM data. It awaits independent outcome review and
+does not authorize P4/P5 recovery or another probe.
+
 `MediaCenter` (GitHub runner `24`) was freshly observed **online**, **idle**,
 and labeled `firered-local`. The independent retry authority at `98540c5` was
 therefore used exactly once for each original run. Restore HP `37080060017`
