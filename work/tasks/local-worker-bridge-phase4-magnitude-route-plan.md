@@ -1,7 +1,7 @@
 # Task: plan a guarded route for bounded Magnitude
 
 - Task ID: `P4-F3-MAGNITUDE-ROUTE-PLAN`
-- Status: `READY_FOR_WORKER`
+- Status: `CLOSED — REVIEWED PASS`
 - Type: `ROUTE PLANNING / NO WORKFLOW CHANGE`
 - Parent: [Magnitude design PASS](../reviews/2026-10-10-magnitude-design-review.md).
 - Assigned role: `RESEARCHER`
@@ -49,6 +49,16 @@ cannot be named literally; record `BLOCKED` rather than broadening scope.
 Reviewer returns `PASS | NEEDS_FIX | BLOCK`. Only an independently accepted
 route-configuration successor may modify the bridge; no Magnitude patch follows
 from this task.
+
+## Independent review — 2026-10-10
+
+The independent [exact-draft review](../reviews/2026-10-10-magnitude-route-plan-review.md)
+returned **PASS** for published revision `1347e5edab60bdb0ee1f263d3a0e1f04f529bb4c`.
+It verified the literal selector, symmetric nine-path future surface, focused
+and suite commands, required replay/probe decisions, and exclusions.  This
+closes the plan only; it permits compilation of
+`P4-F3-MAGNITUDE-ROUTE-CONFIG` but no bridge edit, probe, request, or Magnitude
+implementation.
 
 ## Researcher handoff — 2026-10-10
 

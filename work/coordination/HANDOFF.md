@@ -1,11 +1,27 @@
 # FireRedRecomp Coordination Handoff
 
-- Status: `READY_FOR_ORCHESTRATOR — compile separate P5 implementation authority`
-- Task ID: `ORCHESTRATOR-P5-IMPLEMENTATION-AUTHORITY`
+- Status: `READY_FOR_WORKER — configure reviewed Magnitude bridge route`
+- Task ID: `P4-F3-MAGNITUDE-ROUTE-CONFIG`
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
 - Current plan: [`../roadmaps/RECALIBRATED_DELIVERY_PLAN.md`](../roadmaps/RECALIBRATED_DELIVERY_PLAN.md)
 
 ## Current relay — 2026-10-02
+
+### Magnitude route-plan reconciliation — 2026-10-10
+
+`P4-F3-MAGNITUDE-ROUTE-PLAN` is closed after the independently reviewed,
+documentation-only plan at `1347e5e`. The [route-plan report](../reports/phase4-magnitude-route-plan.md)
+and [exact PASS](../reviews/2026-10-10-magnitude-route-plan-review.md) define
+only `phase4-magnitude-effect`: a future nine-path patch surface, four focused
+Lua commands, retained no-ROM/SHA-ROM suites, mandatory deterministic replay,
+and a later substrate-only probe gate. No workflow, probe/request, runner,
+ROM, or Magnitude behavior changed.
+
+The sole active successor is
+[`P4-F3-MAGNITUDE-ROUTE-CONFIG`](../tasks/local-worker-bridge-phase4-magnitude-route-configuration.md).
+It may encode the reviewed route only and requires an independent exact review
+before any separately authorized one-file readiness probe. No Magnitude patch
+or implementation task is authorized.
 
 ### Queue update — 2026-10-03
 
