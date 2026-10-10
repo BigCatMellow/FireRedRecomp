@@ -1,7 +1,7 @@
 # Task: source-lock bounded Magnitude behavior
 
 - Task ID: `P4-F1-MAGNITUDE-DISCOVERY`
-- Status: `READY_FOR_WORKER`
+- Status: `CLOSED — REVIEWED PASS`
 - Type: `RESEARCH / SOURCE LOCK`
 - Parent capability gate: Phase 4 move/effect matrix
 - Assigned role: `RESEARCHER`
@@ -74,3 +74,10 @@ unmodeled multi-target state. Record `UNKNOWN`; do not implement.
 - Proposed sole successor after review: design-only `P4-F2-MAGNITUDE-DESIGN`;
   it must preserve singleton, no-Underground/no-doubles/no-generic-framework
   boundaries.  No implementation or bridge action is authorized by this task.
+
+## Result
+
+Independent [PASS review](../reviews/2026-10-10-magnitude-source-discovery-review.md)
+accepted `5770a4d`. The sole successor is design-only
+[`P4-F2-MAGNITUDE-DESIGN`](phase4-magnitude-design.md); no implementation
+authority follows.
