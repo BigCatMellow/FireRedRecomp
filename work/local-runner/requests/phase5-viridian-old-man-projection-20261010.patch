@@ -1,0 +1,449 @@
+diff --git a/main.lua b/main.lua
+index 228505dcc673af949ce81603b71e6db941c39ebc..18f30bccc58c5a8cee396483c079d521c95bafa2 100644
+--- a/main.lua
++++ b/main.lua
+@@ -1817,6 +1817,15 @@ local function loadMapObjectEvents(data, events, mapId)
+     end
+   end
+ 
++  -- Only this source-locked Viridian object gets a temporary pre-spawn
++  -- projection. Keep decoded templates and generic graphics/scripts intact.
++  if mapId == 3 * 256 + 1 then
++    local diagnostic
++    objectEvents, diagnostic = require("src.core.ViridianOldManProjection").apply(
++      mapId, objectEvents, newGame.session)
++    if diagnostic then addLine("Viridian Old Man projection skipped: " .. diagnostic) end
++  end
++
+   local ok, npcs, skippedClones = pcall(ObjectEventState.new, objectEvents, {
+     rng = world.globalRng,
+     isBlocked = isWalkTileBlocked,
+diff --git a/src/core/ViridianOldManProjection.lua b/src/core/ViridianOldManProjection.lua
+new file mode 100644
+index 0000000000000000000000000000000000000000..98e737667d8d6078bd2328d291ba8f720f6c50f8
+--- /dev/null
++++ b/src/core/ViridianOldManProjection.lua
+@@ -0,0 +1,56 @@
++-- Bounded pre-spawn projection, not a map-script or dynamic-graphics system.
++-- Source: pokefirered c75f352304d529f6ba92d4f74b9cf8b5c3810788,
++-- data/maps/ViridianCity/{map.json,scripts.inc}: local ID 4, VAR_0 graphics,
++-- and SetOldManBlockingRoad/SetOldManStandingByRoad/SetOldManNormal.
++-- The accepted project seam reconstructs a temporary template per map load;
++-- it does not persist retail setobjectxyperm/setobjectmovementtype writes.
++local ViridianOldManProjection = {}
++
++-- Input is MapEvents' zero-based decoded list (possibly hide-filtered).
++-- Success returns a new list with only the admitted template copied/changed.
++-- Refusal returns the original list and an explicit diagnostic. No input,
++-- session field, flag, scene variable, RNG or generic graphics policy changes.
++function ViridianOldManProjection.apply(mapId, objectEvents, session)
++  if mapId ~= 3 * 256 + 1 then return objectEvents, "wrong_map" end
++  if type(session) ~= "table" or type(session.getVar) ~= "function" then
++    return objectEvents, "missing_session"
++  end
++  if type(objectEvents) ~= "table" then return objectEvents, "invalid_templates" end
++
++  local selectedIndex, index = nil, 0
++  while objectEvents[index] ~= nil do
++    local template = objectEvents[index]
++    if type(template) == "table" and template.localId == 4 then
++      if selectedIndex ~= nil then return objectEvents, "ambiguous_local_id" end
++      selectedIndex = index
++    end
++    index = index + 1
++  end
++  if selectedIndex == nil then return objectEvents, "missing_template" end
++  local template = objectEvents[selectedIndex]
++  if template.kind ~= 0 then return objectEvents, "wrong_template_kind" end
++  if template.graphicsId ~= 240 then return objectEvents, "wrong_base_graphics" end
++
++  local ok, scene = pcall(session.getVar, session, 0x4051)
++  if not ok then return objectEvents, "scene_read_failed" end
++  if type(scene) ~= "number" or scene < 0 or scene == math.huge
++      or scene ~= math.floor(scene) then
++    return objectEvents, "invalid_scene"
++  end
++
++  local projected = {}
++  for key, value in pairs(template) do projected[key] = value end
++  projected.graphicsId = scene == 0 and 34 or 32
++  if scene == 0 then
++    projected.x, projected.y, projected.movementType = 21, 11, 8
++  elseif scene == 1 then
++    projected.x, projected.y, projected.movementType = 21, 8, 1
++  end -- >=2 retains the decoded template's coordinates and movement type.
++
++  local result = {}
++  for key, value in pairs(objectEvents) do result[key] = value end
++  result[selectedIndex] = projected
++  return result
++end
++
++return ViridianOldManProjection
+diff --git a/tests/phase5_viridian_old_man_projection_test.lua b/tests/phase5_viridian_old_man_projection_test.lua
+new file mode 100644
+index 0000000000000000000000000000000000000000..65e742667f7a8141a00f58500ccf1c28d3e0508e
+--- /dev/null
++++ b/tests/phase5_viridian_old_man_projection_test.lua
+@@ -0,0 +1,200 @@
++-- No ROM/LÖVE needed. Literal expectations are from the accepted c75f3523
++-- Viridian local-ID-4 source lock, not calculated by the implementation.
++package.path = package.path .. ";./?.lua"
++local Projection = require("src.core.ViridianOldManProjection")
++local ObjectEventState = require("src.core.ObjectEventState")
++local Graphics = require("import.ObjectEventGraphicsInfo")
++local Rng = require("src.core.Rng")
++local passed, failed = 0, 0
++local function check(name, condition)
++  if condition then passed = passed + 1
++  else failed = failed + 1; print("FAIL: " .. name) end
++end
++local function copy(value)
++  if type(value) ~= "table" then return value end
++  local result = {}
++  for key, item in pairs(value) do result[key] = copy(item) end
++  return result
++end
++local function equal(a, b)
++  if type(a) ~= type(b) then return false end
++  if type(a) ~= "table" then return a == b end
++  for key, value in pairs(a) do if not equal(value, b[key]) then return false end end
++  for key in pairs(b) do if a[key] == nil then return false end end
++  return true
++end
++local function fixtures()
++  return {
++    [0] = { localId=9, kind=0, graphicsId=23, x=3, y=4, movementType=8,
++      movementRangeX=1, movementRangeY=1, scriptPtr=0, flagId=0 },
++    [1] = { localId=4, kind=0, graphicsId=240, x=21, y=6, elevation=3,
++      movementType=1, movementRangeX=2, movementRangeY=3, trainerType=0,
++      trainerRangeOrBerryTreeId=0, scriptPtr=0x12345678, flagId=0 },
++    -- An unrelated dynamic object must not acquire generic VAR support.
++    [2] = { localId=7, kind=0, graphicsId=240, x=8, y=9, movementType=8,
++      movementRangeX=0, movementRangeY=0, scriptPtr=0, flagId=0 },
++    [3] = { localId=8, kind=255, graphicsId=12, x=2, y=3,
++      targetLocalId=2, targetMapNum=0, targetMapGroup=3 },
++  }
++end
++local function sessionFor(scene)
++  local reads = {}
++  local session = {
++    getVar = function(_, id)
++      reads[#reads + 1] = id
++      assert(id == 0x4051, "unexpected scene read")
++      return scene
++    end,
++    setVar = function() error("projection must not write variables") end,
++    setFlag = function() error("projection must not write flags") end,
++  }
++  return session, reads
++end
++
++for _, case in ipairs({ {0,34,21,11,8}, {1,32,21,8,1}, {2,32,21,6,1}, {65535,32,21,6,1} }) do
++  local scene = case[1]
++  local source = fixtures()
++  local before = copy(source)
++  local session, reads = sessionFor(scene)
++  local sessionBefore = copy(session)
++  local output, diagnostic = Projection.apply(769, source, session)
++  local npc = output[1]
++  local label = "scene " .. scene .. ": "
++  check(label .. "success has no refusal diagnostic", diagnostic == nil)
++  check(label .. "copies list and selected object", output ~= source and npc ~= source[1])
++  check(label .. "literal source projection", npc.graphicsId == case[2] and npc.x == case[3]
++    and npc.y == case[4] and npc.movementType == case[5])
++  check(label .. "reads only scene once", #reads == 1 and reads[1] == 0x4051)
++  check(label .. "does not mutate templates or session", equal(source, before) and equal(session, sessionBefore))
++  check(label .. "unrelated records keep identity", output[0] == source[0]
++    and output[2] == source[2] and output[3] == source[3] and output[4] == nil)
++  local expected = copy(source[1])
++  expected.graphicsId, expected.x, expected.y, expected.movementType = case[2], case[3], case[4], case[5]
++  check(label .. "all other selected fields preserved", equal(npc, expected))
++  check(label .. "resolved static graphics accepted", Graphics.resolveGraphicsId(npc.graphicsId) == case[2])
++  local live, clones = ObjectEventState.new(output, { rng=Rng.new(1) })
++  check(label .. "projection reaches ordinary NPC construction", live[2].localId == 4
++    and live[2].graphicsId == case[2] and live[2].x == case[3] and live[2].y == case[4]
++    and live[2].movementType == case[5] and live[2].initialX == case[3] and live[2].initialY == case[4])
++  check(label .. "other NPC and clone handling unchanged", live[1].graphicsId == 23
++    and live[3].graphicsId == 240 and #clones == 1 and clones[1] == source[3])
++end
++
++-- Re-entry always derives from untouched decoded input, not the last scene.
++do
++  local source = fixtures()
++  for _, scene in ipairs({0, 1, 2, 0}) do
++    local output = Projection.apply(769, source, sessionFor(scene))
++    check("re-entry " .. scene .. " uses decoded baseline", output[1].y == ({[0]=11, [1]=8, [2]=6})[scene]
++      and source[1].y == 6 and source[1].graphicsId == 240)
++  end
++  local shifted = fixtures()
++  shifted[1].x, shifted[1].y, shifted[1].movementType = 17, 19, 8
++  local output = Projection.apply(769, shifted, sessionFor(2))
++  check(">=2 retains decoded fields, not stale scene-1 coordinates", output[1].x == 17
++    and output[1].y == 19 and output[1].movementType == 8 and output[1].graphicsId == 32)
++end
++
++local function refuse(label, mapId, source, session, reason)
++  local before = copy(source)
++  local output, diagnostic = Projection.apply(mapId, source, session)
++  check(label .. ": diagnostic no-op", output == source and diagnostic == reason)
++  check(label .. ": unchanged input", equal(source, before))
++end
++do
++  local session, reads = sessionFor(0)
++  refuse("wrong map", 768, fixtures(), session, "wrong_map")
++  refuse("wrong group", 513, fixtures(), session, "wrong_map")
++  check("wrong maps do not read scene", #reads == 0)
++  refuse("missing session", 769, fixtures(), nil, "missing_session")
++  refuse("missing getter", 769, fixtures(), {}, "missing_session")
++  refuse("non-session scalar", 769, fixtures(), false, "missing_session")
++  refuse("missing list", 769, nil, session, "invalid_templates")
++  refuse("missing object", 769, {}, session, "missing_template")
++  local wrongId = fixtures(); wrongId[1].localId = 5
++  refuse("wrong local ID with graphics 240", 769, wrongId, session, "missing_template")
++  local wrongKind = fixtures(); wrongKind[1].kind = 255
++  refuse("clone local ID 4", 769, wrongKind, session, "wrong_template_kind")
++  wrongKind[1].kind = nil
++  refuse("missing normal-kind discriminator", 769, wrongKind, session, "wrong_template_kind")
++  for _, gfx in ipairs({32, 34, 239, 241}) do
++    local source = fixtures(); source[1].graphicsId = gfx
++    refuse("non-base graphics " .. gfx, 769, source, session, "wrong_base_graphics")
++  end
++  local ambiguous = fixtures(); ambiguous[2].localId = 4
++  refuse("duplicate local ID", 769, ambiguous, session, "ambiguous_local_id")
++  check("ineligible objects never read scene", #reads == 0)
++  refuse("getter failure", 769, fixtures(), {getVar=function() error("unavailable") end}, "scene_read_failed")
++  refuse("missing scene", 769, fixtures(), sessionFor(nil), "invalid_scene")
++  for _, scene in ipairs({-1, 0.5, "1", false, {}, math.huge, -math.huge, 0/0}) do
++    refuse("invalid scene " .. tostring(scene), 769, fixtures(), sessionFor(scene), "invalid_scene")
++  end
++  local ok, err = pcall(Graphics.resolveGraphicsId, 240)
++  check("generic dynamic 240 remains refused", not ok and tostring(err):find("dynamic", 1, true) ~= nil)
++end
++
++-- Execute the actual production loader body with only its external field/ROM
++-- services stubbed. No new main export, duplicated integration or ROM needed.
++local file = assert(io.open("main.lua", "rb"))
++local mainSource = file:read("*a"); file:close()
++local first = assert(mainSource:find("local function loadMapObjectEvents(", 1, true))
++local last = assert(mainSource:find("\n-- Real RemoveObjectEventByLocalIdAndMap", first, true))
++local loaderSource = mainSource:sub(first, last - 1)
++local call = assert(loaderSource:find('require("src.core.ViridianOldManProjection").apply(', 1, true))
++local spawn = assert(loaderSource:find("pcall(ObjectEventState.new, objectEvents", 1, true))
++check("production projection precedes NPC construction", call < spawn)
++local mapLoad = assert(mainSource:find("function loadMap(data, addrs, mapId, dbg)", 1, true))
++local decode = assert(mainSource:find("MapEvents.resolve(data, header.eventsPtr)", mapLoad, true))
++local loadObjects = assert(mainSource:find("loadMapObjectEvents(data, events, mapId)", decode, true))
++check("production events decode before object loading", decode < loadObjects)
++
++local function runLoader(mapId, scene, missingSession, hideOldMan)
++  local source, messages, calls = fixtures(), {}, 0
++  local before = copy(source)
++  local session, reads = sessionFor(scene)
++  source[1].flagId = 123
++  before[1].flagId = 123
++  session.getFlag = function(_, id) return hideOldMan and id == 123 end
++  local world = {globalRng=Rng.new(1)}
++  local env = setmetatable({
++    world=world, newGame={session=not missingSession and session or nil},
++    ensureRngStreams=function() end, isWalkTileBlocked=function() return false end,
++    ObjectEventState=ObjectEventState, romAddrs={gWildMonHeaders=0},
++    WildEncounters={findHeader=function() return nil end},
++    addLine=function(message) messages[#messages+1] = message end,
++    require=function(name)
++      assert(name == "src.core.ViridianOldManProjection", "unexpected loader dependency")
++      calls = calls + 1
++      return Projection
++    end,
++  }, {__index=_G})
++  local chunk = assert(loadstring(loaderSource .. "\nreturn loadMapObjectEvents", "@main.lua:loadMapObjectEvents"))
++  setfenv(chunk, env)
++  chunk()("", {objectEvents=source, bgEvents={}, coordEvents={}}, mapId)
++  check("loader preserves decoded templates", equal(source, before) and world.mapObjectEventTemplates == source)
++  return world, messages, calls, reads
++end
++for _, case in ipairs({{0,34,11,8}, {1,32,8,1}, {2,32,6,1}}) do
++  local world, _, calls, reads = runLoader(769, case[1])
++  local npc = world.npcs[2]
++  check("actual loader projects scene " .. case[1], npc.localId == 4 and npc.graphicsId == case[2]
++    and npc.x == 21 and npc.y == case[3] and npc.movementType == case[4] and calls == 1 and #reads == 1)
++end
++do
++  local world, _, calls, reads = runLoader(768, 0)
++  check("actual loader does not project other map", world.npcs[2].graphicsId == 240 and calls == 0 and #reads == 0)
++  local missing, messages = runLoader(769, 0, true)
++  check("actual loader surfaces missing-session diagnostic", missing.npcs[2].graphicsId == 240
++    and table.concat(messages, "\n"):find("projection skipped: missing_session", 1, true) ~= nil)
++  local hidden, hiddenMessages, _, hiddenReads = runLoader(769, 0, false, true)
++  check("existing hide filter is preserved", #hidden.npcs == 2 and hidden.npcs[1].localId == 9
++    and hidden.npcs[2].localId == 7 and #hiddenReads == 0)
++  check("filtered target is diagnosed, never respawned", table.concat(hiddenMessages, "\n"):find(
++    "projection skipped: missing_template", 1, true) ~= nil)
++  local invalid, invalidMessages = runLoader(769, -1)
++  check("actual loader preserves refusal instead of projecting fallback", invalid.npcs[2].graphicsId == 240
++    and table.concat(invalidMessages, "\n"):find("projection skipped: invalid_scene", 1, true) ~= nil)
++end
++
++print(("phase5_viridian_old_man_projection_test: %d passed, %d failed"):format(passed, failed))
++os.exit(failed == 0 and 0 or 1)
+diff --git a/work/reports/phase5-viridian-old-man-projection-implementation.md b/work/reports/phase5-viridian-old-man-projection-implementation.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..a363807813634f63f65c8ab2967c790a336102d1
+--- /dev/null
++++ b/work/reports/phase5-viridian-old-man-projection-implementation.md
+@@ -0,0 +1,102 @@
++# Viridian Old Man projection — Worker preparation
++
++- Task: [P5-04 implementation](../tasks/phase5-viridian-old-man-projection-implementation.md)
++  under the accepted [recovery authority](../tasks/phase5-viridian-old-man-projection-recovery.md).
++- Result: local preparation only; guarded evidence and independent exact
++  review pending. No playable-Viridian or Phase 5 completion claim.
++- Base: `8ec48cfe7e131ab62d54021ed5d382514314b2a2`; isolated detached worktree
++  `/tmp/firered-p5-worker`. Existing main-checkout changes were not inputs.
++- Source/design: public `pokefirered c75f352304d529f6ba92d4f74b9cf8b5c3810788`,
++  accepted [design `87644b2`](../reviews/2026-10-02-viridian-old-man-projection-design-review.md),
++  [five-path route](../reviews/2026-10-03-viridian-old-man-projection-route-configuration-review.md),
++  and [recovery authorization](../reviews/2026-10-09-viridian-old-man-projection-recovery-authorization-review.md).
++
++## Exact implementation
++
++[ViridianOldManProjection](../../src/core/ViridianOldManProjection.lua) accepts
++only map ID `3*256+1`, one normal (`kind=0`) decoded object with local ID 4
++and base graphics 240, and a session supplying `getVar`. It reads only
++`session:getVar(0x4051)`, once after admission. It returns a shallow list copy
++with only the selected template copied and projected; all unrelated record
++identities/fields and the original list/template remain unchanged.
++
++| Persisted scene | Graphics | Position | Movement |
++| --- | --- | --- | --- |
++| 0 | 34 | 21,11 | 8 |
++| 1 | 32 | 21,8 | 1 |
++| Integer >=2 | 32 | decoded position (source template 21,6) | decoded type (source template 1) |
++
++Missing session/getter/list/object, another map, non-normal template,
++non-240 base graphic, duplicate local ID, failed scene read, and missing,
++non-number, fractional, negative or non-finite scene return the original
++list with an explicit reason. Refusal does not replace the dynamic graphic
++with a fallback. The global graphics decoder still rejects dynamic ID 240.
++
++The sole [main](../../main.lua) integration is nine added lines inside
++`loadMapObjectEvents`, after the existing hide/story filter and before
++`ObjectEventState.new`. Only Viridian invokes the helper. Refusals are logged;
++existing NPC construction proceeds unchanged with the unprojected input.
++`world.mapObjectEventTemplates` continues to reference the original decoded
++list. Hidden objects are not recreated. The helper is not a post-spawn update
++or generic map callback, and it never writes the scene, graphics variable,
++flags, saved template state, or RNG.
++
++Each map load derives a new result from decoded templates, so scene 0→1→2
++does not retain the earlier projected coordinates. This is the accepted
++project reconstruction boundary, not a new retail persistent-template model.
++Movement type 1 remains the existing LOOK_AROUND value; this task does not
++implement its currently unsupported ticking or any tutorial motion.
++
++## Focused evidence
++
++[Focused test](../../tests/phase5_viridian_old_man_projection_test.lua):
++115 passed, zero failed, with no ROM or LÖVE dependency.
++
++- Literal scene 0/1/2/65535 outputs, static graphics acceptance, selected-field
++  preservation, unchanged unrelated normal/dynamic/clone objects, and immutable
++  source/session inputs.
++- Re-entry from the same decoded input; >=2 preserves decoded fields rather
++  than hardcoding the prior scene's coordinates.
++- Wrong map/group/local ID/kind/base graphics, missing session/getter/list/
++  object, ambiguous ID, getter failure, nil/string/boolean/table/fractional/
++  negative/infinite/NaN scenes; ineligible inputs never read the scene.
++- Global dynamic-ID-240 refusal remains active.
++- Direct execution of the **actual production loader function body** extracted
++  from `main.lua`, using synthetic decoded templates and stubbed unrelated
++  external services. It constructs ordinary ObjectEventState NPCs for each
++  scene and checks wrong-map bypass, refusal diagnostics, existing hide
++  filtering and untouched raw template storage. No new main export is added.
++- Static ordering assertions require event decode before the loader and the
++  projection before NPC construction. These checks are not a gameplay replay.
++
++## Commands and outcomes
++
++Executed from the isolated worktree using available Lua 5.1.5:
++
++```sh
++env -u POKEPORT_ROM -u POKEPORT_RUNTIME_REPLAY bash scripts/test_all.sh
++# Baseline: PASS, 152 test files; ROM-dependent checks skip.
++env -u POKEPORT_ROM -u POKEPORT_RUNTIME_REPLAY lua5.1 tests/phase5_viridian_old_man_projection_test.lua
++# PASS: 115 passed, 0 failed.
++luac5.1 -p src/core/ViridianOldManProjection.lua main.lua tests/phase5_viridian_old_man_projection_test.lua
++# PASS: syntax only.
++env -u POKEPORT_ROM -u POKEPORT_RUNTIME_REPLAY bash scripts/test_all.sh
++# Post-change: PASS, 153 test files; focused test 115/0 included.
++git diff --check
++# PASS.
++env -u POKEPORT_ROM -u POKEPORT_RUNTIME_REPLAY lua5.1 scripts/check_repository.lua
++# PASS after staging exactly five paths: 279 Lua, 219 Markdown, 675 local targets.
++```
++
++Local logs outside the repository:
++`/tmp/firered-p5-evidence.4mX9tb/baseline-no-rom.log`, `focused.log`, and
++`post-no-rom.log`. No private paths/data or generated game content were used.
++
++Exactly five paths are changed: the helper, `main.lua`, focused test, task and
++this report. No decoder, generic dynamic-graphics resolver, scripts/VM,
++movement, tutorial/battle, Parcel, renderer, save, UI, route or coordination
++behavior changes. No bridge artifact, private-runner dispatch or push was
++performed by Worker. A later separately authorized guarded artifact must
++still pass focused, shared no-ROM and SHA-ROM suites; its explicit **no-replay**
++route does not prove rendering or traversal. Independent exact-result review
++must precede reconciliation.
+diff --git a/work/tasks/phase5-viridian-old-man-projection-implementation.md b/work/tasks/phase5-viridian-old-man-projection-implementation.md
+index 55fc5b555f2c28278350f1a93772c6878c02c9b0..934a41435fcbc21e9667aaa7bc829eb899254000 100644
+--- a/work/tasks/phase5-viridian-old-man-projection-implementation.md
++++ b/work/tasks/phase5-viridian-old-man-projection-implementation.md
+@@ -1,7 +1,7 @@
+ # Task: implement bounded Viridian Old Man state projection
+ 
+ - Task ID: `P5-04-OLD-MAN-PROJECTION`
+-- Status: `READY_FOR_PREPARATION`
++- Status: `PREPARED — GUARDED EVIDENCE PENDING`
+ - Type: `IMPLEMENTATION — GUARDED ROUTE REQUIRED`
+ - Prerequisite: [P5-03 design PASS](../reviews/2026-10-02-viridian-old-man-projection-design-review.md), exact `87644b2`.
+ 
+@@ -14,8 +14,14 @@ configuration, review and probe must PASS before any Worker request.
+ 
+ ## MAY CHANGE after route PASS
+ 
+-Only the exact helper/integration/test/report/task paths named by the later
+-route plan. No path is implied now.
++The accepted [recovery authority](phase5-viridian-old-man-projection-recovery.md)
++and reviewed route admit exactly:
++
++1. `src/core/ViridianOldManProjection.lua`
++2. `main.lua`
++3. `tests/phase5_viridian_old_man_projection_test.lua`
++4. `work/tasks/phase5-viridian-old-man-projection-implementation.md`
++5. `work/reports/phase5-viridian-old-man-projection-implementation.md`
+ 
+ ## MUST NOT CHANGE
+ 
+@@ -34,3 +40,21 @@ playable Viridian or full traversal.
+ 
+ Stop for any need to generalize callback/state semantics, change unrelated map
+ objects, or widen beyond the reviewed route. Record the blocker; do not patch.
++
++## Worker preparation evidence — 2026-10-09
++
++- Prepared only in isolated worktree `/tmp/firered-p5-worker`, based on
++  `8ec48cfe7e131ab62d54021ed5d382514314b2a2`; main checkout untouched.
++- [Implementation report](../reports/phase5-viridian-old-man-projection-implementation.md)
++  records the exact projection, refusal, immutable-input and pre-spawn limits.
++- Baseline no-ROM suite: 152 test files PASS. Focused test: 115 passed,
++  zero failed. Post-change no-ROM suite: 153 test files PASS, including the
++  focused test. Lua 5.1 syntax and whitespace checks passed; repository checks
++  passed 279 Lua files, 219 Markdown files and 675 local targets.
++- Focused tests execute the actual production loader body with synthetic
++  templates and stubbed external field/ROM services; this is not a LÖVE,
++  private-ROM, rendered, tutorial or traversal replay.
++- No bridge artifact, runner dispatch, push, workflow/coordination edit or
++  independent acceptance was performed. Guarded focused/no-ROM/SHA-ROM
++  evidence and independent exact-result review remain required. The route's
++  explicit no-replay branch must not be reported as gameplay evidence.
+
