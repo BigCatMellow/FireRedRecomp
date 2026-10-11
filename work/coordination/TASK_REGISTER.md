@@ -43,10 +43,10 @@ It is deliberately not a second roadmap or test-evidence database:
 
 ## Active register
 
-Execution resumed on 2026-09-23. Rollover `aec377a` and CI `3478822` each
-await independent review despite successful exact public runs. The private
-runner was offline at the resume check; no probe/request has been submitted.
-Read HANDOFF first.
+Current dispatch was reconciled on 2026-10-11 under the user-adopted
+[standing goal](PROJECT_GOAL.md). Effect-45 design is the single active
+critical-path package. Closed rows and original exhausted runs are historical
+receipts; they do not authorize new actions. Read the current HANDOFF first.
 
 | Task ID | Lifecycle | Assigned next role | Contract / revision | Evidence or blocker | Successor / next action |
 | --- | --- | --- | --- | --- | --- |
@@ -68,6 +68,7 @@ Read HANDOFF first.
 | `P4-F3-MAGNITUDE-ROUTE-PROBE` | `CLOSED — REVIEWED PASS` | `ORCHESTRATOR` | [One-file readiness task](../tasks/local-worker-bridge-phase4-magnitude-route-probe.md); [outcome PASS](../reviews/2026-10-10-magnitude-route-probe-outcome-review.md), `92cbba8` / run `38068726115` | Checkout, Magnitude selector, Lua, private SHA, and probe completion passed; seven patch-only steps skipped. | Separate implementation authority requires independent review; no request exists. |
 | `P4-F3-MAGNITUDE-IMPLEMENTATION` | `CLOSED — REVIEWED PASS` | `ORCHESTRATOR` | [Implementation authority](../tasks/phase4-magnitude-implementation.md); [outcome PASS](../reviews/2026-10-10-magnitude-implementation-outcome-review.md), `7b47c73` / run `38071195897` | One nine-path request passed focused/no-ROM/SHA-ROM/replay/publication; bounded singles only. | Closed; excluded Magnitude behavior requires a separate accepted task. |
 | `P4-F1-RECOIL-IF-MISS-DISCOVERY` | `CLOSED — REVIEWED PASS` | `ORCHESTRATOR` | [Source lock](../tasks/phase4-recoil-if-miss-source-discovery.md); [independent PASS](../reviews/2026-10-10-recoil-if-miss-source-discovery-review.md), `c218da6` | Effect 45 / Jump Kick #26 / Hi Jump Kick #136 source order, source formula, current gaps, and exclusions are read-only locked. | Dispatch only `P4-F2-RECOIL-IF-MISS-DESIGN`; no route, runner/ROM, or implementation authority. |
+| `P4-NEXT-EFFECT-RERANK-2` | `CLOSED — REVIEWED PASS` | `ORCHESTRATOR` | [Rerank](../tasks/phase4-next-effect-rerank-2026-10-10.md); [independent PASS](../reviews/2026-10-10-next-effect-rerank-2-review.md), `ca11770` | Selected effect 45; completed through accepted source lock `c218da6`. | Continue current design; preserve unreviewed Brick Break drafts outside dispatch. |
 | `P4-F2-RECOIL-IF-MISS-DESIGN` | `READY_FOR_WORKER` | `WORKER` | [Design task](../tasks/phase4-recoil-if-miss-design.md), source-lock PASS `c218da6` | Read-only design must define only the represented effect-45 accuracy-miss contract and later acceptance outline. | Independent exact-report review; a PASS still does not authorize implementation. |
 | `P4-F3-ROUTE` | `CLOSED — REVIEWED PASS` | `ORCHESTRATOR` | [Configuration PASS](../reviews/2026-10-02-restore-hp-route-configuration-review.md), probe [PASS](../reviews/2026-10-02-restore-hp-route-probe-review.md) `3c03876` / run `36981539166` | Readiness-only evidence passed; patch/test/replay/publication skipped. | Unlocks one P4-F3 request only. |
 | `P0-02-DISCOVERY` | `CLOSED` | `ORCHESTRATOR` | [Independent discovery PASS](../reviews/2026-09-20-save-version-discovery-review.md), exact `b53c387` | Historical matrix, 45/0 codec, 13/0 roundtrip, 24/24 characterization and edge cases independently reproduced. | Dispatch only `P0-02-CONTRACT`; behavior fixes remain separate. |
@@ -78,7 +79,6 @@ Read HANDOFF first.
 | `P0-01-DISCOVERY` | `CLOSED` | `ORCHESTRATOR` | [Independent audit PASS](../reviews/2026-09-27-behavior-ledger-audit-review.md), exact `61f1a77`, pinned `eac7d69` | All nine rows mapped without promoting missing proof; stale PC-overflow negative bounded. | Dispatch only `P0-01-CORRECTION`; Phase 0 remains open. |
 | `P0-01-CORRECTION` | `CLOSED` | `ORCHESTRATOR` | [Exact independent PASS](../reviews/2026-09-29-behavior-ledger-correction-review.md), `fc43daf` | Ten bounded ledger rows; source/runtime/assertion/receipt distinctions, PC UNKNOWN and rollover wording preserved. | P0-04 may verify reproducibility; Phase 0 remains open. |
 | `P0-04` | `BLOCKED — REVIEWED EVIDENCE` | `ORCHESTRATOR` | [Exact review](../reviews/2026-10-01-clean-clone-verification-review.md), report `d0e0bad` | Fresh clone CLI checker/no-ROM/refusal path passes, but absent FIRST_RUN/default PATH and unverified isolated desktop prevent clean first-run proof. | No repair implied; a separately bounded resolution is required before retry. |
-| `P0-04-DISCOVERY` | `READY_FOR_WORKER` | `RESEARCHER` | [Read-only first-run discovery](../tasks/phase0-first-run-reproducibility-discovery.md) | Define smallest supported repair/re-verification boundary for the exact P0-04 blockers. | Independent review before any repair contract. |
 | `P0-04-DISCOVERY` | `CLOSED` | `ORCHESTRATOR` | [Exact independent PASS](../reviews/2026-10-02-first-run-reproducibility-discovery-review.md), `8c92f67` | One conditional docs-only repair/reverification boundary; desktop remains unverified. | Dispatch only `P0-04-DOCS`. |
 | `P0-04-DOCS` | `CLOSED` | `ORCHESTRATOR` | [Exact independent PASS](../reviews/2026-10-02-first-run-documentation-repair-review.md), `d4f7fe8` | Conditional profile and safe guidance documented; no desktop proof claimed. | Dispatch only P0-04-REVERIFY. |
 | `P0-04-REVERIFY` | `BLOCKED — REVIEWED EVIDENCE` | `ORCHESTRATOR` | [Exact independent review](../reviews/2026-10-02-clean-clone-reverification-review.md), `93c4654` | Fresh target lacks lua5.1/LÖVE; dependent checks correctly NOT RUN with no workaround. | Separate supported-target preparation decision before retry. |

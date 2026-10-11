@@ -31,14 +31,21 @@ strategic phase
 
 Default to one critical-path Worker package at a time.
 
-## Current authoritative critical path — 2026-10-02
+## Current critical path — reconciled 2026-10-11
 
-Restore HP is the active gated leaf: F1 source lock and F2 design passed; its
-F3 route configuration passed; the sole probe `3c03876` / run `36981539166` is
-queued because `firered-mint` is offline. Recover that exact probe, independently
-review it, then allow one route-bounded implementation request. In parallel,
-compile P0 first-run/tooling/desktop discovery; Phase 2 remains external-blocked
-on user-owned retail captures. See [recalibrated delivery plan](RECALIBRATED_DELIVERY_PLAN.md).
+The active task is [effect-45 design](../tasks/phase4-recoil-if-miss-design.md),
+following independent source-lock PASS at `c218da6` and dispatch `a2d6779`.
+Only design/report work is permitted until independent review and a separately
+scoped successor. Restore HP `dc8ad06`, bounded Magnitude `7b47c73`, full
+inventory `c10bfa7`, and the bounded P5 projection `d280751` are independently
+accepted. Their old probes/requests must not be redispatched.
+
+P0 reverification `93c4654` remains blocked pending supported-target
+preparation and fresh proof. Phase 2 awaits trusted external retail-reference
+evidence. These blockers do not prevent the current design. See the
+[delivery plan](RECALIBRATED_DELIVERY_PLAN.md), current
+[task register](../coordination/TASK_REGISTER.md), and user-adopted
+[standing goal](../coordination/PROJECT_GOAL.md).
 
 ## Historical critical-path snapshot
 
@@ -73,7 +80,11 @@ Phase 9 postgame
 Phase 10 mod/release engineering
 ```
 
-## Gate graph
+## Historical gate graph
+
+The rows below preserve earlier snapshots and receipts, including old active
+and blocked labels. Current lifecycle and dispatch are owned by the register,
+state, and the reconciled critical path above; these rows do not revive work.
 
 | Phase / gate | Current state | Active or canonical task | Evidence required to unlock | Next |
 | --- | --- | --- | --- | --- |
@@ -152,7 +163,7 @@ Phase 10 mod/release engineering
 | Phase 9 — postgame/secondary | `NOT STARTED` | future | offline single-player content complete | complete offline surface |
 | Phase 10 — mod/release engineering | `NOT STARTED` | future | import/play/mod/update/diagnose without manual filesystem work | public extensible release |
 
-## Current bounded chain
+## Historical bounded chain
 
 ### Completed parent gate: Phase 3 exit proof
 

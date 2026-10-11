@@ -5,7 +5,27 @@
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
 - Current plan: [`../roadmaps/RECALIBRATED_DELIVERY_PLAN.md`](../roadmaps/RECALIBRATED_DELIVERY_PLAN.md)
 
-## Current relay — 2026-10-02
+## Current relay — 2026-10-11
+
+### Standing goal activation and routing repair
+
+The user explicitly adopted [PROJECT_GOAL.md](PROJECT_GOAL.md), authorizing
+the Orchestrator to continue the bounded Worker → independent Reviewer →
+reconciliation → next-task relay toward roadmap completion. An individual
+task closure or role handoff does not complete the goal. Existing task,
+privacy, publication, and human-decision boundaries remain in force.
+
+Live `main` was recovered at `a2d6779`; GitHub queued/in-progress queries
+returned no jobs. The prior eight listed jobs are terminal successes,
+including CI `38148899950` for `a2d6779`. This observation creates no runner
+or request authority. Recheck actual jobs before later execution dispatch.
+
+Current action: assign a Worker to the effect-45 design below and obtain a
+separate independent review of its exact report. The goal's activation
+reconciles stale Restore HP/inventory/P5 routing and duplicate P0 discovery
+state; their accepted reviews remain the evidence owners. P0 target
+preparation and P2 trusted-reference input remain blocked. The named local
+Brick Break stash remains preserved outside dispatch.
 
 ### Effect-45 selection reconciliation and design dispatch — 2026-10-11
 
@@ -30,6 +50,11 @@ design report for the exact effect-45 miss branch. It must retain separation
 from ordinary actual-hit recoil and generic misses, specify no code/tests/API,
 and preserve every source-lock exclusion. Independent exact-report review is
 required. A design PASS still authorizes neither implementation nor a route.
+
+## Historical relay entries — superseded by current checkpoint above
+
+Historical READY/queued/next-action language below describes its dated
+checkpoint only. Consult current state and accepted reviews before action.
 
 ### Magnitude implementation-authority preparation — 2026-10-10
 

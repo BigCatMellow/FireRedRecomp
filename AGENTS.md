@@ -39,17 +39,17 @@ Do not let README prose or an older handoff override newer direct evidence.
 
 ## Current dispatch
 
-**User-requested pause, 2026-09-21:** stop autonomous execution to conserve
-weekly tokens. Resume only when the user asks. Read the checkpoint at the top
-of `work/coordination/HANDOFF.md` before dispatching anything; it supersedes
-the historical continuous-work instruction and older runner-offline notes.
+**User-adopted persistent goal, 2026-10-11:** the user explicitly activated
+[`work/coordination/PROJECT_GOAL.md`](work/coordination/PROJECT_GOAL.md), including
+bounded Worker delegation, separate independent Reviewers, and automatic
+selection of the next eligible task. This supersedes the historical 2026-09-21
+pause; future user pauses still apply. The goal preserves all task, evidence,
+publication, and human-decision boundaries below.
 
-Phase 3 is complete. Pain Split is independently accepted at `a739ddc`.
-The full move-effect inventory remains active, but its dedicated private-runner
-probe is externally blocked while `firered-mint` is offline. Independent
-save counter-rollover correction and reviewed CI-check implementation proceed locally.
-The explicit save-version/refusal contract is accepted at `63592c3`. `STATE.json`, `HANDOFF.md`,
-and `TASK_REGISTER.md` own the current relay and supersede historical task prose.
+Recover the current relay from `STATE.json`, the top of `HANDOFF.md`, and
+`TASK_REGISTER.md`. Historical runner observations and completed task requests
+are not current dispatch instructions. A role handoff is an action for the
+Orchestrator to execute, not completion of the project goal.
 
 Current intended sequence:
 
