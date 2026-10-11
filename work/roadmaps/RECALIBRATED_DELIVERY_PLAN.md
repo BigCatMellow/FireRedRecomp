@@ -27,9 +27,11 @@ rule or traversal work without an evidenced dependency.
 1. Restore HP (`dc8ad06`) and bounded Magnitude (`7b47c73`) are independently
    accepted; their requests are terminal. Preserve their exclusions.
 2. The accepted rerank `ca11770` selected effect 45; source lock `c218da6`
-   independently passed. Execute only
-   [P4-F2-RECOIL-IF-MISS-DESIGN](../tasks/phase4-recoil-if-miss-design.md)
-   and obtain independent review. It grants no behavior or route action.
+   independently passed. Design `f31ae69` is independently BLOCKED on missing
+   entry/reset and downstream HP-gate facts. Execute only the
+   [source supplement](../tasks/phase4-recoil-if-miss-entry-state-discovery.md),
+   obtain independent PASS, then resume the bounded design and its own review.
+   Neither package grants behavior or route action.
 3. After a design PASS, compile the separately bounded route/implementation
    prerequisites and required reviews. Follow the exact next allowance in
    current coordination; never revive a completed request.

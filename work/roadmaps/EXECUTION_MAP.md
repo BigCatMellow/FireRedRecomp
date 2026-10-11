@@ -33,16 +33,17 @@ Default to one critical-path Worker package at a time.
 
 ## Current critical path — reconciled 2026-10-11
 
-The active task is [effect-45 design](../tasks/phase4-recoil-if-miss-design.md),
-following independent source-lock PASS at `c218da6` and dispatch `a2d6779`.
-Only design/report work is permitted until independent review and a separately
-scoped successor. Restore HP `dc8ad06`, bounded Magnitude `7b47c73`, full
+The active task is the [effect-45 entry-state source supplement](../tasks/phase4-recoil-if-miss-entry-state-discovery.md),
+following the independently confirmed [design BLOCK at `f31ae69`](../reviews/2026-10-11-recoil-if-miss-design-review.md).
+It resolves missing entry/reset and downstream HP-gate facts at the same pin;
+the earlier source-lock PASS `c218da6` remains valid within its scope. Resume
+design only after independent supplement PASS. Restore HP `dc8ad06`, bounded Magnitude `7b47c73`, full
 inventory `c10bfa7`, and the bounded P5 projection `d280751` are independently
 accepted. Their old probes/requests must not be redispatched.
 
 P0 reverification `93c4654` remains blocked pending supported-target
 preparation and fresh proof. Phase 2 awaits trusted external retail-reference
-evidence. These blockers do not prevent the current design. See the
+evidence. These blockers do not prevent the current source supplement. See the
 [delivery plan](RECALIBRATED_DELIVERY_PLAN.md), current
 [task register](../coordination/TASK_REGISTER.md), and user-adopted
 [standing goal](../coordination/PROJECT_GOAL.md).
