@@ -56,8 +56,11 @@ rule or traversal work without an evidenced dependency.
    the next progression gate. The bounded Viridian Old Man projection
    (`d280751`) passed; it supplies no tutorial or traversal proof. Source-lock
    one required missing opcode/field primitive at a time.
-2. Produce P6 UI-state/no-dev-fallback inventory so menu work is driven by
-   normal player paths rather than developer shortcuts.
+2. Use the accepted [P6 field-menu inventory](../reports/phase6-field-menu-coverage-inventory.md)
+   and [independent PASS at `ee7535d`](../reviews/2026-10-05-field-menu-coverage-inventory-review.md)
+   to select one menu frontier needed by the current checkpoint. Preserve its
+   normal/developer-path distinctions and UNKNOWNs; no repeat inventory or UI
+   implementation is authorized without a separate bounded task.
 3. Create P7 checkpoint corpus first. Each segment task must name its missing
    P4/P5/P6 prerequisites and prove the resulting checkpoint without manual
    state edits.
