@@ -1,11 +1,35 @@
 # FireRedRecomp Coordination Handoff
 
-- Status: `READY_FOR_REVIEWER — review Magnitude implementation authority`
-- Task ID: `P4-F3-MAGNITUDE-IMPLEMENTATION`
+- Status: `READY_FOR_WORKER — author effect-45 recoil-if-miss design`
+- Task ID: `P4-F2-RECOIL-IF-MISS-DESIGN`
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
 - Current plan: [`../roadmaps/RECALIBRATED_DELIVERY_PLAN.md`](../roadmaps/RECALIBRATED_DELIVERY_PLAN.md)
 
 ## Current relay — 2026-10-02
+
+### Effect-45 selection reconciliation and design dispatch — 2026-10-11
+
+Live GitHub `main` was recovered at `c218da6`. Its
+[`P4-F1-RECOIL-IF-MISS-DISCOVERY`](../tasks/phase4-recoil-if-miss-source-discovery.md)
+source lock and independent exact-report
+[PASS](../reviews/2026-10-10-recoil-if-miss-source-discovery-review.md) close
+only the read-only discovery of effect 45: Jump Kick #26 and Hi Jump Kick
+#136. The lock records the ordinary accuracy-miss crash branch, source
+formula/order, current project gaps, and hard exclusions. It does not claim
+current support or authorize a route, runner/ROM action, request, test, or
+implementation.
+
+An unreviewed local Brick Break rerank that contradicted this accepted source
+lock was isolated in the recoverable named Git stash
+`quarantine-unreviewed-brick-break-rerank-2026-10-11`; it is not published,
+reviewed, or project authority.
+
+[`P4-F2-RECOIL-IF-MISS-DESIGN`](../tasks/phase4-recoil-if-miss-design.md) is
+now **READY_FOR_WORKER**. It may author only a read-only represented-singles
+design report for the exact effect-45 miss branch. It must retain separation
+from ordinary actual-hit recoil and generic misses, specify no code/tests/API,
+and preserve every source-lock exclusion. Independent exact-report review is
+required. A design PASS still authorizes neither implementation nor a route.
 
 ### Magnitude implementation-authority preparation — 2026-10-10
 
