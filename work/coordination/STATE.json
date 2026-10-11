@@ -1,18 +1,18 @@
 {
   "schema_version": 1,
-  "updated_utc": "2026-10-11T17:03:19Z",
+  "updated_utc": "2026-10-11T20:17:51Z",
   "execution_paused": false,
   "role": "ORCHESTRATOR",
-  "status": "READY_FOR_REVIEWER",
-  "task_id": "P4-F2-RECOIL-IF-MISS-DESIGN",
+  "status": "READY_FOR_WORKER",
+  "task_id": "P4-F1-RECOIL-IF-MISS-ENTRY-STATE",
   "current_phase": "Phase 0, Phase 4, and Phase 5 remain IN PROGRESS; Restore HP, bounded Magnitude, bounded P5 Viridian projection, and the effect-45 source lock are independently accepted",
   "canonical_status_owner": "work/roadmaps/CAPABILITY_CHECKLIST.md",
-  "active_task": "work/tasks/phase4-recoil-if-miss-design.md — draft/stop report f31ae69 awaits independent assessment",
-  "objective": "Independently review f31ae69 against the design task, including its source-certainty stop and minimum separately scoped supplement.",
-  "next_role": "REVIEWER",
-  "acceptance": "Published source-lock PASS, a bounded design report, diff check, and independent exact-report review. No behavior, test, route, runner/ROM, save/UI/AI, or Magnitude-scope change.",
+  "active_task": "work/tasks/phase4-recoil-if-miss-entry-state-discovery.md",
+  "objective": "Source-lock ordinary effect-45 entry/reset multipliers/result flags and downstream immunity HP gates under the independently confirmed design stop.",
+  "next_role": "RESEARCHER",
+  "acceptance": "Pinned public-source trace, exact report/task hashes, whitespace/docs checks and independent exact-report review. No runtime/ROM/route/test change.",
   "boundaries": "P0 clean target remains evidence-blocked pending preparation decision. Effect 45 remains unsupported: preserve ordinary recoil/miss separation and all source-lock exclusions; no route, request, probe, runtime, or ROM action.",
-  "dependencies": "Effect-45 source-lock PASS at c218da6; design dispatch a2d6779. Restore HP dc8ad06, bounded Magnitude 7b47c73 and bounded P5 projection d280751 independently accepted. No runtime/ROM/runner dependency for the active read-only design.",
+  "dependencies": "Accepted original source lock c218da6; independently confirmed design BLOCK at f31ae69; work/reviews/2026-10-11-recoil-if-miss-design-review.md. No private runner or ROM required.",
   "runner_blocker": {
     "task_id": "P4-F3-ROUTE",
     "status": "CLOSED — REVIEWED PASS",
@@ -63,7 +63,7 @@
     "phase4_recoil_if_miss_source_status": "CLOSED — REVIEWED PASS at c218da6; work/reviews/2026-10-10-recoil-if-miss-source-discovery-review.md"
   },
   "phase2_external_blocker": "Trusted, user-owned retail-reference captures with provenance/timing/crop/filter details for Oak and Pallet anchors have not been supplied.",
-  "next_after_success": "After an independent PASS on P4-F2-RECOIL-IF-MISS-DESIGN, reconcile only the design and compile at most one separately reviewed, fail-closed route or implementation-authority decision. Retain P0 preparation decision and Phase 2 retail-reference intake as external blocked.",
+  "next_after_success": "After independent source-supplement PASS, amend the blocked design's source authority, resume P4-F2-RECOIL-IF-MISS-DESIGN and require its own exact independent review before any route/implementation task.",
   "legal_content_boundary": "Never commit ROMs, BIOS dumps, generated caches, ROM-derived reference screenshots, extracted game assets, or other prohibited content.",
   "phase_completion_rule": "Phase 2 remains IN PROGRESS until the Oak/reference screenshot discrepancy gate is evidenced and independently reviewed.",
   "project_goal": "work/coordination/PROJECT_GOAL.md — ACTIVE; explicitly adopted 2026-10-11; no user-specified token budget",
@@ -72,13 +72,14 @@
     "inspection_revision": "f31ae695a6e72f73c1a2dbe747024a445d4ca950",
     "pending_jobs": "GitHub queued and in_progress queries both empty at activation recovery 2026-10-11; recheck before any execution dispatch.",
     "preserved_drafts": "Unreviewed Brick Break package isolated in named local stash quarantine-unreviewed-brick-break-rerank-2026-10-11; outside active dispatch.",
-    "next_action": "Independent Reviewer assesses exact task/report f31ae69; if BLOCK confirms source gap, compile one read-only entry-state/HP-gate source supplement, then review it before design resumes.",
-    "remaining_acceptance": "Exact independent design/stop review; design is not accepted. Source defaults and newly computed immunity HP gate unresolved.",
+    "next_action": "Assign Researcher to P4-F1-RECOIL-IF-MISS-ENTRY-STATE; trace only the source questions named by the design BLOCK review.",
+    "remaining_acceptance": "Source supplement and independent review, then resumed complete design and its independent review.",
     "coordination_note": "Historical nested records above are evidence receipts, not pending jobs or permission to repeat completed actions.",
-    "worker_session": "Worker wrote task/report then hit service usage limit. Parent preserved exact artifacts and ran whitespace/repository checks; independent review still required.",
+    "worker_session": "Historical design Worker session interruption; artifacts preserved at f31ae69 and independently reviewed. New source supplement is the active package.",
     "artifact_hashes": {
       "task": "ccd5a3d38243507d2a04bded621a7a012ccbea4d569fb854f97b0dd07fcfabf9",
       "report": "6e27a294c916cc91b639c51f5d53ca4598bd91fec81f299e10350325f19bda1b"
-    }
+    },
+    "last_review": "BLOCK for design completion at f31ae69, accurate source-certainty stop confirmed; work/reviews/2026-10-11-recoil-if-miss-design-review.md"
   }
 }

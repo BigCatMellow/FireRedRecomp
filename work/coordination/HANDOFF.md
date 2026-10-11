@@ -1,11 +1,29 @@
 # FireRedRecomp Coordination Handoff
 
-- Status: `READY_FOR_REVIEWER — assess effect-45 design source-certainty stop`
-- Task ID: `P4-F2-RECOIL-IF-MISS-DESIGN`
+- Status: `READY_FOR_WORKER — source-lock effect-45 entry state and HP gates`
+- Task ID: `P4-F1-RECOIL-IF-MISS-ENTRY-STATE`
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
 - Current plan: [`../roadmaps/RECALIBRATED_DELIVERY_PLAN.md`](../roadmaps/RECALIBRATED_DELIVERY_PLAN.md)
 
 ## Current relay — 2026-10-11
+
+### Design BLOCK confirmed; source supplement dispatched
+
+Independent [review](../reviews/2026-10-11-recoil-if-miss-design-review.md)
+confirms **BLOCK for design completion** at `f31ae69`, with an accurate
+source-certainty stop. The previous source-lock PASS remains valid within
+its scope. No route or implementation is unlocked.
+
+Active task: [P4-F1-RECOIL-IF-MISS-ENTRY-STATE](../tasks/phase4-recoil-if-miss-entry-state-discovery.md).
+Researcher may inspect only pinned public source/current project text and
+write the supplement/task evidence. Lock ordinary incoming multipliers and
+result flags, then downstream attacker HP/faint gates after type immunity.
+No ROM/runtime/private runner or behavior action is needed or authorized.
+
+Exact next action: execute this source supplement, obtain independent exact
+review, then reactivate the stopped design with explicit additional source
+authority only after PASS. The overall project goal remains active. Earlier
+relay sections below are historical; this source task owns current dispatch.
 
 ### Effect-45 design stop — exact review next
 
