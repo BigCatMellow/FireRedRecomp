@@ -1,11 +1,35 @@
 # FireRedRecomp Coordination Handoff
 
-- Status: `READY_FOR_WORKER — author effect-45 recoil-if-miss design`
+- Status: `READY_FOR_REVIEWER — assess effect-45 design source-certainty stop`
 - Task ID: `P4-F2-RECOIL-IF-MISS-DESIGN`
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
 - Current plan: [`../roadmaps/RECALIBRATED_DELIVERY_PLAN.md`](../roadmaps/RECALIBRATED_DELIVERY_PLAN.md)
 
 ## Current relay — 2026-10-11
+
+### Effect-45 design stop — exact review next
+
+The Worker authored the task/report pair preserved at `f31ae69`, then its
+session hit the service usage limit before final handoff verification.
+Orchestrator archival checks passed: whitespace and repository checker
+(280 Lua / 253 Markdown / 793 local targets). These are documentation checks,
+not independent acceptance of the design or source claims.
+
+The [report](../reports/phase4-recoil-if-miss-design.md) records a source-
+certainty stop: incoming critical/damage multiplier values, pre-existing
+no-effect flags, and downstream attacker HP handling after newly computed
+immunity need an independently assessed supplement. No values were guessed.
+Design acceptance, routes, requests, runtime and tests remain unauthorized.
+
+Exact next action: independent Reviewer assesses `f31ae69` against the
+existing task and accepted source lock, then returns PASS / NEEDS_FIX / BLOCK.
+If the stop is confirmed, compile one read-only source supplement at the
+existing public-source pin before reopening design. Preserve the Worker
+draft even if agent availability delays review; do not self-review.
+
+The standing goal/routing reconciliation independently passed at `5c76003`
+and its review was published at `6b285d7`. Earlier READY_FOR_WORKER text below
+describes that previous checkpoint; this review checkpoint supersedes it.
 
 ### Standing goal activation and routing repair
 

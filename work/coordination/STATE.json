@@ -3,13 +3,13 @@
   "updated_utc": "2026-10-11T17:03:19Z",
   "execution_paused": false,
   "role": "ORCHESTRATOR",
-  "status": "READY_FOR_WORKER",
+  "status": "READY_FOR_REVIEWER",
   "task_id": "P4-F2-RECOIL-IF-MISS-DESIGN",
   "current_phase": "Phase 0, Phase 4, and Phase 5 remain IN PROGRESS; Restore HP, bounded Magnitude, bounded P5 Viridian projection, and the effect-45 source lock are independently accepted",
   "canonical_status_owner": "work/roadmaps/CAPABILITY_CHECKLIST.md",
-  "active_task": "work/tasks/phase4-recoil-if-miss-design.md — read-only represented-singles design; source lock accepted at c218da6",
-  "objective": "Define only the effect-45 Jump Kick/Hi Jump Kick accuracy-miss contract for independent design review; do not implement or configure execution.",
-  "next_role": "WORKER",
+  "active_task": "work/tasks/phase4-recoil-if-miss-design.md — draft/stop report f31ae69 awaits independent assessment",
+  "objective": "Independently review f31ae69 against the design task, including its source-certainty stop and minimum separately scoped supplement.",
+  "next_role": "REVIEWER",
   "acceptance": "Published source-lock PASS, a bounded design report, diff check, and independent exact-report review. No behavior, test, route, runner/ROM, save/UI/AI, or Magnitude-scope change.",
   "boundaries": "P0 clean target remains evidence-blocked pending preparation decision. Effect 45 remains unsupported: preserve ordinary recoil/miss separation and all source-lock exclusions; no route, request, probe, runtime, or ROM action.",
   "dependencies": "Effect-45 source-lock PASS at c218da6; design dispatch a2d6779. Restore HP dc8ad06, bounded Magnitude 7b47c73 and bounded P5 projection d280751 independently accepted. No runtime/ROM/runner dependency for the active read-only design.",
@@ -69,11 +69,16 @@
   "project_goal": "work/coordination/PROJECT_GOAL.md — ACTIVE; explicitly adopted 2026-10-11; no user-specified token budget",
   "phase0_external_blocker": "P0-04-REVERIFY at 93c4654: missing prerequisites on the verified target and no desktop proof; separate supported-target preparation decision and fresh evidence required. Historical result is not current host readiness.",
   "checkpoint": {
-    "inspection_revision": "a2d6779d2e86cd322f595b0f9e0b286ca2c77457",
+    "inspection_revision": "f31ae695a6e72f73c1a2dbe747024a445d4ca950",
     "pending_jobs": "GitHub queued and in_progress queries both empty at activation recovery 2026-10-11; recheck before any execution dispatch.",
     "preserved_drafts": "Unreviewed Brick Break package isolated in named local stash quarantine-unreviewed-brick-break-rerank-2026-10-11; outside active dispatch.",
-    "next_action": "Assign one Worker to author effect-45 design report under P4-F2-RECOIL-IF-MISS-DESIGN, then a separate independent Reviewer.",
-    "remaining_acceptance": "Design report and exact independent review; no design outcome yet. No implementation authority.",
-    "coordination_note": "Historical nested records above are evidence receipts, not pending jobs or permission to repeat completed actions."
+    "next_action": "Independent Reviewer assesses exact task/report f31ae69; if BLOCK confirms source gap, compile one read-only entry-state/HP-gate source supplement, then review it before design resumes.",
+    "remaining_acceptance": "Exact independent design/stop review; design is not accepted. Source defaults and newly computed immunity HP gate unresolved.",
+    "coordination_note": "Historical nested records above are evidence receipts, not pending jobs or permission to repeat completed actions.",
+    "worker_session": "Worker wrote task/report then hit service usage limit. Parent preserved exact artifacts and ran whitespace/repository checks; independent review still required.",
+    "artifact_hashes": {
+      "task": "ccd5a3d38243507d2a04bded621a7a012ccbea4d569fb854f97b0dd07fcfabf9",
+      "report": "6e27a294c916cc91b639c51f5d53ca4598bd91fec81f299e10350325f19bda1b"
+    }
   }
 }
