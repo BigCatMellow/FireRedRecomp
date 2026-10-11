@@ -104,3 +104,24 @@ widen this task.
 - Eligible successor: one separately compiled, fail-closed effect-45 route or
   implementation-authority decision; no successor is authorized by this task
   itself.
+
+### Worker evidence and stop handoff — 2026-10-11
+
+The [design/stop report](../reports/phase4-recoil-if-miss-design.md) records
+the locked sequence, current engine/controller/party seams, and conditional
+later acceptance outline at published `a2d6779` / local `a6a055e` (identical
+inspected code). Source-lock task/report hashes match the accepted review at
+`c218da6`. No runtime, test, route, runner/ROM, or implementation action ran.
+
+Worker stopped under this task's existing source-certainty rule: the accepted
+lock does not establish incoming critical/damage multiplier reset values on
+the miss edge; the project has no corresponding incoming state. The report
+also identifies the unrepresented pre-existing no-effect guard and the
+unlocked downstream HP command's handling of newly computed immunity. No
+defaults, source flags, or generic abstraction were invented.
+
+Independent exact-report review is pending. This is not a completed design
+or an implementation/route handoff. The Reviewer should assess the exact
+stop and minimum source supplement; the Orchestrator owns any separately
+bounded follow-up. All acceptance criteria and exclusions above remain
+unchanged.
