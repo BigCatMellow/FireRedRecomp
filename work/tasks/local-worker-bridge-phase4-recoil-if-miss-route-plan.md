@@ -99,3 +99,32 @@ do not substitute guessed coverage or widen the package.
   register/state/handoff; canonical Phase 4 remains open.
 - Eligible successor: separately bounded route configuration only after PASS;
   no request, probe or implementation follows directly from this task.
+
+### Researcher evidence and review handoff — 2026-10-12
+
+The [route plan](../reports/phase4-recoil-if-miss-route-plan.md) is ready for
+independent exact-pair review at live/local base
+`044c672c7e5a8228b92e53477bcd7eebf23761e8`. Accepted design/source identities
+were checked against their reviews; current bridge and concrete engine,
+controller, party, inventory, ROM-fixture and headless replay conventions were
+read without executing behavior.
+
+The plan derives ten equal literal validation/staging targets and five
+focused commands. Its extra party-bridge test target obtains HP/PP from
+actual crash resolution and verifies explicit persistence, including zero HP;
+it does not claim normal lifecycle or save/reload coverage. Attacker faint/
+forced continuation and controller HP/message assertions fit existing engine
+and controller tests. A deterministic headless wrapper and fresh substrate
+probe are required only under later separate authority. No additional
+runtime owner or unresolved command/path is needed in this bounded plan.
+
+Baseline and final `git diff --check` passed. The untracked report's
+`git diff --no-index --check /dev/null` produced no whitespace diagnostics
+(exit 1 denotes the new-file difference). The repository checker, with the
+report explicitly added to its read-only input enumeration, passed:
+280 Lua, 272 Markdown, 874 local targets. Exact task/report hashes accompany
+Researcher delivery. Only the report and this
+evidence/handoff were edited. No acceptance, workflow, route, request/probe,
+code/test, coordination, ROM/private-runner, runtime/replay or capability
+action occurred; no staging/commit/push occurred. Independent review is
+pending, and the sole proposed successor after PASS is route configuration.
