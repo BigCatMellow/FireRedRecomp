@@ -1,15 +1,15 @@
 {
   "schema_version": 1,
-  "updated_utc": "2026-10-12T12:45:18Z",
+  "updated_utc": "2026-10-12T21:17:25Z",
   "execution_paused": false,
   "role": "ORCHESTRATOR",
-  "status": "READY_FOR_WORKER",
+  "status": "READY_FOR_REVIEWER",
   "task_id": "P4-F3-RECOIL-IF-MISS-ROUTE-PLAN",
   "current_phase": "Phase 0, Phase 4, and Phase 5 remain IN PROGRESS; Restore HP, bounded Magnitude, bounded P5 Viridian projection, and the effect-45 source lock are independently accepted",
   "canonical_status_owner": "work/roadmaps/CAPABILITY_CHECKLIST.md",
   "active_task": "work/tasks/local-worker-bridge-phase4-recoil-if-miss-route-plan.md",
-  "objective": "Specify minimal literal fail-closed route and evidence surface for accepted effect-45 design; documentation only.",
-  "next_role": "RESEARCHER",
+  "objective": "Independently assess exact route plan 04636d1 and its ten-path evidence surface; documentation only.",
+  "next_role": "REVIEWER",
   "acceptance": "Exact selector, equal target/staging lists, focused/full/replay commands, probe decision, complete design evidence mapping and independent exact plan review. No workflow/runtime/ROM/test change.",
   "boundaries": "P0 clean target remains evidence-blocked pending preparation decision. Effect 45 remains unsupported: preserve ordinary recoil/miss separation and all source-lock exclusions; no route, request, probe, runtime, or ROM action.",
   "dependencies": "Accepted source c218da6, supplement ba69269 and revised design b3280f9; work/reviews/2026-10-12-recoil-if-miss-design-review.md PASS. No private runner or ROM required.",
@@ -71,13 +71,17 @@
   "project_goal": "work/coordination/PROJECT_GOAL.md — ACTIVE; explicitly adopted 2026-10-11; no user-specified token budget",
   "phase0_external_blocker": "P0-04-REVERIFY at 93c4654: missing prerequisites on the verified target and no desktop proof; separate supported-target preparation decision and fresh evidence required. Historical result is not current host readiness.",
   "checkpoint": {
-    "inspection_revision": "32e3bfb4e33383b3f1cfda018e751f17aca46dfa",
+    "inspection_revision": "04636d10de3de18a7cb6009f92838b4156b95cb1",
     "pending_jobs": "GitHub queued and in_progress queries both empty 2026-10-12; public CI 38250392356 passed at 4dd22e1. Recheck before any execution dispatch.",
     "preserved_drafts": "Unreviewed Brick Break package isolated in named local stash quarantine-unreviewed-brick-break-rerank-2026-10-11; outside active dispatch.",
-    "next_action": "Researcher produces bounded effect-45 route plan and evidence mapping, then independent exact review.",
-    "remaining_acceptance": "Route plan and independent PASS, then separately gated configuration/probe/implementation authority; no behavior acceptance.",
+    "next_action": "Independent Reviewer assesses exact route pair 04636d1; PASS permits compiling only bounded configuration, otherwise route the specific correction.",
+    "remaining_acceptance": "Independent route-plan PASS, then separately gated configuration/probe/implementation authority; no behavior acceptance.",
     "coordination_note": "Historical nested records above are evidence receipts, not pending jobs or permission to repeat completed actions.",
-    "worker_session": "Design Worker and independent Reviewer finished; route-planning Researcher delegation next.",
+    "worker_session": "Source-worker session usage-limited before edits; design-worker session completed bounded plan at 04636d1. Independent Reviewer assigned. Docs checker280Lua/272Markdown/874targets and whitespace PASS.",
+    "route_plan_artifact_hashes": {
+      "task": "1145075eb849adec3916aa624c0e7acc468179da01d5b77155bec8c2be15cd12",
+      "report": "95ec46b381642cc89c8f14fde71744e0bc4f4e16f40979f7236b720d747ae13f"
+    },
     "design_artifact_hashes": {
       "task": "255bc925c8f8572558012da56f9cd47c0803608c8c7ed9f8753dd902369e3ed1",
       "report": "9e5c9b4cdea14565b3a3f4a04ab5fe4d2c2008caacb4ef6debb5a4afc96a6fb0"

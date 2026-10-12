@@ -1,11 +1,26 @@
 # FireRedRecomp Coordination Handoff
 
-- Status: `READY_FOR_WORKER — bounded effect-45 route planning`
+- Status: `READY_FOR_REVIEWER — exact effect-45 route plan 04636d1`
 - Task ID: `P4-F3-RECOIL-IF-MISS-ROUTE-PLAN`
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
 - Current plan: [`../roadmaps/RECALIBRATED_DELIVERY_PLAN.md`](../roadmaps/RECALIBRATED_DELIVERY_PLAN.md)
 
 ## Current relay — 2026-10-12
+
+### Route plan complete; independent review assigned
+
+Exact pair `04636d1` specifies ten equal target/staging paths, five focused
+commands and required headless replay/probe gates. Its additional party-bridge
+test proves crash-produced HP/PP persistence, not normal lifecycle/save-reload.
+Docs checker passed 280 Lua / 272 Markdown / 874 targets; whitespace passed.
+Public CI at prior dispatch `044c672` passed run `38251225519`.
+
+Exact next action: independent route-plan review, then on PASS compile only
+bounded route configuration. No behavior/configuration/probe/request action
+has run. Source-worker session hit usage limit before edits; design-worker
+session completed this plan under the same bounded contract. Accepted design
+and original source evidence remain intact. Gameplay implementation remains
+unstarted; documentation approvals do not establish support.
 
 ### Design accepted; route planning dispatched
 
