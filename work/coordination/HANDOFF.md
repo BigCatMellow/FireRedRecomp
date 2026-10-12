@@ -1,11 +1,31 @@
 # FireRedRecomp Coordination Handoff
 
-- Status: `READY_FOR_WORKER — source-lock effect-45 entry state and HP gates`
+- Status: `READY_FOR_REVIEWER — review effect-45 source supplement ba69269`
 - Task ID: `P4-F1-RECOIL-IF-MISS-ENTRY-STATE`
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
 - Current plan: [`../roadmaps/RECALIBRATED_DELIVERY_PLAN.md`](../roadmaps/RECALIBRATED_DELIVERY_PLAN.md)
 
-## Current relay — 2026-10-11
+## Current relay — 2026-10-12
+
+### Source supplement preserved; exact independent review next
+
+Live main was recovered at `73cf530`; its twelve disjoint mod-design
+documents were fast-forwarded and preserved. The Researcher task/report pair
+is committed unchanged at `ba69269` with matching final handoff hashes.
+Documentation checks passed: 280 Lua / 268 Markdown / 829 local targets;
+whitespace passed. These checks do not certify the source conclusions.
+
+The [source supplement](../reports/phase4-recoil-if-miss-entry-state-discovery.md)
+traces reset multipliers, result flags, ordinary miss-time immunity precheck,
+and downstream HP gates. It identifies specific corrections to prior guard
+wording; the earlier accepted artifacts remain preserved.
+
+Exact next action: independent Reviewer assesses `ba69269` against the source
+supplement task. Only a PASS permits explicit incorporation into the blocked
+effect-45 design and a new design review. No runtime/test/ROM/route action has
+been authorized. The goal service reported usageLimited at recovery; the user
+explicitly requested continuation and standing instructions remain in force.
+Older current-relay sections below are superseded by this checkpoint.
 
 ### Design BLOCK confirmed; source supplement dispatched
 
