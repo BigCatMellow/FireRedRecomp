@@ -1,11 +1,24 @@
 # FireRedRecomp Coordination Handoff
 
-- Status: `READY_FOR_WORKER — bounded effect-45 route configuration`
+- Status: `READY_FOR_REVIEWER — exact effect-45 configuration 1d40f3c`
 - Task ID: `P4-F3-RECOIL-IF-MISS-ROUTE-CONFIG`
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
 - Current plan: [`../roadmaps/RECALIBRATED_DELIVERY_PLAN.md`](../roadmaps/RECALIBRATED_DELIVERY_PLAN.md)
 
 ## Current relay — 2026-10-12
+
+### Configuration implemented; independent static review assigned
+
+Exact configuration `1d40f3c` adds the five reviewed route arms and ten-file
+preflight before any staging. Worker reports syntax checks on 12 shell blocks,
+safe-stub selector/target/command checks, ten missing-artifact failures, and
+docs/whitespace PASS (280 Lua / 275 Markdown / 892 targets). No real tests,
+replay, ROM/private runner, probe or request ran; gameplay remains unstarted.
+
+Exact next action: independent configuration review of `1d40f3c`. Only PASS
+permits compilation of the separately bounded one-file readiness probe. Exact
+four-artifact hashes are in STATE. Existing route/shared behavior is preserved
+by Worker claim and requires independent verification.
 
 ### Route plan accepted; configuration dispatched
 

@@ -1,15 +1,15 @@
 {
   "schema_version": 1,
-  "updated_utc": "2026-10-12T21:20:27Z",
+  "updated_utc": "2026-10-12T21:25:39Z",
   "execution_paused": false,
   "role": "ORCHESTRATOR",
-  "status": "READY_FOR_WORKER",
+  "status": "READY_FOR_REVIEWER",
   "task_id": "P4-F3-RECOIL-IF-MISS-ROUTE-CONFIG",
   "current_phase": "Phase 0, Phase 4, and Phase 5 remain IN PROGRESS; Restore HP, bounded Magnitude, bounded P5 Viridian projection, and the effect-45 source lock are independently accepted",
   "canonical_status_owner": "work/roadmaps/CAPABILITY_CHECKLIST.md",
   "active_task": "work/tasks/local-worker-bridge-phase4-recoil-if-miss-route-configuration.md",
-  "objective": "Encode only reviewed effect-45 route arms and procedure, including fail-closed missing-artifact enforcement; static verification only.",
-  "next_role": "WORKER",
+  "objective": "Independently review exact configuration1d40f3c, including route-local ten-artifact preflight and preserved shared/existing behavior.",
+  "next_role": "REVIEWER",
   "acceptance": "Exact ten-path/five-command/replay route, unchanged shared/existing behavior, safe-stub syntax/positive/negative/missing-artifact checks and independent exact configuration review.",
   "boundaries": "Only new workflow route arms, bridge procedure and own evidence. No probe/request/runner/ROM/runtime/test implementation or execution. Effect 45 remains unsupported; all accepted exclusions preserved.",
   "dependencies": "Accepted source c218da6, supplement ba69269, design b3280f9 and route plan04636d1; work/reviews/2026-10-12-recoil-if-miss-route-plan-review.md PASS. No private runner or ROM required.",
@@ -72,13 +72,19 @@
   "project_goal": "work/coordination/PROJECT_GOAL.md — ACTIVE; explicitly adopted 2026-10-11; no user-specified token budget",
   "phase0_external_blocker": "P0-04-REVERIFY at 93c4654: missing prerequisites on the verified target and no desktop proof; separate supported-target preparation decision and fresh evidence required. Historical result is not current host readiness.",
   "checkpoint": {
-    "inspection_revision": "fd263e8d4dc75df2239dca330173b21053b9d783",
+    "inspection_revision": "1d40f3cfe14ea776eb6e652650515ee23fb9a51f",
     "pending_jobs": "GitHub queued and in_progress queries both empty 2026-10-12; public CI 38250392356 passed at 4dd22e1. Recheck before any execution dispatch.",
     "preserved_drafts": "Unreviewed Brick Break package isolated in named local stash quarantine-unreviewed-brick-break-rerank-2026-10-11; outside active dispatch.",
-    "next_action": "Worker encodes only the reviewed configuration, records static verification, then independent exact review.",
-    "remaining_acceptance": "Configuration and independent PASS, then separately gated probe/implementation authority; no behavior acceptance.",
+    "next_action": "Independent Reviewer assesses configuration1d40f3c; PASS permits one separately bounded substrate-probe task, otherwise correct only the finding.",
+    "remaining_acceptance": "Independent configuration PASS, then separately gated probe/implementation authority; no behavior acceptance.",
     "coordination_note": "Historical nested records above are evidence receipts, not pending jobs or permission to repeat completed actions.",
-    "worker_session": "Route plan04636d1 independently accepted; bounded configuration Worker delegation next. Source-worker session previously usage-limited; no unresolved partial edits.",
+    "worker_session": "Configuration Worker finished1d40f3c: syntax12shellblocks, safe-stub route/target/command/missing-artifact tests and docs280Lua/275Markdown/892targets PASS. Independent Reviewer assigned.",
+    "configuration_artifact_hashes": {
+      "workflow": "010e973f815ee447a799c0d40dbdbe58edd8afa96cebf2370abdaa37875571ee",
+      "procedure": "9fe74842bcdbdc6a526cfe3797b58703210f8f30a0dbebb7878bb1efdaf086d7",
+      "task": "23193460afef525cab5a575af81b32d9f724c64f781db7be31eb48ee0a354ff6",
+      "report": "9c24b09d45c9b64c72347e1a4a6e8510d63fa596c5107642f48f491687cc366c"
+    },
     "route_plan_artifact_hashes": {
       "task": "1145075eb849adec3916aa624c0e7acc468179da01d5b77155bec8c2be15cd12",
       "report": "95ec46b381642cc89c8f14fde71744e0bc4f4e16f40979f7236b720d747ae13f"
