@@ -1,11 +1,24 @@
 # FireRedRecomp Coordination Handoff
 
-- Status: `READY_FOR_WORKER — revise effect-45 design using accepted supplement`
+- Status: `READY_FOR_REVIEWER — revised effect-45 design b3280f9`
 - Task ID: `P4-F2-RECOIL-IF-MISS-DESIGN`
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
 - Current plan: [`../roadmaps/RECALIBRATED_DELIVERY_PLAN.md`](../roadmaps/RECALIBRATED_DELIVERY_PLAN.md)
 
 ## Current relay — 2026-10-12
+
+### Revised design preserved; independent review assigned
+
+Worker completed revised design task/report at `b3280f9`, based on accepted
+source supplement `ba69269`. Exact hashes are in STATE; documentation checks
+passed (280 Lua / 269 Markdown / 847 local targets), as did whitespace.
+No runtime/test/ROM/route action ran. Public CI at prior dispatch `4dd22e1`
+passed run `38250392356`; no queued/in-progress jobs were observed.
+
+Exact next action: separate Reviewer assesses `b3280f9` against the reactivated
+criteria. On PASS, compile only a separate bounded route-planning task; on
+NEEDS_FIX/BLOCK, route the specific correction or prerequisite. Design and
+behavior remain unaccepted until their respective independent gates pass.
 
 ### Source supplement accepted; bounded design reactivated
 

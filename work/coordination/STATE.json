@@ -1,15 +1,15 @@
 {
   "schema_version": 1,
-  "updated_utc": "2026-10-12T12:37:36Z",
+  "updated_utc": "2026-10-12T12:43:13Z",
   "execution_paused": false,
   "role": "ORCHESTRATOR",
-  "status": "READY_FOR_WORKER",
+  "status": "READY_FOR_REVIEWER",
   "task_id": "P4-F2-RECOIL-IF-MISS-DESIGN",
   "current_phase": "Phase 0, Phase 4, and Phase 5 remain IN PROGRESS; Restore HP, bounded Magnitude, bounded P5 Viridian projection, and the effect-45 source lock are independently accepted",
   "canonical_status_owner": "work/roadmaps/CAPABILITY_CHECKLIST.md",
   "active_task": "work/tasks/phase4-recoil-if-miss-design.md",
-  "objective": "Revise bounded effect-45 design using accepted source supplement: explicit neutral entry values, immune no-effect early exit and nonimmune crash branch, event ownership and deterministic acceptance outline.",
-  "next_role": "WORKER",
+  "objective": "Independently review revised design b3280f9 against reactivated criteria and accepted source chain.",
+  "next_role": "REVIEWER",
   "acceptance": "Reactivated design task criteria, accepted source-chain consistency, whitespace/docs checks and new independent exact-report review. No runtime/ROM/route/test change.",
   "boundaries": "P0 clean target remains evidence-blocked pending preparation decision. Effect 45 remains unsupported: preserve ordinary recoil/miss separation and all source-lock exclusions; no route, request, probe, runtime, or ROM action.",
   "dependencies": "Accepted source lock c218da6 plus supplement ba69269; work/reviews/2026-10-12-recoil-if-miss-entry-state-review.md PASS resolves historical design BLOCK at f31ae69. No private runner or ROM required.",
@@ -70,13 +70,17 @@
   "project_goal": "work/coordination/PROJECT_GOAL.md — ACTIVE; explicitly adopted 2026-10-11; no user-specified token budget",
   "phase0_external_blocker": "P0-04-REVERIFY at 93c4654: missing prerequisites on the verified target and no desktop proof; separate supported-target preparation decision and fresh evidence required. Historical result is not current host readiness.",
   "checkpoint": {
-    "inspection_revision": "7586ac31d60e151bfb7c0247e2b2572e0d086a8f",
-    "pending_jobs": "GitHub queued and in_progress queries both empty at activation recovery 2026-10-11; recheck before any execution dispatch.",
+    "inspection_revision": "b3280f9f7a8e3e9b414d2c1d9f1f9c9b19806c13",
+    "pending_jobs": "GitHub queued and in_progress queries both empty 2026-10-12; public CI 38250392356 passed at 4dd22e1. Recheck before any execution dispatch.",
     "preserved_drafts": "Unreviewed Brick Break package isolated in named local stash quarantine-unreviewed-brick-break-rerank-2026-10-11; outside active dispatch.",
-    "next_action": "Worker revises design report under reactivated source authority, followed by exact independent design review.",
-    "remaining_acceptance": "Complete resumed design and independent design review; no design or behavior PASS yet.",
+    "next_action": "Independent Reviewer assesses exact design pair b3280f9; reconcile verdict then compile only the permitted bounded successor.",
+    "remaining_acceptance": "Independent exact revised design review; no design or behavior PASS yet.",
     "coordination_note": "Historical nested records above are evidence receipts, not pending jobs or permission to repeat completed actions.",
-    "worker_session": "Source pair preserved unchanged at ba69269 and independently accepted; bounded design Worker delegation is next.",
+    "worker_session": "Design Worker finished: exact pair b3280f9; docs checker 280 Lua / 269 Markdown / 847 local targets and whitespace PASS; independent Reviewer assigned.",
+    "design_artifact_hashes": {
+      "task": "255bc925c8f8572558012da56f9cd47c0803608c8c7ed9f8753dd902369e3ed1",
+      "report": "9e5c9b4cdea14565b3a3f4a04ab5fe4d2c2008caacb4ef6debb5a4afc96a6fb0"
+    },
     "accepted_source_artifact_hashes": {
       "task": "99a045f0c8a4079dbf822b9e2a778519c77fa42c462c984333a6abb3aa92d587",
       "report": "92b990bf18b91729a468eab599fdced128238a6712c76a5f29ea730db56e4484"
