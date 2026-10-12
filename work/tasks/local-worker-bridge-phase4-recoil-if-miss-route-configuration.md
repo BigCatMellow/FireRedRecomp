@@ -83,3 +83,31 @@ Worker records exact changes, hashes and static evidence. Reviewer verifies
 the exact configuration independently. Orchestrator reconciles only substrate
 configuration and compiles one separately bounded readiness-probe task after
 PASS. This task never authorizes a probe, request or effect-45 gameplay patch.
+
+### Worker configuration evidence — 2026-10-12
+
+The [configuration report](../reports/local-worker-bridge-phase4-recoil-if-miss-route-configuration.md)
+records the exact five new route arms and static verification at live/local
+base `a5a268edef077f5daef285462a33dea14104f81a`. The baseline workflow hash
+matched the independently accepted plan. Validation/staging contain exactly
+the ten reviewed paths; the new route checks all ten files before any
+staging, then individually stages each. Focused commands and replay match
+the reviewed plan; neighboring/shared behavior is unchanged.
+
+YAML parse and `bash -n` for all 12 shell blocks passed. Safe-stub checks
+passed four positive/five negative selectors, ten allowed/seven forbidden
+targets, four unknown-route arm failures, ordered five focused calls, exact
+replay and staging equality, and ten individual missing-file failures before
+any Git call. Removing the five new arms reproduced original shell blocks
+exactly; untouched steps and metadata compared equal. Seven patch-only
+predicates and the probe predicate remain unchanged. Stubs never invoked
+real tests, replay, ROM, runner or Git publication.
+
+Final `git diff --check` passed; the new report's no-index whitespace check
+produced no diagnostics (exit 1 is the new-file difference). The repository
+checker explicitly included that untracked report and passed: 280 Lua,
+275 Markdown, 892 local targets. Exact four-artifact hashes accompany Worker
+delivery. Only the four MAY CHANGE outputs were edited; criteria were not
+altered. No real probe/request/runtime/gameplay action or staging/commit/push
+occurred. This is ready for independent configuration review, not a PASS or
+authority to execute the future route.

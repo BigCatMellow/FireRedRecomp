@@ -131,6 +131,9 @@ jobs:
             phase4-magnitude-effect*.patch|phase4-magnitude-effect*.probe)
               route='phase4-magnitude-effect'
               ;;
+            phase4-recoil-if-miss-effect*.patch|phase4-recoil-if-miss-effect*.probe)
+              route='phase4-recoil-if-miss-effect'
+              ;;
             phase5-viridian-old-man-projection*.patch|phase5-viridian-old-man-projection*.probe)
               route='phase5-viridian-old-man-projection'
               ;;
@@ -258,6 +261,8 @@ jobs:
               phase4-restore-hp-effect:src/core/BattleEngine.lua|phase4-restore-hp-effect:src/core/BattleSceneController.lua|phase4-restore-hp-effect:tests/battle_engine_test.lua|phase4-restore-hp-effect:tests/battle_scene_controller_test.lua|phase4-restore-hp-effect:tests/phase4_move_effect_inventory_test.lua|phase4-restore-hp-effect:tests/phase4_restore_hp_effect_rom_test.lua|phase4-restore-hp-effect:scripts/runtime_phase4_restore_hp_replay.sh|phase4-restore-hp-effect:work/tasks/phase4-restore-hp-implementation.md|phase4-restore-hp-effect:work/reports/phase4-restore-hp-implementation.md)
                 ;;
               phase4-magnitude-effect:src/core/BattleEngine.lua|phase4-magnitude-effect:src/core/BattleSceneController.lua|phase4-magnitude-effect:tests/battle_engine_test.lua|phase4-magnitude-effect:tests/battle_scene_controller_test.lua|phase4-magnitude-effect:tests/phase4_move_effect_inventory_test.lua|phase4-magnitude-effect:tests/phase4_magnitude_effect_rom_test.lua|phase4-magnitude-effect:scripts/runtime_phase4_magnitude_replay.sh|phase4-magnitude-effect:work/tasks/phase4-magnitude-implementation.md|phase4-magnitude-effect:work/reports/phase4-magnitude-implementation.md)
+                ;;
+              phase4-recoil-if-miss-effect:src/core/BattleEngine.lua|phase4-recoil-if-miss-effect:src/core/BattleSceneController.lua|phase4-recoil-if-miss-effect:tests/battle_engine_test.lua|phase4-recoil-if-miss-effect:tests/battle_scene_controller_test.lua|phase4-recoil-if-miss-effect:tests/battle_party_bridge_test.lua|phase4-recoil-if-miss-effect:tests/phase4_move_effect_inventory_test.lua|phase4-recoil-if-miss-effect:tests/phase4_recoil_if_miss_effect_rom_test.lua|phase4-recoil-if-miss-effect:scripts/runtime_phase4_recoil_if_miss_replay.sh|phase4-recoil-if-miss-effect:work/tasks/phase4-recoil-if-miss-implementation.md|phase4-recoil-if-miss-effect:work/reports/phase4-recoil-if-miss-implementation.md)
                 ;;
               phase5-viridian-old-man-projection:src/core/ViridianOldManProjection.lua|phase5-viridian-old-man-projection:main.lua|phase5-viridian-old-man-projection:tests/phase5_viridian_old_man_projection_test.lua|phase5-viridian-old-man-projection:work/tasks/phase5-viridian-old-man-projection-implementation.md|phase5-viridian-old-man-projection:work/reports/phase5-viridian-old-man-projection-implementation.md)
                 ;;
@@ -395,6 +400,13 @@ jobs:
               "$LUA" tests/phase4_move_effect_inventory_test.lua
               "$LUA" tests/phase4_magnitude_effect_rom_test.lua
               ;;
+            phase4-recoil-if-miss-effect)
+              "$LUA" tests/battle_engine_test.lua
+              "$LUA" tests/battle_scene_controller_test.lua
+              "$LUA" tests/battle_party_bridge_test.lua
+              "$LUA" tests/phase4_move_effect_inventory_test.lua
+              "$LUA" tests/phase4_recoil_if_miss_effect_rom_test.lua
+              ;;
             phase5-viridian-old-man-projection)
               "$LUA" tests/phase5_viridian_old_man_projection_test.lua
               ;;
@@ -510,6 +522,9 @@ jobs:
               ;;
             phase4-magnitude-effect)
               bash scripts/runtime_phase4_magnitude_replay.sh
+              ;;
+            phase4-recoil-if-miss-effect)
+              bash scripts/runtime_phase4_recoil_if_miss_replay.sh
               ;;
             phase5-viridian-old-man-projection)
               echo "No runtime replay is applicable: this route projects pre-spawn data and excludes traversal, tutorial, rendering, and generic scripts."
@@ -697,6 +712,29 @@ jobs:
                 if [[ -e "$path" ]]; then
                   git add -- "$path"
                 fi
+              done
+              ;;
+            phase4-recoil-if-miss-effect)
+              required_paths=(
+                src/core/BattleEngine.lua
+                src/core/BattleSceneController.lua
+                tests/battle_engine_test.lua
+                tests/battle_scene_controller_test.lua
+                tests/battle_party_bridge_test.lua
+                tests/phase4_move_effect_inventory_test.lua
+                tests/phase4_recoil_if_miss_effect_rom_test.lua
+                scripts/runtime_phase4_recoil_if_miss_replay.sh
+                work/tasks/phase4-recoil-if-miss-implementation.md
+                work/reports/phase4-recoil-if-miss-implementation.md
+              )
+              for path in "${required_paths[@]}"; do
+                if ! test -f "$path"; then
+                  echo "Required effect-45 artifact is missing: $path" >&2
+                  exit 1
+                fi
+              done
+              for path in "${required_paths[@]}"; do
+                git add -- "$path"
               done
               ;;
             phase5-viridian-old-man-projection)

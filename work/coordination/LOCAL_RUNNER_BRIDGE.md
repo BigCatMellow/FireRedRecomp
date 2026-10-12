@@ -79,6 +79,60 @@ Current supported request/probe prefixes are:
   script behavior are excluded;
 - `runner-online...probe` — non-patch runner-readiness probe only.
 
+### Effect-45 route — configuration only until independent review
+
+`phase4-recoil-if-miss-effect*.patch` and
+`phase4-recoil-if-miss-effect*.probe` select only
+`phase4-recoil-if-miss-effect`. The reviewed
+[route plan](../reports/phase4-recoil-if-miss-route-plan.md) limits future
+patch validation and staging to exactly these ten files:
+
+1. `src/core/BattleEngine.lua`
+2. `src/core/BattleSceneController.lua`
+3. `tests/battle_engine_test.lua`
+4. `tests/battle_scene_controller_test.lua`
+5. `tests/battle_party_bridge_test.lua`
+6. `tests/phase4_move_effect_inventory_test.lua`
+7. `tests/phase4_recoil_if_miss_effect_rom_test.lua`
+8. `scripts/runtime_phase4_recoil_if_miss_replay.sh`
+9. `work/tasks/phase4-recoil-if-miss-implementation.md`
+10. `work/reports/phase4-recoil-if-miss-implementation.md`
+
+The publish arm first requires all ten to exist as files, before any staging;
+one missing artifact fails this route. It then stages each literal file
+individually. The five focused commands, using the selected `$LUA`, are:
+
+```bash
+"$LUA" tests/battle_engine_test.lua
+"$LUA" tests/battle_scene_controller_test.lua
+"$LUA" tests/battle_party_bridge_test.lua
+"$LUA" tests/phase4_move_effect_inventory_test.lua
+"$LUA" tests/phase4_recoil_if_miss_effect_rom_test.lua
+```
+
+Shared no-ROM and SHA-verified-ROM suites remain mandatory and unchanged.
+The verified suite must execute inventory and the new two-record fixture
+non-skipped. The replay arm requires
+`bash scripts/runtime_phase4_recoil_if_miss_replay.sh`; its future evidence
+is deterministic headless crash/faint/controller/persistence assertions,
+not retail playback or normal lifecycle/save-reload proof. The party test
+proves explicit model-to-party HP/PP persistence, including fatal HP zero.
+
+This configuration supplies no gameplay or execution authority. Independent
+configuration PASS precedes a separate task for one fresh substrate-only
+`work/local-runner/probes/phase4-recoil-if-miss-effect-route-YYYYMMDD.probe`.
+Probe mode skips validation/application, focused tests, both suites, replay,
+staging and publication. Probe-outcome review and separately reviewed
+implementation authority remain required before a single later request;
+no request, probe or retry is authorized by this documentation.
+
+The literal family is effect 45 / Jump Kick 26 / Hi Jump Kick 136. Successful
+hits and ordinary recoil remain separate; ordinary immune accuracy failure
+exits with no effect, while nonimmune failure follows the accepted crash
+design. All accepted exclusions and privacy rules remain. No main, formula,
+party-bridge runtime, save, admission, generic miss, or other-family change is
+admitted, and existing routes/shared guards remain unchanged.
+
 Adding a new route requires a bounded task that authorizes bridge maintenance. Do not add a generic fallback route.
 
 ## Security boundary
