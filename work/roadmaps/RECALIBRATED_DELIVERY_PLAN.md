@@ -29,11 +29,11 @@ rule or traversal work without an evidenced dependency.
 2. The accepted rerank `ca11770` selected effect 45; source lock `c218da6`
    independently passed. [Source supplement `ba69269` independently passed](../reviews/2026-10-12-recoil-if-miss-entry-state-review.md),
    resolving design `f31ae69`'s source stop and correcting ordinary immunity
-   precheck/presentation. Execute the [reactivated bounded design](../tasks/phase4-recoil-if-miss-design.md)
-   and obtain its own independent review. Neither source PASS nor design
-   dispatch grants behavior or route action.
-3. After a design PASS, compile the separately bounded route/implementation
-   prerequisites and required reviews. Follow the exact next allowance in
+   precheck/presentation. [Revised design `b3280f9` independently passed](../reviews/2026-10-12-recoil-if-miss-design-review.md).
+   Neither source nor design PASS grants behavior or execution authority.
+3. Execute [bounded route planning](../tasks/local-worker-bridge-phase4-recoil-if-miss-route-plan.md),
+   then the separately gated configuration/probe/implementation prerequisites
+   and required reviews. Follow the exact next allowance in
    current coordination; never revive a completed request.
 4. At the next leaf closure, reassess the next playable checkpoint and rank
    remaining work by story need, represented prerequisites and bounded

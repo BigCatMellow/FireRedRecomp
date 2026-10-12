@@ -1,11 +1,25 @@
 # FireRedRecomp Coordination Handoff
 
-- Status: `READY_FOR_REVIEWER — revised effect-45 design b3280f9`
-- Task ID: `P4-F2-RECOIL-IF-MISS-DESIGN`
+- Status: `READY_FOR_WORKER — bounded effect-45 route planning`
+- Task ID: `P4-F3-RECOIL-IF-MISS-ROUTE-PLAN`
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
 - Current plan: [`../roadmaps/RECALIBRATED_DELIVERY_PLAN.md`](../roadmaps/RECALIBRATED_DELIVERY_PLAN.md)
 
 ## Current relay — 2026-10-12
+
+### Design accepted; route planning dispatched
+
+Independent [design PASS](../reviews/2026-10-12-recoil-if-miss-design-review.md)
+accepts exact pair `b3280f9`, including corrected immunity, crash/RNG,
+controller ordering, firstBattle, faint and persistence boundaries. The
+historical source stop is resolved; no gameplay support is claimed.
+
+Exact next action: execute [bounded route planning](../tasks/local-worker-bridge-phase4-recoil-if-miss-route-plan.md)
+and independently review the exact plan. Derive literal paths/commands from
+the design's evidence requirements, particularly fatal-crash continuation and
+HP/PP persistence; do not merely copy the prior route's path count. No
+configuration/probe/request/runtime/test/ROM action is authorized yet. Existing
+drafts, source artifacts and unrelated documents remain preserved.
 
 ### Revised design preserved; independent review assigned
 

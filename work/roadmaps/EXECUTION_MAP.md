@@ -33,18 +33,19 @@ Default to one critical-path Worker package at a time.
 
 ## Current critical path — reconciled 2026-10-12
 
-The active task is the [reactivated effect-45 design](../tasks/phase4-recoil-if-miss-design.md).
+The active task is [effect-45 route planning](../tasks/local-worker-bridge-phase4-recoil-if-miss-route-plan.md).
 The [source supplement PASS at `ba69269`](../reviews/2026-10-12-recoil-if-miss-entry-state-review.md)
 resolves the historical design BLOCK, including explicit neutral entry values
 and corrected ordinary immunity precheck/presentation. Original source lock
-`c218da6` remains accepted within its scope. Revised design requires its own
-independent PASS before separate route/implementation authority. Restore HP `dc8ad06`, bounded Magnitude `7b47c73`, full
+`c218da6` remains accepted within its scope. [Revised design `b3280f9` passed](../reviews/2026-10-12-recoil-if-miss-design-review.md);
+compile only the minimal fail-closed route/evidence plan, then independent
+review before separate configuration/probe/implementation authority. Restore HP `dc8ad06`, bounded Magnitude `7b47c73`, full
 inventory `c10bfa7`, and the bounded P5 projection `d280751` are independently
 accepted. Their old probes/requests must not be redispatched.
 
 P0 reverification `93c4654` remains blocked pending supported-target
 preparation and fresh proof. Phase 2 awaits trusted external retail-reference
-evidence. These blockers do not prevent the current design. See the
+evidence. These blockers do not prevent current route planning. See the
 [delivery plan](RECALIBRATED_DELIVERY_PLAN.md), current
 [task register](../coordination/TASK_REGISTER.md), and user-adopted
 [standing goal](../coordination/PROJECT_GOAL.md).
