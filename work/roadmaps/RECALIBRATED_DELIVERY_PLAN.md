@@ -31,8 +31,9 @@ rule or traversal work without an evidenced dependency.
    resolving design `f31ae69`'s source stop and correcting ordinary immunity
    precheck/presentation. [Revised design `b3280f9` independently passed](../reviews/2026-10-12-recoil-if-miss-design-review.md).
    Neither source nor design PASS grants behavior or execution authority.
-3. Execute [bounded route planning](../tasks/local-worker-bridge-phase4-recoil-if-miss-route-plan.md),
-   then the separately gated configuration/probe/implementation prerequisites
+3. [Route plan `04636d1` independently passed](../reviews/2026-10-12-recoil-if-miss-route-plan-review.md).
+   Execute [bounded configuration](../tasks/local-worker-bridge-phase4-recoil-if-miss-route-configuration.md),
+   then the separately gated probe/implementation prerequisites
    and required reviews. Follow the exact next allowance in
    current coordination; never revive a completed request.
 4. At the next leaf closure, reassess the next playable checkpoint and rank

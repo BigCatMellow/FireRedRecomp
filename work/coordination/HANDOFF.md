@@ -1,11 +1,24 @@
 # FireRedRecomp Coordination Handoff
 
-- Status: `READY_FOR_REVIEWER — exact effect-45 route plan 04636d1`
-- Task ID: `P4-F3-RECOIL-IF-MISS-ROUTE-PLAN`
+- Status: `READY_FOR_WORKER — bounded effect-45 route configuration`
+- Task ID: `P4-F3-RECOIL-IF-MISS-ROUTE-CONFIG`
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
 - Current plan: [`../roadmaps/RECALIBRATED_DELIVERY_PLAN.md`](../roadmaps/RECALIBRATED_DELIVERY_PLAN.md)
 
 ## Current relay — 2026-10-12
+
+### Route plan accepted; configuration dispatched
+
+Independent [PASS](../reviews/2026-10-12-recoil-if-miss-route-plan-review.md)
+accepts route plan `04636d1`. Exact next action: Worker implements only
+[bounded configuration](../tasks/local-worker-bridge-phase4-recoil-if-miss-route-configuration.md)
+and records safe-stub/static evidence; then separate exact configuration
+review. Ten target/staging paths and five focused commands remain literal.
+Missing required artifacts must fail this new route, not silently skip.
+
+No gameplay implementation, probe/request, ROM/private-runner or test-suite
+execution is authorized. Configuration PASS permits only the separately
+bounded substrate probe; all later authority/outcome gates remain intact.
 
 ### Route plan complete; independent review assigned
 

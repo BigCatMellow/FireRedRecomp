@@ -1,18 +1,18 @@
 {
   "schema_version": 1,
-  "updated_utc": "2026-10-12T21:17:25Z",
+  "updated_utc": "2026-10-12T21:20:27Z",
   "execution_paused": false,
   "role": "ORCHESTRATOR",
-  "status": "READY_FOR_REVIEWER",
-  "task_id": "P4-F3-RECOIL-IF-MISS-ROUTE-PLAN",
+  "status": "READY_FOR_WORKER",
+  "task_id": "P4-F3-RECOIL-IF-MISS-ROUTE-CONFIG",
   "current_phase": "Phase 0, Phase 4, and Phase 5 remain IN PROGRESS; Restore HP, bounded Magnitude, bounded P5 Viridian projection, and the effect-45 source lock are independently accepted",
   "canonical_status_owner": "work/roadmaps/CAPABILITY_CHECKLIST.md",
-  "active_task": "work/tasks/local-worker-bridge-phase4-recoil-if-miss-route-plan.md",
-  "objective": "Independently assess exact route plan 04636d1 and its ten-path evidence surface; documentation only.",
-  "next_role": "REVIEWER",
-  "acceptance": "Exact selector, equal target/staging lists, focused/full/replay commands, probe decision, complete design evidence mapping and independent exact plan review. No workflow/runtime/ROM/test change.",
-  "boundaries": "P0 clean target remains evidence-blocked pending preparation decision. Effect 45 remains unsupported: preserve ordinary recoil/miss separation and all source-lock exclusions; no route, request, probe, runtime, or ROM action.",
-  "dependencies": "Accepted source c218da6, supplement ba69269 and revised design b3280f9; work/reviews/2026-10-12-recoil-if-miss-design-review.md PASS. No private runner or ROM required.",
+  "active_task": "work/tasks/local-worker-bridge-phase4-recoil-if-miss-route-configuration.md",
+  "objective": "Encode only reviewed effect-45 route arms and procedure, including fail-closed missing-artifact enforcement; static verification only.",
+  "next_role": "WORKER",
+  "acceptance": "Exact ten-path/five-command/replay route, unchanged shared/existing behavior, safe-stub syntax/positive/negative/missing-artifact checks and independent exact configuration review.",
+  "boundaries": "Only new workflow route arms, bridge procedure and own evidence. No probe/request/runner/ROM/runtime/test implementation or execution. Effect 45 remains unsupported; all accepted exclusions preserved.",
+  "dependencies": "Accepted source c218da6, supplement ba69269, design b3280f9 and route plan04636d1; work/reviews/2026-10-12-recoil-if-miss-route-plan-review.md PASS. No private runner or ROM required.",
   "runner_blocker": {
     "task_id": "P4-F3-ROUTE",
     "status": "CLOSED — REVIEWED PASS",
@@ -29,7 +29,7 @@
     "prepared_branch": "work/move-effect-inventory (published to origin)",
     "preflight_review": "PASS — work/reviews/2026-09-20-move-effect-inventory-preflight-review.md",
     "worktree": "/home/home/FireRedRecomp-inventory",
-    "boundary": "Historical inventory preparation closed by final PASS at c10bfa7; source-lock successors are separately accepted, and effect-45 design is now active.",
+    "boundary": "Historical inventory preparation closed by final PASS at c10bfa7; current effect-45 continuation is owned by the top-level active task.",
     "publication_gate": "Closed; no unsubmitted inventory request. See final independent review work/reviews/2026-09-27-move-effect-inventory-review.md."
   },
   "parallel_checks": {
@@ -62,22 +62,23 @@
     "phase4_magnitude_status": "CLOSED — REVIEWED PASS at 7b47c73; work/reviews/2026-10-10-magnitude-implementation-outcome-review.md",
     "phase4_recoil_if_miss_source_status": "CLOSED — REVIEWED PASS at c218da6; work/reviews/2026-10-10-recoil-if-miss-source-discovery-review.md",
     "phase4_recoil_if_miss_entry_state_status": "CLOSED — REVIEWED PASS at ba69269; work/reviews/2026-10-12-recoil-if-miss-entry-state-review.md",
-    "phase4_recoil_if_miss_design_status": "CLOSED — REVIEWED PASS at b3280f9; work/reviews/2026-10-12-recoil-if-miss-design-review.md"
+    "phase4_recoil_if_miss_design_status": "CLOSED — REVIEWED PASS at b3280f9; work/reviews/2026-10-12-recoil-if-miss-design-review.md",
+    "phase4_recoil_if_miss_route_plan_status": "CLOSED — REVIEWED PASS at04636d1; work/reviews/2026-10-12-recoil-if-miss-route-plan-review.md"
   },
   "phase2_external_blocker": "Trusted, user-owned retail-reference captures with provenance/timing/crop/filter details for Oak and Pallet anchors have not been supplied.",
-  "next_after_success": "Commit exact route plan and obtain independent review. Only plan PASS permits compiling bounded route configuration; no execution authority yet.",
+  "next_after_success": "Commit exact configuration and obtain independent review. Only configuration PASS permits compiling one bounded substrate-only probe task; no request authority yet.",
   "legal_content_boundary": "Never commit ROMs, BIOS dumps, generated caches, ROM-derived reference screenshots, extracted game assets, or other prohibited content.",
   "phase_completion_rule": "Phase 2 remains IN PROGRESS until the Oak/reference screenshot discrepancy gate is evidenced and independently reviewed.",
   "project_goal": "work/coordination/PROJECT_GOAL.md — ACTIVE; explicitly adopted 2026-10-11; no user-specified token budget",
   "phase0_external_blocker": "P0-04-REVERIFY at 93c4654: missing prerequisites on the verified target and no desktop proof; separate supported-target preparation decision and fresh evidence required. Historical result is not current host readiness.",
   "checkpoint": {
-    "inspection_revision": "04636d10de3de18a7cb6009f92838b4156b95cb1",
+    "inspection_revision": "fd263e8d4dc75df2239dca330173b21053b9d783",
     "pending_jobs": "GitHub queued and in_progress queries both empty 2026-10-12; public CI 38250392356 passed at 4dd22e1. Recheck before any execution dispatch.",
     "preserved_drafts": "Unreviewed Brick Break package isolated in named local stash quarantine-unreviewed-brick-break-rerank-2026-10-11; outside active dispatch.",
-    "next_action": "Independent Reviewer assesses exact route pair 04636d1; PASS permits compiling only bounded configuration, otherwise route the specific correction.",
-    "remaining_acceptance": "Independent route-plan PASS, then separately gated configuration/probe/implementation authority; no behavior acceptance.",
+    "next_action": "Worker encodes only the reviewed configuration, records static verification, then independent exact review.",
+    "remaining_acceptance": "Configuration and independent PASS, then separately gated probe/implementation authority; no behavior acceptance.",
     "coordination_note": "Historical nested records above are evidence receipts, not pending jobs or permission to repeat completed actions.",
-    "worker_session": "Source-worker session usage-limited before edits; design-worker session completed bounded plan at 04636d1. Independent Reviewer assigned. Docs checker280Lua/272Markdown/874targets and whitespace PASS.",
+    "worker_session": "Route plan04636d1 independently accepted; bounded configuration Worker delegation next. Source-worker session previously usage-limited; no unresolved partial edits.",
     "route_plan_artifact_hashes": {
       "task": "1145075eb849adec3916aa624c0e7acc468179da01d5b77155bec8c2be15cd12",
       "report": "95ec46b381642cc89c8f14fde71744e0bc4f4e16f40979f7236b720d747ae13f"
@@ -90,7 +91,7 @@
       "task": "99a045f0c8a4079dbf822b9e2a778519c77fa42c462c984333a6abb3aa92d587",
       "report": "92b990bf18b91729a468eab599fdced128238a6712c76a5f29ea730db56e4484"
     },
-    "last_review": "PASS revised design b3280f9; work/reviews/2026-10-12-recoil-if-miss-design-review.md. Historical design BLOCK superseded by accepted source supplement and revised design.",
+    "last_review": "PASS route plan04636d1; work/reviews/2026-10-12-recoil-if-miss-route-plan-review.md. Missing-artifact failure explicitly carried into configuration task.",
     "goal_service_state": "usageLimited observed 2026-10-12; user explicitly requested continuation. Standing instructions persist; user/system owns lifecycle resumption.",
     "remote_recovery": "Live main 73cf530 recovered; twelve disjoint mod-design documents fast-forwarded without modifying them; source task/report preserved."
   }
