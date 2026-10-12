@@ -1,24 +1,41 @@
-# Effect-45 represented-singles design and entry-state stop
+# Effect-45 represented-singles design
 
 - Task: [P4-F2-RECOIL-IF-MISS-DESIGN](../tasks/phase4-recoil-if-miss-design.md).
-- Worker outcome: `STOPPED — ENTRY-STATE SOURCE FACTS REQUIRED`.
+- Worker outcome: `DESIGN READY FOR INDEPENDENT REVIEW`.
 - Review status: `PENDING INDEPENDENT EXACT-REPORT REVIEW`.
-- Published inspection revision: `a2d6779d2e86cd322f595b0f9e0b286ca2c77457`.
-- Local inspection revision: `a6a055e0a0993da068382f094ba4e9c2f2c052b7`;
-  its goal/routing reconciliation does not change the four inspected code files.
+- Published/local inspection revision:
+  `4dd22e1d80ea40e485ee134e59499183e31847f3`.
 - Source authority: the [accepted source lock](phase4-recoil-if-miss-source-discovery.md)
   and [independent PASS](../reviews/2026-10-10-recoil-if-miss-source-discovery-review.md)
   published at `c218da6`, pinning public `pret/pokefirered`
   `c75f352304d529f6ba92d4f74b9cf8b5c3810788`.
+- Controlling supplement: [entry-state source report](phase4-recoil-if-miss-entry-state-discovery.md)
+  at `ba692697221e50aa054d0f981684771bf51ccaed` and its
+  [independent PASS](../reviews/2026-10-12-recoil-if-miss-entry-state-review.md).
 
-The source lock establishes the script sequence and crash transform, but it
-does not establish the incoming source critical/damage multiplier defaults
-needed to select a concrete represented damage calculation on the miss
-branch. Current project code has no such incoming state. The task requires
-stopping when design needs facts beyond that lock or unrepresented state.
-This report therefore preserves the settled design constraints and identifies
-the exact remaining decision; it is not a completed executable design,
-implementation authority, or claim of current effect-45 support.
+The accepted supplement resolves the historical source stop. This bounded
+design distinguishes two ordinary accuracy-failure outcomes: an immune
+target produces a no-effect result and immediate completion; a nonimmune
+target produces miss, crash, and attacker HP/faint handling. The source
+resets critical/damage multipliers to 1/1 before the ordinary action. Those
+facts permit the represented leaf below without inventing an incoming flag
+system. This is design only, pending its own independent review; it does not
+authorize implementation or claim current effect-45 support.
+
+## Historical stop, preserved separately
+
+The previous report at `f31ae69` stopped for missing multiplier/reset,
+ordinary no-effect-producer, and downstream HP facts. Its SHA-256 is
+`6e27a294c916cc91b639c51f5d53ca4598bd91fec81f299e10350325f19bda1b`;
+the paired task was
+`ccd5a3d38243507d2a04bded621a7a012ccbea4d569fb854f97b0dd07fcfabf9`.
+The [independent BLOCK](../reviews/2026-10-11-recoil-if-miss-design-review.md)
+accepted that stop, not design completion. Its original inspection was
+published `a2d6779` / local `a6a055e`. Those exact artifacts remain in Git
+history. In particular, their suggestion that the earlier immunity guard
+only had excluded producers and their universal miss-then-crash outline are
+superseded by the accepted supplement. The current sections below govern
+this resumed design; the historical claims must not be used as instructions.
 
 ## Literal selection and admission
 
@@ -46,11 +63,13 @@ hit, including an ordinary successful-accuracy hit that later encounters
 Fighting immunity. The design preserves that existing path and its limits;
 it does not certify its whole-source parity anew.
 
-## Settled miss sequence and unresolved entry state
+## Ordinary accuracy-failure sequence
 
-The following is a required ordering contract, conditional on the source
-entry-state questions below being independently resolved. It translates only
-the accepted lock's `battle_scripts_1.s:810-833` sequence.
+This contract translates the accepted source chain. The supplement supplies
+the corrected exact script anchor `battle_scripts_1.s:848-871`, ordinary
+reset `battle_main.c:3963-3980`, accuracy failure/precheck
+`battle_script_commands.c:1092-1105` and `1345-1387`, and result selection
+`1930-1964`. Historical anchors in the original lock are displaced.
 
 1. Retain shared eligibility, ordinary accuracy, used-move announcement, and
    one PP deduction. In this engine, `useMove` is appended at
@@ -61,17 +80,25 @@ the accepted lock's `battle_scripts_1.s:810-833` sequence.
    occurs after accuracy; the engine queues it before that calculation.
    Preserve the existing observable event order, without claiming identical
    internal instruction timing. Do not repeat accuracy or PP in the crash leaf.
-2. After the miss result, test the *pre-existing*
-   `MOVE_RESULT_DOESNT_AFFECT_FOE` state. If set, complete the action without
-   a crash result, damage-adjustment draw, HP change, or attacker faint caused
-   by crash. This is not the later type calculation's immunity result.
-3. If that guard permits continuation, emit a distinct crash result before
-   the attacker HP presentation. There is no target attack animation, target
+2. On failed ordinary accuracy, and only for the literal family, determine
+   ordinary type immunity before choosing the result event. The source
+   accuracy command sets MISSED then scans immunity, so the source result
+   is `0x09` for an immune target and `0x01` for a nonimmune target. Emit
+   existing `noEffect` for the immune branch, naming the defender, and
+   complete immediately: no generic miss announcement, crash result,
+   base-damage calculation, damage-adjustment draw, HP update, or attacker
+   faint check. PP remains spent. This preserves the source's pre-existing
+   DOESNT_AFFECT_FOE guard; it is not a later damage-type immunity decision.
+3. Otherwise emit the existing `miss` result, then a distinct crash result
+   before the attacker HP presentation. There is no target attack animation, target
    HP update, critical result, or effectiveness presentation on this branch.
-4. Compute damage in the locked order: ordinary base calculation with the
-   source's incoming multipliers; type/STAB calculation; normal damage
-   adjustment; then the crash transform. No `critcalc` occurs here. No
+4. Compute damage in the locked order: ordinary base calculation with
+   explicit neutral critical/damage multipliers 1/1; type/STAB calculation;
+   normal damage adjustment; then the crash transform. No `critcalc` occurs here. No
    ordinary actual-hit recoil fraction or actual defender HP loss is an input.
+   Use the represented noncritical stage behavior and defender-side Reflect;
+   do not ignore lowered attack, raised defense, or screens as a critical
+   calculation would. Move power/type stay the immutable literal record.
 5. For adjusted damage `D`, first take integer `floor(D / 2)`, promote a
    zero result to one, then cap at `floor(target.maxHP / 2)`. There is no
    second minimum clamp. The target's current HP is not the cap, nor is the
@@ -87,53 +114,59 @@ the accepted lock's `battle_scripts_1.s:810-833` sequence.
    already-queued `miss` result must remain visible and must not be replaced
    with a hit. Adding a global source-flag system is not authorized here.
 
-### Required source clarification; no guessed defaults
+### Represented seams and limits of the projection
 
-The accepted lock explicitly says `Cmd_damagecalc` applies the current
-critical and damage multipliers, and explicitly says this branch has no
-`critcalc`. It does not lock where those values are reset for an ordinary
-action, what their values are on this edge, or whether a preceding critical
-action can affect them. Current
-[ordinary hit calculation](../../src/core/BattleEngine.lua#L1276) obtains a
-fresh local critical result only after the miss early return. Neither
-`BattleEngine.new` nor the miss seam carries the source's incoming critical
-or damage multiplier state. Substituting `isCrit=false` and neutral
-multipliers solely because there is no new critical roll would be an
-unsupported inference. This is the decisive stop condition.
+Current `accuracyCheck` returns a Boolean, and the
+[miss return](../../src/core/BattleEngine.lua#L1107) has no immunity precheck.
+The bounded owner is this literal failed-accuracy leaf in `resolveMove`,
+before appending `miss`. The existing pure
+[typeCalc](../../src/core/BattleFormulas.lua#L347) can determine ordinary
+immunity from the same parsed type rows, move type, and defender types:
+inspect only its `noEffect` result using a harmless positive seed amount;
+discard the temporary damage and super/not-very-effective flags. It consumes
+no RNG and changes no model state. This preliminary immunity query is
+distinct from the later real damage/STAB/type calculation, does not supply
+crash damage, and introduces no generic accuracy or flag API. Do not hardcode
+a species/Ghost check or enable the source helper's excluded ability/Foresight
+branches. The pure seam matches ordinary zero type rows in either target
+type; other computed flags have no meaning for this precheck.
 
-The source guard also has no current project owner: `accuracyCheck` returns
-a Boolean, and `resolveMove` has no pre-existing move-result bitfield.
-Its existing `flags.noEffect` comes from subsequent type calculation. The
-accepted lock already excludes the cancellation/protection/interception
-systems that can supply the earlier guard. Thus the design can name the
-guard and exclude those producers, but cannot claim to test or preserve an
-implemented guard in this engine. A fabricated always-false flag or early
-Fighting-immunity test would not resolve this gap. Any later bounded
-projection must explicitly justify, from locked entry/reset behavior, why
-the guard is clear for the admitted ordinary accuracy-miss context.
+[calculateBaseDamage](../../src/core/BattleFormulas.lua#L225) then receives
+noncritical input and the defender's current screen state for the nonimmune
+leaf. The accepted per-action resets justify these inputs even after another
+action rolled a critical; there is no persistent multiplier to inherit or
+critical draw to insert. Subsequent `typeCalc` supplies the actual STAB/type
+damage, followed by `applyRandomDamageMultiplier`. Its presentation flags
+must not become damage/effectiveness messages: the source leaves MISSED set
+through type calculation, suppressing those result-bit updates while still
+applying damage multipliers. Current successful-hit logic at
+[1276](../../src/core/BattleEngine.lua#L1276) retains its existing local
+critical calculation and must not be rerouted through this noncritical leaf.
 
-There is a related edge to settle before executable HP expectations: a type
-calculation *inside* the miss branch can introduce a new no-effect result.
-The accepted lock distinguishes that result from the earlier guard, but
-does not lock the full `datahpupdate` command's handling of that newly set
-result. Do not automatically turn zero type damage into a one-HP crash, or
-skip the branch before its random adjustment, without establishing the
-downstream HP command's result-flag gate. The script command sequence alone
-does not prove every command's internal no-effect behavior.
+The supplement establishes that both attacker HP commands independently
+test `NO_EFFECT = MISSED | DOESNT_AFFECT_FOE | FAILED`. For the ordinary
+nonimmune miss, clearing MISSED permits both updates, then its restoration
+preserves the missed result on completion. For ordinary immune failure,
+the earlier guard exits before either command. These two reachable branches
+are sufficient within valid living ordinary singles; no fabricated source
+bitfield is needed in the project.
 
-The minimum unblock is a separately authorized, read-only supplement at the
-same public-source pin: trace ordinary action entry/reset through effect 45
-for those multipliers and result flags, and the attacker HP command's handling
-of the newly computed no-effect result. Establish which facts reduce to
-represented ordinary singles and which remain excluded. No implementation,
-generic flag API, route, ROM observation, or new subsystem is a substitute
-for that source evidence. This report does not perform or authorize that
-supplement.
+If a different, excluded path introduced immunity only during the later
+type calculation, the retained DOESNT_AFFECT_FOE bit would suppress both HP
+updates despite clearing MISSED and setting IGNORE_SUBSTITUTE. Adjustment
+would still draw if reached, the arithmetic transform would still run,
+and a living attacker would not faint. This is conditional source semantics
+only. The ordinary precheck sees the same move and target types, and no
+intervening ordinary command changes them. A late-only immunity fixture is
+therefore not a reachable ordinary oracle, not a one-HP crash case, and not
+permission to add new flags/state. Encountering a requirement for such state
+would trigger the task's existing stop rule.
 
 ## RNG, PP, and firstBattle constraints
 
 For an ordinary represented accuracy comparison, there is one shared
-accuracy draw. If the miss guard permits damage adjustment, the represented
+accuracy draw. Immune failure then completes with no additional draw.
+For nonimmune failure the represented
 [random multiplier helper](../../src/core/BattleFormulas.lua#L415) consumes
 one later draw even for zero input damage. No critical, secondary-effect,
 second accuracy, or ordinary recoil draw belongs to the crash branch. These
@@ -170,7 +203,11 @@ design, not a finalized event schema or generic self-damage API. Only the
 literal miss leaf may emit it. Existing `recoil` and defender `damage` events
 must not stand in for it.
 
-The visible sequence is `useMove` → `miss` → crash announcement → attacker
+The immune-failure visible sequence is `useMove` → `noEffect` → current
+common completion, with both HP displays unchanged. It cannot also emit
+`miss`, crash, effectiveness, or faint events for this action.
+
+The nonimmune sequence is `useMove` → `miss` → crash announcement → attacker
 HP presentation → optional attacker `faint` → existing battle-end or
 forced-switch continuation. Nonfatal completion returns to the current turn
 owner. The crash result must not produce a target faint check itself.
@@ -211,25 +248,25 @@ it correctly for a fatal crash. Later authorized integration evidence must
 cover persistence, including HP zero and spent PP, without changing save
 policy or claiming an unrun save/reload test.
 
-## Deterministic later acceptance outline, conditional on unblock
+## Deterministic later acceptance outline
 
 No tests or commands are authorized by this outline. A separately scoped
-implementation contract would need these observable checks and exact source
-oracles after the unresolved entry/HP facts are locked:
+implementation contract would need these observable checks against the
+accepted source-chain oracles:
 
 | Case | Required later observation |
 | --- | --- |
-| Both literal records, player and foe | A forced ordinary accuracy miss uses the source-locked formula and ordered crash result; only attacker HP changes. |
+| Both literal records, player and foe | A selected move with a controlled failing accuracy draw against a nonimmune target uses the source-locked formula and ordered crash result; only attacker HP changes. This is ordinary selected-move provenance, not a forced/called move mechanic. |
 | Literal boundary | Other move IDs/effects, including effects 48/198 and unrelated generic misses, retain prior behavior. |
 | Successful accuracy | Existing crit/base/type/random/target-HP and faint flow remains unchanged; no crash event or added self-damage. |
-| Earlier no-effect guard | Source guard true yields miss/result completion with no crash damage draw or HP event. If this cannot be reached in represented state, document it as excluded and verify that limitation; do not invent a production flag just to obtain a test. |
-| Later type immunity | Distinguish successful-hit immunity, earlier guard suppression, and newly computed miss-branch immunity; defer exact HP oracle until the downstream command gate is locked. |
+| Ordinary immunity guard | A failing accuracy draw against ordinary Fighting-immune target types, including either position of a dual type, yields only useMove/noEffect for this action, one spent PP, no crash/base-damage/adjustment/HP/faint, and unchanged HP. Use real type rows, not injected flags. |
+| Immunity distinction | Successful-accuracy immunity stays on the existing hit path with its existing draws. Failed-accuracy immunity exits before crash. Conditional late-only immunity remains a documented exclusion, not a reachable battle fixture or minimum-one HP oracle. |
 | Transform edges | Odd division, zero-before-minimum, target maximum vs current HP, target vs attacker maximum HP, cap boundary, and zero-after-cap arithmetic; no extra minimum after cap. |
 | Attacker HP clamp/faint | Actual amount cannot exceed remaining HP; HP zero precedes one attacker faint, then existing end/replacement behavior; no target HP/faint and no duplicate faint or extra opponent action. |
-| RNG and PP | Accuracy then allowed random adjustment, no critical/extra draw, correct next RNG sentinel, one PP deduction, no refund; pre-existing noPP/auto-Struggle behavior retained. |
+| RNG and PP | Nonimmune failure consumes accuracy then adjustment; immune failure only accuracy; no critical/extra draw, correct next RNG sentinel, one PP deduction, no refund. Scope counts to the action or account separately for speed ties/other actions. Pre-existing noPP/auto-Struggle behavior retained. |
 | First battle | Preserved player accuracy bypass and successful-hit tutorial behavior; later/foe misses cannot create tutorial damage tips or set the player damage flag. |
-| Screens and stages | Once neutral critical state is source-locked, represented defender Reflect and attacker/defender stages feed base damage before STAB/type/random/half/cap, without invoking a critical bypass. |
-| Controller ordering | Advance message entries one at a time: use, miss, crash while HP still old, then attacker HP change before faint/continuation; defender display unchanged. |
+| Screens, stages, and reset | Neutral 1/1 calculation honors represented defender Reflect and attack/defense stages before STAB/type/random/half/cap, with no critical bypass. A preceding critical action cannot alter the crash oracle. |
+| Controller ordering | Nonimmune: advance use, miss, crash while display HP still old, then attacker HP changes through the invisible entry before faint/continuation; defender display unchanged. Immune: use/noEffect only, with no HP entry. Model HP may already be final while messages drain. |
 | Persistence | Existing party bridge receives model HP and PP, including fatal crash; no new save state. Integration claims require separately authorized evidence. |
 | Regression | Ordinary hit/recoil/drain/miss, current accepted families, common turn completion, forced replacement, and existing tutorial behavior retain prior evidence. |
 
@@ -237,11 +274,13 @@ oracles after the unresolved entry/HP facts are locked:
 
 All source-lock exclusions remain: cancellation/interception, Protect,
 Substitute, abilities, items, Endure/Focus Band, status,
-semi-invulnerability, called/mirrored provenance, doubles/links, malformed
-battlers, and animation/timing parity. Every other effect family is excluded.
+semi-invulnerability, called/mirrored and other nonordinary move provenance,
+multi-turn/forced selection, doubles/links, unsupported target/party state,
+malformed battlers, animation/timing parity, and generic MoveEnd/whole-turn
+parity. Every other effect family is excluded.
 No flag/multiplier API, generic recoil/miss abstraction, move admission repair,
 AI, runtime, controller, test, save, route, request, probe, runner, ROM, or
-capability-status change was made. No source facts beyond the accepted lock
+capability-status change was made. No source facts beyond the accepted chain
 were investigated; no ROM, private runner state, media, runtime, or gameplay
 test was inspected or executed.
 
@@ -252,6 +291,12 @@ the independent review's SHA-256 identities:
 - Task: `eef1410841e6cecdc0ca16a8b239b16cae2b15a8119999b8623a352ec412b59a`.
 - Report: `53cb79e29f2694c3688fa557a091553858a483312be8a5d021161ddf20d7d125`.
 - Accepted review: `91ba7099006f2ecefa1b17e9bdee50985b66f1507fe39162ca36ada572bf9140`.
+
+The supplement at `ba69269` matches its independent review's task/report
+SHA-256 identities:
+
+- Task: `99a045f0c8a4079dbf822b9e2a778519c77fa42c462c984333a6abb3aa92d587`.
+- Report: `92b990bf18b91729a468eab599fdced128238a6712c76a5f29ea730db56e4484`.
 
 `git diff c218da6 HEAD --` for the four named code files produced no changes.
 Current anchors above were read from the actual files rather than repeating
@@ -267,7 +312,13 @@ were source consistency and code inspection, not test execution. Full
 runtime verification is N/A. The Worker must provide the report/task hashes
 and final `git diff --check` receipt to the independent Reviewer. The
 Reviewer decides PASS, NEEDS_FIX, or BLOCK; the Worker does not self-certify.
-Until the identified source requirement is resolved, the concrete handoff is
-independent assessment of this stop and its minimum separate discovery
-boundary, not route readiness or implementation dispatch. Phase 4 remains
-open.
+The read-only repository checker passed after the report revision: 280
+tracked Lua, 269 tracked Markdown, 846 local targets. Baseline and revised
+whitespace checks passed. Final pair receipts are recorded in the task
+handoff and Worker delivery, without embedding self-referential hashes.
+No unresolved source requirement remains within this design's ordinary
+represented boundary. The concrete handoff is independent review of the
+revised task/report against the reactivated criteria and accepted supplement.
+Only a design PASS may permit the Orchestrator to compile one separately
+bounded route or implementation-authority decision; this report grants no
+such authority. Phase 4 remains open.

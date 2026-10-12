@@ -148,3 +148,36 @@ incorporate only those accepted facts. Worker must revise the existing report
 and append fresh evidence/handoff; the old report is not an accepted design.
 This design-only reactivation still requires its own exact independent review
 before any separately authorized route or implementation task.
+
+### Resumed Worker evidence and review handoff — 2026-10-12
+
+The revised [design report](../reports/phase4-recoil-if-miss-design.md) is
+ready for independent exact-artifact review at inspection base
+`4dd22e1d80ea40e485ee134e59499183e31847f3`, freshly verified as public main.
+Its historical stopped version remains identified by exact `f31ae69`
+task/report hashes and the separate BLOCK review; the current report
+explicitly supersedes the incomplete ordinary-immunity outline.
+
+The accepted source task/report identities at `c218da6` and `ba69269` were
+reproduced. Four current engine/formula/controller/party files remain
+unchanged from `c218da6`; the report records their hashes and current anchors.
+The revised design covers literal selection, immune no-effect early exit,
+nonimmune miss/crash, neutral 1/1 multipliers, source-order half/minimum/cap,
+branch-local RNG/PP, distinct message-before-HP presentation, firstBattle
+preservation, attacker faint/continuation, and existing persistence ownership.
+Conditional late-only immunity is explicitly not an ordinary reachable oracle.
+All exclusions remain; no new source gap was found within this boundary.
+
+Read-only source/seam consistency and baseline/final whitespace checks passed.
+`lua5.1 scripts/check_repository.lua` passed after the revised report:
+280 tracked Lua, 269 tracked Markdown, 846 local targets. The final pair's
+check receipt and exact hashes accompany Worker delivery to the Orchestrator.
+Full gameplay, test-suite, runtime, replay, ROM, and private-runner checks
+are N/A and were not executed under this design-only contract.
+
+Only the report and this appended evidence/handoff were changed. Acceptance
+criteria were preserved. No code, event schema, tests, admission, formulas,
+save, route, request, probe, runner, coordination, or capability status was
+changed; no stage/commit/push was performed. The Orchestrator owns publication
+and independent review of the exact pair. This Worker readiness claim is not
+a PASS and authorizes no successor by itself.
