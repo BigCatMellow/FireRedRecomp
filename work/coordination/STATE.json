@@ -1,18 +1,18 @@
 {
   "schema_version": 1,
-  "updated_utc": "2026-10-12T12:31:24Z",
+  "updated_utc": "2026-10-12T12:37:36Z",
   "execution_paused": false,
   "role": "ORCHESTRATOR",
-  "status": "READY_FOR_REVIEWER",
-  "task_id": "P4-F1-RECOIL-IF-MISS-ENTRY-STATE",
+  "status": "READY_FOR_WORKER",
+  "task_id": "P4-F2-RECOIL-IF-MISS-DESIGN",
   "current_phase": "Phase 0, Phase 4, and Phase 5 remain IN PROGRESS; Restore HP, bounded Magnitude, bounded P5 Viridian projection, and the effect-45 source lock are independently accepted",
   "canonical_status_owner": "work/roadmaps/CAPABILITY_CHECKLIST.md",
-  "active_task": "work/tasks/phase4-recoil-if-miss-entry-state-discovery.md",
-  "objective": "Independently review exact source-supplement pair ba69269, including ordinary immunity precheck correction, reset multipliers and downstream HP gates.",
-  "next_role": "REVIEWER",
-  "acceptance": "Pinned public-source trace, exact report/task hashes, whitespace/docs checks and independent exact-report review. No runtime/ROM/route/test change.",
+  "active_task": "work/tasks/phase4-recoil-if-miss-design.md",
+  "objective": "Revise bounded effect-45 design using accepted source supplement: explicit neutral entry values, immune no-effect early exit and nonimmune crash branch, event ownership and deterministic acceptance outline.",
+  "next_role": "WORKER",
+  "acceptance": "Reactivated design task criteria, accepted source-chain consistency, whitespace/docs checks and new independent exact-report review. No runtime/ROM/route/test change.",
   "boundaries": "P0 clean target remains evidence-blocked pending preparation decision. Effect 45 remains unsupported: preserve ordinary recoil/miss separation and all source-lock exclusions; no route, request, probe, runtime, or ROM action.",
-  "dependencies": "Accepted original source lock c218da6; independently confirmed design BLOCK at f31ae69; work/reviews/2026-10-11-recoil-if-miss-design-review.md. No private runner or ROM required.",
+  "dependencies": "Accepted source lock c218da6 plus supplement ba69269; work/reviews/2026-10-12-recoil-if-miss-entry-state-review.md PASS resolves historical design BLOCK at f31ae69. No private runner or ROM required.",
   "runner_blocker": {
     "task_id": "P4-F3-ROUTE",
     "status": "CLOSED — REVIEWED PASS",
@@ -60,27 +60,28 @@
     "phase4_pain_split_status": "CLOSED — REVIEWED PASS at a739ddc; guarded run 35493728001; exact review work/reviews/2026-09-20-pain-split-implementation-review.md",
     "phase4_restore_hp_status": "CLOSED — REVIEWED PASS at dc8ad06; work/reviews/2026-10-09-restore-hp-implementation-outcome-review.md",
     "phase4_magnitude_status": "CLOSED — REVIEWED PASS at 7b47c73; work/reviews/2026-10-10-magnitude-implementation-outcome-review.md",
-    "phase4_recoil_if_miss_source_status": "CLOSED — REVIEWED PASS at c218da6; work/reviews/2026-10-10-recoil-if-miss-source-discovery-review.md"
+    "phase4_recoil_if_miss_source_status": "CLOSED — REVIEWED PASS at c218da6; work/reviews/2026-10-10-recoil-if-miss-source-discovery-review.md",
+    "phase4_recoil_if_miss_entry_state_status": "CLOSED — REVIEWED PASS at ba69269; work/reviews/2026-10-12-recoil-if-miss-entry-state-review.md"
   },
   "phase2_external_blocker": "Trusted, user-owned retail-reference captures with provenance/timing/crop/filter details for Oak and Pallet anchors have not been supplied.",
-  "next_after_success": "After independent source-supplement PASS, amend the blocked design's source authority, resume P4-F2-RECOIL-IF-MISS-DESIGN and require its own exact independent review before any route/implementation task.",
+  "next_after_success": "Commit exact revised design pair and obtain independent design review. Only design PASS permits compiling a separately bounded route/implementation-authority task.",
   "legal_content_boundary": "Never commit ROMs, BIOS dumps, generated caches, ROM-derived reference screenshots, extracted game assets, or other prohibited content.",
   "phase_completion_rule": "Phase 2 remains IN PROGRESS until the Oak/reference screenshot discrepancy gate is evidenced and independently reviewed.",
   "project_goal": "work/coordination/PROJECT_GOAL.md — ACTIVE; explicitly adopted 2026-10-11; no user-specified token budget",
   "phase0_external_blocker": "P0-04-REVERIFY at 93c4654: missing prerequisites on the verified target and no desktop proof; separate supported-target preparation decision and fresh evidence required. Historical result is not current host readiness.",
   "checkpoint": {
-    "inspection_revision": "ba692697221e50aa054d0f981684771bf51ccaed",
+    "inspection_revision": "7586ac31d60e151bfb7c0247e2b2572e0d086a8f",
     "pending_jobs": "GitHub queued and in_progress queries both empty at activation recovery 2026-10-11; recheck before any execution dispatch.",
     "preserved_drafts": "Unreviewed Brick Break package isolated in named local stash quarantine-unreviewed-brick-break-rerank-2026-10-11; outside active dispatch.",
-    "next_action": "Independent Reviewer assesses ba69269 source task/report. On PASS, explicitly incorporate supplemental authority and corrected immune-miss branch into the blocked design, then require new design review.",
-    "remaining_acceptance": "Source-supplement independent review, then complete resumed design and independent design review.",
+    "next_action": "Worker revises design report under reactivated source authority, followed by exact independent design review.",
+    "remaining_acceptance": "Complete resumed design and independent design review; no design or behavior PASS yet.",
     "coordination_note": "Historical nested records above are evidence receipts, not pending jobs or permission to repeat completed actions.",
-    "worker_session": "Researcher report/task received with exact hashes and docs/whitespace receipts; preserved unchanged at ba69269 after source session hit usage limit.",
-    "artifact_hashes": {
+    "worker_session": "Source pair preserved unchanged at ba69269 and independently accepted; bounded design Worker delegation is next.",
+    "accepted_source_artifact_hashes": {
       "task": "99a045f0c8a4079dbf822b9e2a778519c77fa42c462c984333a6abb3aa92d587",
       "report": "92b990bf18b91729a468eab599fdced128238a6712c76a5f29ea730db56e4484"
     },
-    "last_review": "BLOCK for design completion at f31ae69, accurate source-certainty stop confirmed; work/reviews/2026-10-11-recoil-if-miss-design-review.md",
+    "last_review": "PASS source supplement ba69269; work/reviews/2026-10-12-recoil-if-miss-entry-state-review.md. Historical design BLOCK remains until revised design independently passes.",
     "goal_service_state": "usageLimited observed 2026-10-12; user explicitly requested continuation. Standing instructions persist; user/system owns lifecycle resumption.",
     "remote_recovery": "Live main 73cf530 recovered; twelve disjoint mod-design documents fast-forwarded without modifying them; source task/report preserved."
   }

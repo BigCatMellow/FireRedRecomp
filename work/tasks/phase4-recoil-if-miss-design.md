@@ -8,7 +8,8 @@
 - Independent reviewer: `REVIEWER`
 - Prerequisites: accepted `P4-F1-RECOIL-IF-MISS-DISCOVERY` source lock and
   [independent PASS](../reviews/2026-10-10-recoil-if-miss-source-discovery-review.md)
-  published at `c218da6`.
+  published at `c218da6`; entry-state supplement `ba69269` and its
+  [independent PASS](../reviews/2026-10-12-recoil-if-miss-entry-state-review.md).
 - Risk: `MEDIUM` — an imprecise miss-branch/event contract could misdirect a
   later implementation toward ordinary recoil or generic miss behavior.
 
@@ -25,6 +26,11 @@ accuracy-miss crash branch before any separately authorized implementation.
   and its paired
   [report](../reports/phase4-recoil-if-miss-source-discovery.md).
 - [Independent exact-report PASS](../reviews/2026-10-10-recoil-if-miss-source-discovery-review.md).
+- [Accepted entry-state supplement](../reports/phase4-recoil-if-miss-entry-state-discovery.md)
+  and [independent PASS](../reviews/2026-10-12-recoil-if-miss-entry-state-review.md)
+  at `ba69269`. This supplement controls the explicit 1/1 reset values,
+  ordinary immunity precheck, no-effect presentation/early exit, and downstream
+  HP gates where the original source wording was incomplete.
 - Current published project seams identified in that source lock:
   `BattleEngine`, `BattleFormulas`, `BattlePartyBridge`, and
   `BattleSceneController`.
@@ -54,19 +60,24 @@ not inspect a ROM, private runner state, media, or runtime behavior.
 1. Define literal selection and admission expectations for effect 45 / move
    IDs 26 and 136 only, preserving the ordinary successful-hit path and
    distinguishing effect 45 from ordinary effects 48 and 198 recoil.
-2. Specify the represented accuracy-miss sequence: shared ordinary
-   accuracy/PP/miss result; the pre-existing no-effect guard; a distinct crash
-   result; source-order base/type/normal-damage computation; integer half,
+2. Specify the represented accuracy-failure branches: shared ordinary
+   accuracy and PP; ordinary immunity precheck producing a no-effect result
+   and early exit without crash; otherwise a miss followed by a distinct crash
+   result; explicit neutral 1/1 entry multipliers, source-order
+   base/type/normal-damage computation; integer half,
    minimum-one, and target-max-HP cap; attacker-only HP application; attacker
    faint check; and common action completion. State exact non-claims where the
-   source requires state the project does not represent.
+   source requires state the project does not represent. Separate conditional
+   downstream immunity semantics from reachable ordinary outcomes; do not
+   invent source flags or a reachable late-only immunity branch.
 3. Define the smallest event/controller ownership and ordering contract without
    reusing ordinary hit recoil or turning a generic miss into a crash. Identify
    exact current owner seams and persistence consequences as design facts, not
    code changes.
 4. State deterministic later test/implementation acceptance outlines for the
    literal miss branch, successful hits, no-effect guard, cap/rounding edges,
-   attacker faint, PP, event order, and unchanged unrelated behavior. Do not
+   attacker faint, PP, branch-local RNG, message/HP event order, first-battle
+   accuracy-bypass preservation, and unchanged unrelated behavior. Do not
    write an implementation authority, route, probe, request, or test edit.
 5. Preserve explicit exclusions: cancellation/interception, Protect,
    Substitute, abilities, items, Endure/Focus Band, status,
@@ -78,8 +89,9 @@ not inspect a ROM, private runner state, media, or runtime behavior.
 ## Required evidence
 
 - Baseline: verify the published source-lock task/report/review at `c218da6`
-  and inspect the named current-project seams read-only.
-- Focused verification: read-only consistency check against the source lock;
+  and supplement task/report at `ba69269` plus its independent PASS; inspect
+  the named current-project seams read-only.
+- Focused verification: read-only consistency check against that source chain;
   no ROM or runtime execution is permitted.
 - Full verification: N/A for this design-only package; `git diff --check` is
   required.
@@ -89,7 +101,7 @@ not inspect a ROM, private runner state, media, or runtime behavior.
 ## Stop / escalate when
 
 The design needs a generic recoil/miss abstraction, an unrepresented source
-state, source facts beyond the accepted lock, or any runtime/route/ROM action.
+state, source facts beyond the accepted source chain, or any runtime/route/ROM action.
 Record the unresolved requirement and stop; do not silently approximate it or
 widen this task.
 
@@ -105,7 +117,7 @@ widen this task.
   implementation-authority decision; no successor is authorized by this task
   itself.
 
-### Worker evidence and stop handoff — 2026-10-11
+### Historical Worker evidence and stop handoff — 2026-10-11
 
 The [design/stop report](../reports/phase4-recoil-if-miss-design.md) records
 the locked sequence, current engine/controller/party seams, and conditional
@@ -125,3 +137,14 @@ or an implementation/route handoff. The Reviewer should assess the exact
 stop and minimum source supplement; the Orchestrator owns any separately
 bounded follow-up. All acceptance criteria and exclusions above remain
 unchanged.
+
+### Orchestrator reactivation — 2026-10-12
+
+The prior stop received independent BLOCK at `f31ae69`; it was not design
+completion. Source supplement `ba69269` now independently passes and resolves
+the named source gaps, including an explicit correction to ordinary immune
+accuracy-failure presentation. The source authority and acceptance above
+incorporate only those accepted facts. Worker must revise the existing report
+and append fresh evidence/handoff; the old report is not an accepted design.
+This design-only reactivation still requires its own exact independent review
+before any separately authorized route or implementation task.

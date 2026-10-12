@@ -1,11 +1,27 @@
 # FireRedRecomp Coordination Handoff
 
-- Status: `READY_FOR_REVIEWER — review effect-45 source supplement ba69269`
-- Task ID: `P4-F1-RECOIL-IF-MISS-ENTRY-STATE`
+- Status: `READY_FOR_WORKER — revise effect-45 design using accepted supplement`
+- Task ID: `P4-F2-RECOIL-IF-MISS-DESIGN`
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
 - Current plan: [`../roadmaps/RECALIBRATED_DELIVERY_PLAN.md`](../roadmaps/RECALIBRATED_DELIVERY_PLAN.md)
 
 ## Current relay — 2026-10-12
+
+### Source supplement accepted; bounded design reactivated
+
+Independent [PASS](../reviews/2026-10-12-recoil-if-miss-entry-state-review.md)
+accepts source pair `ba69269`, resolving the historical design source stop.
+The [design task](../tasks/phase4-recoil-if-miss-design.md) now explicitly
+incorporates neutral 1/1 entry multipliers, ordinary immunity no-effect early
+exit, nonimmune miss/crash ordering, and conditional downstream HP semantics.
+Original source artifacts and unrelated mod-design documents are preserved.
+
+Exact next action: Worker revises the existing design report and appends fresh
+task evidence, then a separate Reviewer assesses the exact committed pair.
+The old design report remains a historical stop, not an accepted design.
+No code/test/ROM/route action or Phase 4 status advancement is authorized.
+The goal service still reports usageLimited; user-directed work continues
+under the standing instruction. Older relay entries below are historical.
 
 ### Source supplement preserved; exact independent review next
 
