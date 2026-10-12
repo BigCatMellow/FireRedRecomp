@@ -91,3 +91,43 @@ Reviewer returns PASS / NEEDS_FIX / BLOCK. Orchestrator reconciles only this
 supplement and, after PASS, may amend the stopped design's source references
 and reactivate that bounded design for its own independent review. No route,
 implementation, request, probe, or Phase 4 closure follows from this task.
+
+## Research evidence and handoff — 2026-10-11
+
+Research complete, pending independent exact-artifact review. Report:
+`work/reports/phase4-recoil-if-miss-entry-state-discovery.md`, SHA-256
+`92b990bf18b91729a468eab599fdced128238a6712c76a5f29ea730db56e4484`.
+Inspection base and freshly recovered public `main`:
+`43cae5e1e54bc85a8bc3c10043454f5c6b5e197f`. The existing public-source
+checkout is clean at the required pin; inspected blob identities and an
+independent GitHub file fetch agree. Original source/design artifact hashes
+and exact source symbol/line references are in the report.
+
+Findings: ordinary move entry explicitly resets critical/damage multipliers
+to 1/1 and result flags to zero. Ordinary accuracy failure then performs a
+type-immunity scan before entering the effect-45 miss script. Thus an immune
+ordinary miss presents no effect and exits before crash or damage RNG;
+the report explicitly corrects the earlier incomplete guard description.
+Both downstream HP commands honor the no-effect mask; attacker faint tests
+presence/actual HP. Late-only immunity is conditional command semantics,
+not reachable in the scoped ordinary unchanged-type/target path. Literal
+half/minimum/target-maxHP cap and the zero-after-cap distinction remain.
+No required ordinary source fact remains UNKNOWN; independent acceptance
+and all design/runtime/integration evidence remain outstanding.
+
+Checks: baseline/final tracked repository checker PASS (280 Lua / 255
+Markdown / 808 local targets); checker with this untracked report explicitly
+added to its read-only enumeration PASS (280 Lua / 256 Markdown / 816 local
+targets). `git diff --check` passed; `git diff --no-index --check /dev/null`
+for the new report emitted no whitespace diagnostics (exit 1 denotes the
+new-file difference). Gameplay suite and ROM/runtime checks are N/A under
+this task. Only this evidence section and the report were authored; unrelated
+drafts were preserved. No staging, commit, push, accepted-artifact edit,
+design/code/test/coordination/route/request/probe/runner action was performed.
+
+Handoff: parent serializes the exact report/task pair for a separate Reviewer,
+who reconstructs entry, immunity precheck, reachable/conditional outcomes and
+HP gates independently. Final task SHA-256 is supplied in the Researcher
+handoff after this evidence section is saved, avoiding a self-referential hash.
+Only an independent PASS permits the Orchestrator to reactivate the stopped
+design with this additional source authority; that design needs its own review.
