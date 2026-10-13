@@ -2015,6 +2015,102 @@ do
   check("tickle requires selected target",not b:supportsMove({effect=205,power=0,type=0,accuracy=100,pp=20,target=0x10},321))
 end
 
+-- Batch 3 (c75f352): Splash, Haze, Belly Drum, Psych Up, Soft-Boiled/Milk
+-- Drink. None has accuracycheck or Random(); oracles are literal from the
+-- scripts and Cmd_normalisebuffs / Cmd_maxattackhalvehp / Cmd_copyfoestats /
+-- Cmd_tryhealhalfhealth.
+do
+  local USER, SELECTED = 0x10, 0
+  local moves={
+    [150]={effect=85,power=0,type=0,accuracy=0,pp=40,priority=0,target=USER},  -- Splash
+    [114]={effect=25,power=0,type=15,accuracy=0,pp=30,priority=0,target=USER}, -- Haze
+    [187]={effect=142,power=0,type=0,accuracy=0,pp=10,priority=0,target=USER}, -- Belly Drum
+    [244]={effect=143,power=0,type=0,accuracy=0,pp=10,priority=0,target=SELECTED}, -- Psych Up
+    [135]={effect=157,power=0,type=0,accuracy=100,pp=10,priority=0,target=USER}, -- Soft-Boiled
+    [208]={effect=157,power=0,type=0,accuracy=0,pp=10,priority=0,target=USER},   -- Milk Drink
+    [33]={effect=0,power=35,type=0,accuracy=95,pp=35,priority=0,target=0},
+  }
+  local stats={hp=101,attack=40,defense=40,speed=20,spAttack=40,spDefense=40}
+  local STATS={"attack","defense","speed","spAttack","spDefense","accuracy","evasion"}
+  local function setup(side, id)
+    local b=BattleEngine.new({
+      player=BattleEngine.makeBattler({species=1,level=20,stats=stats,types={0,0},moves={{move=33,pp=35}}}),
+      foe=BattleEngine.makeBattler({species=4,level=20,stats=stats,types={0,0},moves={{move=33,pp=35}}}),
+      moves=moves,typeChart={},rng=scriptedRng({4321}),
+    })
+    local a=b:battler(side)
+    a.moves={{move=id,pp=moves[id].pp}}
+    return b,a,(side=="player" and b.foe or b.player)
+  end
+  local function resolve(b,side) local ev={}; b:resolveMove(side,1,ev); return ev end
+  for _,side in ipairs({"player","foe"}) do
+    local dside=side=="player" and "foe" or "player"
+    for _,id in ipairs({150,114,187,244,135,208}) do
+      local b=setup(side,id)
+      check("batch3 admitted "..id..side,b:supportsMove(moves[id],id))
+    end
+    -- Splash
+    local b,a,d=setup(side,150)
+    local ev=resolve(b,side)
+    check("splash nothing happens "..side,#ev==2 and ev[2].type=="splash" and a.moves[1].pp==39
+      and a.hp==101 and b.rng.draws==0)
+    -- Haze resets both battlers' seven stages
+    b,a,d=setup(side,114)
+    for i,stat in ipairs(STATS) do a.statStages[stat]=i; d.statStages[stat]=12-i end
+    ev=resolve(b,side)
+    local neutral=true
+    for _,stat in ipairs(STATS) do neutral=neutral and a.statStages[stat]==6 and d.statStages[stat]==6 end
+    check("haze resets all stages both sides "..side,#ev==2 and ev[2].type=="haze" and neutral
+      and a.moves[1].pp==29 and b.rng.draws==0)
+    -- Psych Up copies all seven target stages
+    b,a,d=setup(side,244)
+    for i,stat in ipairs(STATS) do d.statStages[stat]=i+2; a.statStages[stat]=12 end
+    ev=resolve(b,side)
+    local copied=true
+    for i,stat in ipairs(STATS) do copied=copied and a.statStages[stat]==i+2 and d.statStages[stat]==i+2 end
+    check("psych up copies target stages "..side,#ev==2 and ev[2].type=="psychUp" and ev[2].side==side
+      and ev[2].target==dside and copied and b.rng.draws==0)
+    -- Belly Drum: maxHP 101 -> half 50; needs hp > 50 and ATK < +6
+    b,a=setup(side,187)
+    ev=resolve(b,side)
+    check("belly drum maxes ATK, costs half max HP "..side,#ev==2 and ev[2].type=="bellyDrum"
+      and ev[2].amount==50 and ev[2].hpRemaining==51 and a.hp==51 and a.statStages.attack==12
+      and a.moves[1].pp==9 and b.rng.draws==0)
+    b,a=setup(side,187); a.hp=51; a.statStages.attack=3
+    ev=resolve(b,side)
+    check("belly drum at hp just above half succeeds "..side,ev[2].type=="bellyDrum" and a.hp==1 and a.statStages.attack==12)
+    b,a=setup(side,187); a.hp=50
+    ev=resolve(b,side)
+    check("belly drum fails at half HP "..side,#ev==2 and ev[2].type=="moveFailed" and a.hp==50
+      and a.statStages.attack==6 and a.moves[1].pp==9)
+    b,a=setup(side,187); a.statStages.attack=12
+    ev=resolve(b,side)
+    check("belly drum fails at ATK +6 "..side,ev[2].type=="moveFailed" and a.hp==101)
+    b,a=setup(side,187); a.maxHP=1; a.hp=1
+    ev=resolve(b,side)
+    check("belly drum maxHP 1 uses 1 and fails "..side,ev[2].type=="moveFailed" and a.hp==1)
+    -- Soft-Boiled / Milk Drink heal max(1, maxHP/2), clamped, fail at full
+    for _,id in ipairs({135,208}) do
+      b,a=setup(side,id); a.hp=20
+      ev=resolve(b,side)
+      check("softboiled heals half "..id..side,#ev==2 and ev[2].type=="restoreHP" and ev[2].amount==50
+        and a.hp==70 and a.moves[1].pp==9 and b.rng.draws==0)
+      b,a=setup(side,id); a.hp=90
+      ev=resolve(b,side)
+      check("softboiled clamps at max "..id..side,ev[2].amount==11 and a.hp==101)
+      b,a=setup(side,id)
+      ev=resolve(b,side)
+      check("softboiled fails at full HP "..id..side,ev[2].type=="restoreHPFull" and a.hp==101 and a.moves[1].pp==9)
+    end
+  end
+  local b=setup("player",150)
+  check("softboiled literal ids only",not b:supportsMove(moves[135],136))
+  check("psych up requires selected target",not b:supportsMove({effect=143,power=0,target=USER},244))
+  check("batch3 user-target moves reject selected target",
+    not b:supportsMove({effect=85,power=0,target=SELECTED},150) and not b:supportsMove({effect=25,power=0,target=SELECTED},114)
+    and not b:supportsMove({effect=142,power=0,target=SELECTED},187))
+end
+
 if romPath then
   local RomImporter = require("import.RomImporter")
   local RomAddresses = require("import.RomAddresses")

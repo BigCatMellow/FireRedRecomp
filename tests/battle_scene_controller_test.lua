@@ -405,5 +405,43 @@ do
   check("overheat self harsh drop message",all:find("PLAYER's SP. ATK\nharshly fell!",1,true)~=nil)
 end
 
+-- Batch 3 messages through the real engine (src/battle_message.c texts).
+do
+  local moves={
+    [150]={effect=85,power=0,type=0,accuracy=0,pp=40,priority=0,target=0x10},
+    [114]={effect=25,power=0,type=15,accuracy=0,pp=30,priority=0,target=0x10},
+    [244]={effect=143,power=0,type=0,accuracy=0,pp=10,priority=0,target=0},
+    [187]={effect=142,power=0,type=0,accuracy=0,pp=10,priority=0,target=0x10},
+    [105]={effect=32,power=0,type=0,accuracy=0,pp=20,priority=0,target=16},
+  }
+  local stats={hp=100,attack=40,defense=40,speed=20,spAttack=40,spDefense=40}
+  local function run(moveId)
+    local engine=BattleEngine.new({
+      player=BattleEngine.makeBattler({species=1,level=20,stats=stats,types={0,0},moves={{move=moveId,pp=10}}}),
+      foe=BattleEngine.makeBattler({species=4,level=20,stats=stats,types={0,0},moves={{move=105,pp=20}}}),
+      moves=moves,typeChart={},rng={next16=function() return 0 end},
+    })
+    engine.player.speed=30
+    local ctrl=BattleSceneController.new({engine=engine,playerName="PLAYER",foeName="FOE",
+      moveName=function() return "MOVE" end})
+    ctrl:advanceMessage(); ctrl:advanceMessage()
+    ctrl:_runTurn({action="move",moveSlot=1})
+    return ctrl, engine
+  end
+  local function texts(ctrl)
+    local out={}
+    for _,entry in ipairs(ctrl.messages) do if entry.text then out[#out+1]=entry.text end end
+    return table.concat(out,"|")
+  end
+  check("splash message",texts(run(150)):find("But nothing happened!",1,true)~=nil)
+  check("haze message",texts(run(114)):find("All stat changes were\neliminated!",1,true)~=nil)
+  check("psych up message",texts(run(244)):find("PLAYER copied\nFOE's stat changes!",1,true)~=nil)
+  local ctrl,engine=run(187)
+  ctrl:advanceMessage()
+  check("belly drum HP updates before its message",
+    ctrl:message()=="PLAYER cut its own HP\nand maximized ATTACK!"
+    and ctrl.displayedHP.player==50 and engine.player.hp==50)
+end
+
 print(("%d passed, %d failed"):format(passed, failed))
 os.exit(failed == 0 and 0 or 1)

@@ -259,6 +259,17 @@ function BattleSceneController:_eventMessages(events)
     elseif event.type == "statsWontRise" then
       -- sText_StatsWontIncrease2 (src/battle_message.c).
       add(possessive(name(event.side)) .. " stats won't\ngo any higher!")
+    elseif event.type == "splash" then
+      add("But nothing happened!") -- sText_ButNothingHappened
+    elseif event.type == "haze" then
+      add("All stat changes were\neliminated!") -- sText_StatChangesGone
+    elseif event.type == "psychUp" then
+      -- sText_PkmnCopiedStatChanges
+      add(name(event.side) .. " copied\n" .. possessive(name(event.target)) .. " stat changes!")
+    elseif event.type == "bellyDrum" then
+      -- Source updates attacker HP before sText_PkmnCutHPMaxedAttack.
+      entries[#entries + 1] = { hpSide = event.side, hp = event.hpRemaining }
+      add(name(event.side) .. " cut its own HP\nand maximized ATTACK!")
     elseif event.type == "statsWontFall" then
       -- sText_StatsWontDecrease2 (src/battle_message.c).
       add(possessive(name(event.side)) .. " stats won't\ngo any lower!")
