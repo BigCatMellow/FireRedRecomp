@@ -215,24 +215,24 @@ local inventory = {
   [203] = {"blocked_on_state", true, 1, {311}}, -- EFFECT_WEATHER_BALL
   [204] = {"candidate", true, 1, {315,354}}, -- EFFECT_OVERHEAT
   [205] = {"candidate", false, 0, {321}}, -- EFFECT_TICKLE
-  [206] = {"candidate", false, 0, {322}}, -- EFFECT_COSMIC_POWER
+  [206] = {"represented", true, 0, {322}}, -- EFFECT_COSMIC_POWER
   [207] = {"blocked_on_state", true, 1, {327}}, -- EFFECT_SKY_UPPERCUT
-  [208] = {"candidate", false, 0, {339}}, -- EFFECT_BULK_UP
+  [208] = {"represented", true, 0, {339}}, -- EFFECT_BULK_UP
   [209] = {"blocked_on_state", true, 1, {342}}, -- EFFECT_POISON_TAIL
   [210] = {"blocked_on_state", false, 0, {346}}, -- EFFECT_WATER_SPORT
-  [211] = {"candidate", false, 0, {347}}, -- EFFECT_CALM_MIND
-  [212] = {"candidate", false, 0, {349}}, -- EFFECT_DRAGON_DANCE
+  [211] = {"represented", true, 0, {347}}, -- EFFECT_CALM_MIND
+  [212] = {"represented", true, 0, {349}}, -- EFFECT_DRAGON_DANCE
   [213] = {"blocked_on_state", false, 0, {293}}, -- EFFECT_CAMOUFLAGE
 }
 
 local expectedTotals = {
   moves = 354, defined = 214, used = 198, unused = 16,
-  positive = 216, zero = 138, admitted = 250, rejected = 104,
+  positive = 216, zero = 138, admitted = 254, rejected = 100,
   admitted_uncovered_positive = 108,
 }
 local expectedClasses = {
-  represented = {families = 53, moves = 142, positive = 107, zero = 35},
-  candidate = {families = 17, moves = 20, positive = 7, zero = 13},
+  represented = {families = 57, moves = 146, positive = 107, zero = 39},
+  candidate = {families = 13, moves = 16, positive = 7, zero = 9},
   blocked_on_state = {families = 127, moves = 191, positive = 101, zero = 90},
   intentionally_rejected = {families = 1, moves = 1, positive = 1, zero = 0},
   unused = {families = 16, moves = 0, positive = 0, zero = 0},
