@@ -80,3 +80,36 @@ Therefore Worker may commit/push/publish implementation and test/documentation c
 - broader capability/phase status does **not** advance until independent Reviewer has verified the relevant evidence and Orchestrator reconciles it.
 
 This standing envelope does **not** authorize Worker to create its own broader scope, ignore a task stop condition, alter supported-ROM policy, publish releases, distribute copyrighted content, merge unrelated refactors, self-review, or mark a phase complete. If a task requires a genuinely new human product/scope decision rather than merely an old publication gate, stop and escalate.
+
+## Battle-effect fast lane — human authorized 2026-10-13
+
+The human project owner explicitly approved this lane ("yes, add the fast
+lane"). Reason: the full relay cost effect 45 seven task files, eight reviews
+and about three days; roughly two hundred effects remain. This section
+supersedes the per-effect discovery/design/route-plan/configuration/probe/
+authority sequence for eligible families only.
+
+Eligible: Phase 4 move-effect families whose behavior is fully determined by
+the pinned pret source and testable with no-ROM engine/controller tests.
+
+1. **Batch.** Up to five eligible families per package. One task file under
+   `work/tasks/` holds the source lock (pinned-revision file/line citations),
+   design, MAY CHANGE paths and acceptance. No separate discovery, design,
+   route-plan, configuration, probe or authority documents or reviews.
+2. **Implement.** Worker implements on a branch with source-derived test
+   oracles (never values read back from the implementation) and opens a PR.
+   Public no-ROM CI must pass.
+3. **Review once.** One independent Reviewer checks source conformance,
+   assertions and scope on the PR and records PASS/NEEDS_FIX in
+   `work/reviews/`. On PASS the PR merges and the inventory marks those
+   families `represented`.
+4. **ROM evidence later.** New ROM fixture tests ride along and skip without a
+   ROM. Their non-skipped result comes from the next guarded bridge run's full
+   verified-ROM suite; until then the inventory notes `ROM fixture pending`.
+   A failing fixture reopens that family.
+
+Use the full relay instead when a family needs new persistent or cross-turn
+battle state, touches `main.lua`, the save format or a runtime replay, or has
+any `UNKNOWN` source behavior. All no-ROM/no-extracted-content rules,
+independent review, the capability-checklist evidence gate and the
+no-self-review rule still apply.
