@@ -107,3 +107,14 @@ Mutation run on the scratch copy (`/tmp/claude-0/review3/mut/run.sh`). The no-op
 No Blocker or High findings. Every behavior check (conditions, boundaries, what is copied or reset, message texts and order, no accuracycheck or Random, PP before the gate, BS_TARGET equivalence, admission totals, fixture fields) matches the pinned source. NEEDS_FIX covers F1 and F2: test-only one-line fixes that make the stated acceptance criteria actually asserted. F3 and F4 should go in the same pass.
 
 Signed: independent reviewer subagent; did not construct the change.
+
+## Re-check (delta 15f1874..772a2cd)
+
+Verdict: **PASS**
+
+- The delta covers `src`, `tests` and `work/reports`. F1: `battle_engine_test.lua:2072` now asserts Psych Up PP 9. F2: `:2109` adds the Softboiled user-target rejection. F3: `:2110-2113` adds power-40 rejections for all five families. F4: the `BattleEngine.lua:238-241` comment no longer lists Haze. F6: inventory row 85 now says "game stat not modeled", and the stale prose at `:349-351` and `:386-387` is updated. No behavior code changed.
+- I re-ran the surviving mutants on a fresh copy of 772a2cd. The no-op control passes (485/96). All are now caught: M7c (2 failures), M21 (1), M24 (1), M25 (1), M26 (1).
+- `scripts/test_all.sh`: `PASS: 158 test files`. `check_repository.lua`: PASS (288 Markdown, 957 targets). `git diff --check` is clean. Engine 485/0.
+- F5 (Softboiled/Restore HP wording) stays open as a documented follow-up. It is accepted existing design and does not block.
+
+Signed: independent reviewer subagent; did not construct the change.

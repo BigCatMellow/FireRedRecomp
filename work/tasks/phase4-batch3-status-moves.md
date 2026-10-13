@@ -1,7 +1,7 @@
 # Task: batch 3 status moves (fast lane)
 
 - Task ID: `P4-FL3-STATUS-MOVES`
-- Status: `READY_FOR_REVIEWER`
+- Status: `CLOSED — REVIEWED PASS` after re-check ([review](../reviews/2026-10-13-batch3-status-moves-review.md)); ROM fixture pending
 - Lane: [battle-effect fast lane](../../AGENTS.md#battle-effect-fast-lane--human-authorized-2026-10-13)
 - Parent: [Phase 4 move/effect matrix](../roadmaps/CAPABILITY_CHECKLIST.md)
 - Families: 25 Haze (114), 85 Splash (150), 142 Belly Drum (187), 143 Psych Up (244), 157 Softboiled (135 Soft-Boiled, 208 Milk Drink)
@@ -63,4 +63,4 @@ new ROM fixture skips cleanly. Independent review NEEDS_FIX
 6 addressed: Psych Up PP asserted, Softboiled wrong-target and all power-0
 gates tested (engine 485/0), stale Haze header comment and report notes fixed.
 Finding 5 (Restore HP/Softboiled project wording vs source text) left as a
-follow-up; re-check pending.
+follow-up; re-check PASS.
