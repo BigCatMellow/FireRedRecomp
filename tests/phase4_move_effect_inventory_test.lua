@@ -39,7 +39,7 @@ local inventory = {
   [27] = {"blocked_on_state", true, 1, {37,80,200}}, -- EFFECT_RAMPAGE
   [28] = {"blocked_on_state", false, 0, {18,46}}, -- EFFECT_ROAR
   [29] = {"represented", true, 1, {3,4,31,42,131,140,154,198,292,331,333,350}}, -- EFFECT_MULTI_HIT
-  [30] = {"candidate", false, 0, {160}}, -- EFFECT_CONVERSION
+  [30] = {"represented", true, 0, {160}}, -- EFFECT_CONVERSION: ROM fixture pending (phase4_conversion_memento_effect_rom_test)
   [31] = {"blocked_on_state", true, 1, {27,29,44,125,157,158}}, -- EFFECT_FLINCH_HIT
   [32] = {"represented", true, 0, {105,303}}, -- EFFECT_RESTORE_HP: Recover / Slack Off only
   [33] = {"blocked_on_state", false, 0, {92}}, -- EFFECT_TOXIC
@@ -177,7 +177,7 @@ local inventory = {
   [165] = {"blocked_on_state", false, 0, {259}}, -- EFFECT_TORMENT
   [166] = {"blocked_on_state", false, 0, {260}}, -- EFFECT_FLATTER
   [167] = {"blocked_on_state", false, 0, {261}}, -- EFFECT_WILL_O_WISP
-  [168] = {"candidate", false, 0, {262}}, -- EFFECT_MEMENTO
+  [168] = {"represented", true, 0, {262}}, -- EFFECT_MEMENTO: ROM fixture pending (phase4_conversion_memento_effect_rom_test)
   [169] = {"blocked_on_state", true, 1, {263}}, -- EFFECT_FACADE
   [170] = {"blocked_on_state", true, 1, {264}}, -- EFFECT_FOCUS_PUNCH
   [171] = {"blocked_on_state", true, 1, {265}}, -- EFFECT_SMELLINGSALT
@@ -227,12 +227,12 @@ local inventory = {
 
 local expectedTotals = {
   moves = 354, defined = 214, used = 198, unused = 16,
-  positive = 216, zero = 138, admitted = 261, rejected = 93,
+  positive = 216, zero = 138, admitted = 263, rejected = 91,
   admitted_uncovered_positive = 101,
 }
 local expectedClasses = {
-  represented = {families = 68, moves = 160, positive = 114, zero = 46},
-  candidate = {families = 2, moves = 2, positive = 0, zero = 2},
+  represented = {families = 70, moves = 162, positive = 114, zero = 48},
+  candidate = {families = 0, moves = 0, positive = 0, zero = 0},
   blocked_on_state = {families = 127, moves = 191, positive = 101, zero = 90},
   intentionally_rejected = {families = 1, moves = 1, positive = 1, zero = 0},
   unused = {families = 16, moves = 0, positive = 0, zero = 0},

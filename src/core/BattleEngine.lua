@@ -44,6 +44,8 @@
 --   {type="statsWontFall", side=<defender>}  -- Tickle, target ATK/DEF both at -6
 --   {type="splash"} / {type="haze"}
 --   {type="wallShattered", side=<defender>}  -- Brick Break removed screens
+--   {type="conversion", side=<attacker>, newType=}
+--   {type="mementoHP", side=<attacker>}       -- attacker HP set to 0 before drops
 --   {type="psychUp", side=<attacker>, target=<defender side>}
 --   {type="bellyDrum", side=<attacker>, amount=, hpRemaining=}
 --   {type="screenSet", side=, screen="reflect"|"lightScreen", turns=5}
@@ -469,6 +471,9 @@ BattleEngine.EFFECT_SPLASH = 85      -- EffectSplash :1168
 BattleEngine.EFFECT_BELLY_DRUM = 142 -- EffectBellyDrum :1772, maxattackhalvehp
 BattleEngine.EFFECT_PSYCH_UP = 143   -- EffectPsychUp :1786, copyfoestats
 BattleEngine.EFFECT_SOFTBOILED = 157 -- EffectSoftboiled :2023, tryhealhalfhealth
+-- Fast-lane batch 6 (c75f352): neither script has accuracycheck.
+BattleEngine.EFFECT_CONVERSION = 30  -- EffectConversion :658, tryconversiontypechange
+BattleEngine.EFFECT_MEMENTO = 168    -- EffectMemento :2199, trymemento/setatkhptozero
 BattleEngine.EFFECT_MAGNITUDE = 126
 BattleEngine.MOVE_MAGNITUDE = 222
 
@@ -958,8 +963,11 @@ function BattleEngine:supportsMove(move, moveId)
       or move.effect == BattleEngine.EFFECT_BELLY_DRUM then
     return move.power == 0 and move.target == MOVE_TARGET_USER
   end
-  if move.effect == BattleEngine.EFFECT_PSYCH_UP then
+  if move.effect == BattleEngine.EFFECT_PSYCH_UP or move.effect == BattleEngine.EFFECT_MEMENTO then
     return move.power == 0 and move.target == 0 -- MOVE_TARGET_SELECTED
+  end
+  if move.effect == BattleEngine.EFFECT_CONVERSION then
+    return move.power == 0 and move.target == MOVE_TARGET_USER
   end
   if move.effect == BattleEngine.EFFECT_TICKLE then
     return move.power == 0 and move.target == 0 -- MOVE_TARGET_SELECTED
@@ -1181,6 +1189,8 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
     and move.effect ~= BattleEngine.EFFECT_BELLY_DRUM
     and move.effect ~= BattleEngine.EFFECT_PSYCH_UP
     and move.effect ~= BattleEngine.EFFECT_TRIPLE_KICK
+    and move.effect ~= BattleEngine.EFFECT_CONVERSION
+    and move.effect ~= BattleEngine.EFFECT_MEMENTO
 
   -- The FIRST_BATTLE controller deliberately skips the first player
   -- accuracy RNG independently for a damaging move and for a (DOWN-family)
@@ -1241,6 +1251,71 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
   if move.power == 0 then
     if move.effect == BattleEngine.EFFECT_SPLASH then
       events[#events + 1] = { type = "splash" }
+      return
+    end
+    if move.effect == BattleEngine.EFFECT_CONVERSION then
+      -- Cmd_tryconversiontypechange (bsc.c:7003): count leading move slots;
+      -- ??? (Curse) reads as GHOST for a Ghost user, else NORMAL; fail if
+      -- every slot's type is already one of the user's; otherwise draw
+      -- Random() & 3 until it names a valid slot whose type differs.
+      local function slotType(i)
+        local t = self.moves[attacker.moves[i].move].type
+        if t == BattleFormulas.TYPE_MYSTERY then
+          local ghost = attacker.types[1] == 7 or attacker.types[2] == 7
+          t = ghost and 7 or 0
+        end
+        return t
+      end
+      local function isOwn(t) return t == attacker.types[1] or t == attacker.types[2] end
+      local valid = 0
+      while valid < 4 and attacker.moves[valid + 1] and attacker.moves[valid + 1].move ~= 0 do
+        valid = valid + 1
+      end
+      local any = false
+      for i = 1, valid do
+        if not isOwn(slotType(i)) then any = true; break end
+      end
+      if not any then
+        events[#events + 1] = { type = "moveFailed", side = attackerSide }
+        return
+      end
+      local newType
+      repeat
+        local slot
+        repeat slot = self.rng:next16() % 4 until slot < valid
+        newType = slotType(slot + 1)
+      until not isOwn(newType)
+      attacker.types = { newType, newType }
+      events[#events + 1] = { type = "conversion", side = attackerSide, newType = newType }
+      return
+    end
+    if move.effect == BattleEngine.EFFECT_MEMENTO then
+      -- Cmd_trymemento (bsc.c:8681): fail only if target ATK and SP.ATK are
+      -- both at -6 (Protect not modeled). Otherwise attacker HP -> 0 first,
+      -- then target ATK -2 and SP.ATK -2 (each silently skipped at -6), then
+      -- tryfaintmon BS_ATTACKER.
+      local stages = defender.statStages
+      if stages.attack == BattleFormulas.MIN_STAT_STAGE
+          and stages.spAttack == BattleFormulas.MIN_STAT_STAGE then
+        events[#events + 1] = { type = "moveFailed", side = attackerSide }
+        return
+      end
+      attacker.hp = 0
+      events[#events + 1] = { type = "mementoHP", side = attackerSide }
+      for _, stat in ipairs({ "attack", "spAttack" }) do
+        if stages[stat] > BattleFormulas.MIN_STAT_STAGE then
+          stages[stat] = math.max(BattleFormulas.MIN_STAT_STAGE, stages[stat] - 2)
+          events[#events + 1] = {
+            type = "statChange", side = defenderSide, stat = stat, stages = -2, stage = stages[stat],
+          }
+          if self.firstBattle and attackerSide == BattleEngine.SIDE_PLAYER
+              and not self.tutorialPlayerStatDone then
+            self.tutorialPlayerStatDone = true
+            events[#events + 1] = { type = "tutorialTip", kind = "stat" }
+          end
+        end
+      end
+      self:checkFaint(attackerSide, events)
       return
     end
     if move.effect == BattleEngine.EFFECT_HAZE then

@@ -47,6 +47,12 @@ end
 
 -- Real gStatNamesTable (src/battle_message.c), for the stat keys
 -- BattleEngine.lua's statStages table already uses.
+-- gTypeNames (c75f352 src/battle_main.c:428).
+local TYPE_DISPLAY_NAMES = {
+  [0] = "NORMAL", "FIGHT", "FLYING", "POISON", "GROUND", "ROCK", "BUG", "GHOST",
+  "STEEL", "???", "FIRE", "WATER", "GRASS", "ELECTR", "PSYCHC", "ICE", "DRAGON", "DARK",
+}
+
 local STAT_DISPLAY_NAMES = {
   attack = "ATTACK", defense = "DEFENSE", speed = "SPEED",
   spAttack = "SP. ATK", spDefense = "SP. DEF",
@@ -259,6 +265,12 @@ function BattleSceneController:_eventMessages(events)
     elseif event.type == "statsWontRise" then
       -- sText_StatsWontIncrease2 (src/battle_message.c).
       add(possessive(name(event.side)) .. " stats won't\ngo any higher!")
+    elseif event.type == "conversion" then
+      -- sText_PkmnChangedType
+      add(name(event.side) .. " transformed\ninto the " .. (TYPE_DISPLAY_NAMES[event.newType] or "???") .. " type!")
+    elseif event.type == "mementoHP" then
+      -- trymemento drops the user's HP bar before the stat messages.
+      entries[#entries + 1] = { hpSide = event.side, hp = 0 }
     elseif event.type == "wallShattered" then
       add("The wall shattered!") -- sText_TheWallShattered
     elseif event.type == "splash" then
