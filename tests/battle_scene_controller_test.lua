@@ -480,5 +480,36 @@ do
   check("ancient power all-stats messages in order",atk and spd and spdef and atk<spd and spd<spdef)
 end
 
+-- Triple Kick through the real engine: a later miss shows only the hit count
+-- (sText_HitXTimes), a first-kick miss shows the miss text.
+do
+  local moves={
+    [167]={effect=104,power=10,type=1,accuracy=90,pp=10,secondaryEffectChance=0,priority=0,target=0},
+    [105]={effect=32,power=0,type=0,accuracy=0,pp=20,priority=0,target=16},
+  }
+  local stats={hp=300,attack=40,defense=40,speed=20,spAttack=40,spDefense=40}
+  local function run(values)
+    local i=0
+    local engine=BattleEngine.new({
+      player=BattleEngine.makeBattler({species=1,level=20,stats=stats,types={0,0},moves={{move=167,pp=10}}}),
+      foe=BattleEngine.makeBattler({species=4,level=20,stats=stats,types={0,0},moves={{move=105,pp=20}}}),
+      moves=moves,typeChart={},rng={next16=function() i=i+1; return values[i] or 0 end},
+    })
+    engine.player.speed=30
+    local ctrl=BattleSceneController.new({engine=engine,playerName="PLAYER",foeName="FOE",
+      moveName=function() return "MOVE" end})
+    ctrl:advanceMessage(); ctrl:advanceMessage()
+    ctrl:_runTurn({action="move",moveSlot=1})
+    local out={}
+    for _,entry in ipairs(ctrl.messages) do if entry.text then out[#out+1]=entry.text end end
+    return table.concat(out,"|")
+  end
+  local all=run({0,1,0,0,1,0,99})
+  check("triple kick later miss shows only hit count",all:find("Hit 2 time(s)!",1,true)~=nil
+    and not all:find("missed",1,true))
+  all=run({99})
+  check("triple kick first miss shows miss text",all:find("missed",1,true)~=nil and not all:find("Hit ",1,true))
+end
+
 print(("%d passed, %d failed"):format(passed, failed))
 os.exit(failed == 0 and 0 or 1)

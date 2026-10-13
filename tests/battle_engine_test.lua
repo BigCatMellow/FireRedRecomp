@@ -2215,6 +2215,60 @@ do
   end
 end
 
+-- Triple Kick (c75f352 EffectTripleKick): per-kick accuracy, power 10/20/30,
+-- random roll before the no-effect stop. Lv20 40/40 no STAB: 4, 6, 8.
+do
+  local moves={
+    [167]={effect=104,power=10,type=1,accuracy=90,pp=10,secondaryEffectChance=0,priority=0,target=0},
+    [33]={effect=0,power=35,type=0,accuracy=95,pp=35,priority=0,target=0},
+  }
+  local chart={[0]={attackingType=1,defendingType=7,multiplier=0}}
+  local stats={hp=200,attack=40,defense=40,speed=20,spAttack=40,spDefense=40}
+  local function setup(side,values)
+    local b=BattleEngine.new({
+      player=BattleEngine.makeBattler({species=1,level=20,stats=stats,types={0,0},moves={{move=33,pp=35}}}),
+      foe=BattleEngine.makeBattler({species=4,level=20,stats=stats,types={0,0},moves={{move=33,pp=35}}}),
+      moves=moves,typeChart=chart,rng=scriptedRng(values),
+    })
+    local a=b:battler(side)
+    a.moves={{move=167,pp=10}}; a.speed=30
+    return b,a,(side=="player" and b.foe or b.player)
+  end
+  local function kinds(ev)
+    local out={}; for _,e in ipairs(ev) do out[#out+1]=e.type end
+    return table.concat(out,",")
+  end
+  local function resolve(b,side) local ev={}; b:resolveMove(side,1,ev); return ev end
+  for _,side in ipairs({"player","foe"}) do
+    local b,a,d=setup(side,{0,1,0,0,1,0,0,1,0,4321})
+    local ev=resolve(b,side)
+    check("triple kick three kicks 4/6/8 "..side,kinds(ev)=="useMove,damage,damage,damage,multiHit"
+      and ev[2].amount==4 and ev[3].amount==6 and ev[4].amount==8 and ev[5].hits==3 and d.hp==182
+      and a.moves[1].pp==9 and b.rng.draws==9 and b.rng:next16()==4321)
+    b,a,d=setup(side,{0,1,0,99,4321})
+    ev=resolve(b,side)
+    check("triple kick second kick misses: count only, no miss text "..side,kinds(ev)=="useMove,damage,multiHit"
+      and ev[3].hits==1 and b.rng.draws==4 and b.rng:next16()==4321)
+    b,a,d=setup(side,{99,4321})
+    ev=resolve(b,side)
+    check("triple kick first kick misses "..side,kinds(ev)=="useMove,miss" and a.moves[1].pp==9
+      and b.rng.draws==1 and d.hp==200)
+    b,a,d=setup(side,{0,1,0,4321}); d.types={7,7}
+    ev=resolve(b,side)
+    check("triple kick immune spends damage roll then stops "..side,kinds(ev)=="useMove,noEffect"
+      and b.rng.draws==3 and b.rng:next16()==4321)
+    b,a,d=setup(side,{0,1,0,0,0,0,0,1,0,4321})
+    ev=resolve(b,side)
+    check("triple kick per-kick crit "..side,kinds(ev)=="useMove,damage,critical,damage,damage,multiHit"
+      and ev[4].amount==12 and ev[5].amount==8)
+    b,a,d=setup(side,{0,1,0,0,1,0,0,0,0,0,0,0}); d.hp=10
+    b.hasReplacement=function() return false end
+    ev=b:runTurn({action="move",moveSlot=1},{action="move",moveSlot=1})
+    check("triple kick KO stops loop, count before faint "..side,
+      kinds(ev)=="turnStart,useMove,damage,damage,multiHit,faint,battleEnd" and ev[5].hits==2 and d.hp==0)
+  end
+end
+
 if romPath then
   local RomImporter = require("import.RomImporter")
   local RomAddresses = require("import.RomAddresses")

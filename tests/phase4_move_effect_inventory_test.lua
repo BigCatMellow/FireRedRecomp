@@ -113,7 +113,7 @@ local inventory = {
   [101] = {"represented", true, 1, {206}}, -- EFFECT_FALSE_SWIPE
   [102] = {"blocked_on_state", false, 0, {215,312}}, -- EFFECT_HEAL_BELL
   [103] = {"represented", true, 1, {98,183,245}}, -- EFFECT_QUICK_ATTACK
-  [104] = {"candidate", true, 1, {167}}, -- EFFECT_TRIPLE_KICK
+  [104] = {"represented", true, 1, {167}}, -- EFFECT_TRIPLE_KICK: ROM fixture pending (phase4_triple_kick_effect_rom_test)
   [105] = {"blocked_on_state", true, 1, {168,343}}, -- EFFECT_THIEF
   [106] = {"blocked_on_state", false, 0, {169,212,335}}, -- EFFECT_MEAN_LOOK
   [107] = {"blocked_on_state", false, 0, {171}}, -- EFFECT_NIGHTMARE
@@ -228,11 +228,11 @@ local inventory = {
 local expectedTotals = {
   moves = 354, defined = 214, used = 198, unused = 16,
   positive = 216, zero = 138, admitted = 261, rejected = 93,
-  admitted_uncovered_positive = 102,
+  admitted_uncovered_positive = 101,
 }
 local expectedClasses = {
-  represented = {families = 67, moves = 159, positive = 113, zero = 46},
-  candidate = {families = 3, moves = 3, positive = 1, zero = 2},
+  represented = {families = 68, moves = 160, positive = 114, zero = 46},
+  candidate = {families = 2, moves = 2, positive = 0, zero = 2},
   blocked_on_state = {families = 127, moves = 191, positive = 101, zero = 90},
   intentionally_rejected = {families = 1, moves = 1, positive = 1, zero = 0},
   unused = {families = 16, moves = 0, positive = 0, zero = 0},
