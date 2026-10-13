@@ -236,8 +236,9 @@
 --     ported: MOVE_EFFECT_CERTAIN (always-trigger; no move wired here uses
 --     it) and Serene Grace's chance-doubling (no ability system exists yet).
 --     Still explicitly not ported: non-pure-single-stat effects
---     (EFFECT_HAZE, EFFECT_FOCUS_ENERGY, EFFECT_TRANSFORM, EFFECT_REST,
---     etc). supportsMove() correctly rejects those.
+--     (EFFECT_FOCUS_ENERGY, EFFECT_TRANSFORM, EFFECT_REST, etc).
+--     supportsMove() correctly rejects those. (EFFECT_HAZE is now handled
+--     by the fast-lane batch-3 path.)
 --   * Recoil and drain ARE supported -- see BattleEngine.RECOIL_MOVES /
 --     BattleEngine.DRAIN_MOVES and resolveMove's step 8a. EFFECT_RECOIL=48
 --     (Take Down, Submission, and Struggle -- all three real gBattleMoves

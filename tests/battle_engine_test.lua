@@ -2069,7 +2069,7 @@ do
     local copied=true
     for i,stat in ipairs(STATS) do copied=copied and a.statStages[stat]==i+2 and d.statStages[stat]==i+2 end
     check("psych up copies target stages "..side,#ev==2 and ev[2].type=="psychUp" and ev[2].side==side
-      and ev[2].target==dside and copied and b.rng.draws==0)
+      and ev[2].target==dside and copied and a.moves[1].pp==9 and b.rng.draws==0)
     -- Belly Drum: maxHP 101 -> half 50; needs hp > 50 and ATK < +6
     b,a=setup(side,187)
     ev=resolve(b,side)
@@ -2106,6 +2106,11 @@ do
   local b=setup("player",150)
   check("softboiled literal ids only",not b:supportsMove(moves[135],136))
   check("psych up requires selected target",not b:supportsMove({effect=143,power=0,target=USER},244))
+  check("softboiled requires user target",not b:supportsMove({effect=157,power=0,target=SELECTED},135))
+  check("batch3 admission requires zero power",
+    not b:supportsMove({effect=85,power=40,target=USER},150) and not b:supportsMove({effect=25,power=40,target=USER},114)
+    and not b:supportsMove({effect=142,power=40,target=USER},187) and not b:supportsMove({effect=143,power=40,target=SELECTED},244)
+    and not b:supportsMove({effect=157,power=40,target=USER},135))
   check("batch3 user-target moves reject selected target",
     not b:supportsMove({effect=85,power=0,target=SELECTED},150) and not b:supportsMove({effect=25,power=0,target=SELECTED},114)
     and not b:supportsMove({effect=142,power=0,target=SELECTED},187))

@@ -187,7 +187,7 @@ body (Protect/Endure, Return/Frustration, sunlight recovery, Mud/Water Sport).
 | 82 `EFFECT_MIMIC` | 102 (1; Z) | no | B | [`BattleScript_EffectMimic`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L1130) | Copy-move command needs last-used move history, slot/PP provenance and temporary/permanent persistence. |
 | 83 `EFFECT_METRONOME` | 118 (1; Z) | no | B | [`BattleScript_EffectMetronome`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L1143) | Called-move selection/dispatch and exclusion rules absent; #274 additionally needs party move source. |
 | 84 `EFFECT_LEECH_SEED` | 73 (1; Z) | no | B | [`BattleScript_EffectLeechSeed`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L1153) | Seed/nightmare/roots need residual HP loop; #171 also sleep, #275 escape prevention. |
-| 85 `EFFECT_SPLASH` | 150 (1; Z) | yes | R | [`BattleScript_EffectSplash`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L1168) | No effect; "But nothing happened!". Fast-lane batch [P4-FL3](../tasks/phase4-batch3-status-moves.md); ROM fixture pending. |
+| 85 `EFFECT_SPLASH` | 150 (1; Z) | yes | R | [`BattleScript_EffectSplash`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L1168) | No effect; "But nothing happened!"; game stat not modeled. Fast-lane batch [P4-FL3](../tasks/phase4-batch3-status-moves.md); ROM fixture pending. |
 | 86 `EFFECT_DISABLE` | 50 (1; Z) | no | B | [`BattleScript_EffectDisable`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L1179) | Move-history/counter/selection restriction commands absent; Spite also requires last-used-slot PP provenance. |
 | 87 `EFFECT_LEVEL_DAMAGE` | 69, 101 (2; P) | yes | R / R7 | [`BattleScript_EffectLevelDamage`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L1191) | Fixed 40/level/20 damage with shared accuracy, immunity and HP; no item/Endure state. |
 | 88 `EFFECT_PSYWAVE` | 149 (1; P) | yes | R / R12 | [`BattleScript_EffectPsywave`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L1202) | Reviewed rejection-sampled level damage/RNG including immunity; no ordinary critical/base damage. |
@@ -346,7 +346,9 @@ into exhaustive state coverage.
 | R15 | Pain Split literal zero-power admission, no-RNG ordered HP and scene entries | [record test](../../tests/phase4_pain_split_effect_rom_test.lua), [exact independent review](../reviews/2026-09-20-pain-split-implementation-review.md) |
 | J1 | EFFECT_DREAM_EATER explicit supportsMove rejection and sleeping-target source gate | Existing rejection test; source DreamEater script linked in matrix |
 
-For uncovered rows the script command is evidence of a missing requirement,
+For uncovered rows the script command is evidence of a missing requirement
+(batch 3 has since locked tryhealhalfhealth/normalisebuffs/maxattackhalvehp/
+copyfoestats for represented effects 157/25/142/143),
 not a full source lock of that command's branches or RNG schedule. Concrete
 command inspections include `Cmd_tryhealhalfhealth` (6332),
 `Cmd_normalisebuffs` (6826), `Cmd_friendshiptodamagecalculation` (8228),
@@ -381,7 +383,8 @@ to one, and fails when already at full HP; normal HP update clamps healing.
 This is enough to justify discovery, not implementation. That next task should
 lock success/failure/rounding/PP/RNG/event sequencing and determine a literal
 admission exception and dedicated presentation boundary before design/route work.
-Do not bundle Softboiled/Milk Drink (effect157), weather healing (132–134),
+Softboiled/Milk Drink (effect157) is now represented by fast-lane batch 3.
+Do not bundle weather healing (132–134),
 Rest, Present, Wish, Swallow, Ingrain, or a generic healing API.
 
 Misty is evidence of real need, not a completion claim: her roster also contains

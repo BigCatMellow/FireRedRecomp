@@ -58,4 +58,9 @@ existing project wording is reused for Softboiled.
 ## Evidence (Worker, 2026-10-13)
 
 No-ROM: engine 483/0 (was 440), controller 96/0, inventory partition PASS,
-new ROM fixture skips cleanly. Independent review pending; not self-reviewed.
+new ROM fixture skips cleanly. Independent review NEEDS_FIX
+([record](../reviews/2026-10-13-batch3-status-moves-review.md)); findings 1-4 and
+6 addressed: Psych Up PP asserted, Softboiled wrong-target and all power-0
+gates tested (engine 485/0), stale Haze header comment and report notes fixed.
+Finding 5 (Restore HP/Softboiled project wording vs source text) left as a
+follow-up; re-check pending.
