@@ -1,11 +1,26 @@
 # FireRedRecomp Coordination Handoff
 
-- Status: `READY_FOR_REVIEWER — effect-45 implementation authority`
+- Status: `READY_FOR_WORKER — bounded effect-45 implementation`
 - Task ID: `P4-F3-RECOIL-IF-MISS-IMPLEMENTATION`
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
 - Current plan: [`../roadmaps/RECALIBRATED_DELIVERY_PLAN.md`](../roadmaps/RECALIBRATED_DELIVERY_PLAN.md)
 
 ## Current relay — 2026-10-13
+
+### Implementation authority accepted; actual patch construction dispatched
+
+Independent [authority PASS](../reviews/2026-10-13-recoil-if-miss-implementation-authority-review.md)
+accepts exact task `96b10ce`. Worker may now construct only the ten-path
+engine/controller/test/replay/evidence package in an isolated worktree and
+run no-ROM baseline/after checks. No local ROM access or direct canonical
+runtime publication is allowed.
+
+Exact next action: bounded Worker construction and local verification, then
+parent checks fresh runner/jobs/route/current-main applicability and publishes
+only `phase4-recoil-if-miss-effect-20261013.patch` as a sole-file bridge input.
+One request is available; no retry. Guarded focused/full/SHA-ROM/headless
+results and independent exact outcome review remain mandatory. Source/design/
+route/probe acceptance does not yet establish gameplay support.
 
 ### Probe accepted; implementation authority awaiting exact review
 

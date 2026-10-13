@@ -33,7 +33,7 @@ Default to one critical-path Worker package at a time.
 
 ## Current critical path — reconciled 2026-10-12
 
-The active task is [effect-45 implementation-authority review](../tasks/phase4-recoil-if-miss-implementation.md).
+The active task is [bounded effect-45 implementation](../tasks/phase4-recoil-if-miss-implementation.md).
 The [source supplement PASS at `ba69269`](../reviews/2026-10-12-recoil-if-miss-entry-state-review.md)
 resolves the historical design BLOCK, including explicit neutral entry values
 and corrected ordinary immunity precheck/presentation. Original source lock
@@ -41,8 +41,10 @@ and corrected ordinary immunity precheck/presentation. Original source lock
 [route plan `04636d1` also passed](../reviews/2026-10-12-recoil-if-miss-route-plan-review.md).
 [Configuration `1d40f3c` passed](../reviews/2026-10-13-recoil-if-miss-route-configuration-review.md).
 [Probe `667fd16` passed](../reviews/2026-10-13-recoil-if-miss-route-probe-outcome-review.md).
-Review the one-request implementation authority before any Worker construction
-or guarded request. Restore HP `dc8ad06`, bounded Magnitude `7b47c73`, full
+[Implementation authority `96b10ce` passed](../reviews/2026-10-13-recoil-if-miss-implementation-authority-review.md).
+Construct the isolated ten-path package and submit only its one guarded
+request after fresh prerequisites; independent outcome review remains required.
+Restore HP `dc8ad06`, bounded Magnitude `7b47c73`, full
 inventory `c10bfa7`, and the bounded P5 projection `d280751` are independently
 accepted. Their old probes/requests must not be redispatched.
 

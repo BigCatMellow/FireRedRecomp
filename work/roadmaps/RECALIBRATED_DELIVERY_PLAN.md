@@ -34,8 +34,8 @@ rule or traversal work without an evidenced dependency.
 3. [Route plan `04636d1` independently passed](../reviews/2026-10-12-recoil-if-miss-route-plan-review.md).
    [Configuration `1d40f3c` independently passed](../reviews/2026-10-13-recoil-if-miss-route-configuration-review.md).
    [Probe `667fd16` independently passed](../reviews/2026-10-13-recoil-if-miss-route-probe-outcome-review.md).
-   Review [implementation authority](../tasks/phase4-recoil-if-miss-implementation.md),
-   then execute only the separately gated one-request implementation
+   [Implementation authority `96b10ce` passed](../reviews/2026-10-13-recoil-if-miss-implementation-authority-review.md).
+   Execute only the bounded [one-request implementation](../tasks/phase4-recoil-if-miss-implementation.md)
    and required reviews. Follow the exact next allowance in
    current coordination; never revive a completed request.
 4. At the next leaf closure, reassess the next playable checkpoint and rank

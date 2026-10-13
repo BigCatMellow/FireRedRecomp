@@ -1,17 +1,17 @@
 {
   "schema_version": 1,
-  "updated_utc": "2026-10-13T10:43:42Z",
+  "updated_utc": "2026-10-13T10:48:27Z",
   "execution_paused": false,
   "role": "ORCHESTRATOR",
-  "status": "READY_FOR_REVIEWER",
+  "status": "READY_FOR_WORKER",
   "task_id": "P4-F3-RECOIL-IF-MISS-IMPLEMENTATION",
   "current_phase": "Phase 0, Phase 4, and Phase 5 remain IN PROGRESS; Restore HP, bounded Magnitude, bounded P5 Viridian projection, and the effect-45 source lock are independently accepted",
   "canonical_status_owner": "work/roadmaps/CAPABILITY_CHECKLIST.md",
   "active_task": "work/tasks/phase4-recoil-if-miss-implementation.md",
-  "objective": "Independently review exact one-request ten-path implementation authority; no implementation until authority PASS.",
-  "next_role": "REVIEWER",
-  "acceptance": "Independent authority review verifies accepted design/evidence mapping, exact ten-path route, one-input/guard/privacy boundaries and required guarded tests/replay/outcome review.",
-  "boundaries": "Authority review only now; no implementation/request/test/ROM action until PASS. Probe allowance consumed. Later publication only through reviewed guarded route.",
+  "objective": "Implement only accepted effect-45 crash behavior and ten-path evidence package in isolation; publish only via the sole guarded request after fresh prerequisites.",
+  "next_role": "WORKER",
+  "acceptance": "Authority96b10ce criteria: local no-ROM baseline/after checks, exact single request, guarded focused/full/SHA-ROM/headless results and separate independent outcome review.",
+  "boundaries": "Ten literal targets only; local no-ROM construction allowed, no local ROM or canonical runtime push. Single request/no retry; consumed probe allowance; all source/design exclusions retained.",
   "dependencies": "Source c218da6, supplement ba69269, design b3280f9, plan04636d1, configuration1d40f3c and probe667fd16 all independently accepted.",
   "runner_blocker": {
     "task_id": "P4-F3-ROUTE",
@@ -74,13 +74,20 @@
   "project_goal": "work/coordination/PROJECT_GOAL.md — ACTIVE; explicitly adopted 2026-10-11; no user-specified token budget",
   "phase0_external_blocker": "P0-04-REVERIFY at 93c4654: missing prerequisites on the verified target and no desktop proof; separate supported-target preparation decision and fresh evidence required. Historical result is not current host readiness.",
   "checkpoint": {
-    "inspection_revision": "6d6c40831607ebb61ba5ec8c6fd30e6afc00683b",
+    "inspection_revision": "96b10ceebc96dfc4d40cabae43faecf27abe0ce3",
     "pending_jobs": "Probe run38385071588 completed success; pre-dispatch bridge queued/in_progress empty and firered-local online/idle freshly confirmed. No pending bridge job or unused probe allowance.",
     "preserved_drafts": "Unreviewed Brick Break package isolated in named local stash quarantine-unreviewed-brick-break-rerank-2026-10-11; outside active dispatch.",
-    "next_action": "Independent Reviewer assesses implementation authority; only PASS permits Worker construction and later one guarded request.",
-    "remaining_acceptance": "Authority PASS, implementation/local checks, one guarded request with focused/full/SHA-ROM/replay results, independent outcome PASS; no behavior accepted yet.",
+    "next_action": "Worker constructs exact package in isolated worktree, runs allowed local no-ROM checks, hands one patch to parent for fresh prerequisite checks and guarded dispatch.",
+    "remaining_acceptance": "Implementation/local checks, sole guarded request with focused/full/SHA-ROM/replay results, independent outcome PASS; no behavior accepted yet.",
     "coordination_note": "Historical nested records above are evidence receipts, not pending jobs or permission to repeat completed actions.",
-    "worker_session": "Probe independently accepted; implementation authority compiled for independent review. No Worker implementation assigned yet.",
+    "worker_session": "Implementation authority independently passed; bounded Worker isolated construction delegation next.",
+    "implementation_authority": {
+      "revision": "96b10ceebc96dfc4d40cabae43faecf27abe0ce3",
+      "task_sha256": "cbba3ad180b5ce98c1d5a4bb113ab71e608be845af933eae411b32b0ef80042c",
+      "review": "work/reviews/2026-10-13-recoil-if-miss-implementation-authority-review.md",
+      "request": "work/local-runner/requests/phase4-recoil-if-miss-effect-20261013.patch",
+      "allowance": "One request authorized but not yet constructed or submitted; no retry"
+    },
     "probe_receipt": {
       "revision": "667fd163b772075f49f8dbf5f0b1f6bb11b3ca1c",
       "run": 38385071588,
@@ -107,7 +114,7 @@
       "task": "99a045f0c8a4079dbf822b9e2a778519c77fa42c462c984333a6abb3aa92d587",
       "report": "92b990bf18b91729a468eab599fdced128238a6712c76a5f29ea730db56e4484"
     },
-    "last_review": "PASS probe667fd16; work/reviews/2026-10-13-recoil-if-miss-route-probe-outcome-review.md.",
+    "last_review": "PASS implementation authority96b10ce; work/reviews/2026-10-13-recoil-if-miss-implementation-authority-review.md. Behavior remains unaccepted.",
     "goal_service_state": "usageLimited observed 2026-10-12; user explicitly requested continuation. Standing instructions persist; user/system owns lifecycle resumption.",
     "remote_recovery": "Live main 73cf530 recovered; twelve disjoint mod-design documents fast-forwarded without modifying them; source task/report preserved."
   }
