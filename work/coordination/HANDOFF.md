@@ -1,11 +1,25 @@
 # FireRedRecomp Coordination Handoff
 
-- Status: `READY_FOR_REVIEWER — exact effect-45 configuration 1d40f3c`
-- Task ID: `P4-F3-RECOIL-IF-MISS-ROUTE-CONFIG`
+- Status: `READY_FOR_WORKER — one bounded effect-45 readiness probe`
+- Task ID: `P4-F3-RECOIL-IF-MISS-ROUTE-PROBE`
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
 - Current plan: [`../roadmaps/RECALIBRATED_DELIVERY_PLAN.md`](../roadmaps/RECALIBRATED_DELIVERY_PLAN.md)
 
-## Current relay — 2026-10-12
+## Current relay — 2026-10-13
+
+### Configuration accepted; substrate probe dispatched
+
+Independent [configuration PASS](../reviews/2026-10-13-recoil-if-miss-route-configuration-review.md)
+accepts `1d40f3c`; retained static receipts were verified against unchanged
+bytes after a usage-limit interruption. Live main recovered at `f2bcc8a`;
+CI `38310659431` passed and no queued/in-progress jobs were observed.
+
+Exact next action: Worker creates only the
+[authorized readiness probe](../tasks/local-worker-bridge-phase4-recoil-if-miss-route-probe.md).
+Parent freshly checks runner/jobs immediately before sole-file publication,
+monitors safe step receipts and routes the outcome to independent review.
+No retry or patch is authorized. All seven patch-only steps must skip.
+Gameplay implementation has not started; configuration is now accepted.
 
 ### Configuration implemented; independent static review assigned
 
