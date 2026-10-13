@@ -185,6 +185,8 @@ jobs:
             exit 1
           fi
           echo "ROM SHA-1 verified for FireRed US v1.0."
+          # Public logs: later steps' env blocks would otherwise print the private path.
+          echo "::add-mask::$rom"
           echo "path=$rom" >> "$GITHUB_OUTPUT"
 
       - name: Probe complete
