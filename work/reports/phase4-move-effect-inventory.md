@@ -34,8 +34,8 @@ labels `defined_source=214`; the ROM gate checks member usage and unused IDs.
 
 | Source-confirmed semantic class | Used families | Moves | Positive power | Zero power | Admitted / rejected |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| Represented with stated limits | 65 | 156 | 110 | 46 | 156 / 0 |
-| Candidate for separate discovery | 5 | 6 | 4 | 2 | 4 / 2 |
+| Represented with stated limits | 67 | 159 | 113 | 46 | 159 / 0 |
+| Candidate for separate discovery | 3 | 3 | 1 | 2 | 1 / 2 |
 | Blocked on additional state or an absent cross-component path | 127 | 191 | 101 | 90 | 101 / 90 |
 | Intentionally rejected | 1 | 1 | 1 | 0 | 0 / 1 |
 | Total used | 198 | 354 | 216 | 138 | 261 / 93 |
@@ -52,11 +52,11 @@ families are unimplemented, not a policy decision that they should never work.
 
 ## Coverage and admission are separate
 
-The **105 admitted, semantically uncovered positive-power records** occupy
-57 effects: `2, 4, 5, 6, 26, 27, 31, 34, 36, 39, 42, 75, 76, 77, 80, 81, 89, 92, 104, 105, 117, 119, 121, 122, 123, 125, 128, 129, 135, 140, 144, 145, 146, 147, 148, 149, 150, 151, 152, 154, 155, 158, 159, 161, 169, 170, 171, 185, 186, 188, 196, 197, 200, 202, 203, 207, 209`.
+The **102 admitted, semantically uncovered positive-power records** occupy
+55 effects: `2, 4, 5, 6, 26, 27, 31, 34, 36, 39, 42, 75, 76, 77, 80, 81, 89, 92, 104, 105, 117, 119, 121, 122, 123, 125, 128, 129, 135, 144, 145, 146, 147, 148, 149, 150, 151, 152, 154, 155, 158, 159, 161, 169, 170, 171, 185, 188, 196, 197, 200, 202, 203, 207, 209`.
 Their precise move members and counts are the `yes / C` and `yes / B` rows
 below. They reach ordinary damage because of the positive-power fallback;
-admission does not implement their effects. Four are candidate records and
+admission does not implement their effects. One is a candidate record and
 101 need additional state/path work. This refresh supersedes the older
 140-fallback positive-only count; accepted intervening leaves account for the
 reduction, while 138 zero-power records are now included explicitly.
@@ -242,7 +242,7 @@ body (Protect/Endure, Return/Frustration, sunlight recovery, Mud/Water Sport).
 | 137 `EFFECT_SUNNY_DAY` | 241 (1; Z) | no | B | [`BattleScript_EffectSunnyDay`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L1753) | Weather duration/residual/damage/accuracy/ability/form hooks absent. |
 | 138 `EFFECT_DEFENSE_UP_HIT` | 211 (1; P) | yes | R / R5 | [`BattleScript_EffectDefenseUpHit`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L1760) | One-stage secondary stat/chance RNG path; no Serene Grace/Shield Dust/Substitute or non-stat status effects. |
 | 139 `EFFECT_ATTACK_UP_HIT` | 232, 309 (2; P) | yes | R / R5 | [`BattleScript_EffectAttackUpHit`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L1764) | One-stage secondary stat/chance RNG path; no Serene Grace/Shield Dust/Substitute or non-stat status effects. |
-| 140 `EFFECT_ALL_STATS_UP_HIT` | 246, 318 (2; P) | yes | C | [`BattleScript_EffectAllStatsUpHit`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L1768) | MOVE_EFFECT_ALL_STATS_UP routes to ordered multi-stat script; combined event/chance contract needed. |
+| 140 `EFFECT_ALL_STATS_UP_HIT` | 246, 318 (2; P) | yes | R | [`BattleScript_EffectAllStatsUpHit`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L1768) | 10% (roll <= 10) all-five +1 after the hit; maxed stat prints won't-go-higher; all maxed silent. Fast-lane batch [P4-FL4](../tasks/phase4-batch4-hit-effects.md); ROM fixture pending. |
 | 141 `EFFECT_UNUSED_8D` | none (0; —) | — | U | [`BattleScript_EffectHit`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L239) | No real move member; source aliases Hit. No runtime coverage/admission claim. |
 | 142 `EFFECT_BELLY_DRUM` | 187 (1; Z) | yes | R | [`BattleScript_EffectBellyDrum`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L1772) | ATK to +6 for max(1, maxHP/2) HP; fails at ATK +6 or HP <= that cost. Fast-lane batch [P4-FL3](../tasks/phase4-batch3-status-moves.md); ROM fixture pending. |
 | 143 `EFFECT_PSYCH_UP` | 244 (1; Z) | yes | R | [`BattleScript_EffectPsychUp`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L1786) | Copies all target stages; never fails. Fast-lane batch [P4-FL3](../tasks/phase4-batch3-status-moves.md); ROM fixture pending. |
@@ -288,7 +288,7 @@ body (Protect/Endure, Return/Frustration, sunlight recovery, Mud/Water Sport).
 | 183 `EFFECT_MAGIC_COAT` | 277 (1; Z) | no | B | [`BattleScript_EffectMagicCoat`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L2387) | Magic Coat/Snatch need turn-local owner, action interception/redirection and effect filtering. |
 | 184 `EFFECT_RECYCLE` | 278 (1; Z) | no | B | [`BattleScript_EffectRecycle`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L2398) | Item transfer/swap/recycle/removal needs held-item ownership, loss history and persistence. |
 | 185 `EFFECT_REVENGE` | 279 (1; P) | yes | B | [`BattleScript_EffectRevenge`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L2409) | Damage-received history with source/category/turn identity absent. |
-| 186 `EFFECT_BRICK_BREAK` | 280 (1; P) | yes | C | [`BattleScript_EffectBrickBreak`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L2413) | removelightscreenreflect before damage; side fields exist, removal/immunity/order contract needed. |
+| 186 `EFFECT_BRICK_BREAK` | 280 (1; P) | yes | R | [`BattleScript_EffectBrickBreak`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L2413) | Removes both target screens before crit/damage; wall-shattered message even on an immune target. Fast-lane batch [P4-FL4](../tasks/phase4-batch4-hit-effects.md); ROM fixture pending. |
 | 187 `EFFECT_YAWN` | 281 (1; Z) | no | B | [`BattleScript_EffectYawn`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L2446) | Yawn needs delayed sleep and status/ability/Safeguard branches. |
 | 188 `EFFECT_KNOCK_OFF` | 282 (1; P) | yes | B | [`BattleScript_EffectKnockOff`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L2470) | Item transfer/swap/recycle/removal needs held-item ownership, loss history and persistence. |
 | 189 `EFFECT_ENDEAVOR` | 283 (1; P) | yes | R / R14 | [`BattleScript_EffectEndeavor`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L2474) | Reviewed pre-accuracy HP comparison/difference and generic failure; no Protect/Substitute/Endure. |

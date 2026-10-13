@@ -259,6 +259,8 @@ function BattleSceneController:_eventMessages(events)
     elseif event.type == "statsWontRise" then
       -- sText_StatsWontIncrease2 (src/battle_message.c).
       add(possessive(name(event.side)) .. " stats won't\ngo any higher!")
+    elseif event.type == "wallShattered" then
+      add("The wall shattered!") -- sText_TheWallShattered
     elseif event.type == "splash" then
       add("But nothing happened!") -- sText_ButNothingHappened
     elseif event.type == "haze" then

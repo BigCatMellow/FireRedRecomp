@@ -149,7 +149,7 @@ local inventory = {
   [137] = {"blocked_on_state", false, 0, {241}}, -- EFFECT_SUNNY_DAY
   [138] = {"represented", true, 1, {211}}, -- EFFECT_DEFENSE_UP_HIT
   [139] = {"represented", true, 1, {232,309}}, -- EFFECT_ATTACK_UP_HIT
-  [140] = {"candidate", true, 1, {246,318}}, -- EFFECT_ALL_STATS_UP_HIT
+  [140] = {"represented", true, 1, {246,318}}, -- EFFECT_ALL_STATS_UP_HIT: ROM fixture pending (phase4_batch4_hit_effect_rom_test)
   [141] = {"unused", false, -1, {}}, -- EFFECT_UNUSED_8D
   [142] = {"represented", true, 0, {187}}, -- EFFECT_BELLY_DRUM: ROM fixture pending (phase4_batch3_status_effect_rom_test)
   [143] = {"represented", true, 0, {244}}, -- EFFECT_PSYCH_UP: ROM fixture pending (phase4_batch3_status_effect_rom_test)
@@ -195,7 +195,7 @@ local inventory = {
   [183] = {"blocked_on_state", false, 0, {277}}, -- EFFECT_MAGIC_COAT
   [184] = {"blocked_on_state", false, 0, {278}}, -- EFFECT_RECYCLE
   [185] = {"blocked_on_state", true, 1, {279}}, -- EFFECT_REVENGE
-  [186] = {"candidate", true, 1, {280}}, -- EFFECT_BRICK_BREAK
+  [186] = {"represented", true, 1, {280}}, -- EFFECT_BRICK_BREAK: ROM fixture pending (phase4_batch4_hit_effect_rom_test)
   [187] = {"blocked_on_state", false, 0, {281}}, -- EFFECT_YAWN
   [188] = {"blocked_on_state", true, 1, {282}}, -- EFFECT_KNOCK_OFF
   [189] = {"represented", true, 1, {283}}, -- EFFECT_ENDEAVOR
@@ -228,11 +228,11 @@ local inventory = {
 local expectedTotals = {
   moves = 354, defined = 214, used = 198, unused = 16,
   positive = 216, zero = 138, admitted = 261, rejected = 93,
-  admitted_uncovered_positive = 105,
+  admitted_uncovered_positive = 102,
 }
 local expectedClasses = {
-  represented = {families = 65, moves = 156, positive = 110, zero = 46},
-  candidate = {families = 5, moves = 6, positive = 4, zero = 2},
+  represented = {families = 67, moves = 159, positive = 113, zero = 46},
+  candidate = {families = 3, moves = 3, positive = 1, zero = 2},
   blocked_on_state = {families = 127, moves = 191, positive = 101, zero = 90},
   intentionally_rejected = {families = 1, moves = 1, positive = 1, zero = 0},
   unused = {families = 16, moves = 0, positive = 0, zero = 0},
