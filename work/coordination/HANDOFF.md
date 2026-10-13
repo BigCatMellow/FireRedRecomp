@@ -1,11 +1,33 @@
 # FireRedRecomp Coordination Handoff
 
-- Status: `READY_FOR_WORKER — bounded effect-45 implementation`
+- Status: `READY_FOR_REVIEWER — guarded effect-45 implementation cfdbb96`
 - Task ID: `P4-F3-RECOIL-IF-MISS-IMPLEMENTATION`
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
 - Current plan: [`../roadmaps/RECALIBRATED_DELIVERY_PLAN.md`](../roadmaps/RECALIBRATED_DELIVERY_PLAN.md)
 
 ## Current relay — 2026-10-13
+
+### Gameplay implementation published; guarded evidence passed
+
+Sole request `5fb8053` completed run `38434551595` / job `115425037342` and
+published exact ten-path implementation `cfdbb96`. Runtime, test and evidence
+hashes match the isolated Worker package. Fresh parent prerequisites passed:
+required runner online/idle, bridge queued/in-progress empty, unchanged route
+and applicable patch. Request allowance is consumed; no retry.
+
+Safe receipts: focused engine339/0, controller87/0, party29/0; both full
+suites155 files; non-skipped inventory and two-member ROM fixture3/0; required
+headless replay PASS. Every patch gate/publication passed and probe skipped.
+Only whitelisted numeric/fixed receipts were extracted; private ROM paths and
+environment-bearing summaries were not retained. Local no-ROM baseline154 and
+after155 also passed. Source package and public drafts are preserved.
+
+Exact next action: independent outcome review of `cfdbb96`, its actual
+assertions and guarded receipts against authority `96b10ce`. Then close only
+proven bounded effect45 and reassess the next playable checkpoint using the
+accepted P4/P5/P6 dependencies. No full Phase4, normal save/reload or retail
+presentation claim follows from this package. Older ready/next lines below
+are historical; do not repeat any request or probe.
 
 ### Implementation authority accepted; actual patch construction dispatched
 
