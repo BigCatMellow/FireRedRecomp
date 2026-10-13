@@ -21,8 +21,9 @@
   NoMoreHits: with a nonzero count, `bicbyte MISSED`; PrintStrings:
   resultmessage, and with a nonzero count and no DOESNT_AFFECT,
   `STRINGID_HITXTIMES`; then `seteffectwithchance`, `tryfaintmon BS_TARGET`.
-- `src/battle_script_commands.c:3469` MoveValuesCleanUp; `:1213-1231`
-  damagecalc uses and resets gDynamicBasePower.
+- `src/battle_script_commands.c:3469` MoveValuesCleanUp; `Cmd_damagecalc`
+  (`:1209-1222`) passes gDynamicBasePower to CalculateBaseDamage; the script
+  rewrites it every kick (resets elsewhere: `battle_main.c:3695,4471`).
 - `src/battle_message.c:82` "Hit {B_BUFF1} time(s)!".
 - `src/data/battle_moves.h:2174`: record used by the ROM fixture.
 
@@ -45,11 +46,14 @@ and the trailing seteffectwithchance roll (tracked plain-hit gap).
 
 ## Acceptance
 
-1. Both sides: three kicks 4/6/8 at Lv20 40/40, `multiHit` 3, PP −1, 9 draws;
+1. Draw counts below match the tracked seteffectwithchance gap (source
+   10/5/2/4: the trailing roll is also spent on a miss).
+   Both sides: three kicks 4/6/8 at Lv20 40/40, `multiHit` 3, PP −1, 9 draws;
    second kick miss → one damage + `multiHit` 1, no miss event, 4 draws;
    first kick miss → `miss`, 1 draw, PP spent; immune → `noEffect` after 3
    draws; per-kick crit doubles that kick only; KO on kick 2 stops the loop
-   with `multiHit` 2 before faint.
+   with `multiHit` 2 before faint (also with a replacement pending); per-kick
+   evasion/accuracy stages (threshold 67 at evasion +1); Reflect 3/4/5.
 2. Controller: later miss shows "Hit 2 time(s)!" without miss text; first
    miss shows miss text without a hit count.
 3. Inventory: family `represented`, totals and report updated; ROM fixture pending.
@@ -58,4 +62,12 @@ and the trailing seteffectwithchance roll (tracked plain-hit gap).
 ## Evidence (Worker, 2026-10-13)
 
 No-ROM: engine 533/0 (was 521), controller 100/0, inventory partition PASS,
-new ROM fixture skips cleanly. Independent review pending; not self-reviewed.
+new ROM fixture skips cleanly. Independent review NEEDS_FIX
+([record](../reviews/2026-10-13-triple-kick-review.md)); findings 1-7 addressed:
+per-kick accuracy/evasion stage, Reflect and replacement tests (engine 541/0),
+gap draw-count notes, source citation, row 104 limits. Re-check pending.
+
+## Follow-ups
+
+- Plain-hit seteffectwithchance gap also covers Triple Kick, where the
+  source spends the roll on every path including a first-kick miss.

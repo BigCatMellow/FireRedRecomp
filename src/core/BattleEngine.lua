@@ -1891,7 +1891,8 @@ end
 -- earlier kick stops the loop (jumpifhasnohp) but still prints the hit
 -- count; its faint is then handled by the caller's ordinary faint check.
 -- The trailing seteffectwithchance Random() is not spent, matching the
--- tracked plain-hit gap.
+-- tracked plain-hit gap; note the source spends it on every path here,
+-- including a first-kick miss (bs1.s:1431).
 function BattleEngine:resolveTripleKick(attackerSide, attacker, defenderSide, defender, move, events)
   local hits, power = 0, 0
   local stopped

@@ -2266,6 +2266,26 @@ do
     ev=b:runTurn({action="move",moveSlot=1},{action="move",moveSlot=1})
     check("triple kick KO stops loop, count before faint "..side,
       kinds(ev)=="turnStart,useMove,damage,damage,multiHit,faint,battleEnd" and ev[5].hits==2 and d.hp==0)
+    b,a,d=setup(side,{0,1,0,0,1,0,0,0,0,0,0,0}); d.hp=10
+    b.hasReplacement=function(s2) return s2~=side end
+    ev=b:runTurn({action="move",moveSlot=1},{action="move",moveSlot=1})
+    check("triple kick KO with replacement pending "..side,
+      kinds(ev)=="turnStart,useMove,damage,damage,multiHit,faint,forcedSwitchNeeded")
+    -- Per-kick accuracy uses stages: 90 * 75/100 = 67 at evasion +1
+    -- (bsc.c:1046-1061), so draw 66 hits and draw 67 misses on kick 2.
+    b,a,d=setup(side,{66,1,0,67,4321}); d.statStages.evasion=7
+    ev=resolve(b,side)
+    check("triple kick per-kick evasion stage "..side,kinds(ev)=="useMove,damage,multiHit" and ev[3].hits==1
+      and b.rng.draws==4 and b.rng:next16()==4321)
+    b,a,d=setup(side,{66,1,0,67,4321}); a.statStages.accuracy=5
+    ev=resolve(b,side)
+    check("triple kick per-kick accuracy stage "..side,kinds(ev)=="useMove,damage,multiHit" and ev[3].hits==1)
+    -- Reflect halves before +2 (pokemon.c): 1+2, 2+2, 3+2.
+    b,a,d=setup(side,{0,1,0,0,1,0,0,1,0,4321})
+    local dside=side=="player" and "foe" or "player"
+    b.sideStatus[dside].reflect=true; b.sideStatus[dside].reflectTimer=5
+    ev=resolve(b,side)
+    check("triple kick Reflect per kick "..side,ev[2].amount==3 and ev[3].amount==4 and ev[4].amount==5)
   end
 end
 
