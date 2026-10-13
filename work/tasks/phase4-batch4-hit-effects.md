@@ -1,7 +1,7 @@
 # Task: batch 4 hit effects (fast lane)
 
 - Task ID: `P4-FL4-HIT-EFFECTS`
-- Status: `READY_FOR_REVIEWER`
+- Status: `CLOSED — REVIEWED PASS` after re-check ([review](../reviews/2026-10-13-batch4-hit-effects-review.md)); ROM fixture pending
 - Lane: [battle-effect fast lane](../../AGENTS.md#battle-effect-fast-lane--human-authorized-2026-10-13)
 - Parent: [Phase 4 move/effect matrix](../roadmaps/CAPABILITY_CHECKLIST.md)
 - Families: 140 All Stats Up Hit (246 Ancient Power, 318 Silver Wind), 186 Brick Break (280)
@@ -71,4 +71,4 @@ new ROM fixture skips cleanly. Independent review NEEDS_FIX
 addressed: SP.DEF gate clause and KO-then-boost tests (engine 521/0), RNG
 gap wording, stale Brick Break comments/rows, MISSED-flag limit noted, controller
 order assert, timer/flag comment. Finding 8 (coordination docs) left for the
-orchestrator. Re-check pending.
+orchestrator. Re-check PASS.

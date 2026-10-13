@@ -89,3 +89,26 @@ Inventory: independent recomputation from the test table gives 55 admitted-uncov
 No defect was found in runtime behavior. F2 and F3 must be fixed before PASS. F1 and F4 are cheap and should go in the same fix.
 
 — independent reviewer subagent; did not construct the change
+
+## Re-check (commit 3eb5051 on top of 18e076e)
+
+Verdict: **PASS**
+
+- I reviewed only the delta `git diff 18e076e 3eb5051 -- src tests work/reports work/tasks`. Runtime code is unchanged. The only edits in `BattleEngine.lua` and `BattleFormulas.lua` are comments. The task file now lists `BattleFormulas.lua` (comment only) under MAY CHANGE. `git diff --check` is clean.
+- F2: the new test `all stats up gate checks SP.DEF clause` sets ATK/DEF/SPEED/SP.ATK to +6 and SP.DEF to 0. It expects four prevented entries in source order, then SP.DEF rising to 7, with 4 draws (`bs1.s:3405-3410`). Fixed.
+- F3: the new test `all stats up applies on KO before faint` runs through `runTurn`. It expects `turnStart, useMove, damage, statChange x5, faint, battleEnd` and ATK at 7 (`bsc.c:2139-2142`, the HP guard on the attacker under AFFECTS_USER). Fixed.
+- F1: the acceptance text (task file, acceptance 1) and the comments next to both `draws==3` asserts now name the tracked gap, where the source spends 4 draws. Fixed.
+- F4: `BattleEngine.lua:423-426`, `BattleFormulas.lua:115-117` and inventory rows 35 and 65 updated. Fixed. F5: row 140 now records the MISSED flag limit. F6: the controller test asserts use < wall shattered < foe's action. F7: comment at `BattleEngine.lua:1478-1479`.
+- F8: left for the orchestrator. It is outside this task's MAY CHANGE.
+- I re-ran the three surviving mutants on a fresh `git archive 3eb5051` copy (`/tmp/claude-0/review4/repo2`). All three are now caught:
+
+  | Mutant | Result |
+  | --- | --- |
+  | Gate checks ATK only | 517/4 (the SP.DEF clause test fails, x4) |
+  | Gate omits the SP.DEF clause | 517/4 (the SP.DEF clause test fails, x4) |
+  | Boost skipped on defender KO | 517/4 (the KO test fails, x4) |
+
+- Tests: `test_all.sh` passes (159 files, no ROM). `check_repository.lua` passes (285 Lua, 290 Markdown, 965 targets). Engine 521/0 (513 + 2 checks x 2 ids x 2 sides). Controller 98/0. The ROM fixture and the inventory ROM part skip cleanly.
+- Note: the copy committed at `work/reviews/2026-10-13-batch4-hit-effects-review.md` predates this section. Sync it from this file before merge.
+
+— independent reviewer subagent; did not construct the change
