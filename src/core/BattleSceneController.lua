@@ -259,6 +259,9 @@ function BattleSceneController:_eventMessages(events)
     elseif event.type == "statsWontRise" then
       -- sText_StatsWontIncrease2 (src/battle_message.c).
       add(possessive(name(event.side)) .. " stats won't\ngo any higher!")
+    elseif event.type == "statsWontFall" then
+      -- sText_StatsWontDecrease2 (src/battle_message.c).
+      add(possessive(name(event.side)) .. " stats won't\ngo any lower!")
     elseif event.type == "switch" then
       -- Bounded, single-message result: this event doesn't carry the
       -- outgoing/incoming species names (BattleEngine stays fully

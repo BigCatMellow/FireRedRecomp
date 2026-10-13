@@ -368,5 +368,42 @@ do
   end
 end
 
+-- Tickle / Overheat through the real engine. Expected text:
+-- sText_DefendersStatFell, sText_StatsWontDecrease2, sText_AttackersStatFell
+-- with sText_StatHarshly.
+do
+  local moves={
+    [321]={effect=205,power=0,type=0,accuracy=100,pp=20,priority=0,target=0},
+    [315]={effect=204,power=140,type=10,accuracy=90,pp=5,secondaryEffectChance=100,priority=0,target=0},
+    [105]={effect=32,power=0,type=0,accuracy=0,pp=20,priority=0,target=16},
+  }
+  local stats={hp=300,attack=40,defense=40,speed=20,spAttack=40,spDefense=40}
+  local function run(moveId, setupFoe)
+    local engine=BattleEngine.new({
+      player=BattleEngine.makeBattler({species=1,level=20,stats=stats,types={0,0},moves={{move=moveId,pp=20}}}),
+      foe=BattleEngine.makeBattler({species=4,level=20,stats=stats,types={0,0},moves={{move=105,pp=20}}}),
+      moves=moves,typeChart={},rng={next16=function() return 0 end},
+    })
+    engine.player.speed=30
+    if setupFoe then setupFoe(engine.foe) end
+    local ctrl=BattleSceneController.new({engine=engine,playerName="PLAYER",foeName="FOE",
+      moveName=function(id) return ({[321]="TICKLE",[315]="OVERHEAT"})[id] or "RECOVER" end})
+    ctrl:advanceMessage(); ctrl:advanceMessage()
+    ctrl:_runTurn({action="move",moveSlot=1})
+    local texts={}
+    for _,entry in ipairs(ctrl.messages) do if entry.text then texts[#texts+1]=entry.text end end
+    return table.concat(texts,"|")
+  end
+  local all=run(321)
+  local a=all:find("FOE's ATTACK\nfell!",1,true)
+  local d=all:find("FOE's DEFENSE\nfell!",1,true)
+  check("tickle messages in source order",a~=nil and d~=nil and a<d)
+  all=run(321,function(foe) foe.statStages.attack=0; foe.statStages.defense=0 end)
+  check("tickle both-minimum message",all:find("FOE's stats won't\ngo any lower!",1,true)~=nil
+    and not all:find("fell!",1,true))
+  all=run(315)
+  check("overheat self harsh drop message",all:find("PLAYER's SP. ATK\nharshly fell!",1,true)~=nil)
+end
+
 print(("%d passed, %d failed"):format(passed, failed))
 os.exit(failed == 0 and 0 or 1)

@@ -191,7 +191,7 @@ local inventory = {
   [179] = {"blocked_on_state", false, 0, {273}}, -- EFFECT_WISH
   [180] = {"blocked_on_state", false, 0, {274}}, -- EFFECT_ASSIST
   [181] = {"blocked_on_state", false, 0, {275}}, -- EFFECT_INGRAIN
-  [182] = {"candidate", true, 1, {276}}, -- EFFECT_SUPERPOWER
+  [182] = {"represented", true, 1, {276}}, -- EFFECT_SUPERPOWER: ROM fixture pending (phase4_self_drop_tickle_effect_rom_test)
   [183] = {"blocked_on_state", false, 0, {277}}, -- EFFECT_MAGIC_COAT
   [184] = {"blocked_on_state", false, 0, {278}}, -- EFFECT_RECYCLE
   [185] = {"blocked_on_state", true, 1, {279}}, -- EFFECT_REVENGE
@@ -213,8 +213,8 @@ local inventory = {
   [201] = {"blocked_on_state", false, 0, {300}}, -- EFFECT_MUD_SPORT
   [202] = {"blocked_on_state", true, 1, {305}}, -- EFFECT_POISON_FANG
   [203] = {"blocked_on_state", true, 1, {311}}, -- EFFECT_WEATHER_BALL
-  [204] = {"candidate", true, 1, {315,354}}, -- EFFECT_OVERHEAT
-  [205] = {"candidate", false, 0, {321}}, -- EFFECT_TICKLE
+  [204] = {"represented", true, 1, {315,354}}, -- EFFECT_OVERHEAT: ROM fixture pending (phase4_self_drop_tickle_effect_rom_test)
+  [205] = {"represented", true, 0, {321}}, -- EFFECT_TICKLE: ROM fixture pending (phase4_self_drop_tickle_effect_rom_test)
   [206] = {"represented", true, 0, {322}}, -- EFFECT_COSMIC_POWER: ROM fixture pending (phase4_dual_stat_up_effect_rom_test)
   [207] = {"blocked_on_state", true, 1, {327}}, -- EFFECT_SKY_UPPERCUT
   [208] = {"represented", true, 0, {339}}, -- EFFECT_BULK_UP: ROM fixture pending (phase4_dual_stat_up_effect_rom_test)
@@ -227,12 +227,12 @@ local inventory = {
 
 local expectedTotals = {
   moves = 354, defined = 214, used = 198, unused = 16,
-  positive = 216, zero = 138, admitted = 254, rejected = 100,
-  admitted_uncovered_positive = 108,
+  positive = 216, zero = 138, admitted = 255, rejected = 99,
+  admitted_uncovered_positive = 105,
 }
 local expectedClasses = {
-  represented = {families = 57, moves = 146, positive = 107, zero = 39},
-  candidate = {families = 13, moves = 16, positive = 7, zero = 9},
+  represented = {families = 60, moves = 150, positive = 110, zero = 40},
+  candidate = {families = 10, moves = 12, positive = 4, zero = 8},
   blocked_on_state = {families = 127, moves = 191, positive = 101, zero = 90},
   intentionally_rejected = {families = 1, moves = 1, positive = 1, zero = 0},
   unused = {families = 16, moves = 0, positive = 0, zero = 0},

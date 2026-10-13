@@ -1879,6 +1879,134 @@ do
   end
 end
 
+-- Certain self-drop after a hit (Superpower ATK-1 then DEF-1; Overheat and
+-- Psycho Boost SP.ATK-2), literal from c75f352 BattleScript_AtkDefDown /
+-- BattleScript_SAtkDown2. RNG oracle: accuracy, crit, damage random only;
+-- an immune hit additionally spends one seteffectwithchance Random().
+do
+  local families = {
+    {move=276, rec={effect=182,power=120,type=1,accuracy=100,pp=5,secondaryEffectChance=0},
+     drops={{"attack",-1},{"defense",-1}}},
+    {move=315, rec={effect=204,power=140,type=10,accuracy=90,pp=5,secondaryEffectChance=100},
+     drops={{"spAttack",-2}}},
+    {move=354, rec={effect=204,power=140,type=14,accuracy=90,pp=5,secondaryEffectChance=100},
+     drops={{"spAttack",-2}}},
+  }
+  local stats={hp=200,attack=40,defense=40,speed=20,spAttack=40,spDefense=40}
+  for _,f in ipairs(families) do
+    local r=f.rec
+    local moves={
+      [f.move]={effect=r.effect,power=r.power,type=r.type,accuracy=r.accuracy,pp=r.pp,
+        secondaryEffectChance=r.secondaryEffectChance,priority=0,target=0},
+      [33]={effect=0,power=35,type=0,accuracy=95,pp=35,priority=0,target=0},
+    }
+    -- Defender type 7 is immune to the move's type in this local chart.
+    local chart={[0]={attackingType=r.type,defendingType=7,multiplier=0}}
+    local function setup(side, values)
+      local b=BattleEngine.new({
+        player=BattleEngine.makeBattler({species=1,level=20,stats=stats,types={0,0},moves={{move=33,pp=35}}}),
+        foe=BattleEngine.makeBattler({species=4,level=20,stats=stats,types={0,0},moves={{move=33,pp=35}}}),
+        moves=moves,typeChart=chart,rng=scriptedRng(values or {0,1,0,4321}),
+      })
+      local a=b:battler(side)
+      a.moves={{move=f.move,pp=r.pp}}; a.speed=30
+      return b,a,(side=="player" and b.foe or b.player)
+    end
+    local function kinds(ev)
+      local out={}; for _,e in ipairs(ev) do out[#out+1]=e.type end
+      return table.concat(out,",")
+    end
+    local nd=#f.drops
+    for _,side in ipairs({"player","foe"}) do
+      local tag=f.move..side
+      local b,a,d=setup(side)
+      local ev={}; b:resolveMove(side,1,ev)
+      local ok=kinds(ev)==("useMove,damage"..string.rep(",statChange",nd)) and d.hp<200
+        and a.moves[1].pp==r.pp-1 and b.rng.draws==3 and b.rng:next16()==4321
+      for i,drop in ipairs(f.drops) do
+        local e=ev[2+i]
+        ok=ok and e.side==side and e.stat==drop[1] and e.stages==drop[2] and e.stage==6+drop[2]
+          and a.statStages[drop[1]]==6+drop[2]
+      end
+      check("selfDrop after hit, no RNG "..tag,ok and d.statStages.attack==6 and d.statStages.defense==6)
+      b,a,d=setup(side); for _,drop in ipairs(f.drops) do a.statStages[drop[1]]=0 end
+      ev={}; b:resolveMove(side,1,ev)
+      check("selfDrop at -6 skipped silently "..tag,kinds(ev)=="useMove,damage" and b.rng.draws==3)
+      if nd==1 then
+        b,a=setup(side); a.statStages.spAttack=1
+        ev={}; b:resolveMove(side,1,ev)
+        check("selfDrop -2 clamps at -6 "..tag,ev[3].stages==-2 and ev[3].stage==0 and a.statStages.spAttack==0)
+      else
+        b,a=setup(side); a.statStages.attack=0
+        ev={}; b:resolveMove(side,1,ev)
+        check("selfDrop first at -6, second applies "..tag,kinds(ev)=="useMove,damage,statChange"
+          and ev[3].stat=="defense" and a.statStages.defense==5)
+      end
+      b,a,d=setup(side,{0,1,0,0,4321}); d.types={7,7}
+      ev={}; b:resolveMove(side,1,ev)
+      check("selfDrop immune spends effect roll, no drop "..tag,kinds(ev)=="useMove,noEffect"
+        and b.rng.draws==4 and b.rng:next16()==4321 and a.statStages.attack==6 and a.statStages.spAttack==6)
+      b,a,d=setup(side,{99,4321}); d.statStages.evasion=12
+      ev={}; b:resolveMove(side,1,ev)
+      check("selfDrop miss, no drop "..tag,kinds(ev)=="useMove,miss" and b.rng.draws==1
+        and a.statStages.attack==6 and a.statStages.spAttack==6 and a.moves[1].pp==r.pp-1)
+      b,a,d=setup(side,{0,1,0,0,0,0,0,0}); d.hp=1
+      b.hasReplacement=function() return false end
+      ev=b:runTurn({action="move",moveSlot=1},{action="move",moveSlot=1})
+      check("selfDrop applies before defender faint "..tag,
+        kinds(ev)==("turnStart,useMove,damage"..string.rep(",statChange",nd)..",faint,battleEnd"))
+    end
+  end
+end
+
+-- Tickle: target ATK-1 then DEF-1 after accuracycheck; both at -6 fails
+-- before accuracycheck (no RNG); a miss lowers nothing; one at -6 skipped.
+do
+  local moves={
+    [321]={effect=205,power=0,type=0,accuracy=100,pp=20,priority=0,target=0},
+    [33]={effect=0,power=35,type=0,accuracy=95,pp=35,priority=0,target=0},
+  }
+  local stats={hp=100,attack=40,defense=40,speed=20,spAttack=40,spDefense=40}
+  local function setup(side, values)
+    local b=BattleEngine.new({
+      player=BattleEngine.makeBattler({species=1,level=20,stats=stats,types={0,0},moves={{move=33,pp=35}}}),
+      foe=BattleEngine.makeBattler({species=4,level=20,stats=stats,types={7,7},moves={{move=33,pp=35}}}),
+      moves=moves,typeChart={[0]={attackingType=0,defendingType=7,multiplier=0}},
+      rng=scriptedRng(values or {0,4321}),
+    })
+    local a=b:battler(side)
+    a.moves={{move=321,pp=20}}
+    return b,a,(side=="player" and b.foe or b.player)
+  end
+  for _,side in ipairs({"player","foe"}) do
+    local dside=side=="player" and "foe" or "player"
+    local b,a,d=setup(side)
+    check("tickle admitted "..side,b:supportsMove(moves[321],321))
+    local ev={}; b:resolveMove(side,1,ev)
+    check("tickle lowers target ATK then DEF, one RNG "..side,#ev==3
+      and ev[2].type=="statChange" and ev[2].side==dside and ev[2].stat=="attack" and ev[2].stages==-1 and ev[2].stage==5
+      and ev[3].stat=="defense" and ev[3].stage==5 and a.statStages.attack==6 and a.moves[1].pp==19
+      and b.rng.draws==1 and b.rng:next16()==4321)
+    b,a,d=setup(side); d.statStages.attack=0
+    ev={}; b:resolveMove(side,1,ev)
+    check("tickle ATK at -6 skipped, DEF lowered "..side,#ev==2 and ev[2].stat=="defense" and d.statStages.defense==5)
+    b,a,d=setup(side); d.statStages.defense=0
+    ev={}; b:resolveMove(side,1,ev)
+    check("tickle DEF at -6 skipped, ATK lowered "..side,#ev==2 and ev[2].stat=="attack" and d.statStages.attack==5)
+    b,a,d=setup(side,{4321}); d.statStages.attack=0; d.statStages.defense=0
+    ev={}; b:resolveMove(side,1,ev)
+    check("tickle both at -6 fails before accuracy "..side,#ev==2 and ev[2].type=="statsWontFall"
+      and ev[2].side==dside and a.moves[1].pp==19 and b.rng.draws==0)
+    b,a,d=setup(side,{99,4321}); d.statStages.evasion=12
+    ev={}; b:resolveMove(side,1,ev)
+    check("tickle miss lowers nothing "..side,#ev==2 and ev[2].type=="miss" and d.statStages.attack==6
+      and d.statStages.defense==6 and a.moves[1].pp==19 and b.rng.draws==1)
+  end
+  local b=setup("player")
+  check("tickle requires zero power",not b:supportsMove({effect=205,power=20,type=0,accuracy=100,pp=20,target=0},321))
+  check("tickle requires selected target",not b:supportsMove({effect=205,power=0,type=0,accuracy=100,pp=20,target=0x10},321))
+end
+
 if romPath then
   local RomImporter = require("import.RomImporter")
   local RomAddresses = require("import.RomAddresses")
