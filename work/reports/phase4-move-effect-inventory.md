@@ -22,7 +22,8 @@ Existing accepted engine families retain their documented limits.
 
 A separate source-only invocation of the actual current
 `BattleEngine:supportsMove` on source-derived effect/power metadata returned
-248 admissions and 106 rejections. These are source/predicate observations,
+248 admissions and 106 rejections at that refresh (now 263/91 after the
+fast-lane batches; the test is authoritative). These are source/predicate observations,
 **not a local ROM result**. The checked-in [inventory test](../../tests/phase4_move_effect_inventory_test.lua)
 contains literal expected membership, admission and coverage metadata. It does
 not read engine tables to construct expectations. It checks partition integrity

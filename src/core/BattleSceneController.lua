@@ -45,14 +45,15 @@ local function otherSide(side)
   return "player"
 end
 
--- Real gStatNamesTable (src/battle_message.c), for the stat keys
--- BattleEngine.lua's statStages table already uses.
 -- gTypeNames (c75f352 src/battle_main.c:428).
 local TYPE_DISPLAY_NAMES = {
   [0] = "NORMAL", "FIGHT", "FLYING", "POISON", "GROUND", "ROCK", "BUG", "GHOST",
   "STEEL", "???", "FIRE", "WATER", "GRASS", "ELECTR", "PSYCHC", "ICE", "DRAGON", "DARK",
 }
+BattleSceneController.TYPE_DISPLAY_NAMES = TYPE_DISPLAY_NAMES
 
+-- Real gStatNamesTable (src/battle_message.c), for the stat keys
+-- BattleEngine.lua's statStages table already uses.
 local STAT_DISPLAY_NAMES = {
   attack = "ATTACK", defense = "DEFENSE", speed = "SPEED",
   spAttack = "SP. ATK", spDefense = "SP. DEF",

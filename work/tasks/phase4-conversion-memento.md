@@ -65,4 +65,17 @@ Magic Coat, doubles, animation. Type change lasts until the battler leaves
 ## Evidence (Worker, 2026-10-13)
 
 No-ROM: engine 560/0 (was 541), controller 102/0, inventory partition PASS,
-new ROM fixture skips cleanly. Independent review pending; not self-reviewed.
+new ROM fixture skips cleanly. Independent review NEEDS_FIX
+([record](../reviews/2026-10-13-conversion-memento-review.md)); findings 1-5
+addressed: dual-type Conversion tests (type2 for ??? and own-type checks),
+Memento first-battle tip tests, all 18 type names asserted, comment order,
+local `d` (engine 568/0, controller 103/0); report admission note updated.
+Re-check pending.
+
+## Follow-ups (pre-existing, outside this batch)
+
+- Memento makes the engine's conservative "halt the turn when the first
+  mover faints itself" policy the common case; verify against
+  HandleFaintedMonActions/target re-selection (`battle_main.c:4110-4130`).
+- `AICheckBadMove.lua:616` still errors on effect 168; real
+  `AI_CBM_Memento` scoring is missing.

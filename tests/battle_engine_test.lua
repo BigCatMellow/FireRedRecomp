@@ -2300,6 +2300,7 @@ do
     [52]={effect=4,power=40,type=10,accuracy=100,pp=25,priority=0,target=0},   -- Ember (fire)
     [33]={effect=0,power=35,type=0,accuracy=95,pp=35,priority=0,target=0},     -- Tackle
     [174]={effect=109,power=0,type=9,accuracy=0,pp=10,priority=0,target=0x10}, -- Curse (???)
+    [44]={effect=31,power=60,type=17,accuracy=100,pp=25,priority=0,target=0},  -- Bite (dark)
   }
   local stats={hp=100,attack=40,defense=40,speed=20,spAttack=40,spDefense=40}
   local function setup(side,list,values)
@@ -2321,7 +2322,7 @@ do
   for _,side in ipairs({"player","foe"}) do
     local dside=side=="player" and "foe" or "player"
     -- Draws: 0 -> slot 0 (own NORMAL, redraw), 3 -> slot >= 2 (redraw), 1 -> FIRE.
-    local b,a=setup(side,{160,52},{0,3,1,4321})
+    local b,a,d=setup(side,{160,52},{0,3,1,4321})
     check("conversion admitted "..side,b:supportsMove(moves[160],160))
     local ev=resolve(b,side)
     check("conversion rejection loop picks fire "..side,kinds(ev)=="useMove,conversion" and ev[2].newType==10
@@ -2347,6 +2348,16 @@ do
       and ev[3].side==dside and ev[3].stat=="attack" and ev[3].stages==-2 and ev[3].stage==4
       and ev[4].stat=="spAttack" and ev[4].stage==4 and ev[5].side==side and a.hp==0 and d.hp==100
       and a.moves[1].pp==9 and b.rng.draws==0)
+    -- Dual types: bsc.c:7023,7029-7030,7046,7052 check type2 too.
+    b,a=setup(side,{160,174},{1,0,4321}); a.types={17,7}
+    ev=resolve(b,side)
+    check("conversion curse reads ghost via type2 "..side,ev[2].newType==0 and b.rng.draws==2)
+    b,a=setup(side,{160,44}); a.types={0,17}
+    ev=resolve(b,side)
+    check("conversion own-type check uses type2 "..side,ev[2].type=="moveFailed" and b.rng.draws==0)
+    b,a=setup(side,{160,44,52},{1,0,2,4321}); a.types={0,17}
+    ev=resolve(b,side)
+    check("conversion redraw rejects type2 "..side,ev[2].newType==10 and b.rng.draws==3)
     b,a,d=setup(side,{262}); d.statStages.attack=0; d.statStages.spAttack=0
     ev=resolve(b,side)
     check("memento fails at both minimum, user survives "..side,kinds(ev)=="useMove,moveFailed" and a.hp==100
@@ -2357,7 +2368,15 @@ do
     check("memento ATK at minimum skipped, SPATK clamps "..side,ev[3].stat=="spAttack" and ev[3].stages==-2
       and ev[3].stage==0 and ev[4].type=="faint" and a.hp==0)
   end
-  local b=setup("player",{160})
+  -- Oak first battle: tip after the first defender stat fall, player only.
+  local b,a,d=setup("player",{262}); b.firstBattle=true; b.hasReplacement=function() return false end
+  local ev=resolve(b,"player")
+  check("memento first-battle tip after first fall",ev[3].stat=="attack" and ev[4].type=="tutorialTip"
+    and ev[4].kind=="stat" and ev[5].stat=="spAttack" and b.tutorialPlayerStatDone)
+  b,a,d=setup("foe",{262}); b.firstBattle=true; b.hasReplacement=function() return false end
+  ev=resolve(b,"foe")
+  check("memento first-battle foe emits no tip",ev[4].type=="statChange" and not b.tutorialPlayerStatDone)
+  b=setup("player",{160})
   check("conversion/memento admission gates",
     not b:supportsMove({effect=30,power=0,target=0},160) and not b:supportsMove({effect=30,power=40,target=0x10},160)
     and not b:supportsMove({effect=168,power=0,target=0x10},262) and not b:supportsMove({effect=168,power=40,target=0},262))

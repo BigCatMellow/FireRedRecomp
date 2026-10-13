@@ -541,6 +541,11 @@ do
   local ctrl=run({160,52},{1})
   local out={}
   for _,entry in ipairs(ctrl.messages) do if entry.text then out[#out+1]=entry.text end end
+  local names={[0]="NORMAL","FIGHT","FLYING","POISON","GROUND","ROCK","BUG","GHOST",
+    "STEEL","???","FIRE","WATER","GRASS","ELECTR","PSYCHC","ICE","DRAGON","DARK"}
+  local allNames=true
+  for id=0,17 do allNames=allNames and BattleSceneController.TYPE_DISPLAY_NAMES[id]==names[id] end
+  check("all 18 gTypeNames match source (battle_main.c:430-447)",allNames)
   check("conversion message uses source type name",
     table.concat(out,"|"):find("PLAYER transformed\ninto the FIRE type!",1,true)~=nil)
   ctrl=run({262},{})
