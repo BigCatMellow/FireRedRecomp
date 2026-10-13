@@ -215,13 +215,13 @@ local inventory = {
   [203] = {"blocked_on_state", true, 1, {311}}, -- EFFECT_WEATHER_BALL
   [204] = {"candidate", true, 1, {315,354}}, -- EFFECT_OVERHEAT
   [205] = {"candidate", false, 0, {321}}, -- EFFECT_TICKLE
-  [206] = {"represented", true, 0, {322}}, -- EFFECT_COSMIC_POWER
+  [206] = {"represented", true, 0, {322}}, -- EFFECT_COSMIC_POWER: ROM fixture pending (phase4_dual_stat_up_effect_rom_test)
   [207] = {"blocked_on_state", true, 1, {327}}, -- EFFECT_SKY_UPPERCUT
-  [208] = {"represented", true, 0, {339}}, -- EFFECT_BULK_UP
+  [208] = {"represented", true, 0, {339}}, -- EFFECT_BULK_UP: ROM fixture pending (phase4_dual_stat_up_effect_rom_test)
   [209] = {"blocked_on_state", true, 1, {342}}, -- EFFECT_POISON_TAIL
   [210] = {"blocked_on_state", false, 0, {346}}, -- EFFECT_WATER_SPORT
-  [211] = {"represented", true, 0, {347}}, -- EFFECT_CALM_MIND
-  [212] = {"represented", true, 0, {349}}, -- EFFECT_DRAGON_DANCE
+  [211] = {"represented", true, 0, {347}}, -- EFFECT_CALM_MIND: ROM fixture pending (phase4_dual_stat_up_effect_rom_test)
+  [212] = {"represented", true, 0, {349}}, -- EFFECT_DRAGON_DANCE: ROM fixture pending (phase4_dual_stat_up_effect_rom_test)
   [213] = {"blocked_on_state", false, 0, {293}}, -- EFFECT_CAMOUFLAGE
 }
 

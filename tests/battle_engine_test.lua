@@ -1860,7 +1860,7 @@ do
         and d.statStages[s1]==6 and d.statStages[s2]==6 and d.hp==100)
       b,a=setup(side); a.statStages[s1]=12
       ev={}; b:resolveMove(side,1,ev)
-      check("dualStat first maxed skipped silently "..tag,#ev==2 and ev[2].stat==s2
+      check("dualStat first maxed skipped silently "..tag,#ev==2 and ev[2].type=="statChange" and ev[2].stat==s2 and ev[2].stage==7
         and a.statStages[s1]==12 and a.statStages[s2]==7)
       b,a=setup(side); a.statStages[s2]=12; a.statStages[s1]=11
       ev={}; b:resolveMove(side,1,ev)

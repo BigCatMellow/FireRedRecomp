@@ -1,7 +1,7 @@
 # Task: two-stat self UP batch (fast lane)
 
 - Task ID: `P4-FL1-DUAL-STAT-UP`
-- Status: `READY_FOR_REVIEWER`
+- Status: `CLOSED — REVIEWED PASS` ([review](../reviews/2026-10-13-dual-stat-up-batch-review.md)); ROM fixture pending
 - Lane: [battle-effect fast lane](../../AGENTS.md#battle-effect-fast-lane--human-authorized-2026-10-13)
 - Parent: [Phase 4 move/effect matrix](../roadmaps/CAPABILITY_CHECKLIST.md)
 - Families: effects 206 Cosmic Power (322), 208 Bulk Up (339), 211 Calm Mind (347), 212 Dragon Dance (349)
@@ -54,4 +54,5 @@ doubles. AI scoring already existed (`AICheckBadMove`) and is unchanged.
 
 No-ROM: engine 388/0 (was 332), controller 89/0, inventory partition PASS,
 new ROM fixture skips cleanly; full suite and repository checker results in
-the PR. Independent review pending; not self-reviewed.
+the PR. Independent review PASS; findings 1 (inventory "ROM fixture pending" notes,
+report rows 206/208/211/212) and 2 (first-maxed event assertions) addressed.
