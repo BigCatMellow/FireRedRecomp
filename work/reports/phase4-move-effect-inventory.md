@@ -34,11 +34,11 @@ labels `defined_source=214`; the ROM gate checks member usage and unused IDs.
 
 | Source-confirmed semantic class | Used families | Moves | Positive power | Zero power | Admitted / rejected |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| Represented with stated limits | 60 | 150 | 110 | 40 | 150 / 0 |
-| Candidate for separate discovery | 10 | 12 | 4 | 8 | 4 / 8 |
+| Represented with stated limits | 65 | 156 | 110 | 46 | 156 / 0 |
+| Candidate for separate discovery | 5 | 6 | 4 | 2 | 4 / 2 |
 | Blocked on additional state or an absent cross-component path | 127 | 191 | 101 | 90 | 101 / 90 |
 | Intentionally rejected | 1 | 1 | 1 | 0 | 0 / 1 |
-| Total used | 198 | 354 | 216 | 138 | 255 / 99 |
+| Total used | 198 | 354 | 216 | 138 | 261 / 93 |
 | Defined but unused | 16 | 0 | 0 | 0 | no real-record claim |
 
 `represented` means an existing bounded mechanism plus checked-in tests/source
@@ -127,7 +127,7 @@ body (Protect/Endure, Return/Frustration, sunlight recovery, Mud/Water Sport).
 | 22 `EFFECT_SPECIAL_DEFENSE_DOWN` | none (0; —) | — | U | [`BattleScript_EffectHit`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L239) | No real move member; source aliases Hit. No runtime coverage/admission claim. |
 | 23 `EFFECT_ACCURACY_DOWN` | 28, 108, 134, 148 (4; Z) | yes | R / R4 | [`BattleScript_EffectAccuracyDown`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L530) | Pure single-stat stages/clamps and self/foe accuracy path; no prevention abilities/Substitute/Mist. |
 | 24 `EFFECT_EVASION_DOWN` | 230 (1; Z) | yes | R / R4 | [`BattleScript_EffectEvasionDown`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L534) | Pure single-stat stages/clamps and self/foe accuracy path; no prevention abilities/Substitute/Mist. |
-| 25 `EFFECT_HAZE` | 114 (1; Z) | no | C | [`BattleScript_EffectHaze`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L564) | normalisebuffs resets both battlers' seven stages; existing fields, event/accuracy/source gate still needed. |
+| 25 `EFFECT_HAZE` | 114 (1; Z) | yes | R | [`BattleScript_EffectHaze`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L564) | All seven stages of both battlers reset to neutral. Fast-lane batch [P4-FL3](../tasks/phase4-batch3-status-moves.md); ROM fixture pending. |
 | 26 `EFFECT_BIDE` | 117 (1; P) | yes | B | [`BattleScript_EffectBide`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L575) | setbide needs delayed damage accumulation, locked turns and release lifecycle. |
 | 27 `EFFECT_RAMPAGE` | 37, 80, 200 (3; P) | yes | B | [`BattleScript_EffectRampage`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L585) | Multiple-turn repeat and confusion-on-end need forced selection, counters and confusion. |
 | 28 `EFFECT_ROAR` | 18, 46 (2; Z) | no | B | [`BattleScript_EffectRoar`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L595) | forcerandomswitch needs living-target phazing/escape, bench selection and rooted/ability veto, distinct from faint replacement. |
@@ -187,7 +187,7 @@ body (Protect/Endure, Return/Frustration, sunlight recovery, Mud/Water Sport).
 | 82 `EFFECT_MIMIC` | 102 (1; Z) | no | B | [`BattleScript_EffectMimic`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L1130) | Copy-move command needs last-used move history, slot/PP provenance and temporary/permanent persistence. |
 | 83 `EFFECT_METRONOME` | 118 (1; Z) | no | B | [`BattleScript_EffectMetronome`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L1143) | Called-move selection/dispatch and exclusion rules absent; #274 additionally needs party move source. |
 | 84 `EFFECT_LEECH_SEED` | 73 (1; Z) | no | B | [`BattleScript_EffectLeechSeed`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L1153) | Seed/nightmare/roots need residual HP loop; #171 also sleep, #275 escape prevention. |
-| 85 `EFFECT_SPLASH` | 150 (1; Z) | no | C | [`BattleScript_EffectSplash`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L1168) | PP and no-effect presentation; source also incrementgamestat, so save-stat boundary must be decided. |
+| 85 `EFFECT_SPLASH` | 150 (1; Z) | yes | R | [`BattleScript_EffectSplash`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L1168) | No effect; "But nothing happened!"; game stat not modeled. Fast-lane batch [P4-FL3](../tasks/phase4-batch3-status-moves.md); ROM fixture pending. |
 | 86 `EFFECT_DISABLE` | 50 (1; Z) | no | B | [`BattleScript_EffectDisable`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L1179) | Move-history/counter/selection restriction commands absent; Spite also requires last-used-slot PP provenance. |
 | 87 `EFFECT_LEVEL_DAMAGE` | 69, 101 (2; P) | yes | R / R7 | [`BattleScript_EffectLevelDamage`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L1191) | Fixed 40/level/20 damage with shared accuracy, immunity and HP; no item/Endure state. |
 | 88 `EFFECT_PSYWAVE` | 149 (1; P) | yes | R / R12 | [`BattleScript_EffectPsywave`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L1202) | Reviewed rejection-sampled level damage/RNG including immunity; no ordinary critical/base damage. |
@@ -244,8 +244,8 @@ body (Protect/Endure, Return/Frustration, sunlight recovery, Mud/Water Sport).
 | 139 `EFFECT_ATTACK_UP_HIT` | 232, 309 (2; P) | yes | R / R5 | [`BattleScript_EffectAttackUpHit`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L1764) | One-stage secondary stat/chance RNG path; no Serene Grace/Shield Dust/Substitute or non-stat status effects. |
 | 140 `EFFECT_ALL_STATS_UP_HIT` | 246, 318 (2; P) | yes | C | [`BattleScript_EffectAllStatsUpHit`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L1768) | MOVE_EFFECT_ALL_STATS_UP routes to ordered multi-stat script; combined event/chance contract needed. |
 | 141 `EFFECT_UNUSED_8D` | none (0; —) | — | U | [`BattleScript_EffectHit`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L239) | No real move member; source aliases Hit. No runtime coverage/admission claim. |
-| 142 `EFFECT_BELLY_DRUM` | 187 (1; Z) | no | C | [`BattleScript_EffectBellyDrum`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L1772) | maxattackhalvehp HP cost/max Attack; threshold/rounding/failure/event order needed. |
-| 143 `EFFECT_PSYCH_UP` | 244 (1; Z) | no | C | [`BattleScript_EffectPsychUp`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L1786) | copyfoestats copies target stages; exact fields/failure/presentation contract needed. |
+| 142 `EFFECT_BELLY_DRUM` | 187 (1; Z) | yes | R | [`BattleScript_EffectBellyDrum`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L1772) | ATK to +6 for max(1, maxHP/2) HP; fails at ATK +6 or HP <= that cost. Fast-lane batch [P4-FL3](../tasks/phase4-batch3-status-moves.md); ROM fixture pending. |
+| 143 `EFFECT_PSYCH_UP` | 244 (1; Z) | yes | R | [`BattleScript_EffectPsychUp`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L1786) | Copies all target stages; never fails. Fast-lane batch [P4-FL3](../tasks/phase4-batch3-status-moves.md); ROM fixture pending. |
 | 144 `EFFECT_MIRROR_COAT` | 243 (1; P) | yes | B | [`BattleScript_EffectMirrorCoat`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L1797) | Damage-received history with source/category/turn identity absent. |
 | 145 `EFFECT_SKULL_BASH` | 130 (1; P) | yes | B | [`BattleScript_EffectSkullBash`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L1807) | Charge/second-turn script needs locked move state; #143 also flinches, #130 raises Defense on charge. |
 | 146 `EFFECT_TWISTER` | 239 (1; P) | yes | B | [`BattleScript_EffectTwister`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L1822) | Twister checks airborne state for double damage and adds flinch; airborne and action-cancellation lifecycle absent. |
@@ -259,7 +259,7 @@ body (Protect/Endure, Return/Frustration, sunlight recovery, Mud/Water Sport).
 | 154 `EFFECT_BEAT_UP` | 251 (1; P) | yes | B | [`BattleScript_EffectBeatUp`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L1936) | Beat Up needs eligible-party contributor/base-stat input. |
 | 155 `EFFECT_SEMI_INVULNERABLE` | 19, 91, 291, 340 (4; P) | yes | B | [`BattleScript_EffectSemiInvulnerable`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L1969) | #19 Fly/#91 Dig/#291 Dive/#340 Bounce use distinct airborne/underground/underwater charge states; #340 also paralyzes. Charge/state/status lifecycle absent. |
 | 156 `EFFECT_DEFENSE_CURL` | 111 (1; Z) | no | B | [`BattleScript_EffectDefenseCurl`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L2010) | Defense Curl adds volatile flag used by Rollout/Ice Ball; interaction/reset absent. |
-| 157 `EFFECT_SOFTBOILED` | 135, 208 (2; Z) | no | C | [`BattleScript_EffectSoftboiled`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L2023) | tryhealhalfhealth BS_TARGET; #135/#208 share battle healing and have field use; scope separate from effect32. |
+| 157 `EFFECT_SOFTBOILED` | 135, 208 (2; Z) | yes | R | [`BattleScript_EffectSoftboiled`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L2023) | Literal #135/#208 heal max(1, maxHP/2), clamped; fails at full HP. Fast-lane batch [P4-FL3](../tasks/phase4-batch3-status-moves.md); ROM fixture pending. |
 | 158 `EFFECT_FAKE_OUT` | 252 (1; P) | yes | B | [`BattleScript_EffectFakeOut`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L2044) | Fake Out needs per-battler first-turn tracking and certain flinch cancellation. |
 | 159 `EFFECT_UPROAR` | 253 (1; P) | yes | B | [`BattleScript_EffectUproar`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L2068) | Uproar needs repeat lock/duration, wake/sleep suppression and end-turn lifecycle. |
 | 160 `EFFECT_STOCKPILE` | 254 (1; Z) | no | B | [`BattleScript_EffectStockpile`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L2079) | Stockpile count and Spit Up/Swallow damage/heal consumption paths absent. |
@@ -346,7 +346,9 @@ into exhaustive state coverage.
 | R15 | Pain Split literal zero-power admission, no-RNG ordered HP and scene entries | [record test](../../tests/phase4_pain_split_effect_rom_test.lua), [exact independent review](../reviews/2026-09-20-pain-split-implementation-review.md) |
 | J1 | EFFECT_DREAM_EATER explicit supportsMove rejection and sleeping-target source gate | Existing rejection test; source DreamEater script linked in matrix |
 
-For uncovered rows the script command is evidence of a missing requirement,
+For uncovered rows the script command is evidence of a missing requirement
+(batch 3 has since locked tryhealhalfhealth/normalisebuffs/maxattackhalvehp/
+copyfoestats for represented effects 157/25/142/143),
 not a full source lock of that command's branches or RNG schedule. Concrete
 command inspections include `Cmd_tryhealhalfhealth` (6332),
 `Cmd_normalisebuffs` (6826), `Cmd_friendshiptodamagecalculation` (8228),
@@ -381,7 +383,8 @@ to one, and fails when already at full HP; normal HP update clamps healing.
 This is enough to justify discovery, not implementation. That next task should
 lock success/failure/rounding/PP/RNG/event sequencing and determine a literal
 admission exception and dedicated presentation boundary before design/route work.
-Do not bundle Softboiled/Milk Drink (effect157), weather healing (132–134),
+Softboiled/Milk Drink (effect157) is now represented by fast-lane batch 3.
+Do not bundle weather healing (132–134),
 Rest, Present, Wish, Swallow, Ingrain, or a generic healing API.
 
 Misty is evidence of real need, not a completion claim: her roster also contains

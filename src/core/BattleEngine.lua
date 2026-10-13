@@ -42,6 +42,9 @@
 --   {type="statChange", side=<target>, stat=, stages=-1, prevented=}
 --   {type="statsWontRise", side=<attacker>}  -- two-stat UP move, both at +6
 --   {type="statsWontFall", side=<defender>}  -- Tickle, target ATK/DEF both at -6
+--   {type="splash"} / {type="haze"}
+--   {type="psychUp", side=<attacker>, target=<defender side>}
+--   {type="bellyDrum", side=<attacker>, amount=, hpRemaining=}
 --   {type="screenSet", side=, screen="reflect"|"lightScreen", turns=5}
 --   {type="screenFailed", side=, screen="reflect"|"lightScreen"} -- already active
 --   {type="screenExpired", side=, screen="reflect"|"lightScreen"} -- real 5-turn timer hit 0
@@ -233,8 +236,9 @@
 --     ported: MOVE_EFFECT_CERTAIN (always-trigger; no move wired here uses
 --     it) and Serene Grace's chance-doubling (no ability system exists yet).
 --     Still explicitly not ported: non-pure-single-stat effects
---     (EFFECT_HAZE, EFFECT_FOCUS_ENERGY, EFFECT_TRANSFORM, EFFECT_REST,
---     etc). supportsMove() correctly rejects those.
+--     (EFFECT_FOCUS_ENERGY, EFFECT_TRANSFORM, EFFECT_REST, etc).
+--     supportsMove() correctly rejects those. (EFFECT_HAZE is now handled
+--     by the fast-lane batch-3 path.)
 --   * Recoil and drain ARE supported -- see BattleEngine.RECOIL_MOVES /
 --     BattleEngine.DRAIN_MOVES and resolveMove's step 8a. EFFECT_RECOIL=48
 --     (Take Down, Submission, and Struggle -- all three real gBattleMoves
@@ -457,6 +461,13 @@ BattleEngine.EFFECT_OHKO = 38
 BattleEngine.EFFECT_ENDEAVOR = 189
 BattleEngine.EFFECT_PAIN_SPLIT = 91
 BattleEngine.EFFECT_RESTORE_HP = 32
+-- Fast-lane batch 3 (c75f352 data/battle_scripts_1.s): none of these
+-- scripts has an accuracycheck or Random().
+BattleEngine.EFFECT_HAZE = 25        -- EffectHaze :564, normalisebuffs
+BattleEngine.EFFECT_SPLASH = 85      -- EffectSplash :1168
+BattleEngine.EFFECT_BELLY_DRUM = 142 -- EffectBellyDrum :1772, maxattackhalvehp
+BattleEngine.EFFECT_PSYCH_UP = 143   -- EffectPsychUp :1786, copyfoestats
+BattleEngine.EFFECT_SOFTBOILED = 157 -- EffectSoftboiled :2023, tryhealhalfhealth
 BattleEngine.EFFECT_MAGNITUDE = 126
 BattleEngine.MOVE_MAGNITUDE = 222
 
@@ -919,6 +930,17 @@ function BattleEngine:supportsMove(move, moveId)
   if BattleEngine.DUAL_STAT_UP_MOVES[move.effect] then
     return move.power == 0 and move.target == MOVE_TARGET_USER
   end
+  if move.effect == BattleEngine.EFFECT_SOFTBOILED then
+    return (moveId == 135 or moveId == 208)
+      and move.power == 0 and move.target == MOVE_TARGET_USER
+  end
+  if move.effect == BattleEngine.EFFECT_SPLASH or move.effect == BattleEngine.EFFECT_HAZE
+      or move.effect == BattleEngine.EFFECT_BELLY_DRUM then
+    return move.power == 0 and move.target == MOVE_TARGET_USER
+  end
+  if move.effect == BattleEngine.EFFECT_PSYCH_UP then
+    return move.power == 0 and move.target == 0 -- MOVE_TARGET_SELECTED
+  end
   if move.effect == BattleEngine.EFFECT_TICKLE then
     return move.power == 0 and move.target == 0 -- MOVE_TARGET_SELECTED
   end
@@ -1133,6 +1155,11 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
     and move.effect ~= BattleEngine.EFFECT_OHKO
     and move.effect ~= BattleEngine.EFFECT_PAIN_SPLIT
     and move.effect ~= BattleEngine.EFFECT_RESTORE_HP
+    and move.effect ~= BattleEngine.EFFECT_SOFTBOILED
+    and move.effect ~= BattleEngine.EFFECT_SPLASH
+    and move.effect ~= BattleEngine.EFFECT_HAZE
+    and move.effect ~= BattleEngine.EFFECT_BELLY_DRUM
+    and move.effect ~= BattleEngine.EFFECT_PSYCH_UP
 
   -- The FIRST_BATTLE controller deliberately skips the first player
   -- accuracy RNG independently for a damaging move and for a (DOWN-family)
@@ -1191,7 +1218,45 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
   end
 
   if move.power == 0 then
-    if move.effect == BattleEngine.EFFECT_RESTORE_HP then
+    if move.effect == BattleEngine.EFFECT_SPLASH then
+      events[#events + 1] = { type = "splash" }
+      return
+    end
+    if move.effect == BattleEngine.EFFECT_HAZE then
+      -- Cmd_normalisebuffs: every battler's stages back to neutral.
+      for _, battler in ipairs({ self.player, self.foe }) do
+        for stat in pairs(battler.statStages) do
+          battler.statStages[stat] = BattleFormulas.DEFAULT_STAT_STAGE
+        end
+      end
+      events[#events + 1] = { type = "haze" }
+      return
+    end
+    if move.effect == BattleEngine.EFFECT_PSYCH_UP then
+      -- Cmd_copyfoestats copies every stage and never fails.
+      for stat, stage in pairs(defender.statStages) do
+        attacker.statStages[stat] = stage
+      end
+      events[#events + 1] = { type = "psychUp", side = attackerSide, target = defenderSide }
+      return
+    end
+    if move.effect == BattleEngine.EFFECT_BELLY_DRUM then
+      -- Cmd_maxattackhalvehp: fail unless ATK < +6 and HP > max(1, maxHP/2).
+      local halfHP = math.max(1, math.floor(attacker.maxHP / 2))
+      if attacker.statStages.attack >= BattleFormulas.MAX_STAT_STAGE
+          or attacker.hp <= halfHP then
+        events[#events + 1] = { type = "moveFailed", side = attackerSide }
+        return
+      end
+      attacker.statStages.attack = BattleFormulas.MAX_STAT_STAGE
+      attacker.hp = attacker.hp - halfHP
+      events[#events + 1] = {
+        type = "bellyDrum", side = attackerSide, amount = halfHP, hpRemaining = attacker.hp,
+      }
+      return
+    end
+    if move.effect == BattleEngine.EFFECT_RESTORE_HP
+        or move.effect == BattleEngine.EFFECT_SOFTBOILED then
       if attacker.hp == attacker.maxHP then
         events[#events + 1] = { type = "restoreHPFull", side = attackerSide }
         return
