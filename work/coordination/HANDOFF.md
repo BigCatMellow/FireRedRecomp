@@ -1,11 +1,39 @@
 # FireRedRecomp Coordination Handoff
 
-- Status: `READY_FOR_REVIEWER — guarded effect-45 implementation cfdbb96`
-- Task ID: `P4-F3-RECOIL-IF-MISS-IMPLEMENTATION`
+- Status: `READY_FOR_REVIEWER — existing START Pokédex-count PR5`
+- Task ID: `P6-03-START-DEX-SANITY`
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
 - Current plan: [`../roadmaps/RECALIBRATED_DELIVERY_PLAN.md`](../roadmaps/RECALIBRATED_DELIVERY_PLAN.md)
 
 ## Current relay — 2026-10-13
+
+Live main recovered at `a49e103`; public CI `38466928294` and local 161-file
+no-ROM suite PASS. Effect45 `cfdbb96` is CLOSED by independent outcome review
+`14b76dc`; its guarded request/probe allowances are consumed. Six fast-lane
+batches PR10–15 are also CLOSED within their final PASS scope, as indexed in
+TASK_REGISTER. Inventory: 70 represented families, six new ROM fixtures
+pending the next authorized guarded full suite. No phase status advances.
+
+Exact next action: assigned independent Reviewer checks existing owner-dispatched
+[PR5](https://github.com/BigCatMellow/FireRedRecomp/pull/5), its branch-local
+`work/tasks/phase6-start-dex-sanity.md`, pinned source, actual normal START
+wiring and exact-head no-ROM CI. If the source/count bound disagrees, record
+the stop and scope the smallest correction rather than accepting false parity.
+PR3/6 remain preserved; Party implementation requires prerequisite design review.
+
+Disjoint Worker inspection is read-only: determine whether Memento's missing
+trainer-AI reserve count can be derived through existing interfaces. No AI
+implementation, new state or main.lua edit is implicitly authorized. Retain
+accepted RNG and self-faint follow-ups. Owner fast-lane AGENTS supersedes the
+old per-effect setup chain only for its eligible P4 scope.
+
+PR8 fixes prospective private-path logging; historical log deletion is not
+evidenced or authorized. Preserve old isolated Worker worktree, two untracked
+handoffs and named quarantine stash. Independently merged Brick Break does
+not approve those drafts. Standing project goal remains active; goal service
+usage-limit lifecycle is controlled by user/system, not task closure.
+
+## Historical relay — superseded by current checkpoint above
 
 ### Gameplay implementation published; guarded evidence passed
 

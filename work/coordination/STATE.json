@@ -1,18 +1,18 @@
 {
   "schema_version": 1,
-  "updated_utc": "2026-10-13T16:58:07Z",
+  "updated_utc": "2026-10-13T22:31:08Z",
   "execution_paused": false,
   "role": "ORCHESTRATOR",
   "status": "READY_FOR_REVIEWER",
-  "task_id": "P4-F3-RECOIL-IF-MISS-IMPLEMENTATION",
-  "current_phase": "Phase 0, Phase 4, and Phase 5 remain IN PROGRESS; Restore HP, bounded Magnitude, bounded P5 Viridian projection, and the effect-45 source lock are independently accepted",
+  "task_id": "P6-03-START-DEX-SANITY",
+  "current_phase": "Canonical phase statuses unchanged. Effect45 and six fast-lane batches independently accepted within scope; 70 represented effect families, six ROM fixtures pending.",
   "canonical_status_owner": "work/roadmaps/CAPABILITY_CHECKLIST.md",
-  "active_task": "work/tasks/phase4-recoil-if-miss-implementation.md",
-  "objective": "Independently verify exact guarded-published effect-45 implementationcfdbb96 and run38434551595 against authority96b10ce.",
+  "active_task": "work/tasks/phase6-start-dex-sanity.md on PR5 branch work/p6-start-menu-dex-count-20261009 (not yet on main)",
+  "objective": "Independently review existing owner-dispatched normal START Pokedex count guard PR5 against pinned source and its four-path contract; route smallest correction if needed.",
   "next_role": "REVIEWER",
-  "acceptance": "Authority96b10ce criteria: local no-ROM baseline/after checks, exact single request, guarded focused/full/SHA-ROM/headless results and separate independent outcome review.",
-  "boundaries": "Ten literal targets only; local no-ROM construction allowed, no local ROM or canonical runtime push. Single request/no retry; consumed probe allowance; all source/design exclusions retained.",
-  "dependencies": "Source c218da6, supplement ba69269, design b3280f9, plan04636d1, configuration1d40f3c and probe667fd16 all independently accepted.",
+  "acceptance": "Existing PR5 contract: exact source seen-count semantics, normal main.lua wiring, focused/regression no-ROM tests, exact-head public CI and separate independent review. Source disagreement must be recorded, not waived.",
+  "boundaries": "Review existing four-path PR only; no new behavior authorization until correction scoped. No ROM, bridge, Pokedex screen, save/schema change or phase advancement. Preserve PR3/6 dependencies.",
+  "dependencies": "P6 inventory ee7535d accepted; PR5 previously owner-dispatched. Fast-lane AGENTS authorization governs eligible P4 packages; old effect45 setup sequence is historical.",
   "runner_blocker": {
     "task_id": "P4-F3-ROUTE",
     "status": "CLOSED — REVIEWED PASS",
@@ -68,19 +68,19 @@
     "phase4_recoil_if_miss_route_probe_status": "CLOSED — REVIEWED PASS at667fd16; run38385071588/job115254712929; work/reviews/2026-10-13-recoil-if-miss-route-probe-outcome-review.md"
   },
   "phase2_external_blocker": "Trusted, user-owned retail-reference captures with provenance/timing/crop/filter details for Oak and Pallet anchors have not been supplied.",
-  "next_after_success": "After independent outcome PASS, close only bounded effect45, reassess the next playable checkpoint using accepted P4/P5/P6 evidence and dispatch one smallest eligible prerequisite. Do not repeat any consumed request/probe.",
+  "next_after_success": "Reconcile only PR5's proven scope; select next first-corridor P4/P5/P6 prerequisite. Review PR3 prerequisite before accepting PR6. Memento AI feasibility is read-only and cannot silently widen into new state/main.lua.",
   "legal_content_boundary": "Never commit ROMs, BIOS dumps, generated caches, ROM-derived reference screenshots, extracted game assets, or other prohibited content.",
   "phase_completion_rule": "Phase 2 remains IN PROGRESS until the Oak/reference screenshot discrepancy gate is evidenced and independently reviewed.",
   "project_goal": "work/coordination/PROJECT_GOAL.md — ACTIVE; explicitly adopted 2026-10-11; no user-specified token budget",
   "phase0_external_blocker": "P0-04-REVERIFY at 93c4654: missing prerequisites on the verified target and no desktop proof; separate supported-target preparation decision and fresh evidence required. Historical result is not current host readiness.",
   "checkpoint": {
-    "inspection_revision": "cfdbb96def3a161e2d70653f83256742054c58c2",
-    "pending_jobs": "Implementation run38434551595 completed success. Before sole request push: matching runneronlineidle1 and bridge queued/in_progress[]; workflow unchanged and current-main applicability passed. No unused probe/request allowance.",
+    "inspection_revision": "a49e103ae662929ea2bab6ced92002c7600c2b6a",
+    "pending_jobs": "Latest main CI38466928294 SUCCESS. No new bridge request; effect45 allowances consumed. Six fast-lane ROM fixtures await next authorized guarded full suite.",
     "preserved_drafts": "Unreviewed Brick Break package isolated in named local stash quarantine-unreviewed-brick-break-rerank-2026-10-11; outside active dispatch.",
-    "next_action": "Independent Reviewer assesses cfdbb96 exact ten-path change, assertions and safe guarded receipts; reconcile only its proven scope then select next checkpoint prerequisite.",
-    "remaining_acceptance": "Independent exact implementation outcome review; guarded results passed but behavior is not independently accepted yet.",
+    "next_action": "Assigned independent Reviewer checks existing PR5 exact source/head/CI and records verdict. Disjoint Worker read-only Memento AI-context feasibility check; no implementation dispatched for it.",
+    "remaining_acceptance": "PR5 independent verdict and any correction; six P4 fast-lane non-skipped ROM fixtures pending. Canonical main baseline161 no-ROM files PASS.",
     "coordination_note": "Historical nested records above are evidence receipts, not pending jobs or permission to repeat completed actions.",
-    "worker_session": "Worker complete: noROM baseline154/after155, focused332/87/29, exact10files. Parent mechanically derived sole patch; guarded published hashes match Worker. Independent outcome Reviewer assigned.",
+    "worker_session": "Historical effect45 Worker complete and independently accepted; old isolated worktree/drafts preserved. Current read-only feasibility worker must not reuse or mutate it.",
     "implementation_authority": {
       "revision": "96b10ceebc96dfc4d40cabae43faecf27abe0ce3",
       "task_sha256": "cbba3ad180b5ce98c1d5a4bb113ab71e608be845af933eae411b32b0ef80042c",
@@ -125,8 +125,8 @@
       "task": "99a045f0c8a4079dbf822b9e2a778519c77fa42c462c984333a6abb3aa92d587",
       "report": "92b990bf18b91729a468eab599fdced128238a6712c76a5f29ea730db56e4484"
     },
-    "last_review": "PASS implementation authority96b10ce; work/reviews/2026-10-13-recoil-if-miss-implementation-authority-review.md. Behavior remains unaccepted.",
+    "last_review": "Effect45 outcome PASS14b76dc plus FL1–6 final PASS records reconciled in TASK_REGISTER. These scoped acceptances do not establish full battle or trainer-AI parity.",
     "goal_service_state": "usageLimited observed 2026-10-12; user explicitly requested continuation. Standing instructions persist; user/system owns lifecycle resumption.",
-    "remote_recovery": "Live main 73cf530 recovered; twelve disjoint mod-design documents fast-forwarded without modifying them; source task/report preserved."
+    "remote_recovery": "Live main a49e103 recovered. PR8 prospective private-path logging fixes and PR9 owner fast-lane policy merged; historical log deletion not evidenced or authorized. PR10–15 code/reviews preserved; independent audit of final verdicts completed. Open PR1–7 preserved."
   }
 }

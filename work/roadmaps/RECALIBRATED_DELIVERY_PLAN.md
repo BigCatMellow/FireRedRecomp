@@ -1,4 +1,4 @@
-# Recalibrated delivery plan — routing reconciled 2026-10-11
+# Recalibrated delivery plan — routing reconciled 2026-10-13
 
 This is the concise current routing view. The capability checklist remains the
 canonical phase-status authority; task contracts and independent reviews remain
@@ -22,23 +22,22 @@ primitive must be completed next. Phase 8 should run alongside progression only
 where a selected checkpoint needs a presentation primitive; it must not delay
 rule or traversal work without an evidenced dependency.
 
-## Near horizon — current to next battle closure
+## Near horizon — accepted battle leaves to first-corridor integration
 
 1. Restore HP (`dc8ad06`) and bounded Magnitude (`7b47c73`) are independently
    accepted; their requests are terminal. Preserve their exclusions.
-2. The accepted rerank `ca11770` selected effect 45; source lock `c218da6`
-   independently passed. [Source supplement `ba69269` independently passed](../reviews/2026-10-12-recoil-if-miss-entry-state-review.md),
-   resolving design `f31ae69`'s source stop and correcting ordinary immunity
-   precheck/presentation. [Revised design `b3280f9` independently passed](../reviews/2026-10-12-recoil-if-miss-design-review.md).
-   Neither source nor design PASS grants behavior or execution authority.
-3. [Route plan `04636d1` independently passed](../reviews/2026-10-12-recoil-if-miss-route-plan-review.md).
-   [Configuration `1d40f3c` independently passed](../reviews/2026-10-13-recoil-if-miss-route-configuration-review.md).
-   [Probe `667fd16` independently passed](../reviews/2026-10-13-recoil-if-miss-route-probe-outcome-review.md).
-   [Implementation authority `96b10ce` passed](../reviews/2026-10-13-recoil-if-miss-implementation-authority-review.md).
-   Execute only the bounded [one-request implementation](../tasks/phase4-recoil-if-miss-implementation.md)
-   and required reviews. Follow the exact next allowance in
-   current coordination; never revive a completed request.
-4. At the next leaf closure, reassess the next playable checkpoint and rank
+2. [Effect45 implementation `cfdbb96` independently passed](../reviews/2026-10-13-recoil-if-miss-implementation-outcome-review.md).
+   Its guarded request is terminal. Owner-merged fast-lane batches PR10–15
+   add 17 bounded families with final independent PASS records; inventory
+   now has 70 represented families. Six new ROM fixtures await the next
+   authorized guarded full suite; failing evidence reopens the affected leaf.
+3. Recover existing first-corridor integration work before inventing another
+   effect batch: review normal START Pokédex-count PR5 now, then the Party
+   design prerequisite PR3 before implementation PR6. No rendered Pokédex,
+   full Party UI or normal traversal proof is implied. Memento's trainer-AI
+   reserve-count gap is separately under read-only feasibility inspection;
+   engine acceptance does not establish AI support.
+4. At each leaf closure, reassess the next playable checkpoint and rank
    remaining work by story need, represented prerequisites and bounded
    testability. Select one; retain the full battle matrix as an open gate.
 5. In parallel, compile a source-backed trainer-configuration inventory and
@@ -82,7 +81,10 @@ human-owned decisions; they are not inferred from a green test suite.
 ## Dispatch policy
 
 At most one behavior-changing critical-path Worker package is active. Disjoint
-research/review may run in parallel. Every task follows source lock → bounded
-contract/route → Worker evidence → independent review → reconciliation. A
+research/review may run in parallel. Eligible P4 families use the owner-approved
+fast lane in root AGENTS: one combined source/design/allowlist task, branch/PR,
+public no-ROM CI and one independent review; ROM fixtures run later through
+an authorized guarded suite. Other tasks retain their existing contract and
+required route/evidence gates. A
 runner outage, missing reference evidence or clean-target gap is recorded as a
 specific blocker, never bypassed.

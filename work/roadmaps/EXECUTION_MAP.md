@@ -31,22 +31,30 @@ strategic phase
 
 Default to one critical-path Worker package at a time.
 
-## Current critical path — reconciled 2026-10-12
+## Current critical path — reconciled 2026-10-13
 
-The active task is [bounded effect-45 implementation](../tasks/phase4-recoil-if-miss-implementation.md).
-The [source supplement PASS at `ba69269`](../reviews/2026-10-12-recoil-if-miss-entry-state-review.md)
-resolves the historical design BLOCK, including explicit neutral entry values
-and corrected ordinary immunity precheck/presentation. Original source lock
-`c218da6` remains accepted within its scope. [Revised design `b3280f9` passed](../reviews/2026-10-12-recoil-if-miss-design-review.md);
-[route plan `04636d1` also passed](../reviews/2026-10-12-recoil-if-miss-route-plan-review.md).
-[Configuration `1d40f3c` passed](../reviews/2026-10-13-recoil-if-miss-route-configuration-review.md).
-[Probe `667fd16` passed](../reviews/2026-10-13-recoil-if-miss-route-probe-outcome-review.md).
-[Implementation authority `96b10ce` passed](../reviews/2026-10-13-recoil-if-miss-implementation-authority-review.md).
-Construct the isolated ten-path package and submit only its one guarded
-request after fresh prerequisites; independent outcome review remains required.
-Restore HP `dc8ad06`, bounded Magnitude `7b47c73`, full
-inventory `c10bfa7`, and the bounded P5 projection `d280751` are independently
-accepted. Their old probes/requests must not be redispatched.
+[Effect45 outcome PASS](../reviews/2026-10-13-recoil-if-miss-implementation-outcome-review.md)
+closes `cfdbb96` and guarded run `38434551595`; do not repeat its consumed
+probe/request or review. Six owner-merged fast-lane batches (PR10–15) have
+final independent PASS records indexed in the task register. The current
+inventory has 70 represented families; six new ROM fixtures remain pending.
+Representation is bounded engine behavior, not complete trainer AI, whole-turn
+RNG or full Phase 4 parity. Preserve all review exclusions and follow-ups.
+
+Next active leaf is independent review of existing owner-dispatched
+[PR5](https://github.com/BigCatMellow/FireRedRecomp/pull/5): the normal START
+Pokédex zero-seen guard. Its contract lives on its branch until merged. Review
+source/count bounds and live wiring before accepting; route only the smallest
+correction on disagreement. PR3 design must be reviewed before PR6 Party
+SUMMARY can be accepted. A disjoint read-only Memento trainer-AI feasibility
+check does not authorize adding party context, persistent state or main wiring.
+
+Owner-approved battle fast lane in root AGENTS governs eligible source-known,
+no-ROM-testable packages; do not reinstate per-effect setup ceremony. Full
+relay remains required for new persistent/cross-turn state, main.lua, save or
+runtime replay changes and UNKNOWN source behavior. Restore HP `dc8ad06`,
+Magnitude `7b47c73`, inventory `c10bfa7` and P5 projection `d280751` remain
+accepted; their old requests are terminal.
 
 P0 reverification `93c4654` remains blocked pending supported-target
 preparation and fresh proof. Phase 2 awaits trusted external retail-reference
