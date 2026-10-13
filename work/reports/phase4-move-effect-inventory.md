@@ -34,8 +34,8 @@ labels `defined_source=214`; the ROM gate checks member usage and unused IDs.
 
 | Source-confirmed semantic class | Used families | Moves | Positive power | Zero power | Admitted / rejected |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| Represented with stated limits | 67 | 159 | 113 | 46 | 159 / 0 |
-| Candidate for separate discovery | 3 | 3 | 1 | 2 | 1 / 2 |
+| Represented with stated limits | 68 | 160 | 114 | 46 | 160 / 0 |
+| Candidate for separate discovery | 2 | 2 | 0 | 2 | 0 / 2 |
 | Blocked on additional state or an absent cross-component path | 127 | 191 | 101 | 90 | 101 / 90 |
 | Intentionally rejected | 1 | 1 | 1 | 0 | 0 / 1 |
 | Total used | 198 | 354 | 216 | 138 | 261 / 93 |
@@ -52,11 +52,11 @@ families are unimplemented, not a policy decision that they should never work.
 
 ## Coverage and admission are separate
 
-The **102 admitted, semantically uncovered positive-power records** occupy
-55 effects: `2, 4, 5, 6, 26, 27, 31, 34, 36, 39, 42, 75, 76, 77, 80, 81, 89, 92, 104, 105, 117, 119, 121, 122, 123, 125, 128, 129, 135, 144, 145, 146, 147, 148, 149, 150, 151, 152, 154, 155, 158, 159, 161, 169, 170, 171, 185, 188, 196, 197, 200, 202, 203, 207, 209`.
+The **101 admitted, semantically uncovered positive-power records** occupy
+54 effects: `2, 4, 5, 6, 26, 27, 31, 34, 36, 39, 42, 75, 76, 77, 80, 81, 89, 92, 105, 117, 119, 121, 122, 123, 125, 128, 129, 135, 144, 145, 146, 147, 148, 149, 150, 151, 152, 154, 155, 158, 159, 161, 169, 170, 171, 185, 188, 196, 197, 200, 202, 203, 207, 209`.
 Their precise move members and counts are the `yes / C` and `yes / B` rows
 below. They reach ordinary damage because of the positive-power fallback;
-admission does not implement their effects. One is a candidate record and
+admission does not implement their effects. None is a candidate record; all
 101 need additional state/path work. This refresh supersedes the older
 140-fallback positive-only count; accepted intervening leaves account for the
 reduction, while 138 zero-power records are now included explicitly.
@@ -206,7 +206,7 @@ body (Protect/Endure, Return/Frustration, sunlight recovery, Mud/Water Sport).
 | 101 `EFFECT_FALSE_SWIPE` | 206 (1; P) | yes | R / R8 | [`BattleScript_EffectHit`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L239) | Reviewed no-roll/high-critical/priority/HP-floor leaf; shared singles limitations apply. |
 | 102 `EFFECT_HEAL_BELL` | 215, 312 (2; Z) | no | B | [`BattleScript_EffectHealBell`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L1357) | Party persistent status/cure missing; #215 checks Soundproof, #312 skips that branch. |
 | 103 `EFFECT_QUICK_ATTACK` | 98, 183, 245 (3; P) | yes | R / R1 | [`BattleScript_EffectHit`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L239) | Ordinary hit plus existing priority ordering. |
-| 104 `EFFECT_TRIPLE_KICK` | 167 (1; P) | yes | C | [`BattleScript_EffectTripleKick`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L1380) | Per-hit accuracy/increasing-power loop differs from fixed double-hit; sequence/RNG/stop contract needed. |
+| 104 `EFFECT_TRIPLE_KICK` | 167 (1; P) | yes | R | [`BattleScript_EffectTripleKick`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L1380) | Per-kick accuracy, power 10/20/30, damage roll before no-effect stop; later miss shows only the hit count; trailing seteffectwithchance roll follows the tracked plain-hit gap (source spends it on every path, incl. a first-kick miss); effectiveness text per kick (multi-hit convention; source prints once at end); per-kick MOVEEND (Rage, King's Rock, Defrost) unmodeled. Fast-lane batch [P4-FL5](../tasks/phase4-triple-kick.md); ROM fixture pending. |
 | 105 `EFFECT_THIEF` | 168, 343 (2; P) | yes | B | [`BattleScript_EffectThief`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L1436) | Item transfer/swap/recycle/removal needs held-item ownership, loss history and persistence. |
 | 106 `EFFECT_MEAN_LOOK` | 169, 212, 335 (3; Z) | no | B | [`BattleScript_EffectMeanLook`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L1440) | Escape-prevention owner and switch/run veto lifecycle absent. |
 | 107 `EFFECT_NIGHTMARE` | 171 (1; Z) | no | B | [`BattleScript_EffectNightmare`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L1455) | Seed/nightmare/roots need residual HP loop; #171 also sleep, #275 escape prevention. |

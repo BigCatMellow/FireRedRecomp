@@ -609,6 +609,13 @@ BattleEngine.EFFECT_ALL_STATS_UP_HIT = 140
 -- screens before critcalc/damagecalc; "The wall shattered!" follows the
 -- attack animation whenever one was removed, even on an immune target.
 BattleEngine.EFFECT_BRICK_BREAK = 186
+-- EFFECT_TRIPLE_KICK (c75f352 EffectTripleKick :1380): ppreduce with no
+-- outer accuracycheck, then up to three iterations of accuracycheck ->
+-- movevaluescleanup -> power += 10 -> critcalc/damagecalc/typecalc/
+-- adjustnormaldamage -> jumpifmovehadnoeffect. A miss or no-effect ends the
+-- loop; with no landed hit the result message shows, otherwise MISSED is
+-- cleared and "Hit N time(s)!" prints before tryfaintmon BS_TARGET.
+BattleEngine.EFFECT_TRIPLE_KICK = 104
 
 -- The real "_HIT" secondary-effect family: an ordinary damaging move
 -- (accuracycheck -> ... -> datahpupdate, same pipeline as every other
@@ -1173,6 +1180,7 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
     and move.effect ~= BattleEngine.EFFECT_HAZE
     and move.effect ~= BattleEngine.EFFECT_BELLY_DRUM
     and move.effect ~= BattleEngine.EFFECT_PSYCH_UP
+    and move.effect ~= BattleEngine.EFFECT_TRIPLE_KICK
 
   -- The FIRST_BATTLE controller deliberately skips the first player
   -- accuracy RNG independently for a damaging move and for a (DOWN-family)
@@ -1471,6 +1479,11 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
       return
     end
     self:applyDamage(attackerSide, defenderSide, defender, defender.hp, flags, events)
+    return
+  end
+
+  if move.effect == BattleEngine.EFFECT_TRIPLE_KICK then
+    self:resolveTripleKick(attackerSide, attacker, defenderSide, defender, move, events)
     return
   end
 
@@ -1870,6 +1883,53 @@ function BattleEngine:resolveMultiHit(attackerSide, attacker, defenderSide, defe
   end
 
   events[#events + 1] = { type = "multiHit", side = attackerSide, hits = hitCount }
+end
+
+-- EFFECT_TRIPLE_KICK loop (see the constant's comment). Per-hit power is
+-- 10/20/30 via gDynamicBasePower; unlike the multi-hit loop, the damage
+-- random roll comes before jumpifmovehadnoeffect. A defender fainted by an
+-- earlier kick stops the loop (jumpifhasnohp) but still prints the hit
+-- count; its faint is then handled by the caller's ordinary faint check.
+-- The trailing seteffectwithchance Random() is not spent, matching the
+-- tracked plain-hit gap; note the source spends it on every path here,
+-- including a first-kick miss (bs1.s:1431).
+function BattleEngine:resolveTripleKick(attackerSide, attacker, defenderSide, defender, move, events)
+  local hits, power = 0, 0
+  local stopped
+  for _ = 1, 3 do
+    if defender.hp <= 0 then break end
+    if not BattleFormulas.accuracyCheck(move.accuracy, attacker.statStages.accuracy,
+        defender.statStages.evasion, self.rng) then
+      stopped = "miss"
+      break
+    end
+    power = power + 10
+    local kick = setmetatable({ power = power }, { __index = move })
+    local rolledCrit = BattleFormulas.critRoll(self.rng, 0)
+    local isCrit = rolledCrit and not (self.firstBattle and not self.tutorialPlayerDamageDone)
+    local damage = BattleFormulas.calculateBaseDamage(
+      attacker, defender, kick, isCrit, self.sideStatus[defenderSide])
+    if isCrit then damage = damage * BattleFormulas.CRIT_MULTIPLIER end
+    local flags
+    damage, flags = BattleFormulas.typeCalc(damage, move.type, attacker.types, defender.types, self.typeChart)
+    damage = BattleFormulas.applyRandomDamageMultiplier(damage, self.rng)
+    if flags.noEffect then
+      stopped = "noEffect"
+      break
+    end
+    if isCrit then events[#events + 1] = { type = "critical", side = attackerSide } end
+    self:applyDamage(attackerSide, defenderSide, defender, damage, flags, events)
+    hits = hits + 1
+  end
+  if hits == 0 then
+    if stopped == "noEffect" then
+      events[#events + 1] = { type = "noEffect", side = attackerSide, target = defenderSide }
+    else
+      events[#events + 1] = { type = "miss", side = attackerSide }
+    end
+    return
+  end
+  events[#events + 1] = { type = "multiHit", side = attackerSide, hits = hits }
 end
 
 -- Checks for a faint on `side`, appending events and setting the outcome.
