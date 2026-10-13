@@ -43,6 +43,7 @@
 --   {type="statsWontRise", side=<attacker>}  -- two-stat UP move, both at +6
 --   {type="statsWontFall", side=<defender>}  -- Tickle, target ATK/DEF both at -6
 --   {type="splash"} / {type="haze"}
+--   {type="wallShattered", side=<defender>}  -- Brick Break removed screens
 --   {type="psychUp", side=<attacker>, target=<defender side>}
 --   {type="bellyDrum", side=<attacker>, amount=, hpRemaining=}
 --   {type="screenSet", side=, screen="reflect"|"lightScreen", turns=5}
@@ -420,9 +421,9 @@
 --
 --     Not ported: Safeguard/Mist (separate real effect ids with different
 --     real mechanics -- status-condition blocking and stat-lowering
---     blocking respectively, neither of which this task covers) and Brick
---     Break's real screen-removal special case
---     (src/battle_script_commands.c ~9445) -- a different move entirely.
+--     blocking respectively, neither of which this task covers). Brick
+--     Break's screen removal is handled by EFFECT_BRICK_BREAK (fast-lane
+--     batch 4).
 --   * Capture is intentionally the first normal Poke Ball/no-status slice.
 --     CaptureRules owns the exact formula/shake RNG. This engine neither
 --     removes inventory nor copies a caught mon to party/PC or updates the
@@ -596,6 +597,18 @@ BattleEngine.SELF_DROP_HIT_MOVES = {
 -- (BattleScript_CantLowerMultipleStats); a miss goes to ButItFailed; then
 -- target ATK -1 and DEF -1, each skipped silently at -6.
 BattleEngine.EFFECT_TICKLE = 205
+
+-- EFFECT_ALL_STATS_UP_HIT (c75f352 EffectAllStatsUpHit :1768): EffectHit with
+-- chance MOVE_EFFECT_ALL_STATS_UP|AFFECTS_USER -> BattleScript_AllStatsUp
+-- (:3405). Skipped entirely when all five are at +6; otherwise ATK, DEF,
+-- SPEED, SP.ATK, SP.DEF each statbuffchange then printfromtable with no
+-- message skip, so a stat already at +6 prints its "won't go higher!".
+BattleEngine.EFFECT_ALL_STATS_UP_HIT = 140
+-- EFFECT_BRICK_BREAK (c75f352 EffectBrickBreak :2413): after accuracy and
+-- ppreduce, removelightscreenreflect clears both of the target side's
+-- screens before critcalc/damagecalc; "The wall shattered!" follows the
+-- attack animation whenever one was removed, even on an immune target.
+BattleEngine.EFFECT_BRICK_BREAK = 186
 
 -- The real "_HIT" secondary-effect family: an ordinary damaging move
 -- (accuracycheck -> ... -> datahpupdate, same pipeline as every other
@@ -1461,6 +1474,17 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
     return
   end
 
+  if move.effect == BattleEngine.EFFECT_BRICK_BREAK then
+    -- Source tests the timers (bsc.c:9444); flags and timers stay in sync
+    -- via resolveScreenMove/decaySideTimers, so the flags are equivalent.
+    local status = self.sideStatus[defenderSide]
+    if status.reflect or status.lightScreen then
+      status.reflect, status.reflectTimer = false, 0
+      status.lightScreen, status.lightScreenTimer = false, 0
+      events[#events + 1] = { type = "wallShattered", side = defenderSide }
+    end
+  end
+
   -- 3. critcalc (one Random()). Cmd_critcalc evaluates Random before its
   -- FIRST_BATTLE flag check, so the roll is still consumed while criticals
   -- are suppressed. Suppression is global until the first player damage
@@ -1512,7 +1536,8 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
     -- actual effect. The roll must still be consumed here; its result is
     -- simply discarded. See BattleFormulas.secondaryEffectRoll's comment.
     if BattleEngine.HIT_VARIANT_STAT_MOVES[move.effect]
-        or BattleEngine.SELF_DROP_HIT_MOVES[move.effect] then
+        or BattleEngine.SELF_DROP_HIT_MOVES[move.effect]
+        or move.effect == BattleEngine.EFFECT_ALL_STATS_UP_HIT then
       BattleFormulas.secondaryEffectRoll(self.rng, move.secondaryEffectChance)
     end
     return
@@ -1598,6 +1623,30 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
           type = "statChange", side = attackerSide, stat = change.stat,
           stages = change.delta, stage = newStage,
         }
+      end
+    end
+  end
+
+  if move.effect == BattleEngine.EFFECT_ALL_STATS_UP_HIT
+      and BattleFormulas.secondaryEffectRoll(self.rng, move.secondaryEffectChance) then
+    local stages = attacker.statStages
+    local order = { "attack", "defense", "speed", "spAttack", "spDefense" }
+    local anyBelow = false
+    for _, stat in ipairs(order) do
+      if stages[stat] < BattleFormulas.MAX_STAT_STAGE then anyBelow = true end
+    end
+    if anyBelow then
+      for _, stat in ipairs(order) do
+        if stages[stat] < BattleFormulas.MAX_STAT_STAGE then
+          stages[stat] = stages[stat] + 1
+          events[#events + 1] = {
+            type = "statChange", side = attackerSide, stat = stat, stages = 1, stage = stages[stat],
+          }
+        else
+          events[#events + 1] = {
+            type = "statChange", side = attackerSide, stat = stat, stages = 1, prevented = true,
+          }
+        end
       end
     end
   end

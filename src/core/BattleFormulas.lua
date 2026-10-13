@@ -113,8 +113,8 @@
 --    (ENDTURN_REFLECT/ENDTURN_LIGHT_SCREEN, src/battle_util.c) live in
 --    BattleEngine.lua, not here -- this file only ever applies the
 --    already-decided halving to a damage number. Real double-battle
---    2*(damage/3) variant and Brick Break's screen-removal are both out of
---    scope (see BattleEngine.lua's header).
+--    2*(damage/3) variant is out of scope; Brick Break's screen removal
+--    happens in BattleEngine before this halving is consulted.
 
 local BattleFormulas = {}
 

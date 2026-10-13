@@ -443,5 +443,42 @@ do
     and ctrl.displayedHP.player==50 and engine.player.hp==50)
 end
 
+-- Batch 4 messages through the real engine (sText_TheWallShattered,
+-- sText_AttackersStatRose / sText_StatsWontIncrease).
+do
+  local moves={
+    [280]={effect=186,power=75,type=1,accuracy=100,pp=15,secondaryEffectChance=0,priority=0,target=0},
+    [246]={effect=140,power=60,type=5,accuracy=100,pp=5,secondaryEffectChance=10,priority=0,target=0},
+    [105]={effect=32,power=0,type=0,accuracy=0,pp=20,priority=0,target=16},
+  }
+  local stats={hp=300,attack=40,defense=40,speed=20,spAttack=40,spDefense=40}
+  local function run(moveId, prep)
+    local engine=BattleEngine.new({
+      player=BattleEngine.makeBattler({species=1,level=20,stats=stats,types={0,0},moves={{move=moveId,pp=5}}}),
+      foe=BattleEngine.makeBattler({species=4,level=20,stats=stats,types={0,0},moves={{move=105,pp=20}}}),
+      moves=moves,typeChart={},rng={next16=function() return 0 end},
+    })
+    engine.player.speed=30
+    if prep then prep(engine) end
+    local ctrl=BattleSceneController.new({engine=engine,playerName="PLAYER",foeName="FOE",
+      moveName=function() return "MOVE" end})
+    ctrl:advanceMessage(); ctrl:advanceMessage()
+    ctrl:_runTurn({action="move",moveSlot=1})
+    local out={}
+    for _,entry in ipairs(ctrl.messages) do if entry.text then out[#out+1]=entry.text end end
+    return table.concat(out,"|")
+  end
+  local all=run(280,function(e) e.sideStatus.foe.reflect=true; e.sideStatus.foe.reflectTimer=5 end)
+  local wall=all:find("The wall shattered!",1,true)
+  local used=all:find("PLAYER used MOVE!",1,true)
+  local foeUsed=all:find("FOE used",1,true)
+  check("brick break wall shattered message after use, before foe acts",wall~=nil and used<wall and wall<foeUsed)
+  all=run(246,function(e) e.player.statStages.speed=12 end)
+  local atk=all:find("PLAYER's ATTACK\nrose!",1,true)
+  local spd=all:find("PLAYER's SPEED\nwon't go higher!",1,true)
+  local spdef=all:find("PLAYER's SP. DEF\nrose!",1,true)
+  check("ancient power all-stats messages in order",atk and spd and spdef and atk<spd and spd<spdef)
+end
+
 print(("%d passed, %d failed"):format(passed, failed))
 os.exit(failed == 0 and 0 or 1)

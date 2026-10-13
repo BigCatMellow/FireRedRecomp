@@ -2116,6 +2116,105 @@ do
     and not b:supportsMove({effect=142,power=0,target=SELECTED},187))
 end
 
+-- Batch 4 (c75f352): Brick Break removes both target screens before
+-- critcalc/damagecalc; Ancient Power/Silver Wind 10% all-five +1 with a
+-- "won't go higher" entry for any stat already at +6.
+do
+  local moves={
+    [280]={effect=186,power=75,type=1,accuracy=100,pp=15,secondaryEffectChance=0,priority=0,target=0},
+    [246]={effect=140,power=60,type=5,accuracy=100,pp=5,secondaryEffectChance=10,priority=0,target=0},
+    [318]={effect=140,power=60,type=6,accuracy=100,pp=5,secondaryEffectChance=10,priority=0,target=0},
+    [33]={effect=0,power=35,type=0,accuracy=95,pp=35,priority=0,target=0},
+  }
+  local chart={[0]={attackingType=1,defendingType=7,multiplier=0},
+    [1]={attackingType=5,defendingType=7,multiplier=0},[2]={attackingType=6,defendingType=7,multiplier=0}}
+  local stats={hp=200,attack=40,defense=40,speed=20,spAttack=40,spDefense=40}
+  local function setup(side,id,values)
+    local b=BattleEngine.new({
+      player=BattleEngine.makeBattler({species=1,level=20,stats=stats,types={0,0},moves={{move=33,pp=35}}}),
+      foe=BattleEngine.makeBattler({species=4,level=20,stats=stats,types={0,0},moves={{move=33,pp=35}}}),
+      moves=moves,typeChart=chart,rng=scriptedRng(values),
+    })
+    local a=b:battler(side)
+    a.moves={{move=id,pp=moves[id].pp}}
+    return b,a,(side=="player" and b.foe or b.player)
+  end
+  local function kinds(ev)
+    local out={}; for _,e in ipairs(ev) do out[#out+1]=e.type end
+    return table.concat(out,",")
+  end
+  local function resolve(b,side) local ev={}; b:resolveMove(side,1,ev); return ev end
+  for _,side in ipairs({"player","foe"}) do
+    local dside=side=="player" and "foe" or "player"
+    -- Lv20 40/40 power 75, no STAB: floor(40*75*10/40/50)+2 = 17;
+    -- with Reflect kept it would be floor(15/2)+2 = 9.
+    local b,a,d=setup(side,280,{0,1,0,4321})
+    b.sideStatus[dside].reflect=true; b.sideStatus[dside].reflectTimer=3
+    b.sideStatus[dside].lightScreen=true; b.sideStatus[dside].lightScreenTimer=2
+    local ev=resolve(b,side)
+    local st=b.sideStatus[dside]
+    -- 3 draws matches the tracked plain-hit seteffectwithchance gap (source spends 4).
+    check("brick break shatters screens before damage "..side,kinds(ev)=="useMove,wallShattered,damage"
+      and ev[2].side==dside and ev[3].amount==17 and d.hp==183 and not st.reflect and st.reflectTimer==0
+      and not st.lightScreen and st.lightScreenTimer==0 and b.rng.draws==3 and b.rng:next16()==4321)
+    b,a,d=setup(side,280,{0,1,0,4321}); b.sideStatus[side].reflect=true; b.sideStatus[side].reflectTimer=4
+    ev=resolve(b,side)
+    check("brick break no target wall, own wall kept "..side,kinds(ev)=="useMove,damage" and ev[2].amount==17
+      and b.sideStatus[side].reflect and b.sideStatus[side].reflectTimer==4)
+    b,a,d=setup(side,280,{0,1,0,4321}); d.types={7,7}; b.sideStatus[dside].lightScreen=true; b.sideStatus[dside].lightScreenTimer=5
+    ev=resolve(b,side)
+    -- 3 draws: same tracked plain-hit seteffectwithchance gap (source spends 4).
+    check("brick break immune target still shatters "..side,kinds(ev)=="useMove,wallShattered,noEffect"
+      and not b.sideStatus[dside].lightScreen and d.hp==200 and b.rng.draws==3)
+    b,a,d=setup(side,280,{99,4321}); d.statStages.evasion=12; b.sideStatus[dside].reflect=true; b.sideStatus[dside].reflectTimer=5
+    ev=resolve(b,side)
+    check("brick break miss keeps wall "..side,kinds(ev)=="useMove,miss" and b.sideStatus[dside].reflect
+      and a.moves[1].pp==14)
+    for _,id in ipairs({246,318}) do
+      local tag=id..side
+      local order={"attack","defense","speed","spAttack","spDefense"}
+      b,a,d=setup(side,id,{0,1,0,10,4321})
+      ev=resolve(b,side)
+      local ok=kinds(ev)=="useMove,damage,statChange,statChange,statChange,statChange,statChange"
+      for i,stat in ipairs(order) do
+        ok=ok and ev[2+i].stat==stat and ev[2+i].side==side and ev[2+i].stages==1 and ev[2+i].stage==7 and a.statStages[stat]==7
+      end
+      check("all stats up on roll <= 10 "..tag,ok and b.rng.draws==4 and b.rng:next16()==4321)
+      b,a=setup(side,id,{0,1,0,11,4321})
+      ev=resolve(b,side)
+      check("all stats up roll 11 fails "..tag,kinds(ev)=="useMove,damage" and a.statStages.attack==6
+        and b.rng.draws==4 and b.rng:next16()==4321)
+      b,a=setup(side,id,{0,1,0,0,4321}); a.statStages.speed=12
+      ev=resolve(b,side)
+      check("all stats up maxed stat prints won't-go-higher "..tag,#ev==7 and ev[5].stat=="speed"
+        and ev[5].prevented==true and ev[6].stat=="spAttack" and ev[6].stage==7 and a.statStages.speed==12)
+      b,a=setup(side,id,{0,1,0,0,4321}); for _,stat in ipairs(order) do a.statStages[stat]=12 end
+      ev=resolve(b,side)
+      check("all stats up all maxed silent "..tag,kinds(ev)=="useMove,damage" and b.rng.draws==4)
+      -- bs1.s:3410: first four maxed but SP.DEF below +6 still runs all five.
+      b,a=setup(side,id,{0,1,0,0,4321})
+      for i=1,4 do a.statStages[order[i]]=12 end
+      ev=resolve(b,side)
+      local gateOk=#ev==7 and b.rng.draws==4
+      for i=1,4 do gateOk=gateOk and ev[2+i].stat==order[i] and ev[2+i].prevented==true end
+      check("all stats up gate checks SP.DEF clause "..tag,gateOk and ev[7].stat=="spDefense"
+        and ev[7].stage==7 and a.statStages.spDefense==7)
+      -- Boost precedes tryfaintmon BS_TARGET; SetMoveEffect guards the attacker's HP.
+      b,a,d=setup(side,id,{0,1,0,0,0,0,0,0}); d.hp=1
+      b.hasReplacement=function() return false end
+      a.speed=30
+      ev=b:runTurn({action="move",moveSlot=1},{action="move",moveSlot=1})
+      check("all stats up applies on KO before faint "..tag,
+        kinds(ev)=="turnStart,useMove,damage,statChange,statChange,statChange,statChange,statChange,faint,battleEnd"
+        and a.statStages.attack==7)
+      b,a,d=setup(side,id,{0,1,0,0,4321}); d.types={7,7}
+      ev=resolve(b,side)
+      check("all stats up immune spends roll, no raise "..tag,kinds(ev)=="useMove,noEffect"
+        and b.rng.draws==4 and b.rng:next16()==4321 and a.statStages.attack==6)
+    end
+  end
+end
+
 if romPath then
   local RomImporter = require("import.RomImporter")
   local RomAddresses = require("import.RomAddresses")
