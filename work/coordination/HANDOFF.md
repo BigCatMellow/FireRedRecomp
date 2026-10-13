@@ -1,11 +1,25 @@
 # FireRedRecomp Coordination Handoff
 
-- Status: `READY_FOR_WORKER — one bounded effect-45 readiness probe`
+- Status: `READY_FOR_REVIEWER — successful effect-45 probe 667fd16`
 - Task ID: `P4-F3-RECOIL-IF-MISS-ROUTE-PROBE`
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
 - Current plan: [`../roadmaps/RECALIBRATED_DELIVERY_PLAN.md`](../roadmaps/RECALIBRATED_DELIVERY_PLAN.md)
 
 ## Current relay — 2026-10-13
+
+### Probe completed successfully; independent outcome review assigned
+
+Sole-file probe `667fd16` completed run `38385071588` / job `115254712929`
+successfully. Immediately before dispatch the required runner was online/idle
+and bridge queued/in-progress lists were empty. Checkout, input identification,
+explicit route, Lua, private supported-ROM SHA and probe completion passed.
+All seven patch-only steps skipped. No gameplay tests/replay/patch ran and no
+private paths/data were retained in public receipts. One-probe allowance is
+consumed; no retry or second input is authorized.
+
+Exact next action: independent outcome review of `667fd16` and its guarded
+receipt. Only PASS permits compiling the separately reviewed implementation
+authority; no gameplay request is authorized yet.
 
 ### Configuration accepted; substrate probe dispatched
 
