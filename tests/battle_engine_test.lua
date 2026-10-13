@@ -2240,6 +2240,8 @@ do
   end
   local function resolve(b,side) local ev={}; b:resolveMove(side,1,ev); return ev end
   for _,side in ipairs({"player","foe"}) do
+    -- Draw counts in this block match the tracked seteffectwithchance gap
+    -- (source spends one more on every path, including a first-kick miss).
     local b,a,d=setup(side,{0,1,0,0,1,0,0,1,0,4321})
     local ev=resolve(b,side)
     check("triple kick three kicks 4/6/8 "..side,kinds(ev)=="useMove,damage,damage,damage,multiHit"

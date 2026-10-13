@@ -98,3 +98,26 @@ Inventory: represented 67/159/113 becomes 68/160/114 and candidate 3/3/1 becomes
 No defect was found in runtime behavior for the represented state. F1 must be fixed before PASS. F2-F4 are cheap and should go in the same fix.
 
 — independent reviewer subagent; did not construct the change
+
+## Re-check (commit 37c0c5c on top of 9d978b0)
+
+Verdict: **PASS**
+
+- I reviewed only the delta `git diff 9d978b0 37c0c5c -- src tests work/reports work/tasks`. The one edit to `BattleEngine.lua` is a comment (`:1894-1895`), so runtime code is unchanged. `git diff --check` is clean. No ROM or extracted content was added. The committed `work/reviews/2026-10-13-triple-kick-review.md` is identical to the original record above.
+- F1: two new tests, `triple kick per-kick evasion stage` and `per-kick accuracy stage`, use vector {66,1,0,67}. With evasion +1 (or accuracy −1) the threshold is 90×75/100 = 67 (`bsc.c:1046-1061`). Draw 66 hits and draw 67 misses, which pins both sides of the threshold. Fixed.
+- F2: the new test `triple kick Reflect per kick` expects 3/4/5, which matches the `pokemon.c` arithmetic (Reflect halves before +2). Fixed.
+- F3: acceptance 1 now says the draw counts match the tracked gap (source 10/5/2/4, roll spent on a miss too). The `resolveTripleKick` comment, row 104 and a new Follow-ups entry say the same. Fixed, with one residual: the note was not added beside the four `draws==` asserts (`tests/battle_engine_test.lua:2247,2251,2255,2259`). This does not block. The asserts fail on their own if the gap is closed, and the acceptance text now carries the contract.
+- F4: the citation now reads Cmd_damagecalc `:1209-1222`, with resets at `battle_main.c:3695,4471`. Fixed.
+- F5 and F7: row 104 records per-kick effectiveness text and the unmodeled per-kick MOVEEND. Fixed.
+- F6: the new test `triple kick KO with replacement pending` expects `turnStart,useMove,damage,damage,multiHit,faint,forcedSwitchNeeded`, so the hit count comes before the faint. Fixed.
+- I re-ran the three surviving mutants on a fresh `git archive 37c0c5c` copy (`/tmp/claude-0/review5/repo2`, harness `mut/run3.py`). All three are now caught:
+
+  | Mutant | Result |
+  | --- | --- |
+  | Evasion stage ignored (fixed 6) | 539/2 (evasion-stage test, ×2) |
+  | Accuracy/evasion stages swapped | 537/4 (both stage tests, ×2) |
+  | Reflect ignored (`{}` sideStatus) | 539/2 (Reflect test, ×2) |
+
+- Tests: `test_all.sh` passes (160 files, no ROM) in both the checkout (HEAD 37c0c5c) and the fresh copy. `check_repository.lua` passes (286 Lua, 292 Markdown, 971 targets). Engine 541/0 (533 + 4 checks × 2 sides). Controller 100/0.
+
+— independent reviewer subagent; did not construct the change

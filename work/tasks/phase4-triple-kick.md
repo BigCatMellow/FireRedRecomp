@@ -1,7 +1,7 @@
 # Task: Triple Kick (fast lane)
 
 - Task ID: `P4-FL5-TRIPLE-KICK`
-- Status: `READY_FOR_REVIEWER`
+- Status: `CLOSED — REVIEWED PASS` after re-check ([review](../reviews/2026-10-13-triple-kick-review.md)); ROM fixture pending
 - Lane: [battle-effect fast lane](../../AGENTS.md#battle-effect-fast-lane--human-authorized-2026-10-13)
 - Parent: [Phase 4 move/effect matrix](../roadmaps/CAPABILITY_CHECKLIST.md)
 - Family: 104 Triple Kick (167)
@@ -65,7 +65,7 @@ No-ROM: engine 533/0 (was 521), controller 100/0, inventory partition PASS,
 new ROM fixture skips cleanly. Independent review NEEDS_FIX
 ([record](../reviews/2026-10-13-triple-kick-review.md)); findings 1-7 addressed:
 per-kick accuracy/evasion stage, Reflect and replacement tests (engine 541/0),
-gap draw-count notes, source citation, row 104 limits. Re-check pending.
+gap draw-count notes, source citation, row 104 limits. Re-check PASS.
 
 ## Follow-ups
 
