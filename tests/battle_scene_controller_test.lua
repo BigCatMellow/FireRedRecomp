@@ -334,5 +334,39 @@ do
   end
 end
 
+-- Two-stat self UP family through the real engine and message path.
+-- Expected text: sText_AttackersStatRose / sText_StatsWontIncrease2.
+do
+  local moves={
+    [349]={effect=212,power=0,type=16,accuracy=0,pp=20,priority=0,target=0x10},
+    [105]={effect=32,power=0,type=0,accuracy=0,pp=20,priority=0,target=16},
+  }
+  local stats={hp=100,attack=40,defense=40,speed=20,spAttack=40,spDefense=40}
+  for _,maxed in ipairs({false,true}) do
+    local engine=BattleEngine.new({
+      player=BattleEngine.makeBattler({species=1,level=20,stats=stats,types={0,0},moves={{move=349,pp=20}}}),
+      foe=BattleEngine.makeBattler({species=4,level=20,stats=stats,types={0,0},moves={{move=105,pp=20}}}),
+      moves=moves,typeChart={},rng={next16=function() return 0 end},
+    })
+    engine.player.speed=30
+    if maxed then engine.player.statStages.attack=12; engine.player.statStages.speed=12 end
+    local ctrl=BattleSceneController.new({engine=engine,playerName="PLAYER",foeName="FOE",
+      moveName=function(id) return id==349 and "DRAGON DANCE" or "RECOVER" end})
+    ctrl:advanceMessage(); ctrl:advanceMessage()
+    ctrl:_runTurn({action="move",moveSlot=1})
+    local texts={}
+    for _,entry in ipairs(ctrl.messages) do if entry.text then texts[#texts+1]=entry.text end end
+    local all=table.concat(texts,"|")
+    if maxed then
+      check("dual stat both maxed message",all:find("PLAYER's stats won't\ngo any higher!",1,true)~=nil
+        and not all:find("rose!",1,true))
+    else
+      local a=all:find("PLAYER's ATTACK\nrose!",1,true)
+      local s=all:find("PLAYER's SPEED\nrose!",1,true)
+      check("dual stat messages in source order",a~=nil and s~=nil and a<s)
+    end
+  end
+end
+
 print(("%d passed, %d failed"):format(passed, failed))
 os.exit(failed == 0 and 0 or 1)

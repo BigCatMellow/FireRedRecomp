@@ -40,6 +40,7 @@
 --   {type="noPP", side=, move=}                   -- see the Struggle stub
 --   {type="moveFailed", side=}                    -- generic But it failed; distinct from screenFailed
 --   {type="statChange", side=<target>, stat=, stages=-1, prevented=}
+--   {type="statsWontRise", side=<attacker>}  -- two-stat UP move, both at +6
 --   {type="screenSet", side=, screen="reflect"|"lightScreen", turns=5}
 --   {type="screenFailed", side=, screen="reflect"|"lightScreen"} -- already active
 --   {type="screenExpired", side=, screen="reflect"|"lightScreen"} -- real 5-turn timer hit 0
@@ -553,6 +554,19 @@ BattleEngine.STAT_STAGE_MOVES = {
   [62] = { stat = "spDefense", delta = -2 }, -- EFFECT_SPECIAL_DEFENSE_DOWN_2
 }
 
+-- Self-target two-stat +1 family (data/battle_scripts_1.s at c75f352:
+-- BattleScript_EffectCosmicPower/BulkUp/CalmMind/DragonDance). No accuracy
+-- check, no RNG. Fails only when BOTH stats are at +6 (the jumpifstat pair ->
+-- BattleScript_CantRaiseMultipleStats); otherwise each stat below +6 rises
+-- by one, and a stat already at +6 is skipped silently (its statbuffchange
+-- sets B_MSG_STAT_WONT_INCREASE and the script jumps past the message).
+BattleEngine.DUAL_STAT_UP_MOVES = {
+  [206] = { "defense",  "spDefense" }, -- EFFECT_COSMIC_POWER
+  [208] = { "attack",   "defense" },   -- EFFECT_BULK_UP
+  [211] = { "spAttack", "spDefense" }, -- EFFECT_CALM_MIND
+  [212] = { "attack",   "speed" },     -- EFFECT_DRAGON_DANCE
+}
+
 -- The real "_HIT" secondary-effect family: an ordinary damaging move
 -- (accuracycheck -> ... -> datahpupdate, same pipeline as every other
 -- direct-damage move) that, after damage resolves, has a chance
@@ -883,6 +897,9 @@ function BattleEngine:supportsMove(move, moveId)
     return (moveId == 105 or moveId == 303)
       and move.power == 0 and move.target == MOVE_TARGET_USER
   end
+  if BattleEngine.DUAL_STAT_UP_MOVES[move.effect] then
+    return move.power == 0 and move.target == MOVE_TARGET_USER
+  end
   return move.power > 0 or BattleEngine.STAT_STAGE_MOVES[move.effect] ~= nil
     or BattleEngine.SCREEN_MOVES[move.effect] ~= nil
     or move.effect == BattleEngine.EFFECT_PAIN_SPLIT
@@ -1081,7 +1098,9 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
   -- shape: a self-target move (real MOVE_TARGET_USER) whose battle script
   -- has no accuracycheck step at all -- see SCREEN_MOVES' own comment.
   local screenStatusKey = BattleEngine.SCREEN_MOVES[move.effect]
+  local dualStatUp = BattleEngine.DUAL_STAT_UP_MOVES[move.effect]
   local needsAccuracyCheck = not isSelfTargetStat and not screenStatusKey
+    and not dualStatUp
     and move.effect ~= BattleEngine.EFFECT_ALWAYS_HIT
     and move.effect ~= BattleEngine.EFFECT_VITAL_THROW
     and move.effect ~= BattleEngine.EFFECT_OHKO
@@ -1175,6 +1194,24 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
       applyPainSplitHP(attackerSide, attacker)
       applyPainSplitHP(defenderSide, defender)
       events[#events + 1] = { type = "painSplit" }
+      return
+    end
+    if dualStatUp then
+      local maxStage = BattleFormulas.MAX_STAT_STAGE
+      local stages = attacker.statStages
+      if stages[dualStatUp[1]] == maxStage and stages[dualStatUp[2]] == maxStage then
+        events[#events + 1] = { type = "statsWontRise", side = attackerSide }
+        return
+      end
+      for _, stat in ipairs(dualStatUp) do
+        if stages[stat] < maxStage then
+          stages[stat] = stages[stat] + 1
+          events[#events + 1] = {
+            type = "statChange", side = attackerSide, stat = stat, stages = 1,
+            stage = stages[stat],
+          }
+        end
+      end
       return
     end
     if screenStatusKey then

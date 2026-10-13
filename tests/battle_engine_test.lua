@@ -1821,6 +1821,64 @@ do
   check("effect45 empty PP still auto-Struggle",ev[1].move==165 and ev[3].type=="recoil" and a.moves[1].pp==0)
 end
 
+-- Two-stat self UP family. Stat pairs are literal from the c75f352 battle
+-- scripts (setstatchanger order), not read from BattleEngine's table.
+do
+  local families = {
+    {effect=206, move=322, stats={"defense","spDefense"}}, -- Cosmic Power
+    {effect=208, move=339, stats={"attack","defense"}},    -- Bulk Up
+    {effect=211, move=347, stats={"spAttack","spDefense"}}, -- Calm Mind
+    {effect=212, move=349, stats={"attack","speed"}},      -- Dragon Dance
+  }
+  local stats={hp=100,attack=40,defense=40,speed=20,spAttack=40,spDefense=40}
+  for _,f in ipairs(families) do
+    local moves = {
+      [f.move]={effect=f.effect,power=0,type=0,accuracy=0,pp=20,priority=0,target=0x10},
+      [33]={effect=0,power=35,type=0,accuracy=95,pp=35,priority=0,target=0},
+    }
+    local function setup(side, values)
+      local b=BattleEngine.new({
+        player=BattleEngine.makeBattler({species=1,level=20,stats=stats,types={0,0},moves={{move=33,pp=35}}}),
+        foe=BattleEngine.makeBattler({species=4,level=20,stats=stats,types={0,0},moves={{move=33,pp=35}}}),
+        moves=moves,typeChart={},rng=scriptedRng(values or {4321}),
+      })
+      local a=b:battler(side)
+      a.moves={{move=f.move,pp=20}}
+      return b,a,(side=="player" and b.foe or b.player)
+    end
+    local s1,s2=f.stats[1],f.stats[2]
+    for _,side in ipairs({"player","foe"}) do
+      local tag=f.effect..side
+      local b,a,d=setup(side)
+      check("dualStat admitted "..tag,b:supportsMove(moves[f.move],f.move))
+      local ev={}; b:resolveMove(side,1,ev)
+      check("dualStat raises both in order "..tag,#ev==3 and ev[1].type=="useMove"
+        and ev[2].type=="statChange" and ev[2].stat==s1 and ev[2].stages==1 and ev[2].stage==7 and ev[2].side==side
+        and ev[3].type=="statChange" and ev[3].stat==s2 and ev[3].stages==1 and ev[3].stage==7
+        and a.statStages[s1]==7 and a.statStages[s2]==7 and a.moves[1].pp==19)
+      check("dualStat no RNG, defender untouched "..tag,b.rng.draws==0 and b.rng:next16()==4321
+        and d.statStages[s1]==6 and d.statStages[s2]==6 and d.hp==100)
+      b,a=setup(side); a.statStages[s1]=12
+      ev={}; b:resolveMove(side,1,ev)
+      check("dualStat first maxed skipped silently "..tag,#ev==2 and ev[2].type=="statChange" and ev[2].stat==s2 and ev[2].stage==7
+        and a.statStages[s1]==12 and a.statStages[s2]==7)
+      b,a=setup(side); a.statStages[s2]=12; a.statStages[s1]=11
+      ev={}; b:resolveMove(side,1,ev)
+      check("dualStat second maxed skipped silently "..tag,#ev==2 and ev[2].stat==s1 and ev[2].stage==12
+        and a.statStages[s2]==12)
+      b,a=setup(side); a.statStages[s1]=12; a.statStages[s2]=12
+      ev={}; b:resolveMove(side,1,ev)
+      check("dualStat both maxed fails, PP spent "..tag,#ev==2 and ev[2].type=="statsWontRise"
+        and ev[2].side==side and a.moves[1].pp==19 and b.rng.draws==0)
+    end
+    local b=setup("player")
+    local bad={effect=f.effect,power=0,type=0,accuracy=0,pp=20,priority=0,target=0}
+    check("dualStat requires user target "..f.effect,not b:supportsMove(bad,f.move))
+    bad={effect=f.effect,power=40,type=0,accuracy=100,pp=20,priority=0,target=0x10}
+    check("dualStat requires zero power "..f.effect,not b:supportsMove(bad,f.move))
+  end
+end
+
 if romPath then
   local RomImporter = require("import.RomImporter")
   local RomAddresses = require("import.RomAddresses")
