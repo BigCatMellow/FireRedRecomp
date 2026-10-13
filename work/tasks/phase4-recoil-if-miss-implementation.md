@@ -176,3 +176,34 @@ the parent for serialized guarded publication. A failing guarded job stops;
 a successful one requires a separate independent outcome review. Orchestrator
 reconciles only bounded effect-45 behavior, never Phase 4 completion, then
 selects the next evidence-backed eligible gate under the standing goal.
+
+### Worker isolated-construction evidence — 2026-10-13
+
+Following authority PASS `96b10ce` and reconciliation `15c15c2`, Worker
+constructed only the ten allowed outputs in isolation. The
+[implementation report](../reports/phase4-recoil-if-miss-implementation.md)
+records the literal crash/immunity leaf, distinct controller event, concrete
+test coverage and remaining guarded gates. Criteria above are unchanged.
+
+Baseline full no-ROM suite passed 154 files. Focused checks passed engine
+332/0, controller 87/0, party bridge 29/0; inventory partition passed with
+ROM aggregate skipped, and new ROM fixture explicitly skipped. The final
+full no-ROM suite passed 155 files, including final engine assertions.
+All local checks cleared ROM and runtime-replay opt-ins; no ROM discovery or
+access occurred. Replay wrapper syntax passed; guarded replay remains pending.
+
+Only literal effect 45/IDs 26 and 136 gain crash behavior. Real fatal crashes,
+replacement continuation, controller text-before-HP and invoked encoded-party
+HP/PP persistence have local assertions. The report distinguishes codec
+compatibility from unclaimed lifecycle/disk save/reload. All exclusions remain.
+
+Final whitespace passed, including all three new files. The repository
+checker explicitly included the new outputs and passed: 281 Lua, 281
+Markdown, 928 local targets. Exact ten-file scope, empty staging index and
+verbatim preservation of the original task were checked. Hashes accompany
+Worker delivery. Parent must freshly validate prerequisites and mechanically derive
+the sole request from this exact diff. No Worker staging, commit, push,
+request creation or canonical runtime publication occurred. Guarded
+focused/full/SHA-ROM/non-skipped inventory/record/replay/publication receipts
+and independent exact outcome review are pending; local readiness is not
+behavior acceptance or Phase 4 completion.

@@ -27,6 +27,7 @@
 --   {type="damage", side=<attacker>, target=<defender side>, amount=,
 --    hpRemaining=, superEffective=, notVeryEffective=}
 --   {type="recoil", side=<attacker>, amount=, hpRemaining=}
+--   {type="crash", side=<attacker>, amount=, hpRemaining=} -- literal effect 45 miss
 --   {type="drain", side=<attacker>, amount=, hpRemaining=}
 --   {type="faint", side=}
 --   {type="forcedSwitchNeeded", side=}             -- fainted side has a real
@@ -282,9 +283,11 @@
 --     The "no valid moves -> auto-Struggle" trigger IS ported -- see the
 --     Struggle paragraph above and resolveMove's real AreAllMovesUnusable
 --     check at the top of the function.
---     Not ported: EFFECT_RECOIL_IF_MISS=45 (Jump
---     Kick/Hi Jump Kick's crash-on-miss damage -- a different real effect
---     id and mechanic), and EFFECT_DREAM_EATER=8 (heals like Absorb but
+--     EFFECT_RECOIL_IF_MISS=45 is a separate literal Jump Kick/Hi Jump Kick
+--     ordinary-miss leaf: immunity exits before crash, otherwise noncritical
+--     damage is halved/capped to target max HP and applied to attacker only.
+--     Cancellation, abilities/items/status and nonordinary provenance remain
+--     excluded. Not ported: EFFECT_DREAM_EATER=8 (heals like Absorb but
 --     real BattleScript_EffectDreamEater only works against a sleeping
 --     target -- a status-condition precondition this project doesn't model;
 --     supportsMove() explicitly rejects it rather than silently running it
@@ -885,6 +888,14 @@ function BattleEngine:supportsMove(move, moveId)
     or move.effect == BattleEngine.EFFECT_PAIN_SPLIT
 end
 
+-- DMG_RECOIL_FROM_MISS at the accepted c75f352 source pin: halve, promote
+-- zero, then cap by TARGET max HP. The arithmetic maxHP=1 edge stays zero.
+function BattleEngine.recoilIfMissDamage(damage, targetMaxHP)
+  local half = math.floor(damage / 2)
+  if half == 0 then half = 1 end
+  return math.min(half, math.floor(targetMaxHP / 2))
+end
+
 -- Resolves one attack, appending its events. Returns nothing; the caller
 -- checks for a faint. Mirrors BattleScript_HitFromAccCheck's real order.
 function BattleEngine:resolveMove(attackerSide, moveSlot, events)
@@ -1105,6 +1116,30 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
   end
 
   if not hit then
+    if move.effect == 45 and (moveId == 26 or moveId == 136) then
+      -- Ordinary accuracy failure already scans type immunity in source,
+      -- before resultmessage/the crash guard. This pure query spends no RNG.
+      local _, immunity = BattleFormulas.typeCalc(
+        1, move.type, attacker.types, defender.types, self.typeChart)
+      if immunity.noEffect then
+        events[#events + 1] = { type = "noEffect", side = attackerSide, target = defenderSide }
+        return
+      end
+      events[#events + 1] = { type = "miss", side = attackerSide }
+      -- HandleAction_UseMove resets both multipliers to 1; no critcalc on
+      -- this leaf. Preserve base -> STAB/type -> random -> half/min/cap.
+      local damage = BattleFormulas.calculateBaseDamage(
+        attacker, defender, move, false, self.sideStatus[defenderSide])
+      damage = BattleFormulas.typeCalc(damage, move.type, attacker.types, defender.types, self.typeChart)
+      damage = BattleFormulas.applyRandomDamageMultiplier(damage, self.rng)
+      local loss = math.min(attacker.hp, BattleEngine.recoilIfMissDamage(damage, defender.maxHP))
+      attacker.hp = attacker.hp - loss
+      events[#events + 1] = { type = "crash", side = attackerSide, amount = loss, hpRemaining = attacker.hp }
+      -- Do not use applyDamage: it targets the defender and advances Oak's
+      -- damage tutorial. No hit/effectiveness or ordinary recoil result here.
+      self:checkFaint(attackerSide, events)
+      return
+    end
     events[#events + 1] = { type = "miss", side = attackerSide }
     return
   end

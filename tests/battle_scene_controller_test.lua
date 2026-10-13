@@ -261,5 +261,78 @@ do
     messages[5].text == "The foe's LIGHT SCREEN\nwore off!", messages[5].text)
 end
 
+-- Actual effect-45 engine events through the controller's turn/message path.
+do
+  local moves={
+    [26]={effect=45,power=70,type=1,accuracy=95,pp=25,priority=0,target=0},
+    [105]={effect=32,power=0,type=0,accuracy=0,pp=20,priority=0,target=16},
+  }
+  local chart={[0]={attackingType=1,defendingType=7,multiplier=0}}
+  local stats={hp=100,attack=40,defense=40,speed=20,spAttack=40,spDefense=40}
+  for _,side in ipairs({"player","foe"}) do
+    for _,mode in ipairs({"nonfatal","fatal","replacement","immune"}) do
+      local draw=0
+      local engine=BattleEngine.new({
+        player=BattleEngine.makeBattler({species=1,level=20,stats=stats,types={10,10},moves={{move=105,pp=20}}}),
+        foe=BattleEngine.makeBattler({species=4,level=20,stats=stats,types={10,10},moves={{move=105,pp=20}}}),
+        moves=moves,typeChart=chart,rng={next16=function() draw=draw+1; return draw==1 and 99 or 0 end},
+        hasReplacement=function(s) return mode=="replacement" and s==side end,
+      })
+      local attacker=engine:battler(side)
+      local targetSide=side=="player" and "foe" or "player"
+      local target=engine:battler(targetSide)
+      attacker.moves={{move=26,pp=25}}; attacker.types={1,1}; attacker.speed=30
+      if mode=="fatal" or mode=="replacement" then attacker.hp=1 end
+      if mode=="immune" then target.types={7,7} end
+      local beforeHP=attacker.hp
+      local ctrl=BattleSceneController.new({engine=engine,playerName="PLAYER",foeName="FOE",
+        moveName=function(id) return id==26 and "JUMP KICK" or "RECOVER" end,
+        forcedSwitchChoices=function() return {{slot=2,name="BENCH"}} end})
+      ctrl:advanceMessage(); ctrl:advanceMessage()
+      ctrl:_runTurn({action="move",moveSlot=1})
+      local label=side..":"..mode
+      check("crash controller starts actual use with old HP "..label,
+        ctrl:message():find("JUMP KICK",1,true)~=nil and ctrl.displayedHP[side]==beforeHP)
+      ctrl:advanceMessage()
+      if mode=="immune" then
+        check("immune controller shows no effect and no HP mutation "..label,
+          ctrl:message():find("doesn't affect",1,true)~=nil and attacker.hp==beforeHP
+          and ctrl.displayedHP[side]==beforeHP and draw==1)
+        local crashSeen=false
+        for _,entry in ipairs(ctrl.messages) do
+          crashSeen=crashSeen or (entry.text and entry.text:find("crashed",1,true)~=nil) or entry.hpSide~=nil
+        end
+        check("immune actual stream has no crash or HP entry "..label,not crashSeen)
+      else
+        check("crash controller miss keeps old display "..label,
+          ctrl:message():find("missed",1,true)~=nil and ctrl.displayedHP[side]==beforeHP)
+        ctrl:advanceMessage()
+        check("crash text precedes invisible HP "..label,
+          ctrl:message()==(side=="player" and "PLAYER" or "FOE").." kept going\nand crashed!"
+          and ctrl.displayedHP[side]==beforeHP and attacker.hp<beforeHP)
+        ctrl:advanceMessage()
+        check("crash invisible HP applies before faint or continuation "..label,
+          ctrl.displayedHP[side]==attacker.hp and ctrl.displayedHP[targetSide]==100
+          and target.hp==100 and draw==2)
+        if mode~="nonfatal" then
+          check("actual fatal crash presents faint after zero HP "..label,
+            ctrl:message():find("fainted",1,true)~=nil and ctrl.displayedHP[side]==0
+            and ctrl.state==BattleSceneController.MESSAGES)
+        end
+      end
+      local remaining=20
+      while ctrl.state==BattleSceneController.MESSAGES and remaining>0 do ctrl:advanceMessage(); remaining=remaining-1 end
+      local expected=mode=="fatal" and BattleSceneController.COMPLETE
+        or (mode=="replacement" and side=="player" and BattleSceneController.PARTY)
+        or BattleSceneController.ACTION
+      check("crash messages drain before completion "..label,remaining>0 and ctrl.state==expected)
+      if mode=="replacement" then
+        check("crash pending replacement survives message drain "..label,
+          engine.awaitingForcedSwitch==side and not engine:isOver())
+      end
+    end
+  end
+end
+
 print(("%d passed, %d failed"):format(passed, failed))
 os.exit(failed == 0 and 0 or 1)

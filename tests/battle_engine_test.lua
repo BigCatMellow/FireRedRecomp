@@ -1694,6 +1694,133 @@ check("Restore HP admission refuses absent or wrong IDs and malformed shapes", n
 Data.moves[recoverId] = nil
 Data.moves[slackOffId] = nil
 
+-- Effect 45 source-derived ordinary singles cases. Local fixtures leave the
+-- shared test catalog untouched. Numeric oracles below are not obtained from
+-- the implementation's damage helper.
+do
+  local moves = {
+    [26]={effect=45,power=70,type=1,accuracy=95,pp=25,priority=0,target=0},
+    [136]={effect=45,power=85,type=1,accuracy=90,pp=20,priority=0,target=0},
+    [33]={effect=0,power=35,type=0,accuracy=95,pp=35,priority=0,target=0},
+    [165]=Data.moves[165],
+  }
+  local chart = {
+    [0]={attackingType=1,defendingType=0,multiplier=20},
+    [1]={attackingType=1,defendingType=7,multiplier=0},
+    [2]={attackingType=1,defendingType=6,multiplier=5},
+  }
+  local stats={hp=100,attack=40,defense=40,speed=20,spAttack=40,spDefense=40}
+  local function setup(id, side, values)
+    local b=BattleEngine.new({
+      player=BattleEngine.makeBattler({species=1,level=20,stats=stats,types={10,10},moves={{move=33,pp=35}}}),
+      foe=BattleEngine.makeBattler({species=4,level=20,stats=stats,types={10,10},moves={{move=33,pp=35}}}),
+      moves=moves,typeChart=chart,rng=scriptedRng(values or {99,0,4321}),
+    })
+    local a=b:battler(side)
+    local d=side=="player" and b.foe or b.player
+    a.moves={{move=id,pp=moves[id].pp}}; a.types={1,1}; a.speed=30
+    return b,a,d
+  end
+  local function resolve(b,side)
+    local ev={}; b:resolveMove(side,1,ev); return ev
+  end
+  local function kinds(ev)
+    local out={}; for _,e in ipairs(ev) do out[#out+1]=e.type end
+    return table.concat(out,",")
+  end
+  for _,id in ipairs({26,136}) do
+    for _,side in ipairs({"player","foe"}) do
+      local b,a,d=setup(id,side)
+      local ev=resolve(b,side)
+      -- Lv20: (10*70/50)+2=16; STAB=24; half=12.
+      -- Hi Jump Kick: 17+2=19; STAB floors to28; half=14.
+      local amount=id==26 and 12 or 14
+      check("effect45 literal crash "..id..side,kinds(ev)=="useMove,miss,crash"
+        and ev[3].side==side and ev[3].amount==amount and ev[3].hpRemaining==100-amount
+        and a.hp==100-amount and d.hp==100 and a.moves[1].pp==moves[id].pp-1)
+      check("effect45 two draws then sentinel "..id..side,b.rng.draws==2 and b.rng:next16()==4321)
+      for _,types in ipairs({{7,7},{7,0},{0,7}}) do
+        b,a,d=setup(id,side,{99,4321}); d.types=types
+        ev=resolve(b,side)
+        check("effect45 immune result "..id..side..types[1],kinds(ev)=="useMove,noEffect"
+          and a.hp==100 and d.hp==100 and a.moves[1].pp==moves[id].pp-1
+          and b.rng.draws==1 and b.rng:next16()==4321)
+      end
+      b,a,d=setup(id,side,{0,1,0,4321}); ev=resolve(b,side)
+      check("effect45 successful hit retained "..id..side,kinds(ev)=="useMove,damage"
+        and a.hp==100 and d.hp==100-amount*2 and a.moves[1].pp==moves[id].pp-1
+        and b.rng.draws==3 and b.rng:next16()==4321)
+      b,a,d=setup(id,side,{0,1,0,4321}); d.types={7,7}; ev=resolve(b,side)
+      check("effect45 successful-accuracy immunity retains hit draws "..id..side,
+        kinds(ev)=="useMove,noEffect" and a.hp==100 and d.hp==100
+        and b.rng.draws==3 and b.rng:next16()==4321)
+      for _,replacement in ipairs({false,true}) do
+        b,a,d=setup(id,side,{99,0,4321}); a.hp=1
+        b.hasReplacement=function(s) return replacement and s==side end
+        ev=b:runTurn({action="move",moveSlot=1},{action="move",moveSlot=1})
+        check("effect45 fatal order "..id..side..tostring(replacement),
+          kinds(ev)=="turnStart,useMove,miss,crash,faint,"..(replacement and "forcedSwitchNeeded" or "battleEnd")
+          and a.hp==0 and ev[4].amount==1 and ev[5].side==side and d.hp==100
+          and d.moves[1].pp==35 and a.moves[1].pp==moves[id].pp-1 and b.rng.draws==2)
+        if replacement then
+          check("effect45 pending refusal "..side, b.awaitingForcedSwitch==side and not b:isOver()
+            and not pcall(function() b:runTurn({action="move",moveSlot=1},{action="move",moveSlot=1}) end))
+          local incoming=BattleEngine.makeBattler({species=1,level=20,stats=stats,types={10,10},moves={{move=33,pp=35}}})
+          incoming.speed=35
+          local switched=b:resolveForcedSwitch(side,incoming)
+          b.rng=scriptedRng({0,1,0,0,1,0})
+          local later=b:runTurn({action="move",moveSlot=1},{action="move",moveSlot=1})
+          check("effect45 replacement permits later turn "..side,
+            switched[1].type=="forcedSwitchResolved" and b.awaitingForcedSwitch==nil
+            and incoming.moves[1].pp==34 and #later>1)
+        else
+          check("effect45 fatal outcome "..side,b.outcome==(side=="player" and "playerLost" or "playerWon"))
+        end
+      end
+    end
+  end
+  for _,row in ipairs({{7,100,3},{0,100,1},{1,100,1},{100,9,4},{10,10,5},{12,10,5},{8,10,4},{9,1,0}}) do
+    check("effect45 arithmetic half/min/cap "..row[1]..":"..row[2],
+      BattleEngine.recoilIfMissDamage(row[1],row[2])==row[3])
+  end
+  local b,a,d=setup(26,"player",{99,15,4321})
+  a.statStages.attack=5; d.statStages.defense=7; d.types={0,0}; b.sideStatus.foe.reflect=true
+  local ev=resolve(b,"player")
+  -- atk26/def60: floor(floor(26*70*10/60)/50)=6; Reflect3,+2=5;
+  -- STAB7, super14,85%=11,half5. This catches crit stage/screen bypass.
+  check("effect45 source-order stages Reflect STAB type random",ev[3].amount==5 and b.rng.draws==2)
+  b,a,d=setup(26,"player"); d.hp=2; a.maxHP=20; a.hp=20
+  ev=resolve(b,"player")
+  check("effect45 uses neither target current HP nor attacker max cap",ev[3].amount==12 and d.hp==2)
+  b,a,d=setup(26,"player"); d.maxHP=9; ev=resolve(b,"player")
+  check("effect45 odd target max cap",ev[3].amount==4)
+  b,a,d=setup(26,"player",{0,0,0,99,0,4321})
+  ev=resolve(b,"player"); local firstCrit=ev[2].type=="critical"
+  ev=resolve(b,"player")
+  check("effect45 previous critical cannot leak",firstCrit and ev[3].amount==12 and b.rng.draws==5 and b.rng:next16()==4321)
+  for _,side in ipairs({"player","foe"}) do
+    b,a,d=setup(26,side); b.firstBattle=true
+    if side=="player" then b.tutorialPlayerDamageDone=true end
+    ev=resolve(b,side)
+    check("effect45 crash does not introduce tutorial state "..side,
+      kinds(ev)=="useMove,miss,crash" and b.tutorialPlayerDamageDone==(side=="player") and b.rng.draws==2)
+  end
+  b,a,d=setup(26,"player",{1,0,4321}); b.firstBattle=true; ev=resolve(b,"player")
+  check("effect45 firstBattle accuracy bypass and hit tip retained",kinds(ev)=="useMove,damage,tutorialTip"
+    and b.tutorialPlayerDamageDone and b.rng.draws==2 and b.rng:next16()==4321)
+  for _,row in ipairs({{999,45},{26,0},{26,48},{136,198}}) do
+    local id,effect=row[1],row[2]; local original=moves[id]
+    moves[id]={effect=effect,power=70,type=1,accuracy=95,pp=25,priority=0,target=0}
+    b,a,d=setup(id,"player",{99,4321}); ev=resolve(b,"player")
+    check("effect45 literal gate "..id..":"..effect,kinds(ev)=="useMove,miss" and a.hp==100 and b.rng.draws==1 and b.rng:next16()==4321)
+    moves[id]=original
+  end
+  b,a,d=setup(26,"player",{4321}); a.moves={{move=26,pp=0},{move=33,pp=1}}; ev=resolve(b,"player")
+  check("effect45 selected zero PP retained",kinds(ev)=="noPP" and a.hp==100 and b.rng.draws==0)
+  b,a,d=setup(26,"player",{0,1,0}); a.moves[1].pp=0; ev=resolve(b,"player")
+  check("effect45 empty PP still auto-Struggle",ev[1].move==165 and ev[3].type=="recoil" and a.moves[1].pp==0)
+end
+
 if romPath then
   local RomImporter = require("import.RomImporter")
   local RomAddresses = require("import.RomAddresses")

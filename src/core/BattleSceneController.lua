@@ -193,6 +193,11 @@ function BattleSceneController:_eventMessages(events)
       add(("Magnitude %d!"):format(event.level))
     elseif event.type == "miss" then
       add(possessive(name(event.side)) .. " attack missed!")
+    elseif event.type == "crash" then
+      add(name(event.side) .. " kept going\nand crashed!")
+      -- Source announces crash before attacker HP. Only an invisible entry
+      -- advances displayedHP after acknowledgement; model HP is engine-owned.
+      entries[#entries + 1] = { hpSide = event.side, hp = event.hpRemaining }
     elseif event.type == "moveFailed" then
       add("But it failed!")
     elseif event.type == "critical" then

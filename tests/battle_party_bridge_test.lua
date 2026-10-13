@@ -118,5 +118,50 @@ check("a solo party has no switch targets", #noOthers == 0)
 local emptyState = BattlePartyBridge.findSwitchTargets({}, 1)
 check("missing party state returns an empty list, not a crash", type(emptyState) == "table" and #emptyState == 0)
 
+-- Invoked model-to-party persistence of actual crash results, not normal
+-- gameplay lifecycle or disk save/reload proof.
+do
+  local Engine=require("src.core.BattleEngine")
+  local kickMoves={
+    [26]={effect=45,power=70,type=1,accuracy=95,pp=25,target=0,priority=0},
+    [136]={effect=45,power=85,type=1,accuracy=90,pp=20,target=0,priority=0},
+  }
+  for _,id in ipairs({26,136}) do
+    for _,mode in ipairs({"nonfatal","fatal","immune"}) do
+      local instance=WildPokemonFactory.generate({species=19,level=20,speciesInfo=species,
+        learnset={{level=1,move=id}},battleMoves=kickMoves,natures=natures,rng=Rng.new(201),
+        speciesName=rawName,trainer={id=0x12345678,name=trainerName,gender=0},metLocation=88})
+      local record=WildPokemonFactory.capture(instance,{ball=4})
+      local active=BattlePartyBridge.battlerFromParty(record,speciesTable)
+      if mode=="fatal" then active.hp=1; record.hp=1 end
+      local beforeHP=active.hp
+      local beforeBox=BoxPokemonCodec.decode(record.box)
+      local target=Engine.makeBattler({species=4,level=20,
+        stats={hp=100,attack=40,defense=100,speed=20,spAttack=40,spDefense=40},
+        types=mode=="immune" and {7,7} or {10,10},moves={{move=26,pp=25}}})
+      local draws=0
+      local engine=Engine.new({player=active,foe=target,moves=kickMoves,
+        typeChart={[0]={attackingType=1,defendingType=7,multiplier=0}},
+        rng={next16=function() draws=draws+1; return draws==1 and 99 or 0 end}})
+      local ev={}; engine:resolveMove("player",1,ev)
+      local label=id..":"..mode
+      check("party crash obtains real engine outcome "..label,
+        (mode=="immune" and ev[2].type=="noEffect" and active.hp==beforeHP)
+        or (mode~="immune" and ev[3].type=="crash" and active.hp==beforeHP-ev[3].amount
+          and (mode~="fatal" or (active.hp==0 and ev[4].type=="faint"))))
+      BattlePartyBridge.persistPartyBattler(record,active)
+      local decoded=BoxPokemonCodec.decode(record.box)
+      check("party crash HP PP checksum identity persist "..label,
+        record.hp==active.hp and decoded.substructs[1].moves[1]==id
+        and decoded.substructs[1].pp[1]==kickMoves[id].pp-1 and decoded.checksumValid
+        and decoded.personality==beforeBox.personality and target.hp==100)
+      local encoded=SaveFileCodec.encodeSaveBlock1({playerPartyCount=1,playerParty={record}},0)
+      local roundtrip=SaveFileCodec.decodeSaveBlock1(encoded,0).playerParty[1]
+      check("party crash in-memory codec compatibility "..label,
+        roundtrip.hp==active.hp and BoxPokemonCodec.decode(roundtrip.box).substructs[1].pp[1]==kickMoves[id].pp-1)
+    end
+  end
+end
+
 print(("battle_party_bridge_test: %d passed, %d failed"):format(passed, failed))
 os.exit(failed == 0 and 0 or 1)

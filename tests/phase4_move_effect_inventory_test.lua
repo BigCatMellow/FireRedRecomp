@@ -54,7 +54,7 @@ local inventory = {
   [42] = {"blocked_on_state", true, 1, {20,35,83,128,250,328}}, -- EFFECT_TRAP
   [43] = {"represented", true, 1, {2,75,152,163,177,238,314,348}}, -- EFFECT_HIGH_CRITICAL
   [44] = {"represented", true, 1, {24,155}}, -- EFFECT_DOUBLE_HIT
-  [45] = {"candidate", true, 1, {26,136}}, -- EFFECT_RECOIL_IF_MISS
+  [45] = {"represented", true, 1, {26,136}}, -- EFFECT_RECOIL_IF_MISS: ordinary selected singles only
   [46] = {"blocked_on_state", false, 0, {54}}, -- EFFECT_MIST
   [47] = {"blocked_on_state", false, 0, {116}}, -- EFFECT_FOCUS_ENERGY
   [48] = {"represented", true, 1, {36,66,165}}, -- EFFECT_RECOIL
@@ -228,11 +228,11 @@ local inventory = {
 local expectedTotals = {
   moves = 354, defined = 214, used = 198, unused = 16,
   positive = 216, zero = 138, admitted = 250, rejected = 104,
-  admitted_uncovered_positive = 110,
+  admitted_uncovered_positive = 108,
 }
 local expectedClasses = {
-  represented = {families = 52, moves = 140, positive = 105, zero = 35},
-  candidate = {families = 18, moves = 22, positive = 9, zero = 13},
+  represented = {families = 53, moves = 142, positive = 107, zero = 35},
+  candidate = {families = 17, moves = 20, positive = 7, zero = 13},
   blocked_on_state = {families = 127, moves = 191, positive = 101, zero = 90},
   intentionally_rejected = {families = 1, moves = 1, positive = 1, zero = 0},
   unused = {families = 16, moves = 0, positive = 0, zero = 0},
