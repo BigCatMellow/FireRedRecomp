@@ -12,8 +12,10 @@
   ppreduce (no outer accuracycheck) → power 0, setmultihit 3 → loop:
   `jumpifhasnohp ATTACKER` (end), `jumpifhasnohp TARGET` (NoMoreHits), sleep
   check, `accuracycheck BattleScript_TripleKickNoMoreHits, ACC_CURR_MOVE`,
-  `movevaluescleanup`, power += 10, hit counter += 1 (after the hit lands
-  through `addbyte sMULTIHIT_STRING + 4`), `copyhword gDynamicBasePower`,
+  `movevaluescleanup`, power += 10, hit counter += 1 (`addbyte
+  sMULTIHIT_STRING + 4`, after accuracy but before damage; an immune first
+  kick counts 1 but DOESNT_AFFECT suppresses the hit-count text, so the
+  engine's landed-kick count is equivalent), `copyhword gDynamicBasePower`,
   critcalc, damagecalc, typecalc, adjustnormaldamage,
   `jumpifmovehadnoeffect NoMoreHits`, HP update, `decrementmultihit`.
   NoMoreHits: with a nonzero count, `bicbyte MISSED`; PrintStrings:
