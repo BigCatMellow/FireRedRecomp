@@ -511,5 +511,48 @@ do
   check("triple kick first miss shows miss text",all:find("missed",1,true)~=nil and not all:find("Hit ",1,true))
 end
 
+-- Batch 6 through the real engine: sText_PkmnChangedType with gTypeNames;
+-- Memento's HP bar drops before the stat messages.
+do
+  local moves={
+    [160]={effect=30,power=0,type=0,accuracy=0,pp=30,priority=0,target=0x10},
+    [262]={effect=168,power=0,type=17,accuracy=100,pp=10,priority=0,target=0},
+    [52]={effect=4,power=40,type=10,accuracy=100,pp=25,priority=0,target=0},
+    [105]={effect=32,power=0,type=0,accuracy=0,pp=20,priority=0,target=16},
+  }
+  local stats={hp=100,attack=40,defense=40,speed=20,spAttack=40,spDefense=40}
+  local function run(list, values)
+    local i=0
+    local playerMoves={}
+    for k,id in ipairs(list) do playerMoves[k]={move=id,pp=10} end
+    local engine=BattleEngine.new({
+      player=BattleEngine.makeBattler({species=1,level=20,stats=stats,types={0,0},moves=playerMoves}),
+      foe=BattleEngine.makeBattler({species=4,level=20,stats=stats,types={0,0},moves={{move=105,pp=20}}}),
+      moves=moves,typeChart={},rng={next16=function() i=i+1; return values[i] or 0 end},
+      hasReplacement=function() return false end,
+    })
+    engine.player.speed=30
+    local ctrl=BattleSceneController.new({engine=engine,playerName="PLAYER",foeName="FOE",
+      moveName=function() return "MOVE" end})
+    ctrl:advanceMessage(); ctrl:advanceMessage()
+    ctrl:_runTurn({action="move",moveSlot=1})
+    return ctrl
+  end
+  local ctrl=run({160,52},{1})
+  local out={}
+  for _,entry in ipairs(ctrl.messages) do if entry.text then out[#out+1]=entry.text end end
+  local names={[0]="NORMAL","FIGHT","FLYING","POISON","GROUND","ROCK","BUG","GHOST",
+    "STEEL","???","FIRE","WATER","GRASS","ELECTR","PSYCHC","ICE","DRAGON","DARK"}
+  local allNames=true
+  for id=0,17 do allNames=allNames and BattleSceneController.TYPE_DISPLAY_NAMES[id]==names[id] end
+  check("all 18 gTypeNames match source (battle_main.c:430-447)",allNames)
+  check("conversion message uses source type name",
+    table.concat(out,"|"):find("PLAYER transformed\ninto the FIRE type!",1,true)~=nil)
+  ctrl=run({262},{})
+  ctrl:advanceMessage()
+  check("memento HP drops before the first stat message",
+    ctrl:message()=="FOE's ATTACK\nharshly fell!" and ctrl.displayedHP.player==0)
+end
+
 print(("%d passed, %d failed"):format(passed, failed))
 os.exit(failed == 0 and 0 or 1)
