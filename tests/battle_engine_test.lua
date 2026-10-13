@@ -2002,7 +2002,15 @@ do
     check("tickle miss lowers nothing "..side,#ev==2 and ev[2].type=="miss" and d.statStages.attack==6
       and d.statStages.defense==6 and a.moves[1].pp==19 and b.rng.draws==1)
   end
-  local b=setup("player")
+  local b,a,d=setup("player",{99,4321}); b.firstBattle=true
+  local ev={}; b:resolveMove("player",1,ev)
+  check("tickle first battle: accuracy bypassed, tip after first fall",#ev==4
+    and ev[2].stat=="attack" and ev[3].type=="tutorialTip" and ev[3].kind=="stat"
+    and ev[4].stat=="defense" and b.tutorialPlayerStatDone and b.rng.draws==0)
+  ev={}; b:resolveMove("player",1,ev)
+  check("tickle first battle: later use rolls accuracy, no tip",#ev==3 and ev[2].type=="statChange"
+    and ev[3].type=="statChange" and b.rng.draws==1 and b.rng:next16()==4321)
+  b=setup("player")
   check("tickle requires zero power",not b:supportsMove({effect=205,power=20,type=0,accuracy=100,pp=20,target=0},321))
   check("tickle requires selected target",not b:supportsMove({effect=205,power=0,type=0,accuracy=100,pp=20,target=0x10},321))
 end

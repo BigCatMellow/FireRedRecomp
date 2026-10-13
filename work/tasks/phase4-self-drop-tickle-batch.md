@@ -1,7 +1,7 @@
 # Task: self-drop hits and Tickle batch (fast lane)
 
 - Task ID: `P4-FL2-SELF-DROP-TICKLE`
-- Status: `READY_FOR_REVIEWER`
+- Status: `CLOSED — REVIEWED PASS` ([review](../reviews/2026-10-13-self-drop-tickle-batch-review.md)); ROM fixture pending
 - Lane: [battle-effect fast lane](../../AGENTS.md#battle-effect-fast-lane--human-authorized-2026-10-13)
 - Parent: [Phase 4 move/effect matrix](../roadmaps/CAPABILITY_CHECKLIST.md)
 - Families: 182 Superpower (276), 204 Overheat (315) / Psycho Boost (354), 205 Tickle (321)
@@ -64,4 +64,14 @@ animation, first-battle tutorial interplay (no starter learns these moves).
 ## Evidence (Worker, 2026-10-13)
 
 No-ROM: engine 438/0 (was 388), controller 92/0, inventory partition PASS,
-new ROM fixture skips cleanly. Independent review pending; not self-reviewed.
+new ROM fixture skips cleanly. Independent review PASS. Findings addressed:
+1 (report table/uncovered list corrected to 60/150/110/40, 10/12/4/8, 255/99,
+105 records over 58 effects) and 2 (first-battle Tickle sets the stat tutorial
+flag and tip after the first fall; test added; engine 440/0).
+
+## Follow-ups (pre-existing, outside this batch)
+
+- Review finding 4 (high impact): every Hit-script move spends a
+  `seteffectwithchance` Random() in source (`bs1.s:263`, `bsc.c:2789`); the
+  engine counts 3 draws per landed hit instead of 4.
+- Review finding 3: Take Down/Double-Edge immune hits should spend that draw too.

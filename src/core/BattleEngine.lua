@@ -1236,6 +1236,13 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
             type = "statChange", side = defenderSide, stat = stat, stages = -1,
             stage = stages[stat],
           }
+          -- Oak first battle: the first defender-stat-fell message sets the
+          -- stat tutorial flag and tip (battle_controller_oak_old_man.c:1766).
+          if self.firstBattle and attackerSide == BattleEngine.SIDE_PLAYER
+              and not self.tutorialPlayerStatDone then
+            self.tutorialPlayerStatDone = true
+            events[#events + 1] = { type = "tutorialTip", kind = "stat" }
+          end
         end
       end
       return

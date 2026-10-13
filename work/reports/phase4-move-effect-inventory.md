@@ -34,11 +34,11 @@ labels `defined_source=214`; the ROM gate checks member usage and unused IDs.
 
 | Source-confirmed semantic class | Used families | Moves | Positive power | Zero power | Admitted / rejected |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| Represented with stated limits | 50 | 137 | 104 | 33 | 137 / 0 |
-| Candidate for separate discovery | 20 | 25 | 10 | 15 | 10 / 15 |
+| Represented with stated limits | 60 | 150 | 110 | 40 | 150 / 0 |
+| Candidate for separate discovery | 10 | 12 | 4 | 8 | 4 / 8 |
 | Blocked on additional state or an absent cross-component path | 127 | 191 | 101 | 90 | 101 / 90 |
 | Intentionally rejected | 1 | 1 | 1 | 0 | 0 / 1 |
-| Total used | 198 | 354 | 216 | 138 | 248 / 106 |
+| Total used | 198 | 354 | 216 | 138 | 255 / 99 |
 | Defined but unused | 16 | 0 | 0 | 0 | no real-record claim |
 
 `represented` means an existing bounded mechanism plus checked-in tests/source
@@ -52,11 +52,11 @@ families are unimplemented, not a policy decision that they should never work.
 
 ## Coverage and admission are separate
 
-The **111 admitted, semantically uncovered positive-power records** occupy
-61 effects: `2, 4, 5, 6, 26, 27, 31, 34, 36, 39, 42, 45, 75, 76, 77, 80, 81, 89, 92, 104, 105, 117, 119, 121, 122, 123, 125, 126, 128, 129, 135, 140, 144, 145, 146, 147, 148, 149, 150, 151, 152, 154, 155, 158, 159, 161, 169, 170, 171, 182, 185, 186, 188, 196, 197, 200, 202, 203, 204, 207, 209`.
+The **105 admitted, semantically uncovered positive-power records** occupy
+58 effects: `2, 4, 5, 6, 26, 27, 31, 34, 36, 39, 42, 75, 76, 77, 80, 81, 89, 92, 104, 105, 117, 119, 121, 122, 123, 125, 126, 128, 129, 135, 140, 144, 145, 146, 147, 148, 149, 150, 151, 152, 154, 155, 158, 159, 161, 169, 170, 171, 185, 186, 188, 196, 197, 200, 202, 203, 207, 209`.
 Their precise move members and counts are the `yes / C` and `yes / B` rows
 below. They reach ordinary damage because of the positive-power fallback;
-admission does not implement their effects. Ten are candidate records and
+admission does not implement their effects. Four are candidate records and
 101 need additional state/path work. This refresh supersedes the older
 140-fallback positive-only count; accepted intervening leaves account for the
 reduction, while 138 zero-power records are now included explicitly.
