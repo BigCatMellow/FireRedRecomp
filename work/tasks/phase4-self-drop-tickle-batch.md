@@ -66,7 +66,7 @@ animation, first-battle tutorial interplay (no starter learns these moves).
 No-ROM: engine 438/0 (was 388), controller 92/0, inventory partition PASS,
 new ROM fixture skips cleanly. Independent review PASS. Findings addressed:
 1 (report table/uncovered list corrected to 60/150/110/40, 10/12/4/8, 255/99,
-105 records over 58 effects) and 2 (first-battle Tickle sets the stat tutorial
+105 records over 57 effects; rows 32/45/126 marked R per re-check) and 2 (first-battle Tickle sets the stat tutorial
 flag and tip after the first fall; test added; engine 440/0).
 
 ## Follow-ups (pre-existing, outside this batch)
