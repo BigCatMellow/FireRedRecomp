@@ -154,3 +154,44 @@ Inventory arithmetic:
 - **N4:** The ROM fixture prints a fixed "3 passed" without counting. This is the same convention as the other fixtures; cosmetic.
 
 — independent reviewer subagent; did not construct the change
+
+## Re-check (commit `85602aa`, delta from `c9d1360`)
+
+Verdict: **PASS**
+
+What changed:
+
+- **F1:** new dual-type tests at `tests/battle_engine_test.lua:2351-2360`, run for both sides:
+  - user `{17,7}`, moves `{160,174}`, draws `1,0` → NORMAL in 2 draws;
+  - user `{0,17}`, moves `{160,44}` → fails with 0 draws;
+  - user `{0,17}`, moves `{160,44,52}`, draws `1,0,2` → FIRE in 3 draws.
+
+  These match the vectors I proposed. I re-derived the expected results from `bsc.c:7003-7059`.
+- **F2:** two new first-battle Memento tests:
+  - a player Memento shows the tip right after the ATK drop, then the SP.ATK drop follows, and the tutorial flag is set;
+  - a foe Memento shows no tip.
+- **F3:** `BattleSceneController.TYPE_DISPLAY_NAMES` is now exported. The new test compares all 18 entries with a literal copy of `bmain.c:430-447`.
+- **F4:** the comment order is fixed.
+- **F5:** `d` is now local.
+- **N3:** the report note now says 263/91.
+- **Task file:** evidence and follow-ups updated (N1 and N2 recorded).
+- **Runtime code:** no change except the table export.
+
+I re-ran the surviving mutants on a fresh `git archive 85602aa` copy at `/tmp/claude-0/review6/base2`. All four are now caught:
+
+| Mutant | Result |
+| --- | --- |
+| M3c (Ghost check uses type1 only) | 2 failures |
+| M5c (own-type check uses type1 only) | 6 failures: ??? check, fail check and redraw loop |
+| M14 (Memento first-battle tip removed) | 1 failure |
+| C2 (one type name changed) | 1 failure |
+
+Tests and checks:
+
+- `env -u POKEPORT_ROM -u POKEPORT_RUNTIME_REPLAY bash scripts/test_all.sh`: PASS, 161 test files.
+- `lua5.1 scripts/check_repository.lua`: PASS (287 Lua, 294 Markdown, 978 targets).
+- Engine tests: 568/0. Controller tests: 103/0.
+
+No remaining findings. N1 and N2 are still pre-existing follow-ups and are now recorded in the task file. The ROM fixture is still pending, as the lane allows.
+
+— independent reviewer subagent; did not construct the change

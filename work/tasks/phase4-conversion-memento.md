@@ -1,7 +1,7 @@
 # Task: Conversion and Memento (fast lane)
 
 - Task ID: `P4-FL6-CONVERSION-MEMENTO`
-- Status: `READY_FOR_REVIEWER`
+- Status: `CLOSED — REVIEWED PASS` after re-check ([review](../reviews/2026-10-13-conversion-memento-review.md)); ROM fixture pending
 - Lane: [battle-effect fast lane](../../AGENTS.md#battle-effect-fast-lane--human-authorized-2026-10-13)
 - Parent: [Phase 4 move/effect matrix](../roadmaps/CAPABILITY_CHECKLIST.md)
 - Families: 30 Conversion (160), 168 Memento (262)
@@ -70,7 +70,7 @@ new ROM fixture skips cleanly. Independent review NEEDS_FIX
 addressed: dual-type Conversion tests (type2 for ??? and own-type checks),
 Memento first-battle tip tests, all 18 type names asserted, comment order,
 local `d` (engine 568/0, controller 103/0); report admission note updated.
-Re-check pending.
+Re-check PASS.
 
 ## Follow-ups (pre-existing, outside this batch)
 
