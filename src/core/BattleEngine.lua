@@ -41,6 +41,7 @@
 --   {type="moveFailed", side=}                    -- generic But it failed; distinct from screenFailed
 --   {type="statChange", side=<target>, stat=, stages=-1, prevented=}
 --   {type="statsWontRise", side=<attacker>}  -- two-stat UP move, both at +6
+--   {type="statsWontFall", side=<defender>}  -- Tickle, target ATK/DEF both at -6
 --   {type="screenSet", side=, screen="reflect"|"lightScreen", turns=5}
 --   {type="screenFailed", side=, screen="reflect"|"lightScreen"} -- already active
 --   {type="screenExpired", side=, screen="reflect"|"lightScreen"} -- real 5-turn timer hit 0
@@ -567,6 +568,24 @@ BattleEngine.DUAL_STAT_UP_MOVES = {
   [212] = { "attack",   "speed" },     -- EFFECT_DRAGON_DANCE
 }
 
+-- Certain self-drop after a damaging hit (c75f352: EffectSuperpower/
+-- EffectOverheat set MOVE_EFFECT_ATK_DEF_DOWN / SP_ATK_TWO_DOWN with
+-- AFFECTS_USER|CERTAIN, then EffectHit). Cmd_seteffectwithchance's CERTAIN
+-- branch applies it with no Random() on a hit that affected the target; on
+-- a no-effect hit its else-if still evaluates Random() first. Applied via
+-- BattleScript_AtkDefDown/SAtkDown2: a stat already at -6 is skipped
+-- silently (cMULTISTRING_CHOOSER == B_MSG_STAT_WONT_DECREASE jumps past).
+BattleEngine.SELF_DROP_HIT_MOVES = {
+  [182] = { { stat = "attack", delta = -1 }, { stat = "defense", delta = -1 } }, -- EFFECT_SUPERPOWER
+  [204] = { { stat = "spAttack", delta = -2 } },                               -- EFFECT_OVERHEAT
+}
+
+-- EFFECT_TICKLE (c75f352 BattleScript_EffectTickle): ppreduce, then fail
+-- before accuracycheck only when target ATK and DEF are both at -6
+-- (BattleScript_CantLowerMultipleStats); a miss goes to ButItFailed; then
+-- target ATK -1 and DEF -1, each skipped silently at -6.
+BattleEngine.EFFECT_TICKLE = 205
+
 -- The real "_HIT" secondary-effect family: an ordinary damaging move
 -- (accuracycheck -> ... -> datahpupdate, same pipeline as every other
 -- direct-damage move) that, after damage resolves, has a chance
@@ -900,6 +919,9 @@ function BattleEngine:supportsMove(move, moveId)
   if BattleEngine.DUAL_STAT_UP_MOVES[move.effect] then
     return move.power == 0 and move.target == MOVE_TARGET_USER
   end
+  if move.effect == BattleEngine.EFFECT_TICKLE then
+    return move.power == 0 and move.target == 0 -- MOVE_TARGET_SELECTED
+  end
   return move.power > 0 or BattleEngine.STAT_STAGE_MOVES[move.effect] ~= nil
     or BattleEngine.SCREEN_MOVES[move.effect] ~= nil
     or move.effect == BattleEngine.EFFECT_PAIN_SPLIT
@@ -1099,8 +1121,13 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
   -- has no accuracycheck step at all -- see SCREEN_MOVES' own comment.
   local screenStatusKey = BattleEngine.SCREEN_MOVES[move.effect]
   local dualStatUp = BattleEngine.DUAL_STAT_UP_MOVES[move.effect]
+  -- Tickle's both-at-minimum gate precedes its accuracycheck (no RNG).
+  local isTickle = move.effect == BattleEngine.EFFECT_TICKLE
+  local tickleGateFails = isTickle
+    and defender.statStages.attack == BattleFormulas.MIN_STAT_STAGE
+    and defender.statStages.defense == BattleFormulas.MIN_STAT_STAGE
   local needsAccuracyCheck = not isSelfTargetStat and not screenStatusKey
-    and not dualStatUp
+    and not dualStatUp and not tickleGateFails
     and move.effect ~= BattleEngine.EFFECT_ALWAYS_HIT
     and move.effect ~= BattleEngine.EFFECT_VITAL_THROW
     and move.effect ~= BattleEngine.EFFECT_OHKO
@@ -1194,6 +1221,30 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
       applyPainSplitHP(attackerSide, attacker)
       applyPainSplitHP(defenderSide, defender)
       events[#events + 1] = { type = "painSplit" }
+      return
+    end
+    if isTickle then
+      if tickleGateFails then
+        events[#events + 1] = { type = "statsWontFall", side = defenderSide }
+        return
+      end
+      local stages = defender.statStages
+      for _, stat in ipairs({ "attack", "defense" }) do
+        if stages[stat] > BattleFormulas.MIN_STAT_STAGE then
+          stages[stat] = stages[stat] - 1
+          events[#events + 1] = {
+            type = "statChange", side = defenderSide, stat = stat, stages = -1,
+            stage = stages[stat],
+          }
+          -- Oak first battle: the first defender-stat-fell message sets the
+          -- stat tutorial flag and tip (battle_controller_oak_old_man.c:1766).
+          if self.firstBattle and attackerSide == BattleEngine.SIDE_PLAYER
+              and not self.tutorialPlayerStatDone then
+            self.tutorialPlayerStatDone = true
+            events[#events + 1] = { type = "tutorialTip", kind = "stat" }
+          end
+        end
+      end
       return
     end
     if dualStatUp then
@@ -1395,7 +1446,8 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
     -- the later `&&` term that checks MOVE_RESULT_NO_EFFECT and blocks the
     -- actual effect. The roll must still be consumed here; its result is
     -- simply discarded. See BattleFormulas.secondaryEffectRoll's comment.
-    if BattleEngine.HIT_VARIANT_STAT_MOVES[move.effect] then
+    if BattleEngine.HIT_VARIANT_STAT_MOVES[move.effect]
+        or BattleEngine.SELF_DROP_HIT_MOVES[move.effect] then
       BattleFormulas.secondaryEffectRoll(self.rng, move.secondaryEffectChance)
     end
     return
@@ -1468,6 +1520,23 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
   -- this hit landed and had an effect (the noEffect branch above already
   -- handled -- and returned out of -- the no-effect case, which still
   -- consumes this same roll but never applies it).
+  local selfDrop = BattleEngine.SELF_DROP_HIT_MOVES[move.effect]
+  if selfDrop then
+    -- CERTAIN branch: no Random(); the attacker is alive here (a recoil
+    -- faint would have returned above and these moves have no recoil).
+    for _, change in ipairs(selfDrop) do
+      local current = attacker.statStages[change.stat]
+      if current > BattleFormulas.MIN_STAT_STAGE then
+        local newStage = math.max(BattleFormulas.MIN_STAT_STAGE, current + change.delta)
+        attacker.statStages[change.stat] = newStage
+        events[#events + 1] = {
+          type = "statChange", side = attackerSide, stat = change.stat,
+          stages = change.delta, stage = newStage,
+        }
+      end
+    end
+  end
+
   local hitVariant = BattleEngine.HIT_VARIANT_STAT_MOVES[move.effect]
   if hitVariant then
     local succeeded = BattleFormulas.secondaryEffectRoll(self.rng, move.secondaryEffectChance)
