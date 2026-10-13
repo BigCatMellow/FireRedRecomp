@@ -36,6 +36,7 @@
   `EFFECT_BRICK_BREAK` clears the defender side's screens after ppreduce and
   before critcalc, emitting `wallShattered`.
 - `src/core/BattleSceneController.lua`: `wallShattered` message.
+- `src/core/BattleFormulas.lua`: stale Brick Break header comment only.
 - Tests: `tests/battle_engine_test.lua`, `tests/battle_scene_controller_test.lua`,
   `tests/phase4_move_effect_inventory_test.lua`, new
   `tests/phase4_batch4_hit_effect_rom_test.lua`;
@@ -50,7 +51,8 @@ animation timing, and the pre-existing plain-hit seteffectwithchance RNG gap
 1. Brick Break, both sides: target Reflect/Light Screen cleared with timers
    before damage (17 not 9 at Lv20 40/40), `wallShattered` precedes damage;
    attacker's own wall untouched; immune target still shatters, no damage;
-   miss keeps the wall; RNG = accuracy, crit, damage only.
+   miss keeps the wall; 3 draws (accuracy, crit, damage), matching the
+   tracked plain-hit seteffectwithchance gap (source spends 4).
 2. Ancient Power/Silver Wind, both sides: roll 10 raises all five in order
    (4 draws incl. effect roll); roll 11 nothing; a maxed stat gets a
    prevented entry while the rest rise; all maxed silent; immune spends the
@@ -64,4 +66,9 @@ animation timing, and the pre-existing plain-hit seteffectwithchance RNG gap
 ## Evidence (Worker, 2026-10-13)
 
 No-ROM: engine 513/0 (was 485), controller 98/0, inventory partition PASS,
-new ROM fixture skips cleanly. Independent review pending; not self-reviewed.
+new ROM fixture skips cleanly. Independent review NEEDS_FIX
+([record](../reviews/2026-10-13-batch4-hit-effects-review.md)); findings 1-7
+addressed: SP.DEF gate clause and KO-then-boost tests (engine 521/0), RNG
+gap wording, stale Brick Break comments/rows, MISSED-flag limit noted, controller
+order assert, timer/flag comment. Finding 8 (coordination docs) left for the
+orchestrator. Re-check pending.

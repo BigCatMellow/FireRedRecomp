@@ -421,9 +421,9 @@
 --
 --     Not ported: Safeguard/Mist (separate real effect ids with different
 --     real mechanics -- status-condition blocking and stat-lowering
---     blocking respectively, neither of which this task covers) and Brick
---     Break's real screen-removal special case
---     (src/battle_script_commands.c ~9445) -- a different move entirely.
+--     blocking respectively, neither of which this task covers). Brick
+--     Break's screen removal is handled by EFFECT_BRICK_BREAK (fast-lane
+--     batch 4).
 --   * Capture is intentionally the first normal Poke Ball/no-status slice.
 --     CaptureRules owns the exact formula/shake RNG. This engine neither
 --     removes inventory nor copies a caught mon to party/PC or updates the
@@ -1475,6 +1475,8 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
   end
 
   if move.effect == BattleEngine.EFFECT_BRICK_BREAK then
+    -- Source tests the timers (bsc.c:9444); flags and timers stay in sync
+    -- via resolveScreenMove/decaySideTimers, so the flags are equivalent.
     local status = self.sideStatus[defenderSide]
     if status.reflect or status.lightScreen then
       status.reflect, status.reflectTimer = false, 0

@@ -469,7 +469,10 @@ do
     return table.concat(out,"|")
   end
   local all=run(280,function(e) e.sideStatus.foe.reflect=true; e.sideStatus.foe.reflectTimer=5 end)
-  check("brick break wall shattered message",all:find("The wall shattered!",1,true)~=nil)
+  local wall=all:find("The wall shattered!",1,true)
+  local used=all:find("PLAYER used MOVE!",1,true)
+  local foeUsed=all:find("FOE used",1,true)
+  check("brick break wall shattered message after use, before foe acts",wall~=nil and used<wall and wall<foeUsed)
   all=run(246,function(e) e.player.statStages.speed=12 end)
   local atk=all:find("PLAYER's ATTACK\nrose!",1,true)
   local spd=all:find("PLAYER's SPEED\nwon't go higher!",1,true)

@@ -2153,6 +2153,7 @@ do
     b.sideStatus[dside].lightScreen=true; b.sideStatus[dside].lightScreenTimer=2
     local ev=resolve(b,side)
     local st=b.sideStatus[dside]
+    -- 3 draws matches the tracked plain-hit seteffectwithchance gap (source spends 4).
     check("brick break shatters screens before damage "..side,kinds(ev)=="useMove,wallShattered,damage"
       and ev[2].side==dside and ev[3].amount==17 and d.hp==183 and not st.reflect and st.reflectTimer==0
       and not st.lightScreen and st.lightScreenTimer==0 and b.rng.draws==3 and b.rng:next16()==4321)
@@ -2162,6 +2163,7 @@ do
       and b.sideStatus[side].reflect and b.sideStatus[side].reflectTimer==4)
     b,a,d=setup(side,280,{0,1,0,4321}); d.types={7,7}; b.sideStatus[dside].lightScreen=true; b.sideStatus[dside].lightScreenTimer=5
     ev=resolve(b,side)
+    -- 3 draws: same tracked plain-hit seteffectwithchance gap (source spends 4).
     check("brick break immune target still shatters "..side,kinds(ev)=="useMove,wallShattered,noEffect"
       and not b.sideStatus[dside].lightScreen and d.hp==200 and b.rng.draws==3)
     b,a,d=setup(side,280,{99,4321}); d.statStages.evasion=12; b.sideStatus[dside].reflect=true; b.sideStatus[dside].reflectTimer=5
@@ -2189,6 +2191,22 @@ do
       b,a=setup(side,id,{0,1,0,0,4321}); for _,stat in ipairs(order) do a.statStages[stat]=12 end
       ev=resolve(b,side)
       check("all stats up all maxed silent "..tag,kinds(ev)=="useMove,damage" and b.rng.draws==4)
+      -- bs1.s:3410: first four maxed but SP.DEF below +6 still runs all five.
+      b,a=setup(side,id,{0,1,0,0,4321})
+      for i=1,4 do a.statStages[order[i]]=12 end
+      ev=resolve(b,side)
+      local gateOk=#ev==7 and b.rng.draws==4
+      for i=1,4 do gateOk=gateOk and ev[2+i].stat==order[i] and ev[2+i].prevented==true end
+      check("all stats up gate checks SP.DEF clause "..tag,gateOk and ev[7].stat=="spDefense"
+        and ev[7].stage==7 and a.statStages.spDefense==7)
+      -- Boost precedes tryfaintmon BS_TARGET; SetMoveEffect guards the attacker's HP.
+      b,a,d=setup(side,id,{0,1,0,0,0,0,0,0}); d.hp=1
+      b.hasReplacement=function() return false end
+      a.speed=30
+      ev=b:runTurn({action="move",moveSlot=1},{action="move",moveSlot=1})
+      check("all stats up applies on KO before faint "..tag,
+        kinds(ev)=="turnStart,useMove,damage,statChange,statChange,statChange,statChange,statChange,faint,battleEnd"
+        and a.statStages.attack==7)
       b,a,d=setup(side,id,{0,1,0,0,4321}); d.types={7,7}
       ev=resolve(b,side)
       check("all stats up immune spends roll, no raise "..tag,kinds(ev)=="useMove,noEffect"
