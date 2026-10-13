@@ -33,21 +33,22 @@ Default to one critical-path Worker package at a time.
 
 ## Current critical path — reconciled 2026-10-12
 
-The active task is the [one-file effect-45 route probe](../tasks/local-worker-bridge-phase4-recoil-if-miss-route-probe.md).
+The active task is [effect-45 implementation-authority review](../tasks/phase4-recoil-if-miss-implementation.md).
 The [source supplement PASS at `ba69269`](../reviews/2026-10-12-recoil-if-miss-entry-state-review.md)
 resolves the historical design BLOCK, including explicit neutral entry values
 and corrected ordinary immunity precheck/presentation. Original source lock
 `c218da6` remains accepted within its scope. [Revised design `b3280f9` passed](../reviews/2026-10-12-recoil-if-miss-design-review.md);
 [route plan `04636d1` also passed](../reviews/2026-10-12-recoil-if-miss-route-plan-review.md).
 [Configuration `1d40f3c` passed](../reviews/2026-10-13-recoil-if-miss-route-configuration-review.md).
-Dispatch one substrate-only probe after fresh prerequisites, then independent
-outcome review before separate implementation authority. Restore HP `dc8ad06`, bounded Magnitude `7b47c73`, full
+[Probe `667fd16` passed](../reviews/2026-10-13-recoil-if-miss-route-probe-outcome-review.md).
+Review the one-request implementation authority before any Worker construction
+or guarded request. Restore HP `dc8ad06`, bounded Magnitude `7b47c73`, full
 inventory `c10bfa7`, and the bounded P5 projection `d280751` are independently
 accepted. Their old probes/requests must not be redispatched.
 
 P0 reverification `93c4654` remains blocked pending supported-target
 preparation and fresh proof. Phase 2 awaits trusted external retail-reference
-evidence. These blockers do not prevent the separately gated route probe. See the
+evidence. These blockers do not prevent the separately gated implementation chain. See the
 [delivery plan](RECALIBRATED_DELIVERY_PLAN.md), current
 [task register](../coordination/TASK_REGISTER.md), and user-adopted
 [standing goal](../coordination/PROJECT_GOAL.md).

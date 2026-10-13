@@ -1,11 +1,26 @@
 # FireRedRecomp Coordination Handoff
 
-- Status: `READY_FOR_REVIEWER — successful effect-45 probe 667fd16`
-- Task ID: `P4-F3-RECOIL-IF-MISS-ROUTE-PROBE`
+- Status: `READY_FOR_REVIEWER — effect-45 implementation authority`
+- Task ID: `P4-F3-RECOIL-IF-MISS-IMPLEMENTATION`
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
 - Current plan: [`../roadmaps/RECALIBRATED_DELIVERY_PLAN.md`](../roadmaps/RECALIBRATED_DELIVERY_PLAN.md)
 
 ## Current relay — 2026-10-13
+
+### Probe accepted; implementation authority awaiting exact review
+
+Independent [probe PASS](../reviews/2026-10-13-recoil-if-miss-route-probe-outcome-review.md)
+accepts `667fd16` and run `38385071588`. The one-probe allowance is consumed.
+Exact next action: independently review the compiled
+[ten-path one-request authority](../tasks/phase4-recoil-if-miss-implementation.md).
+No gameplay implementation or request is authorized before that PASS.
+
+After PASS, bounded Worker construction/local no-ROM checks occur in an
+isolated worktree; parent publishes only the single authorized bridge input
+after fresh runner/jobs/route/applicability checks. Guarded publication must
+pass focused/full/SHA-ROM/headless evidence and separate outcome review.
+Preserve explicit model-to-party persistence limits; do not imply normal
+save/reload or full battle parity. No runtime code has changed yet.
 
 ### Probe completed successfully; independent outcome review assigned
 
