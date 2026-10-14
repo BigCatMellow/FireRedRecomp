@@ -99,5 +99,25 @@ check("slower runner succeeds at roll 63 and fails at roll 64", F.tryRunFromBatt
 r = rng({ 17, 18 })
 check("run speedVar has the real u8 overflow after seven attempts", F.tryRunFromBattle(10, 20, 7, r) and not F.tryRunFromBattle(10, 20, 7, r))
 
+-- Project-owned overlay categories can opt a derived move into the opposite
+-- damage stat pair without changing its elemental type.
+local physicalFire = { power=40, type=Data.TYPE_FIRE, category="physical" }
+local specialNormal = { power=40, type=Data.TYPE_NORMAL, category="special" }
+local physicalFireDamage = F.calculateBaseDamage(
+  {level=20, attack=60, defense=30, spAttack=20, spDefense=30},
+  {level=20, attack=30, defense=40, spAttack=30, spDefense=80},
+  physicalFire, false)
+local vanillaFireDamage = F.calculateBaseDamage(
+  {level=20, attack=60, defense=30, spAttack=20, spDefense=30},
+  {level=20, attack=30, defense=40, spAttack=30, spDefense=80},
+  {power=40, type=Data.TYPE_FIRE}, false)
+check("explicit physical category overrides Fire's vanilla special damage branch",
+  physicalFireDamage > vanillaFireDamage)
+check("explicit special category overrides Normal's vanilla physical damage branch",
+  F.moveCategory(specialNormal) == "special")
+check("vanilla move category still derives from type",
+  F.moveCategory({type=Data.TYPE_NORMAL}) == "physical"
+    and F.moveCategory({type=Data.TYPE_FIRE}) == "special")
+
 print(("%d passed, %d failed"):format(passed, failed))
 os.exit(failed == 0 and 0 or 1)
