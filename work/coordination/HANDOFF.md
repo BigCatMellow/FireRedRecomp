@@ -1,11 +1,24 @@
 # FireRedRecomp Coordination Handoff
 
-- Status: `READY_FOR_REVIEWER — corrected START Pokédex-count PR5 at5579782`
-- Task ID: `P6-03-START-DEX-SANITY`
+- Status: `READY_FOR_WORKER — bounded PR3 Party-design correction`
+- Task ID: `P6-02-PARTY-SELECTION-DESIGN`
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
 - Current plan: [`../roadmaps/RECALIBRATED_DELIVERY_PLAN.md`](../roadmaps/RECALIBRATED_DELIVERY_PLAN.md)
 
 ## Current relay — 2026-10-14
+
+### Latest acceptance — PR5 merged
+
+PR5 is CLOSED: independent recheck PASS for `5579782`, published review
+`f476d98`; final public CI `38645743679` / `38645738142` passed. Exact-head
+merge produced `52fbf69`. Local post-merge full178 no-ROM files and repository
+checker PASS. This closes only source386 tracker/count and normal START guard;
+no Pokédex screen, corrupt-mirror handling, ROM replay or phase completion.
+
+Exact next action: Worker finishes existing PR3 two-document corrections,
+then separate Reviewer rechecks source/allowlist/input/Egg qualifications.
+Only design PASS permits accepting its prerequisite; PR6 code still needs
+its own alignment/verification and independent review. No PR5 work remains.
 
 ### Latest resume — 22:09 UTC
 

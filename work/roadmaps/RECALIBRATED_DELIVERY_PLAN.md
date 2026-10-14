@@ -36,10 +36,9 @@ rule or traversal work without an evidenced dependency.
    no-ROM PASS results without promoting these missing gates. Scope the
    evidence package separately; never reuse a consumed request.
 3. Recover existing first-corridor integration work before inventing another
-   effect batch: correct normal START Pokédex-count PR5's independently found
-   411-versus386 source-bound bug under amended contract `4eb53da`, re-review,
-   then the Party
-   design prerequisite PR3 before implementation PR6. No rendered Pokédex,
+   effect batch: normal START Pokédex-count PR5's source-bound correction
+   passed independent review and merged `52fbf69`. Continue the two-document
+   Party design correction/recheck PR3 before implementation PR6. No rendered Pokédex,
    full Party UI or normal traversal proof is implied. Memento's trainer-AI
    reserve-count gap is separately under read-only feasibility inspection;
    engine acceptance does not establish AI support.

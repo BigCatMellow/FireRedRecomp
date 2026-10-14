@@ -1,18 +1,18 @@
 {
   "schema_version": 1,
-  "updated_utc": "2026-10-14T22:09:41Z",
+  "updated_utc": "2026-10-14T22:12:00Z",
   "execution_paused": false,
   "role": "ORCHESTRATOR",
-  "status": "READY_FOR_REVIEWER",
-  "task_id": "P6-03-START-DEX-SANITY",
+  "status": "READY_FOR_WORKER",
+  "task_id": "P6-02-PARTY-SELECTION-DESIGN",
   "current_phase": "Canonical phase statuses unchanged. Main3adc7e8 inventory85 represented families/203moves; bounded no-ROM review evidence retained. Full-relay status guarded/replay evidence remains pending despite merged task closure labels.",
   "canonical_status_owner": "work/roadmaps/CAPABILITY_CHECKLIST.md",
-  "active_task": "work/tasks/phase6-start-dex-sanity.md on PR5 branch work/p6-start-menu-dex-count-20261009 (not yet on main)",
-  "objective": "Correct PR5's erroneous National Dex bound411 to source386, preserving52-byte storage and normal START wiring; prove trailing-only flags cannot unlock menu and route independent recheck.",
-  "next_role": "REVIEWER",
-  "acceptance": "Existing PR5 contract: exact source seen-count semantics, normal main.lua wiring, focused/regression no-ROM tests, exact-head public CI and separate independent review. Source disagreement must be recorded, not waived.",
-  "boundaries": "Amended branch contract4eb53da authorizes same four implementation paths including existing tracker range correction; valid-entry behavior/storage/schema preserved. No ROM, bridge, Pokedex screen or phase advancement. Independent report is Reviewer-owned. Preserve PR3/6 dependencies.",
-  "dependencies": "P6 inventory ee7535d accepted; PR5 previously owner-dispatched. Fast-lane AGENTS authorization governs eligible P4 packages; old effect45 setup sequence is historical.",
+  "active_task": "work/tasks/phase6-party-selection-design.md on PR3 branch work/p6-party-selection-design-20261009 (not yet on main)",
+  "objective": "Correct existing PR3 two-document design per independent NEEDS_FIX: literal successor proposal, source-qualified same-slot/no-cycling and Egg projection, source repeat/no-wrap input. Re-review before PR6 acceptance.",
+  "next_role": "WORKER",
+  "acceptance": "Existing PR3 task/review F1-F3: exact source/allowlist and test/evidence boundaries, no implementation, docs checks/public CI and independent exact recheck.",
+  "boundaries": "Only two design docs plus unchanged independent report publication. No runtime/test/save/ROM/runner changes; successor proposal is not implementation authority. PR6 remains separately unaccepted.",
+  "dependencies": "P6 inventory ee7535d accepted. PR5 independently PASS and merged52fbf69; no repetition needed. PR3 design required before PR6 implementation acceptance.",
   "runner_blocker": {
     "task_id": "P4-F3-ROUTE",
     "status": "CLOSED — REVIEWED PASS",
@@ -74,11 +74,11 @@
   "project_goal": "work/coordination/PROJECT_GOAL.md — ACTIVE; explicitly adopted 2026-10-11; no user-specified token budget",
   "phase0_external_blocker": "P0-04-REVERIFY at 93c4654: missing prerequisites on the verified target and no desktop proof; separate supported-target preparation decision and fresh evidence required. Historical result is not current host readiness.",
   "checkpoint": {
-    "inspection_revision": "a9e8868",
-    "pending_jobs": "PR5 corrected5579782 remains open; exact-head CI38544944339/38544937873 success. No bridge request or overlapping battle implementation dispatched. New owner-merged battle code throughPR33 preserved; not re-reviewed here.",
+    "inspection_revision": "52fbf697d4d5148ddd5409114ee543a5d6c501a5",
+    "pending_jobs": "PR5 merged52fbf69 after final reviewhead public CI38645743679/38645738142 passed. No bridge request or overlapping battle implementation. PR3 correction in progress; PR6 pending prerequisite.",
     "preserved_drafts": "Unreviewed Brick Break package isolated in named local stash quarantine-unreviewed-brick-break-rerank-2026-10-11; outside active dispatch.",
-    "next_action": "Independent Reviewer resumes exact PR5 recheck5579782 in /tmp/firered-start-dex-recheck-Ely6Vt, appends/publishes own review only. In parallel Worker corrects two PR3 design docs in /tmp/firered-party-design-review-uRnvJN. Both restarted after usage limit; no completed proof needs repeating.",
-    "remaining_acceptance": "PR5 source correction, regression and independent PASS outstanding. Main3adc7e8 baseline166 no-ROM files PASS. P4 status full-relay design requires guarded changed-RNG/turn-order replay evidence; none supplied in merged records. Nine new ROM fixtures since effect45 pending (six fast-lane plus three status).",
+    "next_action": "Worker finishes two-doc PR3 correction in /tmp/firered-party-design-review-uRnvJN, publishes existing branch; independent Reviewer rechecks F1-F3 before merge. Then inspect/align existing PR6 against accepted design and its own bounded task.",
+    "remaining_acceptance": "PR3 corrected design/recheck, then PR6 exact implementation acceptance. Main52fbf69 full178 no-ROM files and checker305Lua/336Markdown/1107targets PASS. P4 guarded changed-RNG/turn-order replay evidence remains separate and unproved here; newer battle tasks retain own gates.",
     "coordination_note": "Historical nested records above are evidence receipts, not pending jobs or permission to repeat completed actions.",
     "worker_session": "PR5 implementation complete5579782: integratedf50383e, full167noROMfiles, Dex56/0 START21/0 andcheckerPASS; old411fails17assertions. Worktree /tmp/firered-start-dex-review-UA2MPZ preserved. PR3 docs correction resumed; no implementation active there.",
     "implementation_authority": {
@@ -125,7 +125,7 @@
       "task": "99a045f0c8a4079dbf822b9e2a778519c77fa42c462c984333a6abb3aa92d587",
       "report": "92b990bf18b91729a468eab599fdced128238a6712c76a5f29ea730db56e4484"
     },
-    "last_review": "PR5 BLOCK118cd11: source count386 vs411; independent report committed unchanged at4eb53da alongside Orchestrator contract correction. Prior effect45/FL1–6 acceptances retained.",
+    "last_review": "PR5 exact5579782 PASS in independent reviewf476d98, merged52fbf69. Historical BLOCK preserved. PR3 NEEDS_FIX8a9ca76 awaits2doccorrection; no PR6 acceptance.",
     "goal_service_state": "usageLimited observed 2026-10-12; user explicitly requested continuation. Standing instructions persist; user/system owns lifecycle resumption.",
     "remote_recovery": "Main3adc7e8 owner work preserved. Audit: heal text reviewedcb3cea2/disposition7fff050; status design44fd139 correctedee682f9; module corrected tree published651dcd4; S1 reviewedca39623/disposition3407aa5; S2 reviewed19e15f0/dispositionae05dab; S3 reviewedfa9556a/disposition1848697; ability terms reviewedf73ccf4/closuref300085; S4 reviewed6f3168f/disposition16e4501. Do not claim separate re-review of later disposition commits. PR26 preserved. No policy amendment; full-relay ROM/replay gates remain."
   }

@@ -1,7 +1,7 @@
 # P6-03 — Wire the normal START Pokédex count guard
 
 - Task ID: `P6-03-START-DEX-SANITY`
-- Status: `READY_FOR_REVIEWER` — source-bound correction implemented 2026-10-14; draft PR #5 remains unaccepted pending independent exact-head recheck
+- Status: `CLOSED — REVIEWED PASS` — corrected implementation independently accepted and PR #5 merged at `52fbf69` on 2026-10-14; no phase completion claim
 - Type: `IMPLEMENTATION / BOUNDED, NO-ROM-TESTABLE`
 - Parent: Phase 6; disjoint from pending Party-selection design PR #3 and blocked private-ROM P4/P5 tasks
 - Baseline: `main` at `503ea1e674baed88a27050dc54efd961baed1c9e`

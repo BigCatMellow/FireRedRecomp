@@ -46,13 +46,12 @@ wording invoking the fast lane. No new request has been authorized here.
 Representation is bounded engine behavior, not complete trainer AI, whole-turn
 RNG or full Phase 4 parity. Preserve all review exclusions and follow-ups.
 
-Next active leaf is source-bound correction of existing owner-dispatched
-[PR5](https://github.com/BigCatMellow/FireRedRecomp/pull/5): the normal START
-Pokédex zero-seen guard. Independent review found386 real entries, not411;
-amended branch contract `4eb53da` authorizes the smallest tracker/count/test
-correction, then independent recheck. PR3 design is under disjoint independent
-review and must pass before PR6 Party
-SUMMARY can be accepted. Read-only Memento AI feasibility found an existing
+The normal START Pokédex zero-seen guard [PR5](https://github.com/BigCatMellow/FireRedRecomp/pull/5)
+is independently PASS and merged `52fbf69`: source386 replaces erroneous411;
+post-merge178 no-ROM files pass. Only the bounded guard/range fix is accepted.
+Current leaf is the two-document correction of PR3 Party design after
+NEEDS_FIX; independent design recheck is required before existing PR6 Party
+SUMMARY code can be accepted. Read-only Memento AI feasibility found an existing
 replacement callback; this is not implementation authority and must be checked
 against later battle changes before a separate task.
 
