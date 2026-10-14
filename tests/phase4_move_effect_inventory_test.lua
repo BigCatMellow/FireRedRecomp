@@ -156,15 +156,15 @@ local inventory = {
   [144] = {"blocked_on_state", true, 1, {243}}, -- EFFECT_MIRROR_COAT
   [145] = {"represented", true, 1, {130}}, -- EFFECT_SKULL_BASH: ROM fixture pending (phase4_multiturn_effect_rom_test)
   [146] = {"represented", true, 1, {239}}, -- EFFECT_TWISTER: ROM fixture pending (phase4_confusion_flinch_effect_rom_test)
-  [147] = {"blocked_on_state", true, 1, {89}}, -- EFFECT_EARTHQUAKE
+  [147] = {"represented", true, 1, {89}}, -- EFFECT_EARTHQUAKE: ROM fixture pending (phase4_semi_invulnerable_effect_rom_test)
   [148] = {"blocked_on_state", true, 1, {248,353}}, -- EFFECT_FUTURE_SIGHT
-  [149] = {"blocked_on_state", true, 1, {16}}, -- EFFECT_GUST
+  [149] = {"represented", true, 1, {16}}, -- EFFECT_GUST: ROM fixture pending (phase4_semi_invulnerable_effect_rom_test)
   [150] = {"represented", true, 1, {23,302,310,326}}, -- EFFECT_FLINCH_MINIMIZE_HIT: ROM fixture pending (phase4_confusion_flinch_effect_rom_test)
   [151] = {"represented", true, 1, {76}}, -- EFFECT_SOLAR_BEAM: ROM fixture pending (phase4_multiturn_effect_rom_test)
-  [152] = {"blocked_on_state", true, 1, {87}}, -- EFFECT_THUNDER
+  [152] = {"represented", true, 1, {87}}, -- EFFECT_THUNDER: ROM fixture pending (phase4_semi_invulnerable_effect_rom_test)
   [153] = {"blocked_on_state", false, 0, {100}}, -- EFFECT_TELEPORT
   [154] = {"blocked_on_state", true, 1, {251}}, -- EFFECT_BEAT_UP
-  [155] = {"blocked_on_state", true, 1, {19,91,291,340}}, -- EFFECT_SEMI_INVULNERABLE
+  [155] = {"represented", true, 1, {19,91,291,340}}, -- EFFECT_SEMI_INVULNERABLE: ROM fixture pending (phase4_semi_invulnerable_effect_rom_test)
   [156] = {"blocked_on_state", false, 0, {111}}, -- EFFECT_DEFENSE_CURL
   [157] = {"represented", true, 0, {135,208}}, -- EFFECT_SOFTBOILED: ROM fixture pending (phase4_batch3_status_effect_rom_test)
   [158] = {"blocked_on_state", true, 1, {252}}, -- EFFECT_FAKE_OUT
@@ -216,7 +216,7 @@ local inventory = {
   [204] = {"represented", true, 1, {315,354}}, -- EFFECT_OVERHEAT: ROM fixture pending (phase4_self_drop_tickle_effect_rom_test)
   [205] = {"represented", true, 0, {321}}, -- EFFECT_TICKLE: ROM fixture pending (phase4_self_drop_tickle_effect_rom_test)
   [206] = {"represented", true, 0, {322}}, -- EFFECT_COSMIC_POWER: ROM fixture pending (phase4_dual_stat_up_effect_rom_test)
-  [207] = {"blocked_on_state", true, 1, {327}}, -- EFFECT_SKY_UPPERCUT
+  [207] = {"represented", true, 1, {327}}, -- EFFECT_SKY_UPPERCUT: ROM fixture pending (phase4_semi_invulnerable_effect_rom_test)
   [208] = {"represented", true, 0, {339}}, -- EFFECT_BULK_UP: ROM fixture pending (phase4_dual_stat_up_effect_rom_test)
   [209] = {"represented", true, 1, {342}}, -- EFFECT_POISON_TAIL: ROM fixture pending (phase4_status_hit_effect_rom_test)
   [210] = {"blocked_on_state", false, 0, {346}}, -- EFFECT_WATER_SPORT
@@ -228,12 +228,12 @@ local inventory = {
 local expectedTotals = {
   moves = 354, defined = 214, used = 198, unused = 16,
   positive = 216, zero = 138, admitted = 283, rejected = 71,
-  admitted_uncovered_positive = 48,
+  admitted_uncovered_positive = 40,
 }
 local expectedClasses = {
-  represented = {families = 99, moves = 235, positive = 167, zero = 68},
+  represented = {families = 104, moves = 243, positive = 175, zero = 68},
   candidate = {families = 0, moves = 0, positive = 0, zero = 0},
-  blocked_on_state = {families = 98, moves = 118, positive = 48, zero = 70},
+  blocked_on_state = {families = 93, moves = 110, positive = 40, zero = 70},
   intentionally_rejected = {families = 1, moves = 1, positive = 1, zero = 0},
   unused = {families = 16, moves = 0, positive = 0, zero = 0},
 }

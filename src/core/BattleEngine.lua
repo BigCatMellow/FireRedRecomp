@@ -747,6 +747,7 @@ BattleEngine.STATUS_HIT_MOVES = {
   [202] = "toxic",     -- EFFECT_POISON_FANG
   [209] = "poison",    -- EFFECT_POISON_TAIL
   [125] = "burn",      -- EFFECT_THAW_HIT (data/battle_scripts_1.s:1675-1677)
+  [152] = "paralysis", -- EFFECT_THUNDER (:1916-1919)
 }
 -- Status slice S4 (data/battle_scripts_1.s:2247-2270, :2515-2525).
 -- Confusion/flinch slice C2: status2 secondaries (seteffectwithchance) and
@@ -764,6 +765,21 @@ BattleEngine.EFFECT_SNORE = 92
 -- charge moves (data/battle_scripts_1.s:777-806, :1061-1066, :1107-1111,
 -- :1807-1820, :1899-1913).
 BattleEngine.EFFECT_RECHARGE = 80
+BattleEngine.EFFECT_SEMI_INVULNERABLE = 155
+BattleEngine.MOVE_SURF = 57
+BattleEngine.MOVE_BOUNCE = 340
+-- Semi-invulnerable charge kinds by move (setsemiinvulnerablebit,
+-- src/battle_script_commands.c:8618-8634).
+BattleEngine.SEMI_INVULNERABLE_MOVES = {
+  [19] = { kind = "fly", state = "air" },          -- Fly
+  [91] = { kind = "dig", state = "underground" },  -- Dig
+  [291] = { kind = "dive", state = "underwater" }, -- Dive
+  [340] = { kind = "bounce", state = "air" },      -- Bounce
+}
+-- Moves that set the matching IGNORE hitmarker (data/battle_scripts_1.s
+-- :239-243, 1822-1858, 1888-1891, 1916-1919, 2704-2706) and their x2.
+BattleEngine.HITS_AIR = { [149] = 2, [146] = 2, [152] = 1, [207] = 1 } -- Gust, Twister, Thunder, Sky Uppercut
+BattleEngine.HITS_UNDERGROUND = { [147] = 2, [126] = 2 }                -- Earthquake, Magnitude
 BattleEngine.EFFECT_SKY_ATTACK = 75
 BattleEngine.EFFECT_SKULL_BASH = 145
 BattleEngine.CHARGE_MOVES = {
@@ -771,6 +787,7 @@ BattleEngine.CHARGE_MOVES = {
   [75] = "skyAttack",   -- EFFECT_SKY_ATTACK
   [145] = "skullBash",  -- EFFECT_SKULL_BASH
   [151] = "solarBeam",  -- EFFECT_SOLAR_BEAM (weather unmodeled: always charges)
+  [155] = "semiInvulnerable", -- EFFECT_SEMI_INVULNERABLE (kind by move)
 }
 BattleEngine.EFFECT_CONFUSE = 49
 BattleEngine.EFFECT_SWAGGER = 118
@@ -925,6 +942,7 @@ function BattleEngine.makeBattler(opts)
     flinched = false,
     -- Locked moves (status2 MULTIPLETURNS / RECHARGE, gLockedMoves).
     charging = false,
+    semiInvulnerable = nil, -- "air" / "underground" / "underwater"
     recharging = false,
     rechargeTimer = 0,
     lockedSlot = nil,
@@ -1043,6 +1061,7 @@ function BattleEngine:recordFaint(side, events)
   battler.confusionTurns = 0
   battler.flinched = false
   battler.charging, battler.recharging, battler.rechargeTimer, battler.lockedSlot = false, false, 0, nil
+  battler.semiInvulnerable = nil
   for _, recorded in ipairs(self.faintSequence) do
     if recorded == side then return false end
   end
@@ -1357,8 +1376,7 @@ function BattleEngine:resolvePrimaryStatusMove(attackerSide, attacker, defenderS
     if anyStatus then return failed() end
   end
 
-  if not BattleFormulas.accuracyCheck(move.accuracy, attacker.statStages.accuracy,
-      defender.statStages.evasion, self.rng, attacker.ability, move.type) then
+  if not self:accuracyRoll(attacker, defender, move, nil) then
     events[#events + 1] = { type = "miss", side = attackerSide }
     return
   end
@@ -1432,6 +1450,7 @@ end
 -- represented multi-turn state: the two-turn charge lock.
 function BattleEngine:cancelMultiTurnMoves(battler)
   battler.charging = false
+  battler.semiInvulnerable = nil
   if not battler.recharging then battler.lockedSlot = nil end
 end
 
@@ -1443,6 +1462,25 @@ end
 function BattleEngine:isLocked(side)
   local b = self:battler(side)
   return b.charging or (b.recharging and b.rechargeTimer > 1)
+end
+
+-- AccuracyCalcHelper's semi-invulnerable checks: an ON_AIR / UNDERGROUND /
+-- UNDERWATER target makes accuracycheck miss without RNG unless the move set
+-- the matching IGNORE hitmarker (Surf only for underwater here).
+function BattleEngine:semiInvulnerableMiss(defender, move, moveId)
+  local state = defender.semiInvulnerable
+  if not state then return false end
+  if state == "air" then return BattleEngine.HITS_AIR[move.effect] == nil end
+  if state == "underground" then return BattleEngine.HITS_UNDERGROUND[move.effect] == nil end
+  return moveId ~= BattleEngine.MOVE_SURF
+end
+
+-- One accuracycheck: the semi-invulnerable miss first (no RNG), then the
+-- ordinary roll.
+function BattleEngine:accuracyRoll(attacker, defender, move, moveId)
+  if self:semiInvulnerableMiss(defender, move, moveId) then return false end
+  return BattleFormulas.accuracyCheck(move.accuracy, attacker.statStages.accuracy,
+    defender.statStages.evasion, self.rng, attacker.ability, move.type)
 end
 
 function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
@@ -1564,6 +1602,11 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
       if slot then slot.pp = slot.pp - 1 end
       attacker.charging = true
       attacker.lockedSlot = moveSlot
+      local semi = BattleEngine.SEMI_INVULNERABLE_MOVES[moveId]
+      if semi then
+        chargeKind = semi.kind
+        attacker.semiInvulnerable = semi.state
+      end
       events[#events + 1] = { type = "chargeTurn", side = attackerSide, move = moveId, kind = chargeKind }
       if move.effect == BattleEngine.EFFECT_SKULL_BASH
           and attacker.statStages.defense < BattleFormulas.MAX_STAT_STAGE then
@@ -1579,6 +1622,9 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
     -- ordinary hit from accuracycheck.
     attacker.charging = false
     attacker.lockedSlot = nil
+    -- Turn 2 clears the semi-invulnerable bit at its accuracycheck on both
+    -- the hit and miss paths; nothing observes it in between.
+    attacker.semiInvulnerable = nil
     self.noPPDeduct = true
   end
   self.currentMove = move
@@ -1635,10 +1681,10 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
     damage, flags = BattleFormulas.typeCalc(
       damage, move.type, attacker.types, defender.types, self.typeChart)
     damage = BattleFormulas.applyRandomDamageMultiplier(damage, self.rng)
-    local hit = BattleFormulas.accuracyCheck(
-      move.accuracy, attacker.statStages.accuracy,
-      defender.statStages.evasion, self.rng, attacker.ability, move.type)
-    if not hit then
+    local hit = self:accuracyRoll(attacker, defender, move, moveId)
+    -- A miss after typecalc keeps DOESNT_AFFECT_FOE, so resultmessage
+    -- (bsc.c:1937) prints "It doesn't affect" for an immune target.
+    if not hit and not flags.noEffect then
       events[#events + 1] = { type = "miss", side = attackerSide }
       settleExplosion(false)
       return
@@ -1680,8 +1726,7 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
       events[#events + 1] = { type = "alreadyConfused", side = defenderSide }
       return
     end
-    if not BattleFormulas.accuracyCheck(move.accuracy, attacker.statStages.accuracy,
-        defender.statStages.evasion, self.rng, attacker.ability, move.type) then
+    if not self:accuracyRoll(attacker, defender, move, moveId) then
       events[#events + 1] = { type = "miss", side = attackerSide }
       return
     end
@@ -1699,8 +1744,7 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
     -- (already confused: silent).
     local stat, delta = "attack", 2
     if move.effect == BattleEngine.EFFECT_FLATTER then stat, delta = "spAttack", 1 end
-    local hit = BattleFormulas.accuracyCheck(move.accuracy, attacker.statStages.accuracy,
-      defender.statStages.evasion, self.rng, attacker.ability, move.type)
+    local hit = self:accuracyRoll(attacker, defender, move, moveId)
     if slot then slot.pp = slot.pp - 1 end
     if not hit then
       events[#events + 1] = { type = "miss", side = attackerSide }
@@ -1805,11 +1849,20 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
     and attackerSide == BattleEngine.SIDE_PLAYER
     and ((move.power > 0 and not self.tutorialPlayerDamageDone)
       or (move.power == 0 and not self.tutorialPlayerStatDone))
+  -- Scripts whose accuracycheck short-circuits the roll (ALWAYS_HIT,
+  -- Vital Throw, OHKO, Pain Split) still miss a semi-invulnerable target
+  -- (AccuracyCalcHelper, src/battle_script_commands.c:958-1001).
+  local scriptHasAccuracyCheck = needsAccuracyCheck
+    or move.effect == BattleEngine.EFFECT_ALWAYS_HIT
+    or move.effect == BattleEngine.EFFECT_VITAL_THROW
+    or move.effect == BattleEngine.EFFECT_OHKO
+    or move.effect == BattleEngine.EFFECT_PAIN_SPLIT
+  local semiMiss = scriptHasAccuracyCheck and self:semiInvulnerableMiss(defender, move, moveId)
   local hit
-  if needsAccuracyCheck then
-    hit = tutorialAccuracy or BattleFormulas.accuracyCheck(
-      move.accuracy, attacker.statStages.accuracy,
-      defender.statStages.evasion, self.rng, attacker.ability, move.type)
+  if semiMiss then
+    hit = false
+  elseif needsAccuracyCheck then
+    hit = tutorialAccuracy or self:accuracyRoll(attacker, defender, move, moveId)
   else
     hit = true
   end
@@ -1825,12 +1878,33 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
   end
 
   if not hit then
+    if semiMiss and (move.effect == BattleEngine.EFFECT_OHKO
+        or move.effect == BattleEngine.EFFECT_PAIN_SPLIT) then
+      -- NO_ACC_CALC(_CHECK_LOCK_ON) against a semi-invulnerable target jumps
+      -- to the script's failure label without MISSED (bsc.c:1022-1025):
+      -- "But it failed!", PP already spent, no RNG.
+      events[#events + 1] = { type = "moveFailed", side = attackerSide }
+      return
+    end
+    if BattleEngine.HITS_UNDERGROUND[move.effect] then
+      -- BattleScript_HitAllWithUndergroundBonusMissed (bs1.s:1867-1875)
+      -- runs typecalc: an immune target prints "It doesn't affect" instead
+      -- of "missed" (resultmessage, bsc.c:1937). No RNG.
+      local _, immunity = BattleFormulas.typeCalc(
+        1, move.type, attacker.types, defender.types, self.typeChart)
+      events[#events + 1] = immunity.noEffect
+        and { type = "noEffect", side = attackerSide, target = defenderSide }
+        or { type = "miss", side = attackerSide }
+      return
+    end
     if move.effect == 45 and (moveId == 26 or moveId == 136) then
       -- Ordinary accuracy failure already scans type immunity in source,
       -- before resultmessage/the crash guard. This pure query spends no RNG.
+      -- AccuracyCalcHelper's semi-invulnerable miss returns before that
+      -- scan, so the crash happens even against an immune target.
       local _, immunity = BattleFormulas.typeCalc(
         1, move.type, attacker.types, defender.types, self.typeChart)
-      if immunity.noEffect then
+      if immunity.noEffect and not semiMiss then
         events[#events + 1] = { type = "noEffect", side = attackerSide, target = defenderSide }
         return
       end
@@ -2210,6 +2284,12 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
   elseif move.effect == BattleEngine.EFFECT_SMELLINGSALT
       and StatusConditions.isParalyzed(defender.status) then
     damage = damage * 2
+  elseif defender.semiInvulnerable == "air" and BattleEngine.HITS_AIR[move.effect] then
+    damage = damage * BattleEngine.HITS_AIR[move.effect]  -- Gust/Twister x2
+  elseif defender.semiInvulnerable == "underground" and BattleEngine.HITS_UNDERGROUND[move.effect] then
+    damage = damage * BattleEngine.HITS_UNDERGROUND[move.effect]  -- Earthquake/Magnitude x2
+  elseif defender.semiInvulnerable == "underwater" and moveId == BattleEngine.MOVE_SURF then
+    damage = damage * 2
   end
 
   -- 5. typecalc: STAB then per-row type effectiveness. Real Cmd_typecalc
@@ -2247,6 +2327,7 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
         or BattleEngine.SELF_DROP_HIT_MOVES[move.effect]
         or move.effect == BattleEngine.EFFECT_ALL_STATS_UP_HIT
         or BattleEngine.STATUS_HIT_MOVES[move.effect]
+        or moveId == BattleEngine.MOVE_BOUNCE
         or BattleEngine.STATUS2_HIT_MOVES[move.effect]
         or move.effect == BattleEngine.EFFECT_SMELLINGSALT
         or move.effect == BattleEngine.EFFECT_RECHARGE then
@@ -2366,6 +2447,7 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
   end
 
   local statusKind = BattleEngine.STATUS_HIT_MOVES[move.effect]
+    or (moveId == BattleEngine.MOVE_BOUNCE and "paralysis" or nil)
   if statusKind
       and BattleFormulas.secondaryEffectRoll(self.rng, move.secondaryEffectChance) then
     -- Cmd_seteffectwithchance (:2789-2796): a chance of 100 or more calls
@@ -2633,8 +2715,7 @@ function BattleEngine:resolveTripleKick(attackerSide, attacker, defenderSide, de
   local stopped
   for _ = 1, 3 do
     if defender.hp <= 0 then break end
-    if not BattleFormulas.accuracyCheck(move.accuracy, attacker.statStages.accuracy,
-        defender.statStages.evasion, self.rng, attacker.ability, move.type) then
+    if not self:accuracyRoll(attacker, defender, move, nil) then
       stopped = "miss"
       break
     end

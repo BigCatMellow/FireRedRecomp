@@ -127,3 +127,70 @@ Bounce), Rampage, Uproar, Rollout, Bide and Fury Cutter are later slices.
   the opponent's faint/switch; recharge applies before the faint checks.
 - Solar Beam "always charges" is exact while no weather exists; a weather
   slice must note sun spends PP before the canceller.
+
+## Slice M2 addendum: semi-invulnerable moves
+
+- Review: [M2 design review](../reviews/2026-10-14-multiturn-m2-design-review.md)
+  (PASS WITH CORRECTIONS, applied below and in the implementation).
+
+Families: 155 Semi-Invulnerable (Fly 19, Dig 91, Dive 291, Bounce 340), and
+the moves that reach a semi-invulnerable target: 149 Gust, 152 Thunder,
+147 Earthquake, 207 Sky Uppercut (newly represented), plus the already
+represented Twister (146), Magnitude (126) and Surf (57, effect 0).
+
+Source facts:
+
+- `BattleScript_EffectSemiInvulnerable` (`data/battle_scripts_1.s
+  :1969-2008`). Turn 1: `BattleScriptFirstChargingTurn` (no attackstring,
+  ppreduce, lock, text "flew up high!" / "dug a hole!" / "hid underwater!" /
+  "sprang up!", `battle_message.c:139-142`), then `setsemiinvulnerablebit`
+  (`src/battle_script_commands.c:8618-8634`: Fly/Bounce ON_AIR, Dig
+  UNDERGROUND, Dive UNDERWATER). Turn 2: attackcanceler, clear the lock,
+  NO_PPDEDUCT, Bounce adds a 30% paralysis secondary, accuracycheck (a miss
+  clears the bit and goes to PrintMoveMissed: "used" + missed), clear the
+  bit, then the hit from attackstring.
+- `AccuracyCalcHelper` (`:958-1001`) and the NO_ACC_CALC path (`:1020-1028`):
+  every `accuracycheck` against an ON_AIR / UNDERGROUND / UNDERWATER target
+  misses without RNG unless the move set the matching IGNORE hitmarker. It
+  runs before the ALWAYS_HIT/Vital Throw short-circuit, so Swift and Vital
+  Throw miss too. OHKO and Pain Split (NO_ACC_CALC_CHECK_LOCK_ON) jump to their
+  failure label without MISSED (`:1022-1025`): "But it failed!", PP spent, no
+  RNG.
+  Scripts with no accuracycheck (self moves, Psych Up, Memento) are
+  unaffected.
+- Hit-through: Gust and Twister (ON_AIR: IGNORE + damage x2, `:1822-1828,
+  1888-1891`), Thunder and Sky Uppercut (ON_AIR: IGNORE, no double,
+  `:1916-1919, 2704-2706`; Thunder also a 30% paralysis secondary),
+  Earthquake and Magnitude (UNDERGROUND: IGNORE + x2, `:1830-1858`), Surf
+  (UNDERWATER: IGNORE + x2, `:239-243`). Whirlpool also ignores underwater
+  but its trap family stays blocked.
+- `CancelMultiTurnMoves` clears the semi-invulnerable bits; faint and
+  switch-in clear them too.
+
+Design: `semiInvulnerable` field ("air" / "underground" / "underwater"),
+set on the semi-invulnerable charge turn and cleared at the turn-2 accuracy
+check, by `cancelMultiTurnMoves`, and on faint. One engine helper decides a
+semi-invulnerable miss before any accuracy roll at every site whose source
+script has an `accuracycheck` (the main hit path including ALWAYS_HIT, Vital
+Throw, OHKO and Pain Split, Explosion after its crit/damage draws, Triple
+Kick per kick, the primary status / confuse / Swagger handlers); the
+damage multiplier block gains the x2 cases.
+
+Corrections from the M2 design and implementation reviews (applied):
+
+- OHKO / Pain Split against a semi-invulnerable target: `moveFailed`, not a
+  miss (above).
+- Earthquake / Magnitude miss leaf (`data/battle_scripts_1.s:1867-1875`) runs
+  typecalc: an immune target prints "It doesn't affect" (resultmessage,
+  `src/battle_script_commands.c:1937`), no RNG. Explosion's miss after its
+  typecalc does the same (this also corrects its ordinary-miss text).
+- Jump Kick / Hi Jump Kick: the semi-invulnerable miss returns before
+  `CheckWonderGuardAndLevitate`, so the immunity pre-scan is skipped: "missed"
+  and the crash (1 HP against an immune target, random multiplier drawn).
+- The semi-invulnerable check replaces the roll at each existing accuracy
+  site, after that move's own gates (status/confuse/Teeter/Tickle gates,
+  Endeavor's HP gate, Explosion's Damp and crit/damage draws, Magnitude's
+  strength roll).
+- AI_CheckBadMove has no branch for 147/149/152/155/207 (returns 0); weather
+  is unmodeled, so Thunder always rolls 70. Gust, Sky Uppercut, Surf and the
+  Fly/Dig/Dive turn-2 hit share the tracked plain-hit roll gap.
