@@ -579,8 +579,9 @@ do
   local all=run(40)
   check("soft-boiled heal uses sText_PkmnRegainedHealth",all:find("PLAYER regained\nhealth!",1,true)~=nil)
   all=run(100)
-  check("soft-boiled full HP uses sText_PkmnHPFull",all:find("PLAYER's\nHP is full!",1,true)~=nil
-    and all:find("FOE's\nHP is full!",1,true)~=nil)
+  local p=all:find("PLAYER's\nHP is full!",1,true)
+  local f=all:find("FOE's\nHP is full!",1,true)
+  check("soft-boiled full HP uses sText_PkmnHPFull",p~=nil and f~=nil and p<f)
 end
 
 print(("%d passed, %d failed"):format(passed, failed))

@@ -136,12 +136,13 @@ In [BattleSceneController](../../src/core/BattleSceneController.lua),
 `_eventMessages`:177 expands success into an invisible entry
 `{hpSide=S, hp=H2}` followed by one recovery feedback entry. Use the bounded
 English feedback `<name> recovered HP!`; the full result instead produces
-`<name> is already at full HP!` with no HP entry. (Superseded 2026-10-14 by
-owner request: [source text](../tasks/battle-heal-message-source-text.md).) These are explicit project
+`<name> is already at full HP!` with no HP entry. These were explicit project
 presentation choices, not copied ROM text or retail localization claims.
 Do not reuse energy-drain, shared-pain, generic-failure, damage or effectiveness
 feedback. Both variants name the acting battler, never imply healing from the
 defender, and work for either side.
+(Superseded 2026-10-14 by owner request: the texts now follow the
+[source](../tasks/battle-heal-message-source-text.md).)
 
 The existing `_applyInvisibleEntries`:103 and `advanceMessage`:133 provide
 the ordering: while the used-move announcement is visible, displayed HP is the

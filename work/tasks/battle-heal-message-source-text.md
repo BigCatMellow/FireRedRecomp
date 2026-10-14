@@ -1,7 +1,7 @@
 # Task: heal-move battle messages use source text
 
 - Task ID: `P4-FL7-HEAL-MESSAGE-TEXT`
-- Status: `READY_FOR_REVIEWER`
+- Status: `CLOSED — REVIEWED PASS` ([review](../reviews/2026-10-14-heal-message-text-review.md))
 - Lane: [battle-effect fast lane](../../AGENTS.md#battle-effect-fast-lane--human-authorized-2026-10-13) (presentation-only follow-up)
 - Owner request: 2026-10-14, "Fix battle message wording" (supersedes the
   project-wording choice in [restore HP design](../reports/phase4-restore-hp-design.md)).
@@ -39,4 +39,4 @@ No engine, RNG, HP, event-shape or ordering change.
 ## Evidence (Worker, 2026-10-14)
 
 Controller 105/0 (was 103); full no-ROM suite and repository checker results
-in the PR. Independent review pending; not self-reviewed.
+in the PR. Independent review PASS; Info findings 1-2 applied (order assert, note placement).
