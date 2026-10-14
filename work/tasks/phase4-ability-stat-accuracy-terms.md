@@ -1,7 +1,7 @@
 # Task: ability stat and accuracy terms
 
 - Task ID: `P4-ABILITY-TERMS`
-- Status: `IMPLEMENTED — awaiting independent review`
+- Status: `CLOSED — REVIEWED PASS` after re-review ([review](../reviews/2026-10-14-ability-terms-review.md))
 - Lane: full relay (shared damage/accuracy formulas). Owner delegation
   2026-10-14; formulas/engine only.
 - Origin: [S3 review F1](../reviews/2026-10-14-status-s3-review.md)

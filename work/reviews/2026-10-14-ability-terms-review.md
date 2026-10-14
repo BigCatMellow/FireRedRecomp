@@ -224,3 +224,106 @@ behavior in a reachable configuration.
 ## Worker disposition (2026-10-14)
 
 F1 fixed (halving moved into calculateBaseDamage after the ability terms; Def 51 oracle 291); F2 tests added (crit branches, Thick Fat Ice, every accuracy call site, Hustle move type); F3 pinch abilities implemented with oracles; F4/F5 header and named constants. New tests fail on b2c9665 (6 failures).
+
+## Re-review (commit `f73ccf4`, 2026-10-14)
+
+- Verdict: **PASS**. F1-F5 are resolved. There are no new findings.
+
+### F1: Explosion order
+
+Resolved. `calculateBaseDamage` now applies `defense = max(1, idiv(defense,
+2))` when `move.effect == 7`. This runs after `abilityAdjustedStats` and the
+pinch term, and before the physical branch, which is source order
+(`pokemon.c`: Marvel Scale, then the pinch block, then `defense /= 2`).
+BattleEngine no longer builds the pre-halved copy.
+
+The oracles check out by hand:
+- Def 51 with Marvel Scale: 51 -> 76 -> 38, and 550000/38/50 + 2 = 291
+- plain Def 51: 25, and 440 + 2 = 442
+
+The max(1) guard is the existing behavior for the Def-1 case, which in source
+is a division by zero. That edge is still out of scope, as before. No other
+`calculateBaseDamage` caller carries effect 7: the crash leaf, multi-hit,
+Triple Kick and EarlyRivalAI all use other effects. Magnitude/Flail/Eruption
+copy the move but keep their own effect.
+
+### F2: tests
+
+Resolved. All 8 survivors from round 1 are now killed: the crit
+branches, Thick Fat on Ice (85 -> 43), and the Explosion, main-path and
+Triple Kick call sites, plus the move type at the main site. The exact
+Thick Fat and Ember oracles (37 -> 19) check out by hand.
+
+### F3: pinch abilities
+
+Resolved, matching source `pokemon.c:2496-2503`:
+- The ids map 65 to Grass(12), 66 to Fire(10), 67 to Water(11) and 68 to
+  Bug(6).
+- The condition is `hp <= idiv(maxHP, 3)`, and the arithmetic is
+  `150*power/100` with truncation.
+- In source this sits after Marvel Scale and changes `gBattleMovePower`
+  before either branch multiplies by power. The port changes the local
+  `power` before both branches, which is equivalent.
+
+Dynamic power: source sets `gBattleMovePower = powerOverride`
+(`gDynamicBasePower`) at the top of `CalculateBaseDamage` and only applies
+the pinch term after that. So the pinch boost does apply to the transient
+power. The engine passes Flail/Eruption/Magnitude as a move copy whose
+`power` holds the transient value, so the boost lands on that value. That
+matches source. Eruption (Fire) with Blaze and Water Spout with Torrent are
+the only type-matching cases; Flail, Reversal and Magnitude never match a
+pinch type.
+
+Explosion sets the user's HP to 0 before damagecalc, but Explosion is Normal
+type and so never matches a pinch type. EarlyRivalAI's prediction now
+includes the pinch term, which is consistent with source `AI_CalcDmg` calling
+`CalculateBaseDamage`.
+
+The Blaze 33/100 vs 34/100 boundary oracles (54 / 37) check out by hand. One
+small weakness: the Overgrow and Swarm tests assert only `>`. The type-map
+mutants below are still killed, so this does not need a change.
+
+### F4/F5
+
+Resolved. The header comment is updated, and named constants (`TYPE_FIRE`,
+`TYPE_ICE`, `EFFECT_EXPLOSION`) replace the hard-coded numbers.
+
+### Tests at `f73ccf4`
+
+- `battle_status_engine_test.lua`: 182/0
+- `battle_formulas_test.lua`: 32/0
+- `battle_engine_test.lua`: 568/0
+- `scripts/test_all.sh`: PASS (165 files)
+- `scripts/check_repository.lua`: PASS
+
+### Re-review mutation table
+
+Same harness as round 1, using pristine copies of `f73ccf4`. Both files were
+restored byte-for-byte afterwards (`cmp` clean).
+
+| # | Mutant | Result |
+|---|---|---|
+| R05 | Thick Fat Fire only | killed |
+| R14 | crit physical raw `attacker.attack` | killed |
+| R15 | crit physical raw `defender.defense` | killed |
+| R16 | crit special raw `attacker.spAttack` | killed |
+| R25 | Explosion accuracy site drops ability | killed |
+| R26 | main accuracy site drops ability | killed (2) |
+| R27 | Triple Kick accuracy site drops ability | killed |
+| R28 | main accuracy site drops move type | killed |
+| P01 | pinch `hp < maxHP/3` | killed |
+| P02 | pinch threshold `ceil(maxHP/3)` | killed |
+| P03 | pinch threshold real division `maxHP/3` (no floor) | survived (**equivalent**: for integer `hp`, `hp <= x` iff `hp <= floor(x)`) |
+| P04 | pinch threshold `maxHP/2` | killed |
+| P05 | Overgrow mapped to Water | killed |
+| P06 | Blaze mapped to Grass | killed |
+| P07 | Torrent mapped to Fire | killed (2) |
+| P08 | Swarm mapped to Poison | killed |
+| P09 | pinch ignores move type | killed (2) |
+| P10 | pinch factor x2 | killed (2) |
+| P11 | pinch removed | killed (4) |
+| E01 | Explosion halving removed | killed (2) |
+| E02 | Explosion halves defense before the ability terms | killed |
+| E03 | Explosion halves spDefense instead | killed (2) |
+
+Killed 21/22. The one survivor is an equivalent mutant.
