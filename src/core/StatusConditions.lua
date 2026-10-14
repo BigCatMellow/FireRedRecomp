@@ -89,17 +89,18 @@ StatusConditions.KINDS = {
 --   "fainted"  effect battler at 0 HP
 --   "hasStatus" status1 already nonzero (any primary status)
 --   "immune"   a type immunity applies
--- Source order (SetMoveEffect) checks types before status1 for poison,
--- burn and freeze, and status1 before types for toxic; both outcomes are
--- "no change" for secondary effects, so only the toxic order is exposed
--- (a Poison/Steel target with no status reports "immune", which is the
--- real MOVE_RESULT_DOESNT_AFFECT_FOE branch at :2334-2346).
+-- Reasons follow source order (SetMoveEffect): types before status1 for
+-- poison (:2197-2211), burn (:2238-2252) and freeze (:2260-2263); status1
+-- before types for toxic (:2332), where a healthy Poison/Steel target is
+-- the real MOVE_RESULT_DOESNT_AFFECT_FOE branch (:2334-2346).
 function StatusConditions.canApply(target, kind)
   assert(StatusConditions.KINDS[kind], "unknown status kind " .. tostring(kind))
   if target.hp <= 0 then return false, "fainted" end
+  -- Source tests the whole status1 word (`if (gBattleMons[].status1)`), not
+  -- STATUS1_ANY, so a word holding only toxic counter bits also blocks.
   local status = target.status or 0
   if kind == "toxic" then
-    if StatusConditions.hasAny(status) then return false, "hasStatus" end
+    if status ~= 0 then return false, "hasStatus" end
     if isType(target, TYPE_POISON) or isType(target, TYPE_STEEL) then
       return false, "immune"
     end
@@ -110,7 +111,7 @@ function StatusConditions.canApply(target, kind)
   end
   if kind == "burn" and isType(target, TYPE_FIRE) then return false, "immune" end
   if kind == "freeze" and isType(target, TYPE_ICE) then return false, "immune" end
-  if StatusConditions.hasAny(status) then return false, "hasStatus" end
+  if status ~= 0 then return false, "hasStatus" end
   return true
 end
 
