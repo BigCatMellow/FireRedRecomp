@@ -106,3 +106,52 @@ Orchestrator may dispatch the smallest correction to the existing two-document
 design boundary, then request an independent exact-revision recheck. On design
 PASS, any PR #6 implementation still requires its own exact contract, source,
 code/assertion and evidence review. No Phase 6 completion follows.
+
+## Independent correction recheck — 2026-10-14
+
+Verdict: **PASS — design only** at exact PR #3 head
+`f3f906520397bfa8c6b416e2cef7cb7bbaf3d8b7`. The original NEEDS_FIX verdict
+above is preserved; F1–F3 are resolved in the corrected proposal.
+
+- **F1:** The report now enumerates six literal successor paths, their
+  responsibilities, no-mutation and production input-isolation assertions,
+  exclusions, stop conditions and exact-head independent-review/CI gates.
+  It explicitly labels this a PROPOSAL requiring Orchestrator authorization,
+  not an active contract or acceptance of existing PR #6. The current design
+  write boundary remains only its two documents.
+- **F2:** Same-slot return is explicitly conditional on excluding Summary
+  mon cycling; directional/L/R inputs cannot change the projection and A is
+  inert. Source's last-viewed-mon behavior is correctly distinguished.
+  Valid Eggs remain eligible for SUMMARY, with an explicitly labeled reduced
+  saved-data projection rather than claimed retail Egg pages/stat display.
+  Proposed assertions cover Egg eligibility/label, no cycling, return chain
+  and unchanged selected/nonselected records. Invalid-record repair and new
+  Bad Egg support remain excluded.
+- **F3:** The proposal now requires local action-flow handling of fresh A/B
+  followed by repeated D-pad with exact UP-only/DOWN-only mask matching and
+  clamping. Shared MenuCursor/InputState are not modified. Proposed tests
+  distinguish repeat processing even at a clamped two-row boundary, exclude
+  direction chords and prevent input cascading across screens. This matches
+  the source input variant, not the pre-existing new-only helper.
+
+Independent checks: source checkout remains pinned to `c75f352304d529f6ba92d4f74b9cf8b5c3810788`;
+re-read `party_menu.c` Egg dispatch and last-viewed return and `menu.c:425-450`.
+Correction delta from `e093612` changes only the task and report. The original
+review before this append is byte-identical, SHA-256
+`12e7089308edfc2775f690f2e9a0bbf145914f416dbc6844a23376d79ff08a18`.
+Local repository checker PASS (**276 Lua / 206 Markdown / 621 targets**),
+whitespace clean; no runtime code or tests changed. Prior component checks
+remain historical evidence; no new local gameplay/full-suite/ROM run was
+needed or claimed for this documentation correction.
+
+Live GitHub metadata independently confirms exact head `f3f9065`, open PR #3,
+and completed SUCCESS for both
+[PR run 38645894044](https://github.com/BigCatMellow/FireRedRecomp/actions/runs/38645894044)
+and [push run 38645889732](https://github.com/BigCatMellow/FireRedRecomp/actions/runs/38645889732).
+
+Next allowance: Orchestrator may accept/merge this design after final
+publication checks, then reconcile and explicitly authorize the separately
+bounded successor contract. Existing PR #6 may need alignment; its code,
+tests and exact revision still require separate independent review. No
+implementation authority, runtime acceptance or Phase 6 completion follows
+from this design PASS. Reviewer publishes only this appended review.
