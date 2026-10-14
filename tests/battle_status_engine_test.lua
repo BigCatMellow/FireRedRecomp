@@ -612,6 +612,8 @@ do
   check("Shield Dust blocks the secondary status", b.foe.status == 0 and not find(events, "statusPrevented"))
   b, events = hitWith(MOVE_POISON_STING, 0, { foeAbility = BattleEngine.ABILITY_IMMUNITY })
   check("Immunity silently blocks a non-certain poison", b.foe.status == 0 and not find(events, "statusPrevented"))
+  b, events = hitWith(MOVE_POISON_FANG, 0, { foeAbility = BattleEngine.ABILITY_IMMUNITY })
+  check("Immunity silently blocks Poison Fang's toxic", b.foe.status == 0 and not find(events, "statusPrevented"))
   b, events = hitWith(Data.MOVE_EMBER, 0, { foeAbility = BattleEngine.ABILITY_WATER_VEIL })
   check("Water Veil silently blocks a non-certain burn", b.foe.status == 0 and not find(events, "statusPrevented"))
   b, events = hitWith(MOVE_THUNDER_SHOCK, 0, { foeAbility = BattleEngine.ABILITY_LIMBER })
@@ -632,6 +634,15 @@ do
   b, events = hitWith(MOVE_ZAP_CANNON, 99, { foeAbility = BattleEngine.ABILITY_SHIELD_DUST })
   check("Shield Dust blocks even a certain secondary status", b.foe.status == 0
     and not find(events, "statusPrevented"))
+end
+
+do
+  -- A failed Poke Ball against a burned foe uses the 15/10 catch value
+  -- through the engine (catch rate 45, full HP: 15 -> 22).
+  local b = battle({ 65535, MISS }, { foeStatus = S.BURN, foeHP = 400 })
+  b.foe.catchRate = 45
+  local events = b:runTurn({ action = "capture" }, MOVE)
+  check("engine capture reads the foe's status", find(events, "capture") and b.rng.draws == 2, types(events))
 end
 
 ---------------------------------------------------------------------------

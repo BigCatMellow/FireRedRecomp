@@ -149,7 +149,7 @@ HP box status label is presentation polish for a later slice.
 | S1 | `StatusConditions` module, battler state, cancellers + RNG, burn/paralysis modifiers, end-of-turn damage, defrost, faint clears status, events/texts; toxic counter battle-local (masked on persist) | groundwork, no new moves |
 | S2 | Secondary status on hit: 2, 4, 5, 6, 202, 209 | 23 moves |
 | S3 | Primary status moves: 1, 66, 67, 33, 167 | 13 moves |
-| S4 | 125 thaw-hit, 169 Facade, 171 Smelling Salt, 193 Refresh; capture multiplier | 5 moves |
+| S4 | 125 thaw-hit, 169 Facade, 171 Smelling Salt, 193 Refresh (capture multiplier moved into S2) | 5 moves |
 | S5 | Field poison (main.lua; coordinate) | out-of-battle parity |
 
 Later, needing more state: 36 Tri Attack, 37 Rest, 77 Twineedle, 152 Thunder,

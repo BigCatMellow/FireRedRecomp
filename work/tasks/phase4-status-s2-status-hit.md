@@ -33,6 +33,9 @@
   `applySecondaryStatus`, Poison Tail crit stage, no-effect roll, events.
 - `src/core/BattleSceneController.lua`: applied/prevented texts.
 - `src/core/WildPokemonFactory.lua`: capture masks the toxic counter.
+- `src/core/CaptureRules.lua`: `statusMultiplier` and its use in
+  `tryPokeBall` (brought forward from S4 by review F1, source
+  `src/battle_script_commands.c:9553-9556`).
 - Tests: `tests/battle_status_engine_test.lua`, controller, wild factory,
   updated `tests/battle_engine_test.lua` scripted draws (Ember now takes its
   real burn roll), inventory partition, new
@@ -51,7 +54,9 @@ No main.lua, save format or admission change.
 4. Poison Fang badly poisons; Poison Tail crit stage 1.
 5. Frozen target hit by Ember: no burn, then defrost; newly statused target
    ticks at end of turn.
-6. Capture masks the toxic counter. Full no-ROM suite and checker pass.
+6. Capture masks the toxic counter; Poke Ball odds use the status
+   multiplier (×2 sleep/freeze, ×15/10 others). Full no-ROM suite and
+   checker pass.
 
 ## Known effects on existing behavior
 
@@ -59,8 +64,17 @@ No main.lua, save format or admission change.
   (previously the positive-power fallback skipped it, the tracked plain-hit
   RNG gap). Seeded ROM replays using these moves need the guarded ROM run.
 
+## Review round 1 (NEEDS_FIX) disposition
+
+- F1: capture status multiplier implemented now (option a), with source
+  oracles in `tests/capture_rules_test.lua` and an engine capture test.
+- F2: Synchronize (and Serene Grace) recorded as stated limits.
+- F3: Immunity vs Poison Fang test added.
+
 ## Follow-ups
 
+- Synchronize (`src/battle_script_commands.c:2376-2386`), Serene Grace,
+  contact-status abilities (Static, Poison Point, Flame Body, Effect Spore).
 - AICheckBadMove status assumptions (S1 review F4) now that the player can
   be statused by the foe.
 - Poison Fang vs a healthy Poison/Steel target sets
@@ -69,5 +83,5 @@ No main.lua, save format or admission change.
 
 ## Evidence (Worker, 2026-10-14)
 
-Status engine 109/0; controller 127/0; wild factory 29/0; battle engine
+Status engine 111/0; controller 127/0; wild factory 29/0; capture rules 38/0; battle engine
 568/0; full suite and repository checker in the PR.
