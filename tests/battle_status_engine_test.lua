@@ -995,7 +995,7 @@ do
   local toxic, burned, asleep = facade(S.TOXIC_POISON), facade(S.BURN), facade(1)
   check("Facade doubles while poisoned/paralyzed/badly poisoned",
     poisoned == plain * 2 and paralyzed == plain * 2 and toxic == plain * 2, plain .. "/" .. poisoned)
-  check("Facade does not double while asleep", asleep == plain, asleep)
+  check("Facade after waking from a 1-turn sleep is not doubled", asleep == plain, asleep)
   local atk = BattleEngine.makeBattler({ species = 1, level = 10, stats = stats(40, 20), types = { 0, 0 } })
   local def = BattleEngine.makeBattler({ species = 1, level = 10, stats = stats(400, 10), types = { 0, 0 } })
   atk.status = S.BURN
@@ -1024,8 +1024,13 @@ do
   b = battle({ 0, 1, 0, 99, MISS }, { playerMove = MOVE_SMELLINGSALT,
     foeTypes = { Data.TYPE_GHOST, Data.TYPE_GHOST }, foeStatus = S.PARALYSIS })
   events = b:runTurn(MOVE, MOVE)
-  check("Smelling Salt vs Ghost: no effect, the roll is drawn, paralysis stays",
+  check("Smelling Salt vs Ghost: no effect, paralysis stays",
     find(events, "noEffect") and S.isParalyzed(b.foe.status), types(events))
+  b = battle({ 0, 1, 0, 99 }, { playerMove = MOVE_SMELLINGSALT,
+    foeTypes = { Data.TYPE_GHOST, Data.TYPE_GHOST }, foeStatus = S.PARALYSIS })
+  local ghostEvents = {}
+  b:resolveMove("player", 1, ghostEvents)
+  check("Smelling Salt vs Ghost draws the effect roll (4 draws)", b.rng.draws == 4, b.rng.draws)
   b = battle({ 0, 1, 0 }, { playerMove = MOVE_SMELLINGSALT, foeCurrentHP = 1, foeStatus = S.PARALYSIS })
   events = b:runTurn(MOVE, MOVE)
   check("Smelling Salt KO: no heal message (faint clears status)", not find(events, "paralysisHealed")
@@ -1045,7 +1050,7 @@ do
   end
   local b = battle({ MISS }, { playerMove = MOVE_REFRESH, playerStatus = 2 })
   local events = b:runTurn(MOVE, MOVE)
-  check("Refresh fails on sleep (and the sleeper is fast asleep first)", find(events, "fastAsleep", "player")
+  check("a sleeping Refresh user is cancelled before Refresh runs", find(events, "fastAsleep", "player")
     and b.player.status == 1, types(events))
   b = battle({ MISS }, { playerMove = MOVE_REFRESH, playerStatus = S.FREEZE })
   b.rng = scriptedRng({ 1, MISS })

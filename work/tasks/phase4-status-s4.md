@@ -1,7 +1,7 @@
 # Task: primary status conditions, slice S4
 
 - Task ID: `P4-STATUS-S4`
-- Status: `IMPLEMENTED — awaiting independent review`; ROM fixture pending
+- Status: `CLOSED — REVIEWED PASS` ([review](../reviews/2026-10-14-status-s4-review.md)); ROM fixture pending
 - Lane: full relay. Owner delegation 2026-10-14; battle files only.
 - Builds on: S1-S3 (status), design
   [proposal](../reports/phase4-status-conditions-design-proposal.md) S4 row
@@ -51,8 +51,10 @@ otherwise, spends PP, no RNG; texts; full no-ROM suite and checker pass.
   effect byte still draws in source); ROM replay verification pending.
   Smelling Salt's CERTAIN byte draws only on a no-effect hit, as modeled.
 - Substitute not represented (Smelling Salt's first branch).
+- A shared dmgMultiplier should replace the per-effect doubling when the
+  first other source user (Stomp, Gust, Pursuit, Revenge, ...) lands.
 
 ## Evidence (Worker, 2026-10-14)
 
-Status engine 201/0; controller 137/0; full suite and repository checker in
+Status engine 202/0; controller 137/0; full suite and repository checker in
 the PR.
