@@ -47,7 +47,7 @@ target Substitute (unless self-targeted).
 
 | Status | Fails when (source lines in the `:2148-2330` switch) | Notes |
 | --- | --- | --- |
-| Sleep | already statused; Uproar active (Soundproof exempt); Vital Spirit/Insomnia | duration `(Random() & 3) + 2` = 2-5 (`:2357`) |
+| Sleep | already statused; Uproar active (Soundproof exempt); Vital Spirit/Insomnia | duration `(Random() & 3) + 2` = 2-5 (`:2356`) |
 | Poison | Poison- or Steel-type; already statused; Immunity | |
 | Burn | Fire-type; already statused; Water Veil | |
 | Freeze | Ice-type; already statused; sunny weather; Magma Armor | |
