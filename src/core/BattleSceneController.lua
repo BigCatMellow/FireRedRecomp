@@ -411,6 +411,16 @@ function BattleSceneController:_eventMessages(events)
       add(possessive(name(event.side)) .. " status\nreturned to normal!") -- :222
     elseif event.type == "paralysisHealed" then
       add(name(event.side) .. " was\nhealed of paralysis!") -- :108
+    elseif event.type == "flinched" then
+      add(name(event.side) .. " flinched!") -- battle_message.c:123
+    elseif event.type == "confusedTurn" then
+      add(name(event.side) .. " is\nconfused!") -- :114
+    elseif event.type == "confusionSelfHit" then
+      -- Text before the HP update (data/battle_scripts_1.s:3744-3751).
+      add("It hurt itself in its\nconfusion!") -- :337
+      entries[#entries + 1] = { hpSide = event.side, hp = event.hpRemaining }
+    elseif event.type == "confusionEnded" then
+      add(name(event.side) .. " snapped\nout of confusion!") -- :115
     elseif event.type == "statusDamage" then
       -- Message before the HP update (printstring, then datahpupdate).
       if event.kind == "burn" then

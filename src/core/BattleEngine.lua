@@ -75,6 +75,10 @@
 --   {type="stayedAwake", side=<target>, ability=} -- Insomnia/Vital Spirit
 --   {type="statusCured", side=<attacker>}   -- Refresh
 --   {type="paralysisHealed", side=<target>} -- Smelling Salt
+--   {type="flinched", side=}          -- flinch canceller: move not used
+--   {type="confusedTurn", side=}      -- "is confused!" (still confused)
+--   {type="confusionSelfHit", side=, amount=, hpRemaining=}
+--   {type="confusionEnded", side=}    -- snapped out; move proceeds
 --   {type="battleEnd", outcome="playerWon"|"playerLost"|"ran"|"caught"}
 --
 -- Real turn structure ported, in real execution order:
@@ -875,6 +879,10 @@ function BattleEngine.makeBattler(opts)
     spDefense = stats.spDefense,
     -- Real gBattleMons[].status1 word (StatusConditions bit layout).
     status = opts.status or 0,
+    -- status2 confusion turns (bits 0-2) and STATUS2_FLINCHED; battle-only,
+    -- never persisted (include/constants/battle.h:105-107).
+    confusionTurns = 0,
+    flinched = false,
     moves = {},
     statStages = {
       attack = BattleFormulas.DEFAULT_STAT_STAGE,
@@ -984,8 +992,11 @@ function BattleEngine:recordFaint(side, events)
   assert(self.faintSequence, "recordFaint needs beginFaintSequence")
   battler.hp = 0
   -- Real Cmd_cleareffectsonfaint (src/battle_script_commands.c:2930-2938)
-  -- zeroes status1 and writes it to the party copy.
+  -- zeroes status1 and writes it to the party copy; FaintClearSetData
+  -- clears status2 (confusion, flinch).
   battler.status = 0
+  battler.confusionTurns = 0
+  battler.flinched = false
   for _, recorded in ipairs(self.faintSequence) do
     if recorded == side then return false end
   end
@@ -1150,6 +1161,27 @@ function BattleEngine:resolveStatusCancellers(attackerSide, attacker, moveId, mo
       events[#events + 1] = { type = "thawed", side = attackerSide }
     end
   end
+  if attacker.flinched then
+    -- CANCELLER_FLINCH (src/battle_util.c:1361-1371).
+    attacker.flinched = false
+    events[#events + 1] = { type = "flinched", side = attackerSide }
+    return true
+  end
+  if (attacker.confusionTurns or 0) > 0 then
+    -- CANCELLER_CONFUSED (:1407-1435): decrement first; still confused ->
+    -- "is confused!" then `Random() & 1` (nonzero: the move proceeds and the
+    -- remaining cancellers run); reaching 0 -> snapped out, move proceeds.
+    attacker.confusionTurns = attacker.confusionTurns - 1
+    if attacker.confusionTurns > 0 then
+      events[#events + 1] = { type = "confusedTurn", side = attackerSide }
+      if self.rng:next16() % 2 == 0 then
+        self:resolveConfusionSelfHit(attackerSide, attacker, move, events)
+        return true
+      end
+    else
+      events[#events + 1] = { type = "confusionEnded", side = attackerSide }
+    end
+  end
   if S.isParalyzed(attacker.status) and self.rng:next16() % 4 == 0 then
     -- CANCELLER_PARALYSED
     events[#events + 1] = { type = "fullyParalyzed", side = attackerSide }
@@ -1260,6 +1292,30 @@ function BattleEngine:resolvePrimaryStatusMove(attackerSide, attacker, defenderS
   end
   S.apply(defender, kind, self.rng)
   events[#events + 1] = { type = "statusApplied", side = defenderSide, kind = kind }
+end
+
+-- Confusion self-hit: CalculateBaseDamage(attacker, attacker, MOVE_POUND,
+-- sideStatus 0, power 40, type 0) -- the attacker's own attack/defense,
+-- stages, burn and ability terms, no crit, no screens, no STAB/typecalc --
+-- then Cmd_adjustnormaldamage2's random multiplier draw, the HP update and
+-- tryfaintmon BS_ATTACKER (data/battle_scripts_1.s:3736-3755). Source tests
+-- gCurrentMove's effect for the Explosion defense halving, so a confused
+-- Self-Destruct/Explosion user halves its own defense.
+BattleEngine.CONFUSION_SELF_HIT_POWER = 40
+function BattleEngine:resolveConfusionSelfHit(side, battler, chosenMove, events)
+  local pound = {
+    power = BattleEngine.CONFUSION_SELF_HIT_POWER, type = 0,
+    effect = (chosenMove and chosenMove.effect == BattleEngine.EFFECT_EXPLOSION)
+      and BattleEngine.EFFECT_EXPLOSION or 0,
+  }
+  local damage = BattleFormulas.calculateBaseDamage(battler, battler, pound, false, nil)
+  damage = BattleFormulas.applyRandomDamageMultiplier(damage, self.rng)
+  if damage > battler.hp then damage = battler.hp end
+  battler.hp = battler.hp - damage
+  events[#events + 1] = {
+    type = "confusionSelfHit", side = side, amount = damage, hpRemaining = battler.hp,
+  }
+  self:checkFaint(side, events)
 end
 
 function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
@@ -2400,6 +2456,7 @@ local function sidesOf(order)
 end
 
 function BattleEngine:resolveEndTurn(events, sides)
+  self.player.flinched, self.foe.flinched = false, false
   self:decaySideTimers(events)
   self:resolveStatusEndTurn(events, sides)
 end
@@ -2465,6 +2522,9 @@ function BattleEngine:runTurn(playerAction, foeAction)
   local events = {}
   self.turn = self.turn + 1
   events[#events + 1] = { type = "turnStart", turn = self.turn }
+  -- STATUS2_FLINCHED is cleared for every battler between turns
+  -- (src/battle_main.c:2917,2940).
+  self.player.flinched, self.foe.flinched = false, false
 
   -- Real SetActionsAndBattlersTurnOrder puts B_ACTION_SWITCH in the same
   -- early group as B_ACTION_USE_ITEM, both hoisted ahead of any move
