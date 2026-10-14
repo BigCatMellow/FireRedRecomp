@@ -373,6 +373,123 @@ do
 end
 
 ---------------------------------------------------------------------------
+-- Slice M2: semi-invulnerable moves
+---------------------------------------------------------------------------
+local FLY, DIG, DIVE, BOUNCE, GUST, THUNDER, EARTHQUAKE, SKY_UPPERCUT, SURF, TWISTER, SWIFT =
+  19, 91, 291, 340, 16, 87, 89, 327, 57, 239, 129
+moves[FLY] = rec(155, 70, Data.TYPE_FLYING, 95, 15, 0, 0, 0x33)
+moves[DIG] = rec(155, 60, Data.TYPE_GROUND, 100, 10, 0, 0, 0x33)
+moves[DIVE] = rec(155, 60, Data.TYPE_WATER, 100, 10, 0, 0, 0x33)
+moves[BOUNCE] = rec(155, 85, Data.TYPE_FLYING, 85, 5, 30, 0, 0x33)
+moves[GUST] = rec(149, 40, Data.TYPE_FLYING, 100, 35, 0, 0, 0x32)
+moves[THUNDER] = rec(152, 120, Data.TYPE_ELECTRIC, 70, 10, 30, 0, 0x12)
+moves[EARTHQUAKE] = rec(147, 100, Data.TYPE_GROUND, 100, 10, 0, 0x20, 0x32)
+moves[SKY_UPPERCUT] = rec(207, 85, Data.TYPE_FIGHTING, 90, 15, 0, 0, 0x33)
+moves[SURF] = rec(0, 95, Data.TYPE_WATER, 100, 15, 0, 0x08, 0x32)
+moves[TWISTER] = rec(146, 40, Data.TYPE_DRAGON, 100, 20, 20, 0x08, 0x32)
+moves[SWIFT] = rec(17, 60, Data.TYPE_NORMAL, 0, 20, 0, 0x08, 0x12)
+
+do
+  -- Fly: turn 1 text and ON_AIR; the slower foe's Tackle misses with no
+  -- accuracy draw; turn 2 hits and the bit clears.
+  local b = battle({}, { playerMove = FLY })
+  local events = b:runTurn(MOVE, MOVE)
+  check("Fly turn 1: flew up high, in the air", find(events, "chargeTurn").kind == "fly"
+    and b.player.semiInvulnerable == "air", types(events))
+  check("a move with accuracycheck misses the flier with no draw", find(events, "miss", "foe")
+    and b.rng.draws == 0 and b.foe.moves[1].pp == 9, b.rng.draws)
+  b.rng = scriptedRng({ 0, 1, 0, MISS })
+  events = b:runTurn(MOVE, MOVE)
+  check("Fly turn 2 hits and lands", find(events, "damage", "player") and b.player.semiInvulnerable == nil
+    and b.player.moves[1].pp == 9, types(events))
+end
+
+do
+  local function airborneFoe(foeMove)
+    local b = battle({}, { foeMove = FLY, foeSpeed = 30, playerMove = foeMove })
+    return b
+  end
+  -- Swift (ALWAYS_HIT) still misses a flier (helper before the short-circuit).
+  local b = airborneFoe(SWIFT)
+  local events = b:runTurn(MOVE, MOVE)
+  check("Swift misses a flying foe", find(events, "miss", "player") and b.rng.draws == 0, types(events))
+  -- Gust hits a flier with double damage; Sky Uppercut hits without.
+  local plain = battle({ 0, 1, 0 }, { playerMove = GUST })
+  local pev = {}
+  plain:resolveMove("player", 1, pev)
+  local base = find(pev, "damage", "player").amount
+  b = airborneFoe(GUST)
+  b.rng = scriptedRng({ 0, 1, 0 })
+  events = b:runTurn(MOVE, MOVE)
+  check("Gust doubles against a flier", find(events, "damage", "player")
+    and find(events, "damage", "player").amount >= base * 2 - 1, types(events))
+  b = airborneFoe(SKY_UPPERCUT)
+  b.rng = scriptedRng({ 0, 1, 0 })
+  events = b:runTurn(MOVE, MOVE)
+  check("Sky Uppercut hits a flier", find(events, "damage", "player") ~= nil, types(events))
+  b = airborneFoe(THUNDER)
+  b.rng = scriptedRng({ 0, 1, 0, 99 })
+  events = b:runTurn(MOVE, MOVE)
+  check("Thunder hits a flier (paralysis roll drawn)", find(events, "damage", "player") and b.rng.draws == 4, types(events))
+  b = airborneFoe(TWISTER)
+  b.rng = scriptedRng({ 0, 1, 0, 99 })
+  events = b:runTurn(MOVE, MOVE)
+  check("Twister hits a flier", find(events, "damage", "player") ~= nil, types(events))
+  b = airborneFoe(EARTHQUAKE)
+  events = b:runTurn(MOVE, MOVE)
+  check("Earthquake misses a flier", find(events, "miss", "player") ~= nil, types(events))
+end
+
+do
+  -- Dig: Earthquake doubles; Gust misses. Dive: Surf doubles.
+  local b = battle({}, { foeMove = DIG, foeSpeed = 30, playerMove = EARTHQUAKE })
+  b.rng = scriptedRng({ 0, 1, 0 })
+  local events = b:runTurn(MOVE, MOVE)
+  check("Earthquake hits a digger", b.foe.semiInvulnerable == "underground" and find(events, "damage", "player"),
+    types(events))
+  b = battle({}, { foeMove = DIG, foeSpeed = 30, playerMove = GUST })
+  events = b:runTurn(MOVE, MOVE)
+  check("Gust misses a digger", find(events, "miss", "player") ~= nil)
+  b = battle({}, { foeMove = DIVE, foeSpeed = 30, playerMove = SURF })
+  b.rng = scriptedRng({ 0, 1, 0 })
+  events = b:runTurn(MOVE, MOVE)
+  check("Surf hits a diver", b.foe.semiInvulnerable == "underwater" and find(events, "damage", "player"), types(events))
+  b = battle({}, { foeMove = DIVE, foeSpeed = 30 })
+  events = b:runTurn(MOVE, MOVE)
+  check("Tackle misses a diver", find(events, "miss", "player") ~= nil)
+end
+
+do
+  -- Bounce turn 2: 30% paralysis.
+  local b = battle({}, { playerMove = BOUNCE })
+  b:runTurn(MOVE, MOVE)
+  b.rng = scriptedRng({ 0, 1, 0, 30, MISS })
+  local events = b:runTurn(MOVE, MOVE)
+  check("Bounce turn 2 paralyzes on roll 30", find(events, "statusApplied", "foe")
+    and S.isParalyzed(b.foe.status), types(events))
+end
+
+do
+  -- Cancel clears the bit: a fully paralyzed flier lands.
+  local b = battle({}, { playerMove = FLY, playerStatus = S.PARALYSIS, playerSpeed = 80 })
+  b.rng = scriptedRng({ 1 })
+  b:runTurn(MOVE, MOVE)
+  check("flier set up", b.player.semiInvulnerable == "air")
+  b.rng = scriptedRng({ 0, 0, 1, 0 })
+  local events = b:runTurn(MOVE, MOVE)
+  check("full paralysis on turn 2 cancels and lands", find(events, "fullyParalyzed")
+    and b.player.semiInvulnerable == nil and find(events, "damage", "foe"), types(events))
+  -- Status end-of-turn damage still reaches a flier.
+  local p = battle({}, { playerMove = FLY, playerStatus = S.POISON })
+  events = p:runTurn(MOVE, MOVE)
+  check("poison still ticks while flying", find(events, "statusDamage", "player") ~= nil)
+  -- Faint clears it.
+  p.player.hp = 0
+  p:checkFaint("player", {})
+  check("faint clears the semi-invulnerable bit", p.player.semiInvulnerable == nil)
+end
+
+---------------------------------------------------------------------------
 -- Controller: no menu or AI for a locked side
 ---------------------------------------------------------------------------
 do
@@ -404,11 +521,17 @@ do
     { type = "chargeTurn", side = "player", kind = "skullBash" },
     { type = "chargeTurn", side = "foe", kind = "skyAttack" },
     { type = "mustRecharge", side = "player" },
+    { type = "chargeTurn", side = "player", kind = "fly" },
+    { type = "chargeTurn", side = "foe", kind = "dig" },
+    { type = "chargeTurn", side = "player", kind = "dive" },
+    { type = "chargeTurn", side = "foe", kind = "bounce" },
   })
   check("charge and recharge texts (battle_message.c:135-138,185)",
     m[1].text == "A whipped\nup a whirlwind!" and m[2].text == "B took\nin sunlight!"
       and m[3].text == "A lowered\nits head!" and m[4].text == "B is glowing!"
       and m[5].text == "A must\nrecharge!", m[1].text)
+  check("semi-invulnerable texts (battle_message.c:139-142)", m[6].text == "A flew\nup high!"
+    and m[7].text == "B dug a hole!" and m[8].text == "A hid\nunderwater!" and m[9].text == "B sprang up!", m[6].text)
 end
 
 print(("%d passed, %d failed"):format(passed, failed))

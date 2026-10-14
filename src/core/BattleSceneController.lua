@@ -437,6 +437,10 @@ function BattleSceneController:_eventMessages(events)
       if event.kind == "razorWind" then add(n .. " whipped\nup a whirlwind!")
       elseif event.kind == "solarBeam" then add(n .. " took\nin sunlight!")
       elseif event.kind == "skullBash" then add(n .. " lowered\nits head!")
+      elseif event.kind == "fly" then add(n .. " flew\nup high!") -- :139
+      elseif event.kind == "dig" then add(n .. " dug a hole!") -- :140
+      elseif event.kind == "dive" then add(n .. " hid\nunderwater!") -- :141
+      elseif event.kind == "bounce" then add(n .. " sprang up!") -- :142
       else add(n .. " is glowing!")
       end
     elseif event.type == "mustRecharge" then
