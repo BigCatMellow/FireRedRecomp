@@ -483,12 +483,19 @@ do
 end
 
 do
-  -- F1: Double Kick and the 2-5 family are deliberately unchanged in L1.
-  local b = battle({ 0, 1, 0 }, { playerMove = Data.MOVE_DOUBLE_KICK, foeCurrentHP = 1 })
+  -- Intentionally changed by the multi-hit tail follow-up (this asserted
+  -- L1's "Double Kick keeps the older shape": in-loop faint, no multiHit,
+  -- 3 draws). Double Kick now shares Twineedle's source tail
+  -- (data/battle_scripts_1.s:613-655): the KO breaks the loop, "Hit 1
+  -- time(s)!" follows, MultiHitEnd draws its `% 100` (:651; bsc.c:2789),
+  -- and the faint is the caller's tryfaintmon (:653). Full coverage of 29/44
+  -- is in tests/battle_multihit_tail_test.lua.
+  local b = battle({ 0, 1, 0, 99 }, { playerMove = Data.MOVE_DOUBLE_KICK, foeCurrentHP = 1 })
   local events = {}
   b:resolveMove(BattleEngine.SIDE_PLAYER, 1, events)
-  check("Double Kick KO keeps the older shape (faint in loop, no multiHit, no roll)",
-    find(events, "faint", "foe") and not find(events, "multiHit") and b.rng.draws == 3, types(events))
+  local mh = find(events, "multiHit", "player")
+  check("Double Kick KO now uses the source tail (multiHit hits=1, no in-loop faint, 4 draws)",
+    mh and mh.hits == 1 and not find(events, "faint") and b.rng.draws == 4, types(events))
 end
 
 ---------------------------------------------------------------------------
@@ -514,6 +521,18 @@ do
   hit = all:find("Hit 2 time(s)!", 1, true)
   local poisoned = all:find("poisoned", 1, true)
   check("controller: Twineedle prints the count, then the poison", hit and poisoned and hit < poisoned, all)
+  -- Multi-hit tail follow-up (L1 review F1): Twineedle against a Grass
+  -- target prints the effectiveness line ONCE, from MultiHitPrintStrings'
+  -- resultmessage, just before the count (bs1.s:644-649); L1 printed it
+  -- after each hit.
+  all = messages({ 0, 1, 0, 1, 0, 99, MISS }, { playerMove = MOVE_TWINEEDLE,
+    foeTypes = { Data.TYPE_GRASS, Data.TYPE_GRASS } })
+  local _, superCount = all:gsub("It's super effective!", "")
+  local super = all:find("It's super effective!", 1, true)
+  hit = all:find("Hit 2 time(s)!", 1, true)
+  check("controller: Twineedle vs Grass prints the effectiveness text once, just before the count",
+    superCount == 1 and super and hit and super < hit
+      and all:sub(super, hit - 1) == "It's super effective!|", all)
   all = messages({ 0, 1, 0, 0, 2, MISS, MISS }, { playerMove = MOVE_TRI_ATTACK })
   check("controller: Tri Attack paralysis text", all:find("paralyzed", 1, true) ~= nil, all)
   all = messages({ 0, 1, 0, 0, 1, MISS }, { playerMove = MOVE_TRI_ATTACK })

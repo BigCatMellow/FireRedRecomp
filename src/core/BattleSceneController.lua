@@ -335,10 +335,15 @@ function BattleSceneController:_eventMessages(events)
     elseif event.type == "multiHit" then
       -- Real sText_HitXTimes: "Hit N time(s)!" (battle_message.c:82),
       -- `hits` = hits landed. Never emitted on a no-effect stop (real
-      -- BattleScript_MultiHitPrintStrings skips it). Twineedle and Triple
-      -- Kick emit it after a KO too, before the caller's faint, as in
-      -- source; Double Kick and the 2-5 family still omit it on any KO
-      -- (a tracked engine divergence, see BattleEngine:resolveMultiHit).
+      -- BattleScript_MultiHitPrintStrings skips it). The 2-5 family,
+      -- Double Kick, Twineedle and Triple Kick emit it after a KO too,
+      -- before the caller's faint, as in source. For the resolveMultiHit
+      -- families the effectiveness flags ride on this event, not on each
+      -- damage event: source prints them once via MultiHitPrintStrings'
+      -- resultmessage, just before the count (data/battle_scripts_1.s
+      -- :645-649). Triple Kick's damage events still carry their own.
+      if event.superEffective then add("It's super effective!") end
+      if event.notVeryEffective then add("It's not very effective...") end
       add(("Hit %d time(s)!"):format(event.hits))
     elseif event.type == "tutorialTip" then
       if event.kind == "damage" then

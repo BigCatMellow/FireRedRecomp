@@ -378,10 +378,10 @@
 --     then giving count 2-5). EFFECT_DOUBLE_HIT=44 (Double Kick, Bonemerang)
 --     is always exactly 2 hits with ZERO hit-count RNG (real script passes
 --     a fixed `setmultihitcounter 2` arg). EFFECT_TWINEEDLE=77 (slice L1)
---     is the same fixed 2 hits plus one trailing poison roll and the
---     source KO tail (count, roll, then the caller's faint); 29/44 still
---     emit the faint inside the loop and omit the count and the trailing
---     roll (tracked follow-up). All share one real fact this
+--     is the same fixed 2 hits plus one trailing poison roll. All three
+--     use the source tail (`sourceTail`, multi-hit tail follow-up):
+--     effectiveness text once after the loop, then the count, then the
+--     trailing seteffectwithchance roll, then the caller's faint. All share one real fact this
 --     port depends on: accuracy is checked and PP is deducted exactly ONCE
 --     for the whole move (real BattleScript_EffectMultiHit/EffectDoubleHit:
 --     accuracycheck -> ... -> ppreduce -> setmultihitcounter, all BEFORE
@@ -920,17 +920,21 @@ BattleEngine.CURRENT_HP_DAMAGE_MOVES = {
 -- Bonemerang both just use it plainly, no special-casing needed).
 -- EFFECT_TWINEEDLE=77 (slice L1, data/battle_scripts_1.s:1072-1080) also
 -- passes a literal 2 and sets sMULTIHIT_EFFECT = MOVE_EFFECT_POISON:
--- `statusKind` selects resolveMultiHit's source tail (a KO breaks the
--- loop, the hit count is still emitted, then ONE trailing
--- seteffectwithchance roll for the whole move, then the caller's faint
--- check). Entries without `statusKind` (29, 44) keep the older in-loop
--- faint shape; see resolveMultiHit.
+-- `statusKind` names the status the trailing roll can apply (77 only;
+-- 29/44 set `sMULTIHIT_EFFECT` to 0, bs1.s:612, :845, so their roll never
+-- applies anything). `sourceTail` (multi-hit tail follow-up, replacing the
+-- L1 `statusKind` key, L1 review F2) selects resolveMultiHit's source tail:
+-- a KO breaks the loop, the last hit's effectiveness text and the hit count
+-- are still emitted, then ONE trailing seteffectwithchance roll for the
+-- whole move, then the caller's faint check. Every current entry sets it;
+-- see resolveMultiHit.
 BattleEngine.MULTI_HIT_MOVES = {
-  [29] = { fixed = nil }, -- EFFECT_MULTI_HIT (Double Slap, Comet Punch, Fury Attack, Pin Missile,
-                          -- Spike Cannon, Barrage, Fury Swipes, Bone Rush, Arm Thrust, Bullet Seed,
-                          -- Icicle Spear, Rock Blast): rolled 2-5 hits.
-  [44] = { fixed = 2 },   -- EFFECT_DOUBLE_HIT (Double Kick, Bonemerang): always exactly 2 hits.
-  [77] = { fixed = 2, statusKind = "poison" }, -- EFFECT_TWINEEDLE: 2 hits, then one 20% poison roll.
+  [29] = { fixed = nil, sourceTail = true }, -- EFFECT_MULTI_HIT (Double Slap, Comet Punch, Fury Attack,
+                          -- Pin Missile, Spike Cannon, Barrage, Fury Swipes, Bone Rush, Arm Thrust,
+                          -- Bullet Seed, Icicle Spear, Rock Blast): rolled 2-5 hits.
+  [44] = { fixed = 2, sourceTail = true },   -- EFFECT_DOUBLE_HIT (Double Kick, Bonemerang): always 2 hits.
+  [77] = { fixed = 2, sourceTail = true, statusKind = "poison" }, -- EFFECT_TWINEEDLE: 2 hits, then one
+                                                                  -- 20% poison roll.
 }
 
 -- The real screen family: a self-target (real MOVE_TARGET_USER, same
@@ -2824,25 +2828,38 @@ end
 -- knows how to animate a single hit needs no new event types to animate a
 -- multi-hit sequence.
 --
--- Two tails, selected by `entry.statusKind`:
---   * Entries WITH statusKind (EFFECT_TWINEEDLE, slice L1) follow the source
---     tail exactly (data/battle_scripts_1.s:613-655): a target at 0 HP
---     BREAKS the loop (jumpifhasnohp BS_TARGET -> MultiHitPrintStrings, no
---     in-loop checkFaint); {type="multiHit", hits=<hits landed>} is then
---     emitted ("Hit N time(s)!"); then ONE seteffectwithchance roll for the
---     whole move (BattleScript_MultiHitEnd), whose SetMoveEffect returns on
---     the 0-HP guard after a KO; the caller's ordinary defender faint check
---     (runTurn) emits `faint` after all of that (tryfaintmon). The no-effect
---     exit also reaches MultiHitEnd and draws the roll (unreachable for Bug).
---   * Entries WITHOUT statusKind (29, 44) keep the older shape: checkFaint
---     runs after every landed hit, so ANY KO during the sequence (including
---     the final hit) emits `faint` and omits {type="multiHit"}, and the
---     trailing seteffectwithchance `% 100` draw is not spent on landed or
---     no-effect paths. Source prints the count before the faint and always
---     draws that roll; this is a tracked divergence scheduled as a separate
---     follow-up (see the status-leftovers proposal's Risks), not fixed here.
---     Note the KO need not end the battle: with a replacement available
---     checkFaint leaves a forced switch pending instead.
+-- Two tails, selected by `entry.sourceTail` (its own flag since the
+-- multi-hit tail follow-up; L1 keyed it on `statusKind`, L1 review F2):
+--   * Entries WITH sourceTail (every current entry: 29, 44 and 77) follow
+--     the source tail exactly (data/battle_scripts_1.s:613-655):
+--       - a target at 0 HP BREAKS the loop (jumpifhasnohp BS_TARGET, or
+--         decrementmultihit reaching 0, both -> MultiHitPrintStrings); there
+--         is no in-loop checkFaint;
+--       - the per-hit damage events carry no effectiveness flags: the loop
+--         body has critmessage but no resultmessage (:633). The single
+--         `resultmessage` at MultiHitPrintStrings (:645) reports the
+--         LAST landed hit's flags (movevaluescleanup resets them per hit),
+--         so they ride on the multiHit event, which the controller prints
+--         before "Hit N time(s)!";
+--       - {type="multiHit", hits=<hits landed>} is then emitted (:646-649);
+--       - then ONE seteffectwithchance (BattleScript_MultiHitEnd, :652)
+--         for the whole move. Its `Random() % 100` is the first `&&`
+--         operand (src/battle_script_commands.c:2789), so it is drawn on
+--         every path that reaches MultiHitEnd whatever the effect byte and
+--         secondaryEffectChance: for 29/44 the byte is 0 (`setbyte
+--         sMULTIHIT_EFFECT, 0`, :612, :845; chance 0 in battle_moves.h) and
+--         the draw applies nothing; for 77 SetMoveEffect returns on the
+--         0-HP guard after a KO;
+--       - the caller's ordinary defender faint check (runTurn) emits
+--         `faint` (and `forcedSwitchNeeded` when a replacement exists)
+--         after all of that (tryfaintmon BS_TARGET, :653).
+--     The no-effect exit (MultiHitNoMoreHits -> resultmessage "It doesn't
+--     affect..." -> jumpifmovehadnoeffect MultiHitEnd, :624, :642-647)
+--     emits no count but still draws the roll (reachable for 29/44, e.g.
+--     Double Kick or Fury Attack against a Ghost; unreachable for Bug).
+--   * Entries WITHOUT sourceTail keep the pre-follow-up shape (checkFaint
+--     after every landed hit, no count after a KO, effectiveness on every
+--     damage event, no trailing roll). No current entry uses it.
 function BattleEngine:resolveMultiHit(attackerSide, attacker, defenderSide, defender, move, entry, events)
   local hitCount
   if entry.fixed then
@@ -2850,9 +2867,12 @@ function BattleEngine:resolveMultiHit(attackerSide, attacker, defenderSide, defe
   else
     hitCount = BattleFormulas.rollMultiHitCount(self.rng)
   end
-  local sourceTail = entry.statusKind ~= nil
+  local sourceTail = entry.sourceTail == true
 
   local hits = 0
+  -- The last landed hit's typecalc flags, for the single post-loop
+  -- resultmessage (source tail only).
+  local lastFlags
   for i = 1, hitCount do
     -- Real jumpifhasnohp BS_TARGET (top of BattleScript_MultiHitLoop): stop
     -- immediately if an earlier hit in this same sequence already fainted
@@ -2879,8 +2899,9 @@ function BattleEngine:resolveMultiHit(attackerSide, attacker, defenderSide, defe
       -- just this one hit -- a type-immune target takes zero hits total.
       events[#events + 1] = { type = "noEffect", side = attackerSide, target = defenderSide }
       if sourceTail then
-        -- MultiHitNoMoreHits -> PrintStrings (no count) -> MultiHitEnd:
-        -- seteffectwithchance still draws and never applies (NO_EFFECT).
+        -- MultiHitNoMoreHits -> PrintStrings (resultmessage is the noEffect
+        -- text, no count) -> MultiHitEnd: seteffectwithchance still draws
+        -- (29/44/77 alike) and never applies (MOVE_RESULT_NO_EFFECT).
         BattleFormulas.secondaryEffectRoll(self.rng, move.secondaryEffectChance)
       end
       return
@@ -2892,7 +2913,16 @@ function BattleEngine:resolveMultiHit(attackerSide, attacker, defenderSide, defe
       events[#events + 1] = { type = "critical", side = attackerSide }
     end
 
-    self:applyDamage(attackerSide, defenderSide, defender, damage, flags, events)
+    if sourceTail then
+      -- No per-hit resultmessage in BattleScript_MultiHitLoop (bs1.s:619-
+      -- 640): the damage event carries no effectiveness text; it moves to
+      -- the multiHit event below.
+      lastFlags = flags
+      self:applyDamage(attackerSide, defenderSide, defender, damage,
+        { superEffective = false, notVeryEffective = false }, events)
+    else
+      self:applyDamage(attackerSide, defenderSide, defender, damage, flags, events)
+    end
     hits = hits + 1
 
     -- Older shape only (see above): tryfaintmon BS_TARGET checked every
@@ -2902,10 +2932,20 @@ function BattleEngine:resolveMultiHit(attackerSide, attacker, defenderSide, defe
     end
   end
 
-  events[#events + 1] = { type = "multiHit", side = attackerSide, hits = hits }
+  -- Reached with hits >= 1: on the source tail a KO breaks the loop
+  -- instead of returning, so the count is emitted for it too.
+  events[#events + 1] = {
+    type = "multiHit", side = attackerSide, hits = hits,
+    -- MultiHitPrintStrings' resultmessage (bs1.s:645), last hit's flags.
+    superEffective = (lastFlags and lastFlags.superEffective) == true,
+    notVeryEffective = (lastFlags and lastFlags.notVeryEffective) == true,
+  }
 
+  -- BattleScript_MultiHitEnd's seteffectwithchance: drawn for every source-
+  -- tail entry; only an entry with a statusKind can apply anything.
   if sourceTail
-      and BattleFormulas.secondaryEffectRoll(self.rng, move.secondaryEffectChance) then
+      and BattleFormulas.secondaryEffectRoll(self.rng, move.secondaryEffectChance)
+      and entry.statusKind then
     -- Shield Dust, 0 HP, Immunity, Poison/Steel type and an existing status
     -- all fail silently inside applySecondaryStatus (certain = false).
     self:applySecondaryStatus(defenderSide, entry.statusKind,

@@ -914,12 +914,17 @@ check("Struggle bypasses a real Ghost-type immunity to Normal",
 -- and damage roll, no repeat accuracy. Isolated with resolveMove directly
 -- so each RNG-draw-count assertion below is exact. Per-hit RNG shape is
 -- `crit, damageMultiplier` (values `1, 0` = no crit, 100% damage, same
--- convention as the rest of this file).
+-- convention as the rest of this file). Every landed or no-effect sequence
+-- then draws ONE trailing `% 100` (multi-hit tail follow-up): the
+-- seteffectwithchance at BattleScript_MultiHitEnd (data/battle_scripts_1.s
+-- :652) evaluates `Random() % 100` first (src/battle_script_commands.c
+-- :2789) even though 29/44 carry effect byte 0 and chance 0. The draw
+-- counts below were each raised by 1 on purpose for that roll.
 
 -- EFFECT_DOUBLE_HIT (Double Kick): always exactly 2 hits, ZERO hit-count
 -- RNG (real fixed `setmultihitcounter 2` arg) -- total draws = 1 accuracy +
--- 2*(crit+damage) = 5.
-battle = makeBattle({ 0, 1, 0, 1, 0 }, { { move = Data.MOVE_DOUBLE_KICK, pp = 30 } }, { { move = Data.MOVE_TACKLE, pp = 1 } })
+-- 2*(crit+damage) + 1 trailing `% 100` = 6.
+battle = makeBattle({ 0, 1, 0, 1, 0, 99 }, { { move = Data.MOVE_DOUBLE_KICK, pp = 30 } }, { { move = Data.MOVE_TACKLE, pp = 1 } })
 statEvents = {}
 battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, statEvents)
 local dmgEvents = {}
@@ -929,8 +934,10 @@ end
 check("Double Kick (EFFECT_DOUBLE_HIT) lands exactly 2 hits", #dmgEvents == 2, #dmgEvents)
 check("Double Kick's trailing multiHit event reports 2 hits",
   statEvents[#statEvents].type == "multiHit" and statEvents[#statEvents].hits == 2, statEvents[#statEvents])
-check("Double Kick consumes exactly 5 RNG draws (1 accuracy + 2*(crit+damage), zero hit-count RNG)",
-  battle.rng.draws == 5, battle.rng.draws)
+-- Was 5 before the multi-hit tail follow-up; +1 for MultiHitEnd's
+-- seteffectwithchance roll (bs1.s:652, bsc.c:2789).
+check("Double Kick consumes exactly 6 RNG draws (1 accuracy + 2*(crit+damage) + 1 trailing % 100, zero hit-count RNG)",
+  battle.rng.draws == 6, battle.rng.draws)
 
 -- Bonemerang: the other real EFFECT_DOUBLE_HIT move, confirming no
 -- per-move special-casing -- same fixed-2 behavior.
@@ -957,8 +964,9 @@ for _, e in ipairs(statEvents) do
   if e.type == "damage" then dmgEvents[#dmgEvents + 1] = e end
 end
 check("Double Slap's single-roll branch (first roll 1) lands exactly 3 hits", #dmgEvents == 3, #dmgEvents)
-check("single-roll branch consumes exactly 8 draws (1 acc + 1 hitcount + 3*(crit+damage))",
-  battle.rng.draws == 8, battle.rng.draws)
+-- Was 8; +1 for MultiHitEnd's seteffectwithchance roll (bs1.s:652).
+check("single-roll branch consumes exactly 9 draws (1 acc + 1 hitcount + 3*(crit+damage) + 1 % 100)",
+  battle.rng.draws == 9, battle.rng.draws)
 
 -- EFFECT_MULTI_HIT, "2 extra rolls" branch: first roll is 2 or 3, so a
 -- second roll picks the final count. First=3 (3&3=3>1), second=3
@@ -974,8 +982,9 @@ for _, e in ipairs(statEvents) do
   if e.type == "damage" then dmgEvents[#dmgEvents + 1] = e end
 end
 check("Fury Attack's two-roll branch (first=3, second=3) lands exactly 5 hits", #dmgEvents == 5, #dmgEvents)
-check("two-roll branch consumes exactly 13 draws (1 acc + 2 hitcount + 5*(crit+damage))",
-  battle.rng.draws == 13, battle.rng.draws)
+-- Was 13; +1 for MultiHitEnd's seteffectwithchance roll (bs1.s:652).
+check("two-roll branch consumes exactly 14 draws (1 acc + 2 hitcount + 5*(crit+damage) + 1 % 100)",
+  battle.rng.draws == 14, battle.rng.draws)
 
 -- Same two-roll branch, other end: first=2, second=0 -> (0&3)+2 = 2 hits.
 battle = makeBattle(
@@ -989,14 +998,23 @@ for _, e in ipairs(statEvents) do
   if e.type == "damage" then dmgEvents[#dmgEvents + 1] = e end
 end
 check("Fury Attack's two-roll branch (first=2, second=0) lands exactly 2 hits", #dmgEvents == 2, #dmgEvents)
-check("that two-roll branch consumes exactly 7 draws (1 acc + 2 hitcount + 2*(crit+damage))",
-  battle.rng.draws == 7, battle.rng.draws)
+-- Was 7 (design review F1 named this assertion); +1 for MultiHitEnd's
+-- seteffectwithchance roll (bs1.s:652).
+check("that two-roll branch consumes exactly 8 draws (1 acc + 2 hitcount + 2*(crit+damage) + 1 % 100)",
+  battle.rng.draws == 8, battle.rng.draws)
 
 -- Defender faints mid-sequence: the sequence stops the instant HP hits 0,
 -- landing fewer hits than the rolled count. Fury Attack rolled for 3 hits
 -- (single-roll branch, first=1), foe HP set to survive exactly one hit.
+-- Multi-hit tail follow-up (intentional change): source breaks the loop at
+-- `jumpifhasnohp BS_TARGET` -> BattleScript_MultiHitPrintStrings, prints
+-- "Hit 1 time(s)!" (data/battle_scripts_1.s:615, :646-649), draws
+-- MultiHitEnd's `% 100` (:652) and only then runs `tryfaintmon BS_TARGET`
+-- (:653), which is the CALLER's faint check here. So resolveMove itself no
+-- longer emits the faint; this test previously asserted the old in-loop
+-- faint and "no trailing multiHit" shape.
 battle = makeBattle(
-  { 0, 1, 1, 0, 1, 0, 1, 0 },
+  { 0, 1, 1, 0, 99 },
   { { move = Data.MOVE_FURY_ATTACK, pp = 20 } }, { { move = Data.MOVE_TACKLE, pp = 1 } }
 )
 battle.foe.hp = 1
@@ -1008,12 +1026,19 @@ for _, e in ipairs(statEvents) do
 end
 check("a defender that faints mid-sequence lands only 1 hit, not the full rolled 3",
   #dmgEvents == 1 and dmgEvents[1].hpRemaining == 0, #dmgEvents)
-check("the sequence ends with the defender's faint, no further hits attempted",
+check("a KO-terminated sequence still ends with multiHit hits=1 (bs1.s:646-649), not a faint",
+  statEvents[#statEvents].type == "multiHit" and statEvents[#statEvents].hits == 1, statEvents[#statEvents])
+local inMoveFaint = false
+for _, e in ipairs(statEvents) do
+  if e.type == "faint" then inMoveFaint = true end
+end
+check("resolveMultiHit emits no in-loop faint (tryfaintmon is after MultiHitEnd, bs1.s:653)", not inMoveFaint)
+check("a KO-terminated Fury Attack draws acc + hitcount + (crit, random) + the trailing % 100 = 5",
+  battle.rng.draws == 5, battle.rng.draws)
+battle:checkFaint(BattleEngine.SIDE_FOE, statEvents)
+check("the caller's faint check then emits the faint and ends the battle as playerWon",
   statEvents[#statEvents - 1].type == "faint" and statEvents[#statEvents - 1].side == BattleEngine.SIDE_FOE
-    and statEvents[#statEvents].type == "battleEnd", statEvents)
-check("a faint-terminated sequence emits no trailing multiHit summary event",
-  statEvents[#statEvents].type ~= "multiHit" and statEvents[#statEvents - 1].type ~= "multiHit")
-check("the mid-sequence faint also ends the battle as playerWon", battle.outcome == "playerWon")
+    and statEvents[#statEvents].type == "battleEnd" and battle.outcome == "playerWon", statEvents)
 
 -- Type-immune target: the entire sequence stops at zero hits, not "immune
 -- hits skipped, others land." Confirmed only reachable on the first hit
@@ -1024,13 +1049,16 @@ local groundFoeMulti = BattleEngine.makeBattler({ species = 0, level = 5, stats 
 local electricPlayerMulti = BattleEngine.makeBattler({ species = 0, level = 5, stats = bulbaStats, types = { Data.TYPE_ELECTRIC, Data.TYPE_ELECTRIC }, moves = { { move = 996, pp = 1 } } })
 multiHitMoves[996] = { effect = 29, power = 40, type = Data.TYPE_ELECTRIC, accuracy = 100, pp = 1,
                        secondaryEffectChance = 0, target = 0, priority = 0, flags = 0 }
-battle = BattleEngine.new({ player = electricPlayerMulti, foe = groundFoeMulti, moves = multiHitMoves, typeChart = Data.typeChart, rng = scriptedRng({ 0, 1, 1 }) })
+battle = BattleEngine.new({ player = electricPlayerMulti, foe = groundFoeMulti, moves = multiHitMoves, typeChart = Data.typeChart, rng = scriptedRng({ 0, 1, 1, 0 }) })
 statEvents = {}
 battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, statEvents)
 check("a type-immune multi-hit move emits a single noEffect and zero damage events",
   statEvents[2].type == "noEffect" and #statEvents == 2, statEvents)
-check("no-effect stops before adjustnormaldamage's Random() call -- only accuracy+hitcount+crit consumed",
-  battle.rng.draws == 3, battle.rng.draws)
+-- Was 3 (accuracy+hitcount+crit); multi-hit tail follow-up adds the
+-- trailing `% 100`: MultiHitNoMoreHits -> PrintStrings -> jumpifmovehadnoeffect
+-- MultiHitEnd -> seteffectwithchance (bs1.s:624, :642-647, :652; bsc.c:2789).
+check("no-effect stops before adjustnormaldamage's Random() call -- accuracy+hitcount+crit, then the trailing % 100",
+  battle.rng.draws == 4, battle.rng.draws)
 
 -- A miss never reaches setmultihitcounter at all (real script:
 -- accuracycheck -> attackstring -> ppreduce -> setmultihitcounter -- the
