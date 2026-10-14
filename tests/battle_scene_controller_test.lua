@@ -648,5 +648,28 @@ do
     tostring(ctrl.afterMessages))
 end
 
+-- Status slice S2 texts (battle_message.c lines).
+do
+  local c = controller()
+  local m = c:_eventMessages({
+    { type = "statusApplied", side = "foe", kind = "poison" },
+    { type = "statusApplied", side = "foe", kind = "toxic" },
+    { type = "statusApplied", side = "player", kind = "burn" },
+    { type = "statusApplied", side = "player", kind = "freeze" },
+    { type = "statusApplied", side = "foe", kind = "paralysis" },
+    { type = "statusPrevented", side = "foe", kind = "paralysis", ability = 7 },
+    { type = "statusPrevented", side = "player", kind = "poison", ability = 17 },
+    { type = "statusPrevented", side = "foe", kind = "burn", ability = 41 },
+  })
+  check("was poisoned (:88)", m[1].text == "CHARMANDER\nwas poisoned!", m[1].text)
+  check("badly poisoned (:92)", m[2].text == "CHARMANDER is badly\npoisoned!", m[2].text)
+  check("was burned (:94)", m[3].text == "BULBASAUR was burned!", m[3].text)
+  check("was frozen solid (:98)", m[4].text == "BULBASAUR was\nfrozen solid!", m[4].text)
+  check("may be unable to move (:104)", m[5].text == "CHARMANDER is paralyzed!\nIt may be unable to move!", m[5].text)
+  check("Limber prevents paralysis (:270)", m[6].text == "CHARMANDER's LIMBER\nprevents paralysis!", m[6].text)
+  check("Immunity prevents poisoning (:272)", m[7].text == "BULBASAUR's IMMUNITY\nprevents poisoning!", m[7].text)
+  check("Water Veil prevents burns (:280)", m[8].text == "CHARMANDER's WATER VEIL\nprevents burns!", m[8].text)
+end
+
 print(("%d passed, %d failed"):format(passed, failed))
 os.exit(failed == 0 and 0 or 1)

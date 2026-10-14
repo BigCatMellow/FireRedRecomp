@@ -47,10 +47,11 @@ check("real Lv5 Bulbasaur fixture stats are HP19/Atk9/Speed9", bulbaStats.hp == 
 check("real Lv5 Charmander fixture stats are HP18/SpA11/Speed11", charStats.hp == 18 and charStats.spAttack == 11 and charStats.speed == 11)
 
 -- Charmander is faster. Each successful attack takes accuracy/crit/random
--- draws. `0,1,0` means hit, no crit, 100% damage. Ember's real direct
+-- draws. `0,1,0` means hit, no crit, 100% damage. Ember (EFFECT_BURN_HIT)
+-- then takes its seteffectwithchance roll: 99 > 10 means no burn. Ember's real direct
 -- damage is 14, Tackle's is 4 (Bulbasaur is not Normal-type).
 local battle = makeBattle(
-  { 0, 1, 0, 0, 1, 0, 0, 1, 0 },
+  { 0, 1, 0, 99, 0, 1, 0, 0, 1, 0 },
   { { move = Data.MOVE_TACKLE, pp = 35 } },
   { { move = Data.MOVE_EMBER, pp = 25 } }
 )
@@ -59,7 +60,7 @@ check("faster foe uses Ember first", events[2].type == "useMove" and events[2].s
 check("Ember event reports real 14 damage", events[3].type == "damage" and events[3].amount == 14 and events[3].hpRemaining == 5, events[3] and events[3].amount)
 check("player still gets its turn while alive", events[4].type == "useMove" and events[4].side == "player")
 check("Tackle event reports real 4 damage", events[5].type == "damage" and events[5].amount == 4 and events[5].hpRemaining == 14, events[5] and events[5].amount)
-check("both attacks used exactly six RNG draws", battle.rng.draws == 6, battle.rng.draws)
+check("both attacks used exactly seven RNG draws (Ember's burn roll)", battle.rng.draws == 7, battle.rng.draws)
 check("PP is deducted from both successful moves", battle.player.moves[1].pp == 34 and battle.foe.moves[1].pp == 24)
 
 events = battle:runTurn({ action = "move", moveSlot = 1 }, { action = "move", moveSlot = 1 })
@@ -374,9 +375,9 @@ check("successful fast run consumes no RNG and no foe PP", battle.rng.draws == 0
 -- shake draws from the same global RNG stream as the ensuing foe attack.
 -- At full HP and catch rate 45, catch value=15 and threshold=32767: draw 0
 -- passes (one shake), draw 65535 fails, then the foe's hit consumes its real
--- accuracy/crit/damage draws 0,1,0.
+-- accuracy/crit/damage draws 0,1,0 and Ember's burn roll 99.
 battle = makeBattle(
-  { 0, 65535, 0, 1, 0 },
+  { 0, 65535, 0, 1, 0, 99 },
   { { move = Data.MOVE_TACKLE, pp = 1 } },
   { { move = Data.MOVE_EMBER, pp = 1 } },
   45
@@ -385,7 +386,7 @@ events = battle:runTurn({ action = "capture" }, { action = "move", moveSlot = 1 
 check("Poke Ball resolves before the foe move", events[2].type == "throwBall" and events[3].type == "capture")
 check("failed capture exposes one source shake", events[3].success == false and events[3].shakes == 1, events[3].shakes)
 check("foe attacks after failed capture", events[4].type == "useMove" and events[4].side == "foe")
-check("capture failure and foe attack share exact RNG stream", battle.rng.draws == 5, battle.rng.draws)
+check("capture failure and foe attack share exact RNG stream", battle.rng.draws == 6, battle.rng.draws)
 check("failed capture does not end battle", battle.outcome == nil)
 
 -- Four passing shake draws catch and end the battle before the foe can act.
@@ -801,7 +802,7 @@ check("unsupported zero-power move fails loudly", not ok)
 -- old documented no-PP stub. `0,1,0` is Struggle's own accuracy/crit/
 -- damage roll (hit, no crit, 100% multiplier); Struggle's real EFFECT_
 -- RECOIL=48 damage/recoil math is exercised again below in more detail.
-battle = makeBattle({ 0, 1, 0, 0, 1, 0 }, { { move = Data.MOVE_TACKLE, pp = 0 } }, { { move = Data.MOVE_EMBER, pp = 1 } })
+battle = makeBattle({ 0, 1, 0, 99, 0, 1, 0 }, { { move = Data.MOVE_TACKLE, pp = 0 } }, { { move = Data.MOVE_EMBER, pp = 1 } })
 events = battle:runTurn({ action = "move", moveSlot = 1 }, { action = "move", moveSlot = 1 })
 local struggleUse
 for _, e in ipairs(events) do
@@ -820,7 +821,7 @@ check("Struggle's own slot PP is never touched by the auto-trigger",
 -- (AreAllMovesUnusable only fires when EVERY slot is unusable) that this
 -- specific case is NOT an auto-Struggle trigger; the pre-existing no-op
 -- {type="noPP"} path is correct here and is preserved unchanged.
-battle = makeBattle({ 0, 1, 0 },
+battle = makeBattle({ 0, 1, 0, 99 },
   { { move = Data.MOVE_TACKLE, pp = 0 }, { move = Data.MOVE_EMBER, pp = 25 } },
   { { move = Data.MOVE_EMBER, pp = 1 } })
 events = battle:runTurn({ action = "move", moveSlot = 1 }, { action = "move", moveSlot = 1 })
@@ -834,7 +835,7 @@ check("selecting one empty slot while another still has PP still no-ops with noP
 -- the requested slot is even looked at. Passing moveSlot=2 (itself a real,
 -- empty, 0-PP slot) must still resolve Struggle's own real data
 -- (self.moves[165]), not slot 2's move.
-battle = makeBattle({ 0, 1, 0, 0, 1, 0 },
+battle = makeBattle({ 0, 1, 0, 99, 0, 1, 0 },
   { { move = Data.MOVE_TACKLE, pp = 0 }, { move = Data.MOVE_EMBER, pp = 0 } },
   { { move = Data.MOVE_EMBER, pp = 1 } })
 events = battle:runTurn({ action = "move", moveSlot = 2 }, { action = "move", moveSlot = 1 })
@@ -857,9 +858,9 @@ check("neither real move slot's PP changes when Struggle is auto-selected",
 -- reachable via an ordinary roll -- confirming Struggle really runs
 -- BattleFormulas.accuracyCheck with no special-casing, not a hidden
 -- always-hit shortcut. Foe (faster) uses Ember first as a normal hit
--- (draws 1-3), then the boosted-evasion foe causes the player's Struggle
--- accuracy roll (draw 4) to miss.
-battle = makeBattle({ 0, 1, 0, 50 }, { { move = Data.MOVE_TACKLE, pp = 0 } }, { { move = Data.MOVE_EMBER, pp = 1 } })
+-- (draws 1-3, burn roll draw 4), then the boosted-evasion foe causes the
+-- player's Struggle accuracy roll (draw 5) to miss.
+battle = makeBattle({ 0, 1, 0, 99, 50 }, { { move = Data.MOVE_TACKLE, pp = 0 } }, { { move = Data.MOVE_EMBER, pp = 1 } })
 battle.foe.statStages.evasion = 12
 events = battle:runTurn({ action = "move", moveSlot = 1 }, { action = "move", moveSlot = 1 })
 local playerMiss
@@ -876,7 +877,7 @@ check("a missed Struggle still consumes no PP from any real slot",
 -- this reuses the exact same recoil pipeline Take Down/Submission already
 -- exercise above, so a passing assertion here is also a regression check
 -- that recoil is still wired correctly for Struggle specifically.
-battle = makeBattle({ 0, 1, 0, 0, 1, 0 }, { { move = Data.MOVE_TACKLE, pp = 0 } }, { { move = Data.MOVE_EMBER, pp = 1 } })
+battle = makeBattle({ 0, 1, 0, 99, 0, 1, 0 }, { { move = Data.MOVE_TACKLE, pp = 0 } }, { { move = Data.MOVE_EMBER, pp = 1 } })
 events = battle:runTurn({ action = "move", moveSlot = 1 }, { action = "move", moveSlot = 1 })
 local dmgEvent, recoilEvent
 for _, e in ipairs(events) do

@@ -490,6 +490,168 @@ do
 end
 
 ---------------------------------------------------------------------------
+-- Slice S2: status on hit (seteffectwithchance -> SetMoveEffect)
+---------------------------------------------------------------------------
+-- src/data/battle_moves.h records at the pin.
+local MOVE_POISON_STING, MOVE_THUNDER_SHOCK, MOVE_ICE_BEAM = 40, 84, 58
+local MOVE_ZAP_CANNON, MOVE_POISON_FANG, MOVE_POISON_TAIL = 192, 305, 342
+local PF = 0x13 -- contact/protect/mirror flags; not read by the engine
+moves[MOVE_POISON_STING] = { effect = 2, power = 15, type = Data.TYPE_POISON, accuracy = 100, pp = 35,
+  secondaryEffectChance = 30, target = 0, priority = 0, flags = PF }
+moves[MOVE_THUNDER_SHOCK] = { effect = 6, power = 40, type = Data.TYPE_ELECTRIC, accuracy = 100, pp = 30,
+  secondaryEffectChance = 10, target = 0, priority = 0, flags = PF }
+moves[MOVE_ICE_BEAM] = { effect = 5, power = 95, type = Data.TYPE_ICE, accuracy = 100, pp = 10,
+  secondaryEffectChance = 10, target = 0, priority = 0, flags = PF }
+moves[MOVE_ZAP_CANNON] = { effect = 6, power = 100, type = Data.TYPE_ELECTRIC, accuracy = 50, pp = 5,
+  secondaryEffectChance = 100, target = 0, priority = 0, flags = PF }
+moves[MOVE_POISON_FANG] = { effect = 202, power = 50, type = Data.TYPE_POISON, accuracy = 100, pp = 15,
+  secondaryEffectChance = 30, target = 0, priority = 0, flags = PF }
+moves[MOVE_POISON_TAIL] = { effect = 209, power = 50, type = Data.TYPE_POISON, accuracy = 100, pp = 25,
+  secondaryEffectChance = 10, target = 0, priority = 0, flags = PF }
+
+-- One player hit, then the foe misses: acc 0, crit 1, random 0, effect roll.
+local function hitWith(move, roll, opts)
+  opts = opts or {}
+  opts.playerMove = move
+  opts.foeHP = opts.foeHP or 400
+  local b = battle({ 0, 1, 0, roll, MISS }, opts)
+  if opts.foeAbility then b.foe.ability = opts.foeAbility end
+  local events = b:runTurn(MOVE, MOVE)
+  return b, events
+end
+
+do
+  local b, events = hitWith(Data.MOVE_EMBER, 10)
+  local dmg, di = find(events, "damage", "player")
+  local st, si = find(events, "statusApplied", "foe")
+  check("Ember roll 10 <= 10 burns after the damage", st and st.kind == "burn" and di < si, types(events))
+  check("burn is set on the target", S.isBurned(b.foe.status))
+  check("newly burned foe ticks at end of turn", find(events, "statusDamage", "foe")
+    and find(events, "statusDamage", "foe").kind == "burn")
+  check("effect roll is one draw between damage and the foe's move", b.rng.draws == 5, b.rng.draws)
+  b, events = hitWith(Data.MOVE_EMBER, 11)
+  check("Ember roll 11 does not burn", not find(events, "statusApplied") and b.foe.status == 0)
+end
+
+do
+  local b, events = hitWith(Data.MOVE_EMBER, 0, { foeTypes = { Data.TYPE_FIRE, Data.TYPE_FIRE } })
+  check("Fire-type target is silently immune to burn", not find(events, "statusApplied")
+    and not find(events, "statusPrevented") and b.foe.status == 0)
+  check("immune target still consumes the roll", b.rng.draws == 5, b.rng.draws)
+  b, events = hitWith(Data.MOVE_EMBER, 0, { foeStatus = S.PARALYSIS })
+  check("already-statused target is silently unchanged", not find(events, "statusApplied")
+    and b.foe.status == S.PARALYSIS)
+end
+
+do
+  local b, events = hitWith(Data.MOVE_EMBER, 0, { foeCurrentHP = 1 })
+  check("a KO hit applies no status (target at 0 HP)", find(events, "faint", "foe")
+    and not find(events, "statusApplied") and b.foe.status == 0, types(events))
+  check("the KO hit still consumed its roll", b.rng.draws == 4, b.rng.draws)
+end
+
+do
+  -- Thunder Shock vs Ground: noEffect still draws the effect roll; the
+  -- foe's miss is draw 5.
+  local b, events = hitWith(MOVE_THUNDER_SHOCK, 0, { foeTypes = { Data.TYPE_GROUND, Data.TYPE_GROUND } })
+  check("no-effect hit consumes the effect roll", find(events, "noEffect") and b.rng.draws == 5
+    and b.foe.status == 0, b.rng.draws)
+  b, events = hitWith(MOVE_THUNDER_SHOCK, 0, { foeTypes = { Data.TYPE_ELECTRIC, Data.TYPE_ELECTRIC } })
+  check("Electric type is paralyzed by Thunder Shock (Gen 3)", find(events, "statusApplied")
+    and S.isParalyzed(b.foe.status))
+end
+
+do
+  local b, events = hitWith(MOVE_POISON_STING, 0)
+  check("Poison Sting poisons", find(events, "statusApplied").kind == "poison" and S.isPoisoned(b.foe.status))
+  b, events = hitWith(MOVE_POISON_STING, 0, { foeTypes = { Data.TYPE_STEEL, Data.TYPE_STEEL } })
+  check("Steel target: Poison Sting has no effect and no status", b.foe.status == 0)
+  b, events = hitWith(MOVE_POISON_STING, 0, { foeTypes = { Data.TYPE_NORMAL, Data.TYPE_POISON } })
+  check("Poison target is immune to poison", b.foe.status == 0 and not find(events, "statusApplied"))
+end
+
+do
+  local b, events = hitWith(MOVE_POISON_FANG, 30)
+  check("Poison Fang badly poisons with counter then ticking 1", find(events, "statusApplied").kind == "toxic"
+    and S.isBadlyPoisoned(b.foe.status) and S.toxicCounter(b.foe.status) == 1
+    and find(events, "statusDamage", "foe").amount == math.max(1, math.floor(400 / 16)), types(events))
+  b, events = hitWith(MOVE_POISON_FANG, 31)
+  check("Poison Fang roll 31 misses its 30% chance", b.foe.status == 0)
+end
+
+do
+  -- Poison Tail adds one crit stage: draw 8 (8 % 8 == 0) crits, while the
+  -- same draw does not crit an ordinary hit (8 % 16 ~= 0).
+  local b = battle({ 0, 8, 0, 99, MISS }, { playerMove = MOVE_POISON_TAIL, foeHP = 400 })
+  local events = b:runTurn(MOVE, MOVE)
+  check("Poison Tail uses crit stage 1", find(events, "critical", "player") ~= nil, types(events))
+  b = battle({ 0, 8, 0, 99, MISS }, { playerMove = MOVE_POISON_STING, foeHP = 400 })
+  events = b:runTurn(MOVE, MOVE)
+  check("Poison Sting stays at crit stage 0", not find(events, "critical"), types(events))
+  b, events = hitWith(MOVE_POISON_TAIL, 10)
+  check("Poison Tail poisons on its 10% roll", find(events, "statusApplied").kind == "poison")
+end
+
+do
+  local b, events = hitWith(MOVE_ICE_BEAM, 0)
+  check("Ice Beam freezes", find(events, "statusApplied").kind == "freeze" and S.isFrozen(b.foe.status))
+  b, events = hitWith(MOVE_ICE_BEAM, 0, { foeTypes = { Data.TYPE_ICE, Data.TYPE_ICE } })
+  check("Ice type cannot be frozen", b.foe.status == 0)
+  b, events = hitWith(MOVE_ICE_BEAM, 0, { foeAbility = BattleEngine.ABILITY_MAGMA_ARMOR })
+  check("Magma Armor silently prevents freezing", b.foe.status == 0 and not find(events, "statusPrevented"))
+  -- The frozen foe then takes a Fire hit: no burn (already statused), then
+  -- the move-end defrost.
+  b = battle({ 0, 1, 0, 0, MISS }, { playerMove = Data.MOVE_EMBER, foeStatus = S.FREEZE, foeHP = 400 })
+  events = b:runTurn(MOVE, MOVE)
+  check("Ember on a frozen foe: no burn, then defrost", not find(events, "statusApplied")
+    and find(events, "defrostedByFire") and b.foe.status == 0, types(events))
+end
+
+do
+  local b, events = hitWith(MOVE_POISON_STING, 0, { foeAbility = BattleEngine.ABILITY_SHIELD_DUST })
+  check("Shield Dust blocks the secondary status", b.foe.status == 0 and not find(events, "statusPrevented"))
+  b, events = hitWith(MOVE_POISON_STING, 0, { foeAbility = BattleEngine.ABILITY_IMMUNITY })
+  check("Immunity silently blocks a non-certain poison", b.foe.status == 0 and not find(events, "statusPrevented"))
+  b, events = hitWith(MOVE_POISON_FANG, 0, { foeAbility = BattleEngine.ABILITY_IMMUNITY })
+  check("Immunity silently blocks Poison Fang's toxic", b.foe.status == 0 and not find(events, "statusPrevented"))
+  b, events = hitWith(Data.MOVE_EMBER, 0, { foeAbility = BattleEngine.ABILITY_WATER_VEIL })
+  check("Water Veil silently blocks a non-certain burn", b.foe.status == 0 and not find(events, "statusPrevented"))
+  b, events = hitWith(MOVE_THUNDER_SHOCK, 0, { foeAbility = BattleEngine.ABILITY_LIMBER })
+  check("Limber silently blocks a non-certain paralysis", b.foe.status == 0 and not find(events, "statusPrevented"))
+end
+
+do
+  -- Zap Cannon (100%): the roll is still drawn (Random() % 100 <= 100),
+  -- then SetMoveEffect runs with MOVE_EFFECT_CERTAIN.
+  local b, events = hitWith(MOVE_ZAP_CANNON, 99)
+  -- Draws: 4 for the hit, then the now-paralyzed foe's canceller draw
+  -- (99 % 4 ~= 0), then its Tackle's three.
+  check("Zap Cannon paralyzes on any roll", S.isParalyzed(b.foe.status) and b.rng.draws == 8, b.rng.draws)
+  b, events = hitWith(MOVE_ZAP_CANNON, 99, { foeAbility = BattleEngine.ABILITY_LIMBER })
+  local p = find(events, "statusPrevented", "foe")
+  check("certain paralysis vs Limber reports the ability", p and p.kind == "paralysis"
+    and p.ability == BattleEngine.ABILITY_LIMBER and b.foe.status == 0, types(events))
+  b, events = hitWith(MOVE_ZAP_CANNON, 99, { foeAbility = BattleEngine.ABILITY_SHIELD_DUST })
+  check("Shield Dust blocks even a certain secondary status", b.foe.status == 0
+    and not find(events, "statusPrevented"))
+end
+
+do
+  -- The engine's Poke Ball uses the foe's status: catch rate 45 at full HP
+  -- gives catch value 15 (threshold 32767) healthy, 22 (threshold 36157)
+  -- burned. Draw 34000 passes only the burned threshold.
+  local b = battle({ 34000, 65535, MISS }, { foeStatus = S.BURN, foeHP = 400 })
+  b.foe.catchRate = 45
+  local events = b:runTurn({ action = "capture" }, MOVE)
+  check("engine capture reads the foe's status (one shake only when burned)",
+    find(events, "capture") and find(events, "capture").shakes == 1, types(events))
+  b = battle({ 34000, MISS }, { foeHP = 400 })
+  b.foe.catchRate = 45
+  events = b:runTurn({ action = "capture" }, MOVE)
+  check("the same draw fails at once against a healthy foe", find(events, "capture").shakes == 0)
+end
+
+---------------------------------------------------------------------------
 -- Status-free battles keep their RNG sequence
 ---------------------------------------------------------------------------
 do

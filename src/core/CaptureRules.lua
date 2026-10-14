@@ -21,9 +21,9 @@
 --     pretend those required battle/map/dex inputs exist yet.
 --   statusNumerator/statusDenominator:
 --     after the HP formula, Sleep/Freeze multiply the catch value by 2;
---     Poison/Burn/Paralysis/Toxic multiply it by 15/10.  Decoding FireRed's
---     STATUS1_* bitfield is deliberately left to the later status-system
---     integration.  The default here is the real no-status multiplier 1/1.
+--     Poison/Burn/Paralysis/Toxic multiply it by 15/10.  `statusMultiplier`
+--     decodes the STATUS1_* word (StatusConditions); the default here is
+--     the real no-status multiplier 1/1.
 --
 -- Exact real integer order (all values are non-negative, so floor is C
 -- integer truncation):
@@ -59,6 +59,8 @@
 -- commands (`handleballthrow`, then `givecaughtmon`/GiveMonToPlayer and
 -- `trysetcaughtmondexflags`).  A successful result carries the real item id
 -- so the integration layer can perform those effects in the same separation.
+
+local StatusConditions = require("src.core.StatusConditions")
 
 local CaptureRules = {}
 
@@ -203,14 +205,32 @@ function CaptureRules.tryCapture(target, rng, modifiers)
   }
 end
 
--- The supported first vertical slice: ITEM_POKE_BALL (10/10 modifier), no
--- status multiplier.  Keeping this wrapper narrow prevents a caller from
--- accidentally claiming an unimplemented contextual ball or status policy.
+-- Real Cmd_handleballthrow status terms (src/battle_script_commands.c
+-- :9553-9556), applied after the HP term: STATUS1_SLEEP | STATUS1_FREEZE
+-- doubles the odds; STATUS1_POISON | BURN | PARALYSIS | TOXIC_POISON
+-- multiplies by 15/10. The two tests are separate `if`s in source; a valid
+-- status1 word can satisfy at most one. Returns numerator, denominator.
+function CaptureRules.statusMultiplier(status)
+  local S = StatusConditions
+  status = status or 0
+  local num, den = 1, 1
+  if S.isAsleep(status) or S.isFrozen(status) then num = num * 2 end
+  if S.isPoisoned(status) or S.isBurned(status) or S.isParalyzed(status)
+      or S.isBadlyPoisoned(status) then
+    num, den = num * 15, den * 10
+  end
+  return num, den
+end
+
+-- The supported vertical slice: ITEM_POKE_BALL (10/10 modifier) with the
+-- target's real status multiplier. Keeping this wrapper narrow prevents a
+-- caller from accidentally claiming an unimplemented contextual ball.
 function CaptureRules.tryPokeBall(target, rng)
+  local statusNumerator, statusDenominator = CaptureRules.statusMultiplier(target.status)
   return CaptureRules.tryCapture(target, rng, {
     ballMultiplierTenths = CaptureRules.POKE_BALL_MULTIPLIER_TENTHS,
-    statusNumerator = 1,
-    statusDenominator = 1,
+    statusNumerator = statusNumerator,
+    statusDenominator = statusDenominator,
     ballItemId = CaptureRules.ITEM_POKE_BALL,
   })
 end

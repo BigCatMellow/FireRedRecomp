@@ -181,6 +181,8 @@ local function move2x2(cursor, input, count)
   return nextCursor
 end
 
+local STATUS_ABILITY_NAMES = { [7] = "LIMBER", [17] = "IMMUNITY", [41] = "WATER VEIL" }
+
 function BattleSceneController:_eventMessages(events)
   local entries = {}
   local function add(text, extra)
@@ -371,6 +373,27 @@ function BattleSceneController:_eventMessages(events)
       add(name(event.side) .. " is paralyzed!\nIt can't move!") -- :106
     elseif event.type == "defrostedByFire" then
       add(name(event.side) .. " was\ndefrosted!") -- :101 PKMNWASDEFROSTED
+    elseif event.type == "statusApplied" then
+      -- sMoveEffectBS_Ptrs scripts (data/battle_scripts_1.s:3848-3881):
+      -- text names the effect battler.
+      local n = name(event.side)
+      if event.kind == "poison" then add(n .. "\nwas poisoned!") -- :88
+      elseif event.kind == "toxic" then add(n .. " is badly\npoisoned!") -- :92
+      elseif event.kind == "burn" then add(n .. " was burned!") -- :94
+      elseif event.kind == "freeze" then add(n .. " was\nfrozen solid!") -- :98
+      elseif event.kind == "paralysis" then add(n .. " is paralyzed!\nIt may be unable to move!") -- :104
+      elseif event.kind == "sleep" then add(n .. "\nfell asleep!") -- :83
+      end
+    elseif event.type == "statusPrevented" then
+      -- B_MSG_ABILITY_PREVENTS_MOVE_STATUS texts (battle_message.c:270,272,
+      -- 280) with gAbilityNames (src/data/text/abilities.h) for the three
+      -- abilities that can reach them.
+      local ability = STATUS_ABILITY_NAMES[event.ability] or "ABILITY"
+      local who = possessive(name(event.side)) .. " " .. ability
+      if event.kind == "burn" then add(who .. "\nprevents burns!")
+      elseif event.kind == "paralysis" then add(who .. "\nprevents paralysis!")
+      else add(who .. "\nprevents poisoning!")
+      end
     elseif event.type == "statusDamage" then
       -- Message before the HP update (printstring, then datahpupdate).
       if event.kind == "burn" then
