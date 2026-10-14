@@ -37,7 +37,7 @@ Only one primary status at a time (`SetMoveEffect` refuses when `status1 != 0`).
 Existing project hooks: `BattlePartyBridge.lua:149,171,188` already copies a
 `status` number between party record and battler and persists it;
 `CaptureRules.lua:22-33` already has a status multiplier hook defaulting to 1/1.
-`BattleEngine.lua` does not read `battler.status` anywhere today.
+`BattleEngine.lua` did not read `battler.status` when this was written; slice S1 ([task](../tasks/phase4-status-s1-groundwork.md)) now does.
 
 ## Application (`SetMoveEffect`, `src/battle_script_commands.c:2110-2350`)
 

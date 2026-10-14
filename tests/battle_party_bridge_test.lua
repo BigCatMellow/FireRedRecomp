@@ -80,6 +80,19 @@ check("bridge refreshes decoded metadata without changing identity",
   living.boxData.personality == generated.personality
     and living.moves[1].pp == 31 and living.moves[2].pp == 27)
 
+-- Status persistence (status-conditions design review F1/F2): flags and
+-- sleep turns persist; the battle-local toxic counter is masked to 0.
+battler.status = 128 + 5 * 256
+BattlePartyBridge.persistPartyBattler(living, battler)
+check("bad poison persists with its battle-local counter masked", living.status == 128, living.status)
+battler.status = 3
+BattlePartyBridge.persistPartyBattler(living, battler)
+check("sleep turns persist as-is", living.status == 3, living.status)
+check("persisted status reloads into a battler",
+  BattlePartyBridge.battlerFromParty(living, speciesTable).status == 3)
+battler.status = 0
+BattlePartyBridge.persistPartyBattler(living, battler)
+
 local bytes = SaveFileCodec.encodeSaveBlock1({
   playerPartyCount=1, playerParty={living},
 }, 0)

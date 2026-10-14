@@ -97,12 +97,16 @@
 --
 -- Real modifiers NOT ported here (all no-ops in this slice, each because
 -- the system it depends on doesn't exist yet): held items and their hold
--- effects, abilities, badge stat boosts, burn's attack halving, weather,
+-- effects, abilities, badge stat boosts, weather,
 -- Explosion's defense halving, double-battle spread-damage halving,
 -- Helping Hand, Charge, Flash Fire, Levitate and Wonder Guard. Each is a
 -- documented gap, not an approximation: the ported code paths above are
 -- byte-for-byte the real ones for a plain single-battle direct-damage move
 -- with no items/abilities/status.
+--
+-- 7b. Burn's physical halving (Guts exempt) and paralysis's turn-order
+--    speed `/4` ARE supported, reading the battler's status1 word through
+--    StatusConditions (see calculateBaseDamage and effectiveSpeed).
 --
 -- 8. Reflect / Light Screen halving IS supported, inside
 --    calculateBaseDamage -- see that function's own comment for the exact
@@ -115,6 +119,8 @@
 --    already-decided halving to a damage number. Real double-battle
 --    2*(damage/3) variant is out of scope; Brick Break's screen removal
 --    happens in BattleEngine before this halving is consulted.
+
+local StatusConditions = require("src.core.StatusConditions")
 
 local BattleFormulas = {}
 
@@ -153,6 +159,7 @@ end
 -- the real tables index directly.
 BattleFormulas.MIN_STAT_STAGE = 0
 BattleFormulas.DEFAULT_STAT_STAGE = 6
+BattleFormulas.ABILITY_GUTS = 62 -- include/constants/abilities.h:66
 BattleFormulas.MAX_STAT_STAGE = 12
 
 -- gStatStageRatios, src/pokemon.c:1442. Indexed by real stage 0..12.
@@ -253,6 +260,13 @@ function BattleFormulas.calculateBaseDamage(attacker, defender, move, isCrit, de
     damage = idiv(damage, damageHelper)
     damage = idiv(damage, 50)
 
+    -- Real burn halving (src/pokemon.c:2539-2541): after /50, before
+    -- Reflect, with no crit gate; Guts (ability 62) is exempt.
+    if StatusConditions.isBurned(attacker.status)
+        and attacker.ability ~= BattleFormulas.ABILITY_GUTS then
+      damage = idiv(damage, 2)
+    end
+
     -- Real Reflect halving (src/pokemon.c ~2542): `if ((sideStatus &
     -- SIDE_STATUS_REFLECT) && gCritMultiplier == 1) damage /= 2;` -- gated
     -- on a NON-crit hit (a crit bypasses screens entirely), tested against
@@ -264,7 +278,7 @@ function BattleFormulas.calculateBaseDamage(attacker, defender, move, isCrit, de
 
     -- Real physical-only minimum-1 clamp (see header). This must run AFTER
     -- the Reflect halving above, not before -- real source order is
-    -- `.../50 -> (burn halving, not modeled) -> Reflect halving ->
+    -- `.../50 -> burn halving -> Reflect halving ->
     -- (double-battle halving, not modeled) -> if (damage == 0) damage = 1`.
     -- A 1-damage hit halved by Reflect truncates to 0 and is then clamped
     -- back up to 1 by this same real clamp (not a special "Reflect can't
@@ -495,9 +509,15 @@ function BattleFormulas.rollMultiHitCount(rng)
 end
 
 -- Real speed used for turn order (GetWhoStrikesFirst, src/battle_main.c
--- :3428). Paralysis/items/abilities/badges deliberately not modeled.
+-- :3428-3452): stat stage, then (badge boost and Macho Brace, not modeled)
+-- then paralysis `/= 4`, then (Quick Claw, not modeled). Run odds use the
+-- raw stat instead (TryRunFromBattle), so only turn order calls this.
 function BattleFormulas.effectiveSpeed(battler)
-  return BattleFormulas.applyStatMod(battler.speed, stageOf(battler, "speed"))
+  local speed = BattleFormulas.applyStatMod(battler.speed, stageOf(battler, "speed"))
+  if StatusConditions.isParalyzed(battler.status) then
+    speed = idiv(speed, 4)
+  end
+  return speed
 end
 
 -- Real GetWhoStrikesFirst (src/battle_main.c:3400), reduced to the

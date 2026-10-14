@@ -584,5 +584,50 @@ do
   check("soft-boiled full HP uses sText_PkmnHPFull",p~=nil and f~=nil and p<f)
 end
 
+-- Status slice S1 source texts (c75f352 src/battle_message.c lines).
+do
+  local c = controller()
+  local m = c:_eventMessages({
+    { type = "fastAsleep", side = "player" },
+    { type = "wokeUp", side = "foe" },
+    { type = "frozenSolid", side = "player" },
+    { type = "thawed", side = "foe" },
+    { type = "defrostedByMove", side = "player", move = Data.MOVE_TACKLE },
+    { type = "fullyParalyzed", side = "foe" },
+    { type = "defrostedByFire", side = "foe" },
+  })
+  check("fast asleep text (:162)", m[1].text == "BULBASAUR is fast\nasleep.", m[1].text)
+  check("woke up text (:163)", m[2].text == "CHARMANDER woke up!", m[2].text)
+  check("is frozen solid text (:100)", m[3].text == "BULBASAUR is\nfrozen solid!", m[3].text)
+  check("canceller thaw text (:102)", m[4].text == "CHARMANDER was\ndefrosted!", m[4].text)
+  check("thaw-hit text names the move (:103)", m[5].text == "BULBASAUR was\ndefrosted by TACKLE!", m[5].text)
+  check("full paralysis text (:106)", m[6].text == "CHARMANDER is paralyzed!\nIt can't move!", m[6].text)
+  check("Fire defrost text names the target (:101)", m[7].text == "CHARMANDER was\ndefrosted!", m[7].text)
+  check("canceller texts carry no HP entry", m[1].hpSide == nil and m[6].hpSide == nil)
+
+  m = c:_eventMessages({
+    { type = "statusDamage", side = "player", kind = "poison", amount = 2, hpRemaining = 17 },
+    { type = "statusDamage", side = "foe", kind = "toxic", amount = 1, hpRemaining = 16 },
+    { type = "statusDamage", side = "foe", kind = "burn", amount = 2, hpRemaining = 14 },
+  })
+  check("poison tick text then HP (:90)", m[1].text == "BULBASAUR is hurt\nby poison!"
+    and m[2].text == nil and m[2].hpSide == "player" and m[2].hp == 17, m[1].text)
+  check("toxic tick uses the poison text", m[3].text == "CHARMANDER is hurt\nby poison!" and m[4].hp == 16)
+  check("burn tick text (:96)", m[5].text == "CHARMANDER is hurt\nby its burn!" and m[6].hpSide == "foe")
+end
+
+do
+  -- Through the real engine: a poisoned Bulbasaur's end-of-turn tick.
+  local c = controller()
+  c.engine.player.status = 8
+  local events = c.engine:runTurn({ action = "move", moveSlot = 1 }, { action = "move", moveSlot = 1 })
+  local m = c:_eventMessages(events)
+  local tick
+  for i, e in ipairs(m) do if e.text == "BULBASAUR is hurt\nby poison!" then tick = i end end
+  check("real engine poison tick reaches the poison text", tick ~= nil)
+  check("real engine poison tick is followed by the player's HP entry",
+    tick and m[tick + 1].hpSide == "player" and m[tick + 1].hp == c.engine.player.hp)
+end
+
 print(("%d passed, %d failed"):format(passed, failed))
 os.exit(failed == 0 and 0 or 1)

@@ -355,6 +355,30 @@ function BattleSceneController:_eventMessages(events)
       local screenName = event.screen == "reflect" and "REFLECT" or "LIGHT SCREEN"
       local prefix = event.side == "player" and "Your team's" or "The foe's"
       add(prefix .. " " .. screenName .. "\nwore off!")
+    elseif event.type == "fastAsleep" then
+      -- Status canceller/end-of-turn texts: c75f352 src/battle_message.c
+      -- line numbers in comments; scripts data/battle_scripts_1.s:3657-3718.
+      add(name(event.side) .. " is fast\nasleep.") -- :162
+    elseif event.type == "wokeUp" then
+      add(name(event.side) .. " woke up!") -- :163
+    elseif event.type == "frozenSolid" then
+      add(name(event.side) .. " is\nfrozen solid!") -- :100
+    elseif event.type == "thawed" then
+      add(name(event.side) .. " was\ndefrosted!") -- :102 PKMNWASDEFROSTED2
+    elseif event.type == "defrostedByMove" then
+      add(name(event.side) .. " was\ndefrosted by " .. self.moveName(event.move) .. "!") -- :103
+    elseif event.type == "fullyParalyzed" then
+      add(name(event.side) .. " is paralyzed!\nIt can't move!") -- :106
+    elseif event.type == "defrostedByFire" then
+      add(name(event.side) .. " was\ndefrosted!") -- :101 PKMNWASDEFROSTED
+    elseif event.type == "statusDamage" then
+      -- Message before the HP update (printstring, then datahpupdate).
+      if event.kind == "burn" then
+        add(name(event.side) .. " is hurt\nby its burn!") -- :96
+      else
+        add(name(event.side) .. " is hurt\nby poison!") -- :90 (toxic too)
+      end
+      entries[#entries + 1] = { hpSide = event.side, hp = event.hpRemaining }
     elseif event.type == "capture" then
       if event.success then
         add("Gotcha! " .. self.foeName .. " was caught!")

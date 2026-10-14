@@ -57,6 +57,15 @@
 --   {type="throwBall", side=, target=, ball=}     -- rules-only item use
 --   {type="capture", side=, target=, ball=, shakes=, success=,
 --    automatic=}                                   -- CaptureRules result
+--   {type="fastAsleep", side=}        -- sleep canceller: move not used, no PP
+--   {type="wokeUp", side=}            -- sleep counter reached 0; move proceeds
+--   {type="frozenSolid", side=}       -- freeze canceller: move not used, no PP
+--   {type="thawed", side=}            -- canceller thaw (20%); move proceeds
+--   {type="defrostedByMove", side=, move=} -- EFFECT_THAW_HIT user thawed
+--   {type="fullyParalyzed", side=}    -- paralysis canceller: move not used, no PP
+--   {type="defrostedByFire", side=<defender>} -- MOVEEND_DEFROST
+--   {type="statusDamage", side=, kind="poison"|"toxic"|"burn", amount=,
+--    hpRemaining=}                    -- end-of-turn status damage
 --   {type="battleEnd", outcome="playerWon"|"playerLost"|"ran"|"caught"}
 --
 -- Real turn structure ported, in real execution order:
@@ -213,7 +222,15 @@
 --     the right real thing without needing their own edit; only the
 --     "stop processing more actions" guards needed the extra
 --     awaitingForcedSwitch check described above.
---   * No status conditions, abilities, held items, weather,
+--   * Primary status (status1) EFFECTS are supported for a battler that
+--     already carries one (loaded from the party record or set by a later
+--     slice): sleep/freeze/paralysis move cancellers with their RNG,
+--     burn's physical halving and paralysis's turn-order speed (in
+--     BattleFormulas), Fire defrost at move end, end-of-turn poison/toxic/
+--     burn damage, and faint clearing status (resolveStatusCancellers,
+--     resolveMove, resolveStatusEndTurn, recordFaint). No move APPLIES a
+--     status yet; those families stay blocked until later slices.
+--   * No abilities, held items, weather,
 --     multi-turn/charging moves, trapping, forced switching, OHKO moves,
 --     double battles, trainer AI, or EXP/level-up on victory.
 --   * Pure single-stat stage-change moves (Growl/Tail Whip's full real
@@ -436,6 +453,7 @@
 
 local BattleFormulas = require("src.core.BattleFormulas")
 local CaptureRules = require("src.core.CaptureRules")
+local StatusConditions = require("src.core.StatusConditions")
 
 local BattleEngine = {}
 BattleEngine.__index = BattleEngine
@@ -681,6 +699,12 @@ BattleEngine.RECOIL_MOVES = {
 BattleEngine.MOVE_STRUGGLE = 165
 BattleEngine.EFFECT_EXPLOSION = 7
 BattleEngine.ABILITY_DAMP = 6
+-- Primary status (status1) cancellers and end-of-turn damage; see
+-- resolveStatusCancellers / resolveStatusEndTurn.
+BattleEngine.MOVE_SNORE = 173
+BattleEngine.MOVE_SLEEP_TALK = 214
+BattleEngine.EFFECT_THAW_HIT = 125
+BattleEngine.TYPE_FIRE = 10
 
 -- The real drain family: EFFECT_ABSORB (Absorb, Mega Drain, Giga Drain,
 -- Leech Life -- confirmed against src/data/battle_moves.h) heals the
@@ -795,6 +819,8 @@ function BattleEngine.makeBattler(opts)
     speed = stats.speed,
     spAttack = stats.spAttack,
     spDefense = stats.spDefense,
+    -- Real gBattleMons[].status1 word (StatusConditions bit layout).
+    status = opts.status or 0,
     moves = {},
     statStages = {
       attack = BattleFormulas.DEFAULT_STAT_STAGE,
@@ -903,6 +929,9 @@ function BattleEngine:recordFaint(side, events)
   if battler.hp > 0 then return false end
   assert(self.faintSequence, "recordFaint needs beginFaintSequence")
   battler.hp = 0
+  -- Real Cmd_cleareffectsonfaint (src/battle_script_commands.c:2930-2938)
+  -- zeroes status1 and writes it to the party copy.
+  battler.status = 0
   for _, recorded in ipairs(self.faintSequence) do
     if recorded == side then return false end
   end
@@ -987,7 +1016,73 @@ end
 
 -- Resolves one attack, appending its events. Returns nothing; the caller
 -- checks for a faint. Mirrors BattleScript_HitFromAccCheck's real order.
+-- One move action: the core resolution below, then the move-end defrost
+-- check (real MOVEEND_DEFROST, src/battle_script_commands.c:4103-4116): a
+-- Fire move that dealt damage to a frozen target still above 0 HP thaws it.
 function BattleEngine:resolveMove(attackerSide, moveSlot, events)
+  self.currentMove = nil
+  self.moveDamageDealt = 0
+  self:resolveMoveCore(attackerSide, moveSlot, events)
+  local defenderSide = otherSide(attackerSide)
+  local defender = self:battler(defenderSide)
+  if self.currentMove and self.currentMove.type == BattleEngine.TYPE_FIRE
+      and self.moveDamageDealt > 0 and defender.hp > 0
+      and StatusConditions.isFrozen(defender.status)
+      and not self:isOver() then
+    defender.status = defender.status - StatusConditions.FREEZE
+    events[#events + 1] = { type = "defrostedByFire", side = defenderSide }
+  end
+  self.currentMove = nil
+end
+
+-- Real AtkCanceller_UnableToUseMove status cases (src/battle_util.c
+-- :1266-1333, :1439-1449, :1513-1525), in source order. Returns true when
+-- the move is cancelled: none of these failures prints "used" or deducts
+-- PP (they jump to BattleScript_MoveEnd before attackstring/ppreduce).
+-- Draws: freeze `Random() % 5` on every frozen attempt (thaw-hit moves
+-- included), paralysis `Random() % 4` on every paralyzed attempt.
+function BattleEngine:resolveStatusCancellers(attackerSide, attacker, moveId, move, events)
+  local S = StatusConditions
+  local status = attacker.status or 0
+  if S.isAsleep(status) then
+    -- CANCELLER_ASLEEP: decrement first (Early Bird not represented).
+    local turns = S.sleepTurns(status) - 1
+    attacker.status = S.withSleepTurns(status, turns)
+    if turns > 0 then
+      if moveId ~= BattleEngine.MOVE_SNORE and moveId ~= BattleEngine.MOVE_SLEEP_TALK then
+        events[#events + 1] = { type = "fastAsleep", side = attackerSide }
+        return true
+      end
+    else
+      events[#events + 1] = { type = "wokeUp", side = attackerSide }
+    end
+  end
+  if S.isFrozen(attacker.status) then
+    -- CANCELLER_FROZEN
+    if self.rng:next16() % 5 ~= 0 then
+      if move.effect ~= BattleEngine.EFFECT_THAW_HIT then
+        events[#events + 1] = { type = "frozenSolid", side = attackerSide }
+        return true
+      end
+    else
+      attacker.status = attacker.status - S.FREEZE
+      events[#events + 1] = { type = "thawed", side = attackerSide }
+    end
+  end
+  if S.isParalyzed(attacker.status) and self.rng:next16() % 4 == 0 then
+    -- CANCELLER_PARALYSED
+    events[#events + 1] = { type = "fullyParalyzed", side = attackerSide }
+    return true
+  end
+  if S.isFrozen(attacker.status) and move.effect == BattleEngine.EFFECT_THAW_HIT then
+    -- CANCELLER_THAW
+    attacker.status = attacker.status - S.FREEZE
+    events[#events + 1] = { type = "defrostedByMove", side = attackerSide, move = moveId }
+  end
+  return false
+end
+
+function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
   local attacker = self:battler(attackerSide)
   local defenderSide = otherSide(attackerSide)
   local defender = self:battler(defenderSide)
@@ -1070,6 +1165,10 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
   end
 
   local moveId = effectiveMoveId
+  if self:resolveStatusCancellers(attackerSide, attacker, moveId, move, events) then
+    return
+  end
+  self.currentMove = move
   events[#events + 1] = { type = "useMove", side = attackerSide, move = moveId }
   local isMagnitude = moveId == BattleEngine.MOVE_MAGNITUDE
     and move.effect == BattleEngine.EFFECT_MAGNITUDE
@@ -1847,6 +1946,9 @@ function BattleEngine:applyDamage(attackerSide, defenderSide, defender, damage, 
     damage = defender.hp
   end
   defender.hp = defender.hp - damage
+  if defenderSide ~= attackerSide then
+    self.moveDamageDealt = (self.moveDamageDealt or 0) + damage
+  end
   events[#events + 1] = {
     type = "damage",
     side = attackerSide,
@@ -2048,6 +2150,66 @@ function BattleEngine:resolveForcedSwitch(side, newBattler)
   return { { type = "forcedSwitchResolved", side = side } }
 end
 
+-- Real BattleTurnPassed end-of-turn work (src/battle_main.c:2958-2964):
+-- field effects (screen timers) first, then per-battler effects. Callers
+-- only reach this when the battle is not over (the real gBattleOutcome == 0
+-- gate). `sides` is the turn's action order: hoisted switch/item/run
+-- actions first, otherwise the getWhoStrikesFirst order.
+local HOISTED_ORDER = { BattleEngine.SIDE_PLAYER, BattleEngine.SIDE_FOE }
+local function sidesOf(order)
+  return { order[1][1], order[2][1] }
+end
+
+function BattleEngine:resolveEndTurn(events, sides)
+  self:decaySideTimers(events)
+  self:resolveStatusEndTurn(events, sides)
+end
+
+-- Real DoBattlerEndTurnEffects status cases (src/battle_util.c:805-841),
+-- per battler in turn order: poison max(1, maxHP/8); toxic counter
+-- incremented first (capped at 15) then max(1, maxHP/16) * counter; burn
+-- max(1, maxHP/8). Battlers at 0 HP are skipped. Each tick runs
+-- tryfaintmon/checkteamslost (data/battle_scripts_1.s:3685-3686): a faint
+-- that decides the battle stops the phase (BattleTurnPassed re-tests
+-- gBattleOutcome); one that only queues a forced switch lets the remaining
+-- battlers tick. The toxic counter is battle-local: BattlePartyBridge masks
+-- it on persist.
+function BattleEngine:resolveStatusEndTurn(events, sides)
+  local S = StatusConditions
+  for _, side in ipairs(sides) do
+    if self:isOver() then return end
+    local battler = self:battler(side)
+    local status = battler.status or 0
+    if battler.hp > 0 then
+      local kind, amount
+      if S.isPoisoned(status) then
+        kind = "poison"
+        amount = math.max(1, math.floor(battler.maxHP / 8))
+      elseif S.isBadlyPoisoned(status) then
+        local counter = S.toxicCounter(status)
+        if counter ~= S.TOXIC_COUNTER_MAX then counter = counter + 1 end
+        battler.status = S.withToxicCounter(status, counter)
+        kind = "toxic"
+        amount = math.max(1, math.floor(battler.maxHP / 16)) * counter
+      elseif S.isBurned(status) then
+        kind = "burn"
+        amount = math.max(1, math.floor(battler.maxHP / 8))
+      end
+      if kind then
+        if amount > battler.hp then amount = battler.hp end
+        battler.hp = battler.hp - amount
+        events[#events + 1] = {
+          type = "statusDamage", side = side, kind = kind,
+          amount = amount, hpRemaining = battler.hp,
+        }
+        if battler.hp == 0 then
+          self:checkFaint(side, events)
+        end
+      end
+    end
+  end
+end
+
 -- Runs one full turn. Each action is a table:
 --   {action="move", moveSlot=n}   -- use the move in that 1-based slot
 --   {action="run"}                -- player only (real singles run)
@@ -2098,7 +2260,7 @@ function BattleEngine:runTurn(playerAction, foeAction)
     -- Reflect/Light Screen timers down, as long as the battle didn't just
     -- end.
     if not self:isOver() then
-      self:decaySideTimers(events)
+      self:resolveEndTurn(events, HOISTED_ORDER)
     end
     return events
   end
@@ -2143,7 +2305,7 @@ function BattleEngine:runTurn(playerAction, foeAction)
     -- is only set by a SUCCESSFUL catch, handled by the early return
     -- above) -- so the timers still tick down here too.
     if not self:isOver() then
-      self:decaySideTimers(events)
+      self:resolveEndTurn(events, HOISTED_ORDER)
     end
     return events
   end
@@ -2173,7 +2335,7 @@ function BattleEngine:runTurn(playerAction, foeAction)
     -- sets gBattleOutcome and returns above, before this point) -- the
     -- timers still tick down.
     if not self:isOver() then
-      self:decaySideTimers(events)
+      self:resolveEndTurn(events, HOISTED_ORDER)
     end
     return events
   end
@@ -2217,13 +2379,13 @@ function BattleEngine:runTurn(playerAction, foeAction)
         -- still decays Reflect/Light Screen timers -- only a turn that
         -- truly ends the whole battle skips it.
         if not self:isOver() then
-          self:decaySideTimers(events)
+          self:resolveEndTurn(events, sidesOf(order))
         end
         return events
       end
       if self:checkFaint(otherSide(side), events) then
         if not self:isOver() then
-          self:decaySideTimers(events)
+          self:resolveEndTurn(events, sidesOf(order))
         end
         return events
       end
@@ -2233,7 +2395,7 @@ function BattleEngine:runTurn(playerAction, foeAction)
   -- Both actions for this ordinary move-exchange turn resolved without
   -- deciding the battle outcome -- the real gBattleOutcome == 0 case that
   -- reaches BattleTurnPassed and runs DoFieldEndTurnEffects.
-  self:decaySideTimers(events)
+  self:resolveEndTurn(events, sidesOf(order))
 
   return events
 end
