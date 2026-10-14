@@ -264,6 +264,7 @@ do
   check("AI_CBM_Refresh: healthy or sleeping user -10, burned user 0",
     score(healthy, healthy, refreshMove, 287) == -10 and score(sleepingUser, healthy, refreshMove, 287) == -10
       and score(burned, healthy, refreshMove, 287) == 0)
+  check("AI_CBM_Refresh: badly poisoned user 0", score(toxic, healthy, refreshMove, 287) == 0)
 end
 
 print(("%d passed, %d failed"):format(passed, failed))

@@ -1,7 +1,7 @@
 # Task: primary status conditions, slice S3 (primary status moves)
 
 - Task ID: `P4-STATUS-S3`
-- Status: `IMPLEMENTED — awaiting independent review`; ROM fixture pending
+- Status: `CLOSED — REVIEWED PASS` ([review](../reviews/2026-10-14-status-s3-review.md)); ROM fixture pending
 - Lane: full relay. Owner delegation 2026-10-14; battle and AI files only,
   away from in-flight Codex work (main.lua, party/Dex, coordination). The AI
   edit is limited to the STATUS1 branches; the Memento AI gap is untouched.
@@ -42,8 +42,10 @@
 
 ## Acceptance
 
-1. Each script's gate order (ability, already, type/typecalc, other status)
-   with no RNG before accuracycheck; PP spent on every path.
+1. Each script's own gate order (see the inventory rows: Sleep already →
+   ability → other; Poison/Paralyze ability → already/typecalc → other;
+   Toxic other status before type; Will-O-Wisp already → Fire → Water
+   Veil → other) with no RNG before accuracycheck; PP spent on every path.
 2. Accuracy boundary; sleep 2-5 duration draw after accuracy.
 3. Texts for applied/already/prevented/stayed-awake/doesn't affect/failed.
 4. AI branches read status (STATUS1_ANY excludes the toxic counter).
@@ -53,10 +55,14 @@
 ## Follow-ups
 
 - Substitute, Safeguard, Magic Coat, Uproar, Synchronize unmodeled.
+- Accuracy modifiers Compound Eyes (×1.3) and Hustle (×0.8)
+  (`src/battle_script_commands.c:1069-1074`) are missing for every move;
+  S3 makes them visible (e.g. Butterfree's Sleep Powder). A small shared
+  BattleFormulas task should add them (review F1).
 - Remaining status families (Rest, Tri Attack, Yawn, Heal Bell, ...) per the
   design's "later" list; S4 (thaw-hit, Facade, Smelling Salt, Refresh).
 
 ## Evidence (Worker, 2026-10-14)
 
-Status engine 146/0; controller 135/0; AI 37/0; full suite and repository
+Status engine 148/0; controller 135/0; AI 38/0; full suite and repository
 checker in the PR.

@@ -239,7 +239,8 @@
 --     status through the status-on-hit families (STATUS_HIT_MOVES, slice S2,
 --     applySecondaryStatus) and the primary status moves
 --     (PRIMARY_STATUS_MOVES, slice S3, resolvePrimaryStatusMove).
---   * No abilities, held items, weather,
+--   * Abilities only where named (Damp, Guts, the status guards above);
+--     no held items, weather,
 --     multi-turn/charging moves, trapping, forced switching, OHKO moves,
 --     double battles, trainer AI, or EXP/level-up on victory.
 --   * Pure single-stat stage-change moves (Growl/Tail Whip's full real

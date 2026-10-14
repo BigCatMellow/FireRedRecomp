@@ -85,7 +85,7 @@
 -- battles) has no code path that ever sets status2/status3, weather, or any
 -- sideStatus beyond reflect/lightScreen, and no held-item or stockpile-
 -- counter state at all. Several real AI_CBM_* branches test exactly those
--- fields (if_status/if_status2/if_status3/get_weather/if_side_affecting for
+-- fields (if_status2/if_status3/get_weather/if_side_affecting for
 -- Mist/Spikes/Safeguard/FutureAttack/get_used_held_item/
 -- get_stockpile_count). Because this engine structurally can never produce
 -- the "true" case for any of those conditions, the real branch's "false"
@@ -93,8 +93,8 @@
 -- state space, exactly analogous to the real dispatch chain's own
 -- confirmed no-penalty fallback for a listed-but-absent effect. Each such
 -- branch below is ported as `alwaysNoPenalty` (or, where the real check is
--- the NEGATION of an always-false condition -- e.g. "if user is NOT
--- asleep" -- as an always-applied fixed penalty) with its own citation, not
+-- the NEGATION of an always-false condition -- e.g. "not a double
+-- battle" -- as an always-applied fixed penalty) with its own citation, not
 -- silently folded into the generic unhandled-effect fallback.
 --
 -- REAL GAPS deliberately left unported (fail loudly -- see

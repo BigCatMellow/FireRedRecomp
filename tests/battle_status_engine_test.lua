@@ -710,6 +710,9 @@ do
   local w = find(events, "stayedAwake", "foe")
   check("Insomnia: stayed awake, no status", w and w.ability == BattleEngine.ABILITY_INSOMNIA
     and b.foe.status == 0, types(events))
+  b, events = useStatus(MOVE_SPORE, { MISS }, { foeAbility = BattleEngine.ABILITY_INSOMNIA, foeStatus = 2 })
+  check("already asleep precedes Insomnia", find(events, "statusAlready", "foe")
+    and not find(events, "stayedAwake"), types(events))
   b, events = useStatus(MOVE_SPORE, { MISS }, { foeAbility = BattleEngine.ABILITY_VITAL_SPIRIT })
   check("Vital Spirit: stayed awake", find(events, "stayedAwake", "foe") ~= nil)
   b, events = useStatus(MOVE_SPORE, { MISS }, { foeStatus = S.BURN })
@@ -774,6 +777,9 @@ do
   check("Toxic vs poisoned: already poisoned", find(events, "statusAlready", "foe").kind == "toxic")
   b, events = useStatus(MOVE_TOXIC, { MISS }, { foeAbility = BattleEngine.ABILITY_IMMUNITY })
   check("Toxic vs Immunity: prevented", find(events, "statusPrevented", "foe") ~= nil)
+  b, events = useStatus(MOVE_TOXIC, { MISS }, { foeAbility = BattleEngine.ABILITY_IMMUNITY, foeStatus = S.POISON })
+  check("Toxic: Immunity precedes already poisoned", find(events, "statusPrevented", "foe")
+    and not find(events, "statusAlready"), types(events))
 end
 
 do
