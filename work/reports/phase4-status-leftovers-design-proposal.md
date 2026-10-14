@@ -477,12 +477,26 @@ test is authoritative):
   - L1 fixes the order for Twineedle only, so Twineedle and Double Kick
     differ in event order until the follow-up below changes those tests
     on purpose. It does not ride along in L1.
+  - **Resolved** by the follow-up below
+    ([task](../tasks/phase4-multihit-tail.md), implemented, awaiting
+    independent review).
 - **Crit probability changes.** Blaze Kick crits about twice as often, and
   Focus Energy changes every later crit for that battler.
 - **The admission change** lets AI and wild foes select Rest and Focus
   Energy. Today `resolveMoveCore` would raise on them.
 
 ## Follow-up: multi-hit KO tail for 29/44 (separate, not L1)
+
+- Status: `IMPLEMENTED — awaiting independent review`
+  ([task](../tasks/phase4-multihit-tail.md)). All items below are done:
+  `MULTI_HIT_MOVES` entries 29, 44 and 77 set `sourceTail = true`; the
+  per-hit damage events no longer carry effectiveness flags, the
+  `multiHit` event carries the last hit's flags, and the controller prints
+  them once before the count; 29/44 draw MultiHitEnd's `% 100`
+  (`bsc.c:2789` evaluates `Random() % 100` first, whatever the byte or
+  chance) on landed and no-effect paths; the faint is the caller's
+  `tryfaintmon`. Tests: `tests/battle_multihit_tail_test.lua`, plus the
+  intentional updates listed in the task.
 
 Recorded from review F1 as a separate fast-lane correction. It must cover:
 
@@ -503,9 +517,10 @@ Recorded from review F1 as a separate fast-lane correction. It must cover:
 
 ## Known limits
 
-- Multi-hit effectiveness text: Twineedle (like Double Kick) prints the
-  effectiveness line after each hit instead of once before "Hit N
-  time(s)!" (text only; see the follow-up above).
+- Multi-hit effectiveness text: resolved for 29, 44 and 77 by the
+  follow-up above (printed once, just before "Hit N time(s)!",
+  `bs1.s:644-649`). Triple Kick (104) has its own loop and still prints it
+  per kick (inventory row 104; out of this follow-up's scope).
 - Not represented:
   - Battle Armor / Shell Armor skipping the crit draw (an existing gap,
     S2 F5);
