@@ -183,6 +183,20 @@ do
 end
 
 do
+  -- The self-hit uses the attacker on both sides (not the opponent) and no
+  -- crit (a crit would ignore the lowered attack stage).
+  local b = battle({ 2, 0 })
+  b.player.confusionTurns = 2
+  b.foe.defense = 200
+  b.player.statStages.attack = 4 -- x2/4
+  local ev = {}
+  b:resolveMove("player", 1, ev)
+  -- 10*40*6/20/50 = 2, +2 = 4 (opponent defense or a crit would differ).
+  check("self-hit uses its own defense and no crit", find(ev, "confusionSelfHit").amount == 4,
+    find(ev, "confusionSelfHit").amount)
+end
+
+do
   -- Explosion quirk: a confused Self-Destruct user's self-hit halves its
   -- defense (CalculateBaseDamage reads gCurrentMove's effect).
   moves[120] = { effect = 7, power = 200, type = Data.TYPE_NORMAL, accuracy = 100, pp = 5,
@@ -253,6 +267,9 @@ do
   local events = b:runTurn(MOVE, MOVE)
   check("self-hit KO faints the confused battler and ends the battle",
     find(events, "faint", "player") and b.outcome == "playerLost" and not find(events, "useMove", "foe"), types(events))
+  local ko = find(events, "confusionSelfHit", "player")
+  check("self-hit KO event is clamped to the remaining HP", ko.amount == 3 and ko.hpRemaining == 0,
+    ko.amount .. "/" .. ko.hpRemaining)
   check("faint clears confusion", b.player.confusionTurns == 0)
   -- With a replacement, the pending switch stops the turn as for recoil.
   b = battle({ 2, 0 }, { playerCurrentHP = 3, hasReplacement = function() return true end })

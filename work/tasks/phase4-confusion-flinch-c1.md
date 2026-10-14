@@ -1,7 +1,7 @@
 # Task: confusion and flinch, slice C1 (groundwork)
 
 - Task ID: `P4-STATUS2-C1`
-- Status: `IMPLEMENTED — awaiting independent review`
+- Status: `CLOSED — REVIEWED PASS` ([review](../reviews/2026-10-14-confusion-flinch-c1-review.md))
 - Lane: full relay. Owner delegation 2026-10-14 ("Keep going"); battle and
   AI files only, away from in-flight Codex work.
 - Design: [confusion/flinch proposal](../reports/phase4-confusion-flinch-design-proposal.md).
@@ -45,5 +45,5 @@ admission change.
 
 ## Evidence (Worker, 2026-10-14)
 
-Confusion/flinch 35/0; AI 43/0; controller 141/0; full suite and
+Confusion/flinch 37/0; AI 43/0; controller 141/0; full suite and
 repository checker in the PR.

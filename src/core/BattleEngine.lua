@@ -245,6 +245,9 @@
 --     status through the status-on-hit families (STATUS_HIT_MOVES, slice S2,
 --     applySecondaryStatus) and the primary status moves
 --     (PRIMARY_STATUS_MOVES, slice S3, resolvePrimaryStatusMove).
+--   * Confusion and flinch (status2) cancellers, the confusion self-hit and
+--     flinch clearing are supported (resolveStatusCancellers,
+--     resolveConfusionSelfHit); battle-only, never persisted.
 --   * Abilities only where named (Damp, Guts, the status guards above);
 --     no held items, weather,
 --     multi-turn/charging moves, trapping, forced switching, OHKO moves,
@@ -1124,11 +1127,14 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
 end
 
 -- Real AtkCanceller_UnableToUseMove status cases (src/battle_util.c
--- :1266-1333, :1439-1449, :1513-1525), in source order. Returns true when
+-- :1266-1333 sleep/freeze, :1361-1371 flinch, :1407-1435 confusion,
+-- :1439-1449 paralysis, :1513-1525 thaw), in source order. Returns true when
 -- the move is cancelled: none of these failures prints "used" or deducts
 -- PP (they jump to BattleScript_MoveEnd before attackstring/ppreduce).
 -- Draws: freeze `Random() % 5` on every frozen attempt (thaw-hit moves
--- included), paralysis `Random() % 4` on every paralyzed attempt.
+-- included); confusion `Random() & 1` while still confused after the
+-- decrement, plus the self-hit's random multiplier; paralysis
+-- `Random() % 4` on every paralyzed attempt that reaches it.
 function BattleEngine:resolveStatusCancellers(attackerSide, attacker, moveId, move, events)
   local S = StatusConditions
   local status = attacker.status or 0
