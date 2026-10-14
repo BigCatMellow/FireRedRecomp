@@ -221,10 +221,10 @@ do
     { type="restoreHP", side="player", beforeHP=10, hpRemaining=19, amount=9 } })
   check("Restore HP keeps the move announcement before an invisible own-HP snapshot and feedback",
     messages[1].text:find("used", 1, true) and messages[2].hpSide == "player" and messages[2].hp == 19
-      and messages[3].text == "BULBASAUR recovered HP!", messages[3] and messages[3].text)
+      and messages[3].text == "BULBASAUR regained\nhealth!", messages[3] and messages[3].text)
   messages = c:_eventMessages({ { type="restoreHPFull", side="foe" } })
   check("Restore HP full result has feedback without an HP snapshot",
-    #messages == 1 and messages[1].hpSide == nil and messages[1].text == "CHARMANDER is already at full HP!", messages[1] and messages[1].text)
+    #messages == 1 and messages[1].hpSide == nil and messages[1].text == "CHARMANDER's\nHP is full!", messages[1] and messages[1].text)
 end
 
 do
@@ -552,6 +552,35 @@ do
   ctrl:advanceMessage()
   check("memento HP drops before the first stat message",
     ctrl:message()=="FOE's ATTACK\nharshly fell!" and ctrl.displayedHP.player==0)
+end
+
+-- Soft-Boiled through the real engine uses the same source heal texts.
+do
+  local moves={
+    [135]={effect=157,power=0,type=0,accuracy=100,pp=10,priority=0,target=0x10},
+    [105]={effect=32,power=0,type=0,accuracy=0,pp=20,priority=0,target=16},
+  }
+  local stats={hp=100,attack=40,defense=40,speed=20,spAttack=40,spDefense=40}
+  local function run(playerHP)
+    local engine=BattleEngine.new({
+      player=BattleEngine.makeBattler({species=1,level=20,stats=stats,types={0,0},moves={{move=135,pp=10}}}),
+      foe=BattleEngine.makeBattler({species=4,level=20,stats=stats,types={0,0},moves={{move=105,pp=20}}}),
+      moves=moves,typeChart={},rng={next16=function() return 0 end},
+    })
+    engine.player.speed=30; engine.player.hp=playerHP
+    local ctrl=BattleSceneController.new({engine=engine,playerName="PLAYER",foeName="FOE",
+      moveName=function() return "MOVE" end})
+    ctrl:advanceMessage(); ctrl:advanceMessage()
+    ctrl:_runTurn({action="move",moveSlot=1})
+    local out={}
+    for _,entry in ipairs(ctrl.messages) do if entry.text then out[#out+1]=entry.text end end
+    return table.concat(out,"|")
+  end
+  local all=run(40)
+  check("soft-boiled heal uses sText_PkmnRegainedHealth",all:find("PLAYER regained\nhealth!",1,true)~=nil)
+  all=run(100)
+  check("soft-boiled full HP uses sText_PkmnHPFull",all:find("PLAYER's\nHP is full!",1,true)~=nil
+    and all:find("FOE's\nHP is full!",1,true)~=nil)
 end
 
 print(("%d passed, %d failed"):format(passed, failed))
