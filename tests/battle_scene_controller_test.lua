@@ -106,8 +106,8 @@ check("Growl executes through the controller and spends PP",
 
 -- Other power-zero effects still fail visibly instead of fabricating rules.
 c = controller(); c:advanceMessage(); c:advanceMessage()
--- (EFFECT_CONFUSE=49; EFFECT_SLEEP became supported in status slice S3.)
-Data.moves[999] = { effect=49, power=0, type=0, accuracy=100, pp=10,
+-- (EFFECT_ROAR=28; Sleep and Confuse became supported in later slices.)
+Data.moves[999] = { effect=28, power=0, type=0, accuracy=100, pp=10,
   secondaryEffectChance=0, target=0, priority=0, flags=0 }
 c.engine.player.moves = { {move=999,pp=10}, {move=Data.MOVE_TACKLE,pp=35} }
 c:processInput(input(InputState.A_BUTTON)); c:processInput(input(InputState.A_BUTTON))
@@ -718,6 +718,18 @@ do
   check("hurt itself then HP (:337)", m[3].text == "It hurt itself in its\nconfusion!"
     and m[4].hpSide == "player" and m[4].hp == 16 and m[4].text == nil, m[3].text)
   check("snapped out (:115)", m[5].text == "CHARMANDER snapped\nout of confusion!", m[5].text)
+end
+
+do
+  local c = controller()
+  local m = c:_eventMessages({
+    { type = "confusionApplied", side = "foe" },
+    { type = "alreadyConfused", side = "player" },
+    { type = "confusionPrevented", side = "foe" },
+  })
+  check("became confused (:116)", m[1].text == "CHARMANDER became\nconfused!", m[1].text)
+  check("already confused (:117)", m[2].text == "BULBASAUR is\nalready confused!", m[2].text)
+  check("Own Tempo prevents confusion (:273)", m[3].text == "CHARMANDER's OWN TEMPO\nprevents confusion!", m[3].text)
 end
 
 print(("%d passed, %d failed"):format(passed, failed))

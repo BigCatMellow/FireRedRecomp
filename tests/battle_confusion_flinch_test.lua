@@ -360,6 +360,191 @@ do
     not find(events, "useMove", "foe") and find(events, "statusDamage", "foe"), types(events))
 end
 
+---------------------------------------------------------------------------
+-- Slice C2: moves that confuse or cause flinching
+---------------------------------------------------------------------------
+-- src/data/battle_moves.h records at the pin.
+local function rec(effect, power, type_, acc, pp, chance, target, flags)
+  return { effect = effect, power = power, type = type_, accuracy = acc, pp = pp,
+    secondaryEffectChance = chance, target = target, priority = 0, flags = flags }
+end
+local PSYBEAM, DYNAMIC_PUNCH, BITE, ROCK_SLIDE, STOMP, TWISTER = 60, 223, 44, 157, 23, 239
+local SUPERSONIC, CONFUSE_RAY, SWAGGER, FLATTER, TEETER = 48, 109, 207, 260, 298
+moves[PSYBEAM] = rec(76, 65, Data.TYPE_PSYCHIC, 100, 20, 10, 0, 0x12)
+moves[DYNAMIC_PUNCH] = rec(76, 100, Data.TYPE_FIGHTING, 50, 5, 100, 0, 0x13)
+moves[BITE] = rec(31, 60, Data.TYPE_DARK, 100, 25, 30, 0, 0x13)
+moves[ROCK_SLIDE] = rec(31, 75, Data.TYPE_ROCK, 90, 10, 30, 0x08, 0x12)
+moves[STOMP] = rec(150, 65, Data.TYPE_NORMAL, 100, 20, 30, 0, 0x13)
+moves[TWISTER] = rec(146, 40, Data.TYPE_DRAGON, 100, 20, 20, 0x08, 0x32)
+moves[SUPERSONIC] = rec(49, 0, Data.TYPE_NORMAL, 55, 20, 0, 0, 0x16)
+moves[CONFUSE_RAY] = rec(49, 0, Data.TYPE_GHOST, 100, 10, 0, 0, 0x16)
+moves[SWAGGER] = rec(118, 0, Data.TYPE_NORMAL, 90, 15, 100, 0, 0x16)
+moves[FLATTER] = rec(166, 0, Data.TYPE_DARK, 100, 15, 0, 0, 0x16)
+moves[TEETER] = rec(199, 0, Data.TYPE_NORMAL, 100, 20, 0, 0x20, 0x02)
+
+local function count(events, t, side)
+  local n = 0
+  for _, e in ipairs(events) do if e.type == t and (side == nil or e.side == side) then n = n + 1 end end
+  return n
+end
+
+do
+  -- Psybeam (10%): roll 10 confuses, then the 2-5 turn draw.
+  local b = battle({ 0, 1, 0, 10, 3, MISS }, { playerMove = PSYBEAM, foeHP = 400 })
+  local events = b:runTurn(MOVE, MOVE)
+  local c, ci = find(events, "confusionApplied", "foe")
+  local d, di = find(events, "damage", "player")
+  check("Psybeam roll 10 confuses after the damage (3 % 4 + 2 = 5 turns)", c and di < ci, types(events))
+  -- The foe then moves: decrement to 4, is confused, draw MISS (99 & 1 = 1) proceeds.
+  check("the newly confused foe checks confusion on its turn", find(events, "confusedTurn", "foe")
+    and b.foe.confusionTurns == 4, b.foe.confusionTurns)
+  b = battle({ 0, 1, 0, 11, MISS }, { playerMove = PSYBEAM, foeHP = 400 })
+  events = b:runTurn(MOVE, MOVE)
+  check("Psybeam roll 11 does not confuse", not find(events, "confusionApplied") and b.foe.confusionTurns == 0)
+end
+
+do
+  local function psybeamAlone(values, foeOpts)
+    local b = battle(values, { playerMove = PSYBEAM, foeHP = foeOpts.hp or 400 })
+    for k, v in pairs(foeOpts) do if k ~= "hp" then b.foe[k] = v end end
+    local ev = {}
+    b:resolveMove("player", 1, ev)
+    return b, ev
+  end
+  local b, ev = psybeamAlone({ 0, 1, 0, 0 }, { ability = BattleEngine.ABILITY_OWN_TEMPO })
+  check("Own Tempo silently blocks secondary confusion (roll drawn, no turn draw)",
+    not find(ev, "confusionApplied") and b.rng.draws == 4, b.rng.draws)
+  b, ev = psybeamAlone({ 0, 1, 0, 0 }, { confusionTurns = 2 })
+  check("already confused: silent, no turn draw", not find(ev, "confusionApplied")
+    and b.foe.confusionTurns == 2 and b.rng.draws == 4, b.rng.draws)
+  b, ev = psybeamAlone({ 0, 1, 0, 0 }, { ability = BattleEngine.ABILITY_SHIELD_DUST })
+  check("Shield Dust blocks secondary confusion", b.foe.confusionTurns == 0 and b.rng.draws == 4)
+  b, ev = psybeamAlone({ 0, 1, 0, 0 }, { types = { Data.TYPE_DARK, Data.TYPE_DARK } })
+  check("Psybeam vs Dark: no effect, the roll is still drawn", find(ev, "noEffect") and b.rng.draws == 4
+    and b.foe.confusionTurns == 0, b.rng.draws)
+  local kb = battle({ 0, 1, 0, 0 }, { playerMove = PSYBEAM })
+  kb.foe.hp = 1
+  ev = {}
+  kb:resolveMove("player", 1, ev)
+  check("a KO hit draws the roll but cannot confuse", kb.rng.draws == 4 and kb.foe.confusionTurns == 0)
+  local dp = battle({ 0, 1, 0, 99, 0 }, { playerMove = DYNAMIC_PUNCH, foeHP = 400 })
+  ev = {}
+  dp:resolveMove("player", 1, ev)
+  check("Dynamic Punch (100%) draws its roll then confuses", find(ev, "confusionApplied")
+    and dp.rng.draws == 5 and dp.foe.confusionTurns == 2, dp.rng.draws)
+end
+
+do
+  -- Bite (30%) by the faster player: the foe flinches and loses its turn.
+  local b = battle({ 0, 1, 0, 30 }, { playerMove = BITE, foeHP = 400 })
+  local events = b:runTurn(MOVE, MOVE)
+  check("first mover's Bite flinches the foe", find(events, "flinched", "foe")
+    and not find(events, "useMove", "foe") and b.foe.moves[1].pp == 10, types(events))
+  check("flinch does not persist into the next turn", b.foe.flinched == false)
+  b = battle({ 0, 1, 0, 31, MISS }, { playerMove = BITE, foeHP = 400 })
+  events = b:runTurn(MOVE, MOVE)
+  check("Bite roll 31: no flinch", not find(events, "flinched") and find(events, "useMove", "foe"))
+  -- Second mover: the target already acted, so no flinch (roll still drawn).
+  b = battle({ MISS, 0, 1, 0, 0 }, { playerMove = BITE, playerSpeed = 5, foeHP = 400 })
+  events = b:runTurn(MOVE, MOVE)
+  check("second mover's Bite cannot flinch", not find(events, "flinched") and b.foe.flinched == false
+    and b.rng.draws == 5, types(events))
+  -- Inner Focus and Shield Dust block silently.
+  b = battle({ 0, 1, 0, 0, MISS }, { playerMove = BITE, foeHP = 400 })
+  b.foe.ability = BattleEngine.ABILITY_INNER_FOCUS
+  events = b:runTurn(MOVE, MOVE)
+  check("Inner Focus blocks flinch", not find(events, "flinched") and find(events, "useMove", "foe"))
+  b = battle({ 0, 1, 0, 0, MISS }, { playerMove = BITE, foeHP = 400 })
+  b.foe.ability = BattleEngine.ABILITY_SHIELD_DUST
+  events = b:runTurn(MOVE, MOVE)
+  check("Shield Dust blocks flinch", not find(events, "flinched"))
+end
+
+do
+  -- A hoisted action (failed run) puts the player first; the foe's Bite
+  -- comes second, so it can never flinch.
+  local b = battle({ 65535, 0, 1, 0, 0 }, { foeMove = BITE, playerSpeed = 5 })
+  local events = b:runTurn({ action = "run" }, MOVE)
+  check("a foe move after a hoisted action never flinches", b.player.flinched == false, types(events))
+end
+
+do
+  -- Stomp/Twister/Rock Slide flinch the same way; Twister/Rock Slide
+  -- (two-target records) are admitted in singles.
+  for _, id in ipairs({ STOMP, TWISTER, ROCK_SLIDE }) do
+    local b = battle({ 0, 1, 0, 0 }, { playerMove = id, foeHP = 400 })
+    local events = b:runTurn(MOVE, MOVE)
+    check("move " .. id .. " flinches on its roll", find(events, "flinched", "foe") ~= nil, types(events))
+  end
+end
+
+do
+  -- Snore: awake -> But it failed with PP; asleep -> hit with a 30% flinch.
+  local b = battle({ MISS }, { playerMove = 173 })
+  local events = b:runTurn(MOVE, MOVE)
+  check("awake Snore: But it failed, PP spent, no draw", find(events, "moveFailed", "player")
+    and b.player.moves[1].pp == 9 and b.rng.draws == 1, types(events))
+  b = battle({ MISS }, { playerMove = 173, playerStatus = 1 })
+  events = b:runTurn(MOVE, MOVE)
+  check("Snore after waking this turn fails", find(events, "wokeUp") and find(events, "moveFailed", "player"),
+    types(events))
+  b = battle({ 0, 1, 0, 0 }, { playerMove = 173, playerStatus = 3, foeHP = 400 })
+  events = b:runTurn(MOVE, MOVE)
+  check("sleeping Snore hits and can flinch", find(events, "damage", "player") and find(events, "flinched", "foe"),
+    types(events))
+end
+
+do
+  -- Supersonic: Own Tempo text, already confused text, accuracy, apply.
+  local function use(move, values, foeFields)
+    local b = battle(values, { playerMove = move, foeHP = 400 })
+    for k, v in pairs(foeFields or {}) do b.foe[k] = v end
+    local ev = {}
+    b:resolveMove("player", 1, ev)
+    return b, ev
+  end
+  local b, ev = use(SUPERSONIC, { 0, 0 })
+  check("Supersonic confuses (accuracy then the turn draw)", find(ev, "confusionApplied", "foe")
+    and b.foe.confusionTurns == 2 and b.rng.draws == 2 and b.player.moves[1].pp == 9, types(ev))
+  b, ev = use(SUPERSONIC, { 55 })
+  check("Supersonic misses on draw 55 (55%)", find(ev, "miss") and b.foe.confusionTurns == 0)
+  b, ev = use(SUPERSONIC, {}, { ability = BattleEngine.ABILITY_OWN_TEMPO, confusionTurns = 2 })
+  check("Own Tempo text precedes already confused, no draw", find(ev, "confusionPrevented", "foe")
+    and not find(ev, "alreadyConfused") and b.rng.draws == 0, types(ev))
+  b, ev = use(CONFUSE_RAY, {}, { confusionTurns = 2 })
+  check("already confused text, no draw", find(ev, "alreadyConfused", "foe") and b.rng.draws == 0)
+  b, ev = use(TEETER, { 0, 1 })
+  check("Teeter Dance confuses the lone foe", find(ev, "confusionApplied", "foe") and b.foe.confusionTurns == 3)
+  check("Teeter Dance admitted with its foes-and-ally record", battle({}):supportsMove(moves[TEETER], TEETER))
+
+  -- Swagger: accuracy first (a miss spends PP after "used").
+  b, ev = use(SWAGGER, { 95 })
+  check("Swagger miss: used, miss, PP spent", find(ev, "useMove") and find(ev, "miss")
+    and b.player.moves[1].pp == 9, types(ev))
+  b, ev = use(SWAGGER, { 0, 2 })
+  local st, si = find(ev, "statChange", "foe")
+  local c, ci = find(ev, "confusionApplied", "foe")
+  check("Swagger: ATK +2 then confusion", st and st.stat == "attack" and st.stages == 2 and c and si < ci
+    and b.foe.statStages.attack == 8 and b.foe.confusionTurns == 4, types(ev))
+  b, ev = use(SWAGGER, { 0 }, { confusionTurns = 2 })
+  check("Swagger on a confused target below +6: stat rises, no confusion draw",
+    find(ev, "statChange") and not find(ev, "confusionApplied") and b.rng.draws == 1, types(ev))
+  local maxed = { attack = 12, defense = 6, speed = 6, spAttack = 6, spDefense = 6, accuracy = 6, evasion = 6 }
+  b, ev = use(SWAGGER, { 0 }, { confusionTurns = 2, statStages = maxed })
+  check("Swagger: confused and ATK +6 -> But it failed", find(ev, "moveFailed") and not find(ev, "statChange"))
+  local maxed2 = { attack = 12, defense = 6, speed = 6, spAttack = 6, spDefense = 6, accuracy = 6, evasion = 6 }
+  b, ev = use(SWAGGER, { 0, 0 }, { statStages = maxed2 })
+  check("Swagger: ATK +6 and not confused -> no stat text, still confuses", not find(ev, "statChange")
+    and find(ev, "confusionApplied"), types(ev))
+  b, ev = use(SWAGGER, { 0 }, { ability = BattleEngine.ABILITY_OWN_TEMPO })
+  local s2, s2i = find(ev, "statChange")
+  local p2, p2i = find(ev, "confusionPrevented")
+  check("Swagger vs Own Tempo: stat rises, then the Own Tempo text", s2 and p2 and s2i < p2i, types(ev))
+  b, ev = use(FLATTER, { 0, 0 })
+  check("Flatter: SP.ATK +1 then confusion", find(ev, "statChange").stat == "spAttack"
+    and find(ev, "statChange").stages == 1 and find(ev, "confusionApplied") ~= nil, types(ev))
+end
+
 do
   -- Status-free, confusion-free battles keep their draw count.
   local b = battle({ 0, 1, 0, 0, 1, 0 })

@@ -182,7 +182,7 @@ local function move2x2(cursor, input, count)
 end
 
 local STATUS_ABILITY_NAMES = {
-  [7] = "LIMBER", [15] = "INSOMNIA", [17] = "IMMUNITY", [41] = "WATER VEIL", [72] = "VITAL SPIRIT",
+  [20] = "OWN TEMPO", [7] = "LIMBER", [15] = "INSOMNIA", [17] = "IMMUNITY", [41] = "WATER VEIL", [72] = "VITAL SPIRIT",
 }
 
 function BattleSceneController:_eventMessages(events)
@@ -411,6 +411,12 @@ function BattleSceneController:_eventMessages(events)
       add(possessive(name(event.side)) .. " status\nreturned to normal!") -- :222
     elseif event.type == "paralysisHealed" then
       add(name(event.side) .. " was\nhealed of paralysis!") -- :108
+    elseif event.type == "confusionApplied" then
+      add(name(event.side) .. " became\nconfused!") -- battle_message.c:116
+    elseif event.type == "alreadyConfused" then
+      add(name(event.side) .. " is\nalready confused!") -- :117
+    elseif event.type == "confusionPrevented" then
+      add(possessive(name(event.side)) .. " OWN TEMPO\nprevents confusion!") -- :273
     elseif event.type == "flinched" then
       add(name(event.side) .. " flinched!") -- battle_message.c:123
     elseif event.type == "confusedTurn" then
