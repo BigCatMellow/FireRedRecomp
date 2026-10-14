@@ -115,6 +115,18 @@ function BattleSceneController:_applyInvisibleEntries()
   end
 end
 
+-- A locked player (charging/recharging) gets no action menu: the turn runs
+-- with the locked move as soon as the controller would enter ACTION.
+function BattleSceneController:_enterAction()
+  local engine = self.engine
+  if engine and engine.isLocked and engine.isOver and not engine:isOver()
+      and engine:isLocked("player") then
+    self:_runTurn({ action = "move", moveSlot = self.engine.player.lockedSlot })
+    return true
+  end
+  return false
+end
+
 function BattleSceneController:_setMessages(entries, afterState)
   self.messages = {}
   for _, entry in ipairs(entries or {}) do
@@ -128,6 +140,7 @@ function BattleSceneController:_setMessages(entries, afterState)
   if not self.messages[self.messageIndex] then
     self.state = afterState
     if afterState ~= BattleSceneController.PARTY then self.partyMode = nil end
+    if afterState == BattleSceneController.ACTION and self:_enterAction() then return end
   end
   self:_touch()
 end
@@ -153,6 +166,7 @@ function BattleSceneController:advanceMessage()
     end
     self.state = self.afterMessages
     if self.state == BattleSceneController.PARTY then self:_refreshPartyChoices() else self.partyMode = nil end
+    if self.state == BattleSceneController.ACTION and self:_enterAction() then return end
   end
   self:_touch()
 end
@@ -417,6 +431,16 @@ function BattleSceneController:_eventMessages(events)
       add(name(event.side) .. " is\nalready confused!") -- :117
     elseif event.type == "confusionPrevented" then
       add(possessive(name(event.side)) .. " OWN TEMPO\nprevents confusion!") -- :273
+    elseif event.type == "chargeTurn" then
+      -- gFirstTurnOfTwoStringIds (battle_message.c:135-138).
+      local n = name(event.side)
+      if event.kind == "razorWind" then add(n .. " whipped\nup a whirlwind!")
+      elseif event.kind == "solarBeam" then add(n .. " took\nin sunlight!")
+      elseif event.kind == "skullBash" then add(n .. " lowered\nits head!")
+      else add(n .. " is glowing!")
+      end
+    elseif event.type == "mustRecharge" then
+      add(name(event.side) .. " must\nrecharge!") -- :185
     elseif event.type == "flinched" then
       add(name(event.side) .. " flinched!") -- battle_message.c:123
     elseif event.type == "confusedTurn" then
@@ -467,7 +491,14 @@ function BattleSceneController:_runTurn(playerAction)
       return
     end
   end
-  local foeMoveSlot = self.chooseFoeMove and self.chooseFoeMove(self.engine) or self.foeMoveSlot
+  -- A locked foe (charging/recharging) chooses nothing: no AI script, so no
+  -- AI RNG (src/battle_main.c:3125-3130); the engine uses its locked move.
+  local foeMoveSlot
+  if self.engine.isLocked and self.engine:isLocked("foe") then
+    foeMoveSlot = self.engine.foe.lockedSlot
+  else
+    foeMoveSlot = self.chooseFoeMove and self.chooseFoeMove(self.engine) or self.foeMoveSlot
+  end
   local events = self.engine:runTurn(playerAction, { action = "move", moveSlot = foeMoveSlot })
   -- The engine has made the team-wide eligibility decision before it emits
   -- forcedSwitchNeeded.  Do not fall through to ACTION while that pending
