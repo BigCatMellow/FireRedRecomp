@@ -1,7 +1,7 @@
 # P6-03 — Wire the normal START Pokédex count guard
 
 - Task ID: `P6-03-START-DEX-SANITY`
-- Status: `READY_FOR_WORKER` — source-bound correction authorized 2026-10-13 after independent BLOCK; draft PR #5 remains unaccepted
+- Status: `READY_FOR_REVIEWER` — source-bound correction implemented 2026-10-14; draft PR #5 remains unaccepted pending independent exact-head recheck
 - Type: `IMPLEMENTATION / BOUNDED, NO-ROM-TESTABLE`
 - Parent: Phase 6; disjoint from pending Party-selection design PR #3 and blocked private-ROM P4/P5 tasks
 - Baseline: `main` at `503ea1e674baed88a27050dc54efd961baed1c9e`
@@ -66,3 +66,44 @@ Stop if reference source disagrees with seen-count semantics, save-block seen is
 - [Exact-head public run 37945534748](https://github.com/BigCatMellow/FireRedRecomp/actions/runs/37945534748): PASS; [same-head parallel run 37945504804](https://github.com/BigCatMellow/FireRedRecomp/actions/runs/37945504804): PASS. Workflow installs Lua 5.1, invokes repository checks and `scripts/test_all.sh` without ROM. Local Lua is unavailable to this worker; no local execution/ROM/gameplay proof claimed.
 - Semantics tested: zero/first/cross-byte seen entries, valid #411, ignored #412–416 trailing bits, all 411 seen, and absent/malformed bitfields; `StartMenu` already has its own blocked/unblocked test cases.
 - **Reviewer needed:** independently inspect exact substantive diff and source semantics, including actual `main.lua` live session wiring. Re-run tests if warranted. No merged change, runtime gameplay proof or Phase 6 status advancement follows solely from these passing checks.
+
+## Correction Worker handoff — 2026-10-14
+
+- Corrected the tracker bound to the pinned source's literal 386; retained
+  52-byte owned/seen arrays and the original limited normal START wiring.
+  No menu implementation, save schema, mirror validation or ROM work added.
+- Existing PR #5 remains the publication target on
+  `work/p6-start-menu-dex-count-20261009`; no competing PR. Authority
+  `4eb53da` was clean before work. Fresh main
+  `3adc7e85654cd04f3244b8e072f5ba4ab8317e84` merged normally without conflicts
+  at `e658387c1ab405639ecf7039cdc052e2fdd009a5` before correction and final
+  regression. Local worktree: `/tmp/firered-start-dex-review-UA2MPZ`.
+- Baseline no-ROM suite: 151 files PASS at authority head; after fresh-main
+  integration, 166 files PASS before implementation. Both
+  `POKEPORT_ROM` and `POKEPORT_RUNTIME_REPLAY` were unset for execution.
+- Regression witness: new source-literal assertions run against the old 411
+  implementation produced **39 passed / 17 failed**, exit 1. Failures include
+  getter/setter acceptance of #387/#411, serialized trailing-bit counts,
+  all-set total and real StartMenu acceptance of trailing-only bytes.
+- Corrected focused checks: `lua5.1 tests/dex_tracker_test.lua` **56/0**;
+  `lua5.1 tests/start_menu_test.lua` **21/0**. New cases admit #386, reject
+  #387/#411/#416, count all-set bytes as 386, preserve both array shapes and
+  zero/first/cross-byte/malformed behavior, and use actual StartMenu/InputState
+  to verify blocked and permitted A-button selection.
+- After correction: `bash scripts/test_all.sh` **PASS, 166 files, no-ROM**;
+  `lua5.1 scripts/check_repository.lua` **PASS, 293 tracked Lua, 312 tracked
+  Markdown, 1018 local targets**; `git diff --check` clean.
+- Correction delta after the integration merge is only tracker, existing
+  Dex tests and this task. Against fresh main, the original limited
+  `main.lua` wiring remains, plus the already-authored independent BLOCK
+  report. That report is byte-identical to authority `4eb53da` (SHA-256
+  `6af5d62d3e482478c9a54bef82a19e1694e7237d373a3ce7a84017527cdcadbe`);
+  Worker did not modify or override its verdict.
+- Corrected tracker SHA-256:
+  `5b37e33dd4bf44690ebadd1b9fc526bf5cee6434f50b7ee9888dfe8d3663724d`.
+  Dex tests SHA-256:
+  `affebb11d99e972a1ed618554b540c8853b589186d1dd8c20475c429caedfd7a`.
+- Publication head and public CI receipts are to be returned to the
+  Orchestrator for the same independent Reviewer's exact-revision recheck.
+  Local passing checks are not acceptance, merge authorization or phase
+  completion; no non-skipped ROM/runtime evidence is claimed.

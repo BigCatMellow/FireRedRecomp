@@ -39,7 +39,7 @@ local DexTracker = {}
 DexTracker.__index = DexTracker
 
 DexTracker.DEX_FLAGS_NO = 52 -- ROUND_BITS_TO_BYTES(NUM_SPECIES), see header
-DexTracker.NATIONAL_DEX_COUNT = 411 -- NATIONAL_DEX_COUNT (== NATIONAL_DEX_DEOXYS), constants/pokedex.h
+DexTracker.NATIONAL_DEX_COUNT = 386 -- NATIONAL_DEX_COUNT (== NATIONAL_DEX_DEOXYS), constants/pokedex.h
 
 local function byteBitFor(nationalDexNo)
   local zeroBased = nationalDexNo - 1
@@ -102,8 +102,8 @@ end
 
 -- Count only real National Dex seen entries from the serialized SaveBlock2
 -- 52-byte pokedex.seen field (1-based bit n-1), matching pokefirered's
--- GetNationalPokedexCount(FLAG_GET_SEEN). The final byte also has bits
--- beyond NATIONAL_DEX_COUNT; those bits must not count.
+-- GetNationalPokedexCount(FLAG_GET_SEEN). Bits #387-416 in the final four
+-- bytes are beyond NATIONAL_DEX_COUNT; those bits must not count.
 -- Returns nil for absent/malformed data rather than manufacturing zero.
 function DexTracker.countSeenSaveBytes(rawSeen)
   if type(rawSeen) ~= "string" or #rawSeen ~= DexTracker.DEX_FLAGS_NO then
