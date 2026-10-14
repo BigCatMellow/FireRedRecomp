@@ -35,4 +35,4 @@ other locked families (M3), Truant, Disable/Taunt/Imprison.
 
 ## Evidence (Worker, 2026-10-14)
 
-Multi-turn 36/0 (design review carry-over tests added); full suite and repository checker in the PR.
+Multi-turn 45/0 after implementation review round 1; full suite and repository checker in the PR.

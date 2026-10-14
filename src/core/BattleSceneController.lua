@@ -120,7 +120,7 @@ end
 function BattleSceneController:_enterAction()
   local engine = self.engine
   if engine and engine.isLocked and engine.isOver and not engine:isOver()
-      and engine:isLocked("player") then
+      and not engine.awaitingForcedSwitch and engine:isLocked("player") then
     self:_runTurn({ action = "move", moveSlot = self.engine.player.lockedSlot })
     return true
   end

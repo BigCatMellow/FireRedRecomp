@@ -1469,10 +1469,16 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
   end
   -- A locked battler skips action selection, so noValidMoves is never set
   -- and gLockedMoves is used (src/battle_main.c:3125-3130, 3983-3992).
-  local lockedTurn = attacker.charging or attacker.recharging
+  -- A side locked at this turn's start keeps its locked action even when
+  -- the lock is cancelled before it moves (sleep/freeze applied by a faster
+  -- foe); source chose that move at selection time.
+  local turnLocked = self.lockedThisTurn and self.lockedThisTurn[attackerSide]
+  local lockedTurn = attacker.charging or attacker.recharging or turnLocked
   if lockedTurn then
     allMovesUnusable = false
-    moveSlot = attacker.lockedSlot
+    -- runTurn already passed the locked slot; a lock cancelled earlier this
+    -- turn has cleared lockedSlot, so keep the slot the turn started with.
+    moveSlot = attacker.lockedSlot or moveSlot
   end
 
   local slot, move
@@ -1521,6 +1527,8 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
     move = dynamicMove
   end
 
+  -- (A locked action is exempt here; its 0-PP case is handled after the
+  -- cancellers, as in source.)
   -- Defensive path only, real-game-unreachable: the caller selected a
   -- specific 0-PP slot while at least one OTHER slot of this battler still
   -- has PP (allMovesUnusable is false, so `slot` is set here, not Struggle).
@@ -1536,6 +1544,14 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
 
   local moveId = effectiveMoveId
   if self:resolveStatusCancellers(attackerSide, attacker, moveId, move, events) then
+    return
+  end
+  -- Source checks PP after the cancellers (src/battle_script_commands.c
+  -- :833-842); a locked action whose lock was cancelled earlier this turn
+  -- reaches it with no NO_PPDEDUCT, so a spent move reports no PP here.
+  if lockedTurn and not attacker.charging and not attacker.recharging
+      and slot and slot.pp <= 0 then
+    events[#events + 1] = { type = "noPP", side = attackerSide, move = slot.move }
     return
   end
   self.noPPDeduct = false
@@ -2779,6 +2795,10 @@ function BattleEngine:runTurn(playerAction, foeAction)
   -- matters within the turn it was set, so clearing here is equivalent).
   self.player.flinched, self.foe.flinched = false, false
   -- A locked side's chosen action is replaced by its locked move.
+  self.lockedThisTurn = {
+    [BattleEngine.SIDE_PLAYER] = self:isLocked(BattleEngine.SIDE_PLAYER),
+    [BattleEngine.SIDE_FOE] = self:isLocked(BattleEngine.SIDE_FOE),
+  }
   if self:isLocked(BattleEngine.SIDE_PLAYER) then
     playerAction = { action = "move", moveSlot = self.player.lockedSlot }
   end

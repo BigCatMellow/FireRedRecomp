@@ -281,6 +281,98 @@ do
 end
 
 ---------------------------------------------------------------------------
+-- Implementation review round 1
+---------------------------------------------------------------------------
+do
+  -- F1: a charge move whose last PP went on turn 1, then a faster foe
+  -- puts the charger to sleep before turn 2: fast asleep (cancellers run
+  -- first), no "no PP"; sleep counts down.
+  moves[147] = { effect = 1, power = 0, type = Data.TYPE_GRASS, accuracy = 100, pp = 15,
+    secondaryEffectChance = 0, target = 0, priority = 0, flags = 0x16 } -- Spore
+  local b = battle({ MISS }, { playerMove = RAZOR_WIND })
+  b.player.moves[1].pp = 1
+  b:runTurn(MOVE, MOVE)
+  check("turn 1 spent the last PP", b.player.moves[1].pp == 0 and b.player.charging)
+  b.foe.moves[1] = { move = 147, pp = 15 }
+  b.foe.speed = 30
+  b.rng = scriptedRng({ 0, 3 })
+  local events = b:runTurn(MOVE, MOVE)
+  check("lock cancelled by sleep before turn 2: fast asleep, not no PP", find(events, "fastAsleep", "player")
+    and not find(events, "noPP") and S.sleepTurns(b.player.status) == 4, types(events))
+  -- With the lock cancelled and the battler able to act, the spent move
+  -- reports no PP after the cancellers (no Struggle).
+  local c = battle({ MISS }, { playerMove = RAZOR_WIND })
+  c.player.moves[1].pp, c.player.moves[2].pp = 1, 0
+  c:runTurn(MOVE, MOVE)
+  c.lockedThisTurn = { player = true, foe = false }
+  c.player.charging = false
+  local ev = {}
+  c:resolveMove("player", 1, ev)
+  check("a cancelled lock with 0 PP: no PP after the cancellers, not Struggle", find(ev, "noPP")
+    and not find(ev, "useMove"), types(ev))
+end
+
+do
+  -- F3 M03: the recharge canceller precedes flinch.
+  local b = battle({})
+  b.player.recharging, b.player.rechargeTimer, b.player.lockedSlot = true, 1, 1
+  b.player.flinched = true
+  local ev = {}
+  b:resolveMove("player", 1, ev)
+  check("a flinched recharger must recharge (recharge before flinch)", find(ev, "mustRecharge")
+    and not find(ev, "flinched"), types(ev))
+  -- M24: applying freeze cancels a charge lock.
+  local f = battle({ MISS }, { playerMove = RAZOR_WIND })
+  f:runTurn(MOVE, MOVE)
+  f:applySecondaryStatus("player", "freeze", false, {})
+  check("freeze application cancels the charge lock", S.isFrozen(f.player.status) and not f.player.charging)
+  -- M17: a locked foe's turn order follows its locked move, not a passed
+  -- priority slot (Quick Attack +1 in slot 2).
+  local q = battle({ MISS }, { foeMove = RAZOR_WIND })
+  q.foe.moves[2] = { move = Data.MOVE_QUICK_ATTACK, pp = 30 }
+  q:runTurn(MOVE, MOVE)
+  q.rng = scriptedRng({ 0, 1, 0, 0, 1, 0 })
+  local events = q:runTurn(MOVE, { action = "move", moveSlot = 2 })
+  local pu = select(2, find(events, "useMove", "player"))
+  local fu = find(events, "useMove", "foe")
+  check("locked foe: its locked move and its speed order are used", fu and fu.move == RAZOR_WIND
+    and pu < select(2, find(events, "useMove", "foe")), types(events))
+  -- Capture/run branches: a recharging foe must recharge after a failed
+  -- capture.
+  local cb = battle({ 0, 1, 0, MISS }, { foeMove = HYPER_BEAM, foeSpeed = 30 })
+  cb:runTurn(MOVE, MOVE)
+  cb.foe.catchRate = 3
+  cb.rng = scriptedRng({ 65535 })
+  events = cb:runTurn({ action = "capture" }, MOVE)
+  check("recharging foe after a failed capture: must recharge", find(events, "capture")
+    and find(events, "mustRecharge", "foe"), types(events))
+end
+
+do
+  -- F2/F6(d): the auto-run also follows a foe-replacement follow-up, and
+  -- never fires while a forced switch is pending.
+  local b = battle({ MISS, 0, 1, 0, MISS }, { playerMove = RAZOR_WIND })
+  local followed = false
+  local c = BattleSceneController.new({ engine = b, playerName = "A", foeName = "B",
+    moveName = function() return "MOVE" end,
+    onMessagesComplete = function()
+      if followed then return nil end
+      followed = true
+      return { { text = "B sent out C!" } }
+    end })
+  c:_runTurn({ action = "move", moveSlot = 1 })
+  while c.state == BattleSceneController.MESSAGES do c:advanceMessage() end
+  check("locked player's turn auto-runs after a follow-up message", followed and b.turn == 2 and not b.player.charging,
+    b.turn)
+  local fb = battle({}, { playerMove = RAZOR_WIND })
+  fb.player.charging, fb.player.lockedSlot = true, 1
+  fb.awaitingForcedSwitch = "foe"
+  local fc = BattleSceneController.new({ engine = fb, playerName = "A", foeName = "B",
+    moveName = function() return "MOVE" end })
+  check("no auto-run while a forced switch is pending", fc:_enterAction() == false)
+end
+
+---------------------------------------------------------------------------
 -- Controller: no menu or AI for a locked side
 ---------------------------------------------------------------------------
 do
