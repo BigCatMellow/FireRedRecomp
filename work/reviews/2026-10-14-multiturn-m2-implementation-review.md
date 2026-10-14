@@ -235,3 +235,45 @@ F3 can be fixed or recorded as a known limit.
 Every mutation was reverted with `git checkout -- <file>`.
 `src/`, `tests/` and the tracked work files are unchanged. Probes were run from
 the scratchpad. This file is left uncommitted.
+
+## Re-review (2026-10-14, commit `5f2deac`)
+
+The corrections were committed as `5f2deac` ("Apply M2 review corrections")
+while this re-review was being requested. I reviewed that commit against the
+same source pin.
+
+**Verdict: PASS.** All of F1-F6 are resolved. Nothing new was found.
+
+| Finding | Fix (`src/core/BattleEngine.lua`) | Against source | Result |
+| --- | --- | --- | --- |
+| F1 | `semiMiss` with OHKO or Pain Split emits `moveFailed` after PP, with no RNG | `bsc.c:1022-1025`; `bs1.s:765, 1239, 2054-2059` | OK. Probe: `useMove,moveFailed`, 0 draws |
+| F2 | An Earthquake/Magnitude miss (`HITS_UNDERGROUND`) runs an RNG-free type query and emits `noEffect` or `miss` | Miss leaf `bs1.s:1867-1875`; `resultmessage` `bsc.c:1937` | OK. This also correctly covers an ordinary rolled miss, where `CheckWonderGuardAndLevitate` (`bsc.c:1345-1390`) plus the leaf typecalc give the same text. Probe: Earthquake against a Flying-type flier gives `noEffect`, 0 draws. |
+| F2 (Explosion) | `if not hit and not flags.noEffect`, so an immune target falls through to `noEffect` | Typecalc comes before accuracycheck (`bs1.s:394-396`), miss `resultmessage` (`:411-413`) | OK. The ordinary-miss text change is also source-correct. Draws are unchanged (2). |
+| F3 | The Jump Kick immunity scan is skipped when `semiMiss` | `bsc.c:966-990` (no `CheckWonderGuardAndLevitate`); `bs1.s:852-871`; `bsc.c:6465-6471` | OK. Probe: HJK against a Ghost digger gives `miss,crash`, 1 HP, 1 draw. |
+| F4 | 19 new checks in `tests/battle_multiturn_test.lua:492-615` | — | See the mutation table below |
+| F5/F6 | Inventory rows 0/126/147/149/155/207, the addendum corrections block, and the task's Known limits | — | OK. The plain-hit gap, the OHKO/Pain Split failure, the Earthquake miss text and the tutorial ordering are all stated. |
+
+I re-ran every mutation that survived the first round, adjusted to the new
+line shapes, and added mutations of each correction. Each was applied alone
+and restored with `git checkout`.
+
+| Mutation | Multi-turn test / full suite |
+| --- | --- |
+| 3 drop Vital Throw, 4 drop OHKO, 5 drop Pain Split | FAIL / FAIL |
+| 7-10: Twister, Earthquake, Magnitude, Surf x2 → x1 | FAIL / FAIL (each) |
+| 20-24: primary status, Confuse, Swagger, Explosion, Triple Kick use the plain roll | FAIL / FAIL (each) |
+| 27: Bounce mapped to underground | FAIL / FAIL |
+| 30: `accuracyRoll` draws before the semi check | FAIL / FAIL (6 checks) |
+| 18: Bounce removed from the no-effect roll list | pass / pass. Unreachable (nothing is immune to Flying), as noted before. |
+| N1/N2: OHKO/Pain Split `moveFailed` removed or Pain Split dropped | FAIL / FAIL |
+| N3/N4: Earthquake miss typecalc removed, or always `noEffect` | FAIL / FAIL |
+| N5: HJK semi miss goes back to the immunity scan | FAIL / FAIL |
+| N6: Explosion goes back to `miss` before `noEffect` | FAIL / FAIL |
+
+The unmodified tree gives: multi-turn 83/0, `scripts/test_all.sh` PASS (171
+files, no-ROM mode), and `scripts/check_repository.lua` PASS.
+
+The new x2 checks accept ±1 around double the plain damage. That is enough
+to kill every x1 mutant, and the Gust probe shows the doubling is exact.
+Tightening them to equality is optional. The ROM fixture is still pending,
+as recorded in the task.
