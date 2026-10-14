@@ -407,6 +407,10 @@ function BattleSceneController:_eventMessages(events)
     elseif event.type == "stayedAwake" then
       -- sText_PkmnStayedAwakeUsing (:174) via jumpifcantmakeasleep.
       add(name(event.side) .. " stayed awake\nusing its " .. (STATUS_ABILITY_NAMES[event.ability] or "ABILITY") .. "!")
+    elseif event.type == "statusCured" then
+      add(possessive(name(event.side)) .. " status\nreturned to normal!") -- :222
+    elseif event.type == "paralysisHealed" then
+      add(name(event.side) .. " was\nhealed of paralysis!") -- :108
     elseif event.type == "statusDamage" then
       -- Message before the HP update (printstring, then datahpupdate).
       if event.kind == "burn" then

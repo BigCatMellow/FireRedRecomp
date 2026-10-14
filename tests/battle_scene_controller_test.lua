@@ -695,5 +695,15 @@ do
   check("fell asleep (:83)", m[8].text == "CHARMANDER\nfell asleep!", m[8].text)
 end
 
+do
+  local c = controller()
+  local m = c:_eventMessages({
+    { type = "statusCured", side = "player" },
+    { type = "paralysisHealed", side = "foe" },
+  })
+  check("Refresh text (:222)", m[1].text == "BULBASAUR's status\nreturned to normal!", m[1].text)
+  check("Smelling Salt heal text (:108)", m[2].text == "CHARMANDER was\nhealed of paralysis!", m[2].text)
+end
+
 print(("%d passed, %d failed"):format(passed, failed))
 os.exit(failed == 0 and 0 or 1)

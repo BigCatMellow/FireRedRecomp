@@ -951,6 +951,118 @@ do
 end
 
 ---------------------------------------------------------------------------
+-- Slice S4: thaw-hit burn, Facade, Smelling Salt, Refresh
+---------------------------------------------------------------------------
+local MOVE_FACADE, MOVE_SMELLINGSALT, MOVE_REFRESH, MOVE_SACRED_FIRE = 263, 265, 287, 221
+moves[MOVE_FACADE] = { effect = 169, power = 70, type = Data.TYPE_NORMAL, accuracy = 100, pp = 20,
+  secondaryEffectChance = 0, target = 0, priority = 0, flags = 0x13 }
+moves[MOVE_SMELLINGSALT] = { effect = 171, power = 60, type = Data.TYPE_NORMAL, accuracy = 100, pp = 10,
+  secondaryEffectChance = 0, target = 0, priority = 0, flags = 0x13 }
+moves[MOVE_REFRESH] = { effect = 193, power = 0, type = Data.TYPE_NORMAL, accuracy = 100, pp = 20,
+  secondaryEffectChance = 0, target = 0x10, priority = 0, flags = 0x08 }
+moves[MOVE_SACRED_FIRE] = { effect = 125, power = 100, type = Data.TYPE_FIRE, accuracy = 95, pp = 5,
+  secondaryEffectChance = 50, target = 0, priority = 0, flags = 0x12 }
+
+local function damageOf(events, side)
+  local e = find(events, "damage", side)
+  return e and e.amount
+end
+
+do
+  -- Thaw-hit moves carry a burn chance: Flame Wheel 10%, Sacred Fire 50%.
+  local b, events = hitWith(MOVE_FLAME_WHEEL, 10)
+  check("Flame Wheel burns on roll 10", find(events, "statusApplied", "foe")
+    and find(events, "statusApplied", "foe").kind == "burn", types(events))
+  b, events = hitWith(MOVE_SACRED_FIRE, 50)
+  check("Sacred Fire burns on roll 50", S.isBurned(b.foe.status))
+  b, events = hitWith(MOVE_SACRED_FIRE, 51)
+  check("Sacred Fire roll 51 does not burn", b.foe.status == 0)
+end
+
+do
+  -- Facade doubles while the user is poisoned/burned/paralyzed/badly
+  -- poisoned; burn halving still applies inside the base damage.
+  -- The player's Facade alone (resolveMove), so turn order cannot shift
+  -- the draws; a paralyzed user first takes its canceller draw (1).
+  local function facade(status)
+    local values = status == S.PARALYSIS and { 1, 0, 1, 0 } or { 0, 1, 0 }
+    local fb = battle(values, { playerMove = MOVE_FACADE, playerStatus = status, foeHP = 400 })
+    local ev = {}
+    fb:resolveMove("player", 1, ev)
+    return damageOf(ev, "player")
+  end
+  local plain, poisoned, paralyzed = facade(0), facade(S.POISON), facade(S.PARALYSIS)
+  local toxic, burned, asleep = facade(S.TOXIC_POISON), facade(S.BURN), facade(1)
+  check("Facade doubles while poisoned/paralyzed/badly poisoned",
+    poisoned == plain * 2 and paralyzed == plain * 2 and toxic == plain * 2, plain .. "/" .. poisoned)
+  check("Facade after waking from a 1-turn sleep is not doubled", asleep == plain, asleep)
+  local atk = BattleEngine.makeBattler({ species = 1, level = 10, stats = stats(40, 20), types = { 0, 0 } })
+  local def = BattleEngine.makeBattler({ species = 1, level = 10, stats = stats(400, 10), types = { 0, 0 } })
+  atk.status = S.BURN
+  local halvedBase = BattleFormulas.calculateBaseDamage(atk, def, moves[MOVE_FACADE], false, nil)
+  check("burned Facade: halved base, then doubled (STAB x1.5 for the Normal user)",
+    burned == math.floor(halvedBase * 2 * 15 / 10), burned .. " vs base " .. halvedBase)
+end
+
+do
+  local plain = damageOf(select(2, hitWith(MOVE_SMELLINGSALT, 99)), "player")
+  local b = battle({ 0, 1, 0, MISS }, { playerMove = MOVE_SMELLINGSALT, foeHP = 400, foeStatus = S.PARALYSIS })
+  local events = b:runTurn(MOVE, MOVE)
+  local dmg, di = find(events, "damage", "player")
+  local healed, hi = find(events, "paralysisHealed", "foe")
+  -- dmgMultiplier doubles the base before STAB: floor(2B * 15/10).
+  local base = BattleFormulas.calculateBaseDamage(b.player, b.foe, moves[MOVE_SMELLINGSALT], false, nil)
+  check("Smelling Salt doubles against a paralyzed target (before STAB)",
+    plain == math.floor(base * 15 / 10) and dmg.amount == math.floor(base * 2 * 15 / 10), dmg.amount .. "/" .. plain)
+  -- Draws: hit 3 + the healed foe's Tackle accuracy (no paralysis draw).
+  check("Smelling Salt then heals the paralysis without a roll", healed and di < hi and b.foe.status == 0
+    and b.rng.draws == 4, b.rng.draws)
+  b = battle({ 0, 1, 0, MISS }, { playerMove = MOVE_SMELLINGSALT, foeHP = 400 })
+  events = b:runTurn(MOVE, MOVE)
+  check("Smelling Salt vs a healthy target: no heal, no roll", not find(events, "paralysisHealed")
+    and b.rng.draws == 4, b.rng.draws)
+  b = battle({ 0, 1, 0, 99, MISS }, { playerMove = MOVE_SMELLINGSALT,
+    foeTypes = { Data.TYPE_GHOST, Data.TYPE_GHOST }, foeStatus = S.PARALYSIS })
+  events = b:runTurn(MOVE, MOVE)
+  check("Smelling Salt vs Ghost: no effect, paralysis stays",
+    find(events, "noEffect") and S.isParalyzed(b.foe.status), types(events))
+  b = battle({ 0, 1, 0, 99 }, { playerMove = MOVE_SMELLINGSALT,
+    foeTypes = { Data.TYPE_GHOST, Data.TYPE_GHOST }, foeStatus = S.PARALYSIS })
+  local ghostEvents = {}
+  b:resolveMove("player", 1, ghostEvents)
+  check("Smelling Salt vs Ghost draws the effect roll (4 draws)", b.rng.draws == 4, b.rng.draws)
+  b = battle({ 0, 1, 0 }, { playerMove = MOVE_SMELLINGSALT, foeCurrentHP = 1, foeStatus = S.PARALYSIS })
+  events = b:runTurn(MOVE, MOVE)
+  check("Smelling Salt KO: no heal message (faint clears status)", not find(events, "paralysisHealed")
+    and find(events, "faint", "foe"), types(events))
+end
+
+do
+  check("Refresh is admitted only as a self-target move", battle({}):supportsMove(moves[MOVE_REFRESH], MOVE_REFRESH))
+  for _, st in ipairs({ S.POISON, S.BURN, S.PARALYSIS, S.TOXIC_POISON + 4 * 256 }) do
+    -- A paralyzed user is slower (foe misses first) and takes its
+    -- canceller draw (1 % 4 ~= 0).
+    local values = st == S.PARALYSIS and { MISS, 1 } or { MISS }
+    local b = battle(values, { playerMove = MOVE_REFRESH, playerStatus = st })
+    local events = b:runTurn(MOVE, MOVE)
+    check("Refresh cures status " .. st, find(events, "statusCured", "player") and b.player.status == 0
+      and b.player.moves[1].pp == 9 and b.rng.draws == #values, types(events))
+  end
+  local b = battle({ MISS }, { playerMove = MOVE_REFRESH, playerStatus = 2 })
+  local events = b:runTurn(MOVE, MOVE)
+  check("a sleeping Refresh user is cancelled before Refresh runs", find(events, "fastAsleep", "player")
+    and b.player.status == 1, types(events))
+  b = battle({ MISS }, { playerMove = MOVE_REFRESH, playerStatus = S.FREEZE })
+  b.rng = scriptedRng({ 1, MISS })
+  events = b:runTurn(MOVE, MOVE)
+  check("frozen Refresh user stays frozen (canceller)", find(events, "frozenSolid", "player"))
+  b = battle({ MISS }, { playerMove = MOVE_REFRESH })
+  events = b:runTurn(MOVE, MOVE)
+  check("Refresh with no status: But it failed!", find(events, "moveFailed", "player")
+    and b.player.moves[1].pp == 9, types(events))
+end
+
+---------------------------------------------------------------------------
 -- Status-free battles keep their RNG sequence
 ---------------------------------------------------------------------------
 do

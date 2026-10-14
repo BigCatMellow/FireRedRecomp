@@ -134,7 +134,7 @@ local inventory = {
   [122] = {"blocked_on_state", true, 1, {217}}, -- EFFECT_PRESENT
   [123] = {"blocked_on_state", true, 1, {218}}, -- EFFECT_FRUSTRATION
   [124] = {"blocked_on_state", false, 0, {219}}, -- EFFECT_SAFEGUARD
-  [125] = {"blocked_on_state", true, 1, {172,221}}, -- EFFECT_THAW_HIT
+  [125] = {"represented", true, 1, {172,221}}, -- EFFECT_THAW_HIT: ROM fixture pending (phase4_status_s4_effect_rom_test)
   [126] = {"represented", true, 1, {222}}, -- EFFECT_MAGNITUDE (Magnitude only)
   [127] = {"blocked_on_state", false, 0, {226}}, -- EFFECT_BATON_PASS
   [128] = {"blocked_on_state", true, 1, {228}}, -- EFFECT_PURSUIT
@@ -178,9 +178,9 @@ local inventory = {
   [166] = {"blocked_on_state", false, 0, {260}}, -- EFFECT_FLATTER
   [167] = {"represented", true, 0, {261}}, -- EFFECT_WILL_O_WISP: ROM fixture pending (phase4_primary_status_effect_rom_test)
   [168] = {"represented", true, 0, {262}}, -- EFFECT_MEMENTO: ROM fixture pending (phase4_conversion_memento_effect_rom_test)
-  [169] = {"blocked_on_state", true, 1, {263}}, -- EFFECT_FACADE
+  [169] = {"represented", true, 1, {263}}, -- EFFECT_FACADE: ROM fixture pending (phase4_status_s4_effect_rom_test)
   [170] = {"blocked_on_state", true, 1, {264}}, -- EFFECT_FOCUS_PUNCH
-  [171] = {"blocked_on_state", true, 1, {265}}, -- EFFECT_SMELLINGSALT
+  [171] = {"represented", true, 1, {265}}, -- EFFECT_SMELLINGSALT: ROM fixture pending (phase4_status_s4_effect_rom_test)
   [172] = {"blocked_on_state", false, 0, {266}}, -- EFFECT_FOLLOW_ME
   [173] = {"blocked_on_state", false, 0, {267}}, -- EFFECT_NATURE_POWER
   [174] = {"blocked_on_state", false, 0, {268}}, -- EFFECT_CHARGE
@@ -202,7 +202,7 @@ local inventory = {
   [190] = {"represented", true, 1, {284,323}}, -- EFFECT_ERUPTION
   [191] = {"blocked_on_state", false, 0, {285}}, -- EFFECT_SKILL_SWAP
   [192] = {"blocked_on_state", false, 0, {286}}, -- EFFECT_IMPRISON
-  [193] = {"blocked_on_state", false, 0, {287}}, -- EFFECT_REFRESH
+  [193] = {"represented", true, 0, {287}}, -- EFFECT_REFRESH: ROM fixture pending (phase4_status_s4_effect_rom_test)
   [194] = {"blocked_on_state", false, 0, {288}}, -- EFFECT_GRUDGE
   [195] = {"blocked_on_state", false, 0, {289}}, -- EFFECT_SNATCH
   [196] = {"blocked_on_state", true, 1, {67}}, -- EFFECT_LOW_KICK
@@ -227,13 +227,13 @@ local inventory = {
 
 local expectedTotals = {
   moves = 354, defined = 214, used = 198, unused = 16,
-  positive = 216, zero = 138, admitted = 276, rejected = 78,
-  admitted_uncovered_positive = 78,
+  positive = 216, zero = 138, admitted = 277, rejected = 77,
+  admitted_uncovered_positive = 74,
 }
 local expectedClasses = {
-  represented = {families = 81, moves = 198, positive = 137, zero = 61},
+  represented = {families = 85, moves = 203, positive = 141, zero = 62},
   candidate = {families = 0, moves = 0, positive = 0, zero = 0},
-  blocked_on_state = {families = 116, moves = 155, positive = 78, zero = 77},
+  blocked_on_state = {families = 112, moves = 150, positive = 74, zero = 76},
   intentionally_rejected = {families = 1, moves = 1, positive = 1, zero = 0},
   unused = {families = 16, moves = 0, positive = 0, zero = 0},
 }
