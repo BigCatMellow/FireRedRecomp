@@ -1,11 +1,29 @@
 # FireRedRecomp Coordination Handoff
 
-- Status: `READY_FOR_WORKER — bounded PR3 Party-design correction`
-- Task ID: `P6-02-PARTY-SELECTION-DESIGN`
+- Status: `READY_FOR_WORKER — actual PR6 Party SUMMARY code alignment`
+- Task ID: `P6-04-PARTY-SUMMARY`
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
 - Current plan: [`../roadmaps/RECALIBRATED_DELIVERY_PLAN.md`](../roadmaps/RECALIBRATED_DELIVERY_PLAN.md)
 
 ## Current relay — 2026-10-14
+
+### Latest dispatch — PR6 implementation
+
+PR3 design is CLOSED: corrected `f3f9065` independently PASS in review
+`2ad1d7e`; both final CI runs `38646070469` / `38646064857` passed, then exact
+merge produced `239c25f`. It grants no implementation acceptance by itself.
+
+Orchestrator explicitly adopted its six-path successor in existing PR6 task
+at `6ff4464`, worktree `/tmp/firered-party-summary-align.8vCZJo`. Exact next
+action: dispatched Worker integrates current main normally, aligns existing
+SUMMARY code/tests (local source-repeat input, no cycling, labeled reduced
+Egg projection, production dispatch isolation and unchanged party data), runs
+focused/full no-ROM/checker/publicCI, and updates existing PR6. Separate
+Reviewer must check its exact head before merge. No ROM/runner/shared-input/
+save-schema change or seventh implementation path is authorized.
+
+PR5 and PR3 are terminal accepted leaves; preserve their reports/worktrees,
+do not rerun their review loops. Older next-action paragraphs below are history.
 
 ### Latest acceptance — PR5 merged
 

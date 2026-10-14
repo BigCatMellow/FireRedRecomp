@@ -1,7 +1,7 @@
 # P6-02 proposal — normal Party selection design
 
 - Task ID: `P6-02-PARTY-SELECTION-DESIGN`
-- Status: `READY_FOR_REVIEWER` — 2026-10-14 bounded correction after independent NEEDS_FIX; no implementation acceptance
+- Status: `CLOSED — REVIEWED PASS` — corrected design `f3f9065` independently accepted in `2ad1d7e`; PR3 merged `239c25f`, no implementation acceptance
 - Type: `DESIGN / SOURCE-LOCK; NO IMPLEMENTATION AUTHORITY`
 - Parent: Phase 6; separate from P4/P5 private-ROM bridge work
 - Basis: independently accepted `P6-01-FIELD-MENU-INVENTORY` at `ee7535d6`; see [inventory](../reports/phase6-field-menu-coverage-inventory.md)

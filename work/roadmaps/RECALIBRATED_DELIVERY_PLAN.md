@@ -37,8 +37,9 @@ rule or traversal work without an evidenced dependency.
    evidence package separately; never reuse a consumed request.
 3. Recover existing first-corridor integration work before inventing another
    effect batch: normal START Pokédex-count PR5's source-bound correction
-   passed independent review and merged `52fbf69`. Continue the two-document
-   Party design correction/recheck PR3 before implementation PR6. No rendered Pokédex,
+   passed independent review and merged `52fbf69`. Party design PR3 also passed
+   and merged `239c25f`; execute actual PR6 alignment under six-path task
+   `6ff4464`, then independently review. No rendered Pokédex,
    full Party UI or normal traversal proof is implied. Memento's trainer-AI
    reserve-count gap is separately under read-only feasibility inspection;
    engine acceptance does not establish AI support.
