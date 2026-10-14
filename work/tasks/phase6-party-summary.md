@@ -1,12 +1,42 @@
 # P6-04 — Read-only Party SUMMARY interaction
 
 - Task ID: `P6-04-PARTY-SUMMARY`
-- Status: `READY_FOR_REVIEWER` — bounded draft implementation, not merged or accepted
+- Status: `READY_FOR_WORKER` — align existing draft PR #6 with independently accepted corrected design; implementation not accepted
 - Parent capability: Phase 6 (no phase-status update)
-- Basis: accepted P6-01 inventory (`ee7535d6`); P6-02 draft design PR #3 remains unreviewed, so this branch cannot be merged or treated as independently accepted until its prerequisite/design and this implementation are reviewed.
+- Basis: accepted P6-01 inventory (`ee7535d6`); corrected P6-02 design `f3f9065` independently PASS in review `2ad1d7e`. Orchestrator explicitly adopts its bounded six-path successor proposal in this contract on 2026-10-14. This grants alignment authority, not acceptance of existing code.
 - Human dispatch: 2026-10-09 request to continue gameplay code progress.
 - Base: `503ea1e674baed88a27050dc54efd961baed1c9e`
 - Public reference: `pret/pokefirered` at `c75f352304d529f6ba92d4f74b9cf8b5c3810788`, `src/party_menu.c` `HandleChooseMonSelection`, `Task_TryCreateSelectionWindow`, `SetPartyMonFieldSelectionActions`, `CursorCB_Summary`, `CB2_ReturnToPartyMenuFromSummaryScreen`.
+
+## Alignment authority — 2026-10-14
+
+Read the accepted [design](../reports/phase6-party-selection-design.md) and
+[independent recheck](../reviews/2026-10-14-party-selection-design-review.md)
+after normally integrating current main (including merged PR3/PR5) into the
+existing PR6 branch. Preserve all concurrent main changes; no force/reset.
+Reuse the existing implementation and correct only the gaps below within its
+six original paths. No separate design/route/probe package is required by
+this existing no-ROM-testable UI contract. This is not the P4 fast lane.
+
+Pinned source distinctions now required:
+
+- `party_menu.c:2963–3001`, `data/party_menu.h:1093,1127`: ordinary and valid
+  Egg records offer SUMMARY. This slice offers only SUMMARY/CANCEL.
+- `party_menu.c:3109–3114`, `pokemon_summary_screen.c:1168–1177,3387–3390`:
+  source returns to the last viewed mon; same-slot return here is justified
+  only by explicitly excluding mon cycling and page switching.
+- `party_menu.c:3062–3093`, `menu.c:425–450`: process new A, then new B, then
+  repeated D-pad. Move only for an exact UP-only or DOWN-only repeated mask.
+  Implement this locally in PartySelectionFlow using existing InputState
+  repeat and MenuCursor moveCursorNoWrap; shared input/menu helpers unchanged.
+- Retail Egg display differs (`pokemon_summary_screen.c:1938–1951,2428–2441`).
+  Label a valid Egg's reduced view as an Egg saved-data projection; cached
+  numeric values are saved data, not a claim about the retail Egg stat screen.
+
+Summary directional/L/R inputs cannot change slot or page, A is inert, and
+only newly pressed B returns. No same-tick input cascading through views.
+Do not invent Egg hatch progress/messages or repair invalid records. Preserve
+the already merged source386 Dex guard and all non-Party main.lua behavior.
 
 ## Bounded outcome
 
@@ -14,16 +44,24 @@ Normal field START → POKÉMON → one party slot → small per-mon action menu
 
 ## MAY CHANGE
 
-- `main.lua`: exclusively Party input/overlay branches, imports and Party cleanup.
+- `main.lua`: exclusively Party input/overlay branches, imports and Party cleanup, including explicit reduced Egg saved-data label; no other scene behavior.
 - `src/core/PartyScreen.lua`: read-only summary row data, and an explicit reset-to-browsing operation for a previously confirmed selected slot.
-- `src/core/PartySelectionFlow.lua` (new): pure SUMMARY/CANCEL state machine, no ROM or game writes.
+- `src/core/PartySelectionFlow.lua` (new): pure SUMMARY/CANCEL state machine, local repeated no-wrap input as above, no ROM or game writes.
 - `tests/party_screen_test.lua`: confirmed-list return and decoded field assertions.
-- `tests/party_selection_flow_test.lua` (new): fresh isolated no-ROM input/cancel/summary cases and unchanged party bytes.
+- `tests/party_selection_flow_test.lua` (new): fresh isolated no-ROM input/cancel/summary/Egg cases, production Party-dispatch isolation with synthetic state, and unchanged party bytes/cached values.
 - This task record.
+
+Independent Reviewer may add/append its own record under `work/reviews/`;
+that record is separate from the six-path Worker implementation boundary.
 
 ## MUST NOT CHANGE
 
 Do not implement SWITCH, ITEM, field moves, PC, Pokédex screens, any mutation to battle/save/capture/story state, input engine, map scripts, ROM/cache, workflows, runner, phase status, public reference, or other task/PR branches. Do not claim graphical sprite parity, a full retail SUMMARY screen or a full field-route replay solely from unit evidence.
+
+Also exclude Summary mon cycling, page switching, retail Egg graphics/stat
+rules, hatch progress, Bad Egg support/record repair, shared MenuCursor or
+InputState changes. A source or production isolation gap that needs a seventh
+implementation path stops this package for explicit re-scope.
 
 ## Verification gates
 
@@ -32,9 +70,34 @@ Do not implement SWITCH, ITEM, field moves, PC, Pokédex screens, any mutation t
 3. Public CI `scripts/check_repository.lua` and `scripts/test_all.sh` at an exact implementation head, recording any skips; no private ROM testing assumed.
 4. Independent reviewer of exact substantive head and CI receipts, including state/mutation boundary and prerequisite design, before merge/acceptance.
 
+5. Source-literal tests with at least two distinctive saved records verify
+   selected slot/projection survives summary Up/Down/Left/Right/L/R/A input;
+   new B and the complete cancel/reopen chain work without stale state.
+6. Valid synthetic Egg can enter the labeled reduced projection and return;
+   ordinary/Egg cached fields and decoded identity are asserted directly.
+7. Real InputState held timing plus repeat-only/cursor-call witnesses detect
+   repeated movement even at clamped two-row endpoints. Test no movement
+   between repeat events, chords ignored, new A/B priority, held A/B inert
+   across state transitions, and shared-helper regressions unchanged.
+8. Exercise production Party input dispatch using synthetic state: actions/
+   summary must not move list/player, interact with field, open Bag or consume
+   retained START input. Component-only tests cannot establish that wiring.
+   Read-only projection/entry/every cancel step must preserve selected and
+   nonselected encoded records, cached HP/status/stats/PP, count/order and
+   relevant synthetic session fields. No ROM/private fixtures required.
+
+Run baseline and after `env -u POKEPORT_ROM -u POKEPORT_RUNTIME_REPLAY bash
+scripts/test_all.sh`; focused PartyScreen/PartySelectionFlow/MenuCursor tests,
+`lua5.1 scripts/check_repository.lua`, and `git diff --check`. Compare corrected
+assertions against pre-alignment code where applicable, so new tests detect
+the repeated-input/Egg/isolation gaps rather than merely remain green.
+Publish only to existing PR6 branch, record exact public CI and route separate
+independent review; no Worker merge/self-review. Source uncertainty, writes
+needed for projection, or essential private-ROM/runtime proof stops alignment.
+
 Stop and leave the PR draft if a verified-ROM test, broader field actions, or unapproved design expansion becomes necessary. Do not self-approve.
 
-## Worker evidence — 2026-10-09
+## Historical Worker evidence — 2026-10-09 (alignment still required)
 
 - Draft [PR #6](https://github.com/BigCatMellow/FireRedRecomp/pull/6) on branch `work/p6-party-summary-20261009`; substantive implementation head `d3d9175bb3d88402215d1f5e8833bb60686ce217` (docs/status additions afterward are non-substantive).
 - Exactly the six authorized paths changed relative to base, including this task. New pure state machine `PartySelectionFlow` takes control only after the confirmed list selection; B unwinds SUMMARY→action list→Party list→START without session writes.
