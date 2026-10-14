@@ -79,6 +79,9 @@
 --   {type="confusedTurn", side=}      -- "is confused!" (still confused)
 --   {type="confusionSelfHit", side=, amount=, hpRemaining=}
 --   {type="confusionEnded", side=}    -- snapped out; move proceeds
+--   {type="confusionApplied", side=<target>}   -- "became confused!"
+--   {type="alreadyConfused", side=<target>}
+--   {type="confusionPrevented", side=<target>} -- Own Tempo
 --   {type="battleEnd", outcome="playerWon"|"playerLost"|"ran"|"caught"}
 --
 -- Real turn structure ported, in real execution order:
@@ -247,7 +250,10 @@
 --     (PRIMARY_STATUS_MOVES, slice S3, resolvePrimaryStatusMove).
 --   * Confusion and flinch (status2) cancellers, the confusion self-hit and
 --     flinch clearing are supported (resolveStatusCancellers,
---     resolveConfusionSelfHit); battle-only, never persisted.
+--     resolveConfusionSelfHit); battle-only, never persisted. Moves apply
+--     them through STATUS2_HIT_MOVES (applySecondaryStatus2) and the
+--     Confuse/Teeter Dance/Swagger/Flatter handlers (applyConfusion).
+--     Soundproof is not represented (Supersonic, Snore, Growl, Sing).
 --   * Abilities only where named (Damp, Guts, the status guards above);
 --     no held items, weather,
 --     multi-turn/charging moves, trapping, forced switching, OHKO moves,
@@ -741,6 +747,22 @@ BattleEngine.STATUS_HIT_MOVES = {
   [125] = "burn",      -- EFFECT_THAW_HIT (data/battle_scripts_1.s:1675-1677)
 }
 -- Status slice S4 (data/battle_scripts_1.s:2247-2270, :2515-2525).
+-- Confusion/flinch slice C2: status2 secondaries (seteffectwithchance) and
+-- the confusion-causing status moves.
+BattleEngine.STATUS2_HIT_MOVES = {
+  [76] = "confusion",  -- EFFECT_CONFUSE_HIT (data/battle_scripts_1.s:1068-1070)
+  [31] = "flinch",     -- EFFECT_FLINCH_HIT (:669-671)
+  [150] = "flinch",    -- EFFECT_FLINCH_MINIMIZE_HIT (:1894-1897; Minimize unmodeled)
+  [146] = "flinch",    -- EFFECT_TWISTER (:1822-1828; on-air unmodeled)
+  [92] = "flinch",     -- EFFECT_SNORE (asleep path, :1264-1268)
+}
+BattleEngine.EFFECT_SNORE = 92
+BattleEngine.EFFECT_CONFUSE = 49
+BattleEngine.EFFECT_SWAGGER = 118
+BattleEngine.EFFECT_FLATTER = 166
+BattleEngine.EFFECT_TEETER_DANCE = 199
+BattleEngine.ABILITY_OWN_TEMPO = 20
+BattleEngine.ABILITY_INNER_FOCUS = 39
 BattleEngine.EFFECT_FACADE = 169
 BattleEngine.EFFECT_SMELLINGSALT = 171
 BattleEngine.EFFECT_REFRESH = 193
@@ -1092,6 +1114,13 @@ function BattleEngine:supportsMove(move, moveId)
   if move.effect == BattleEngine.EFFECT_REFRESH then
     return move.power == 0 and move.target == MOVE_TARGET_USER
   end
+  if move.effect == BattleEngine.EFFECT_CONFUSE or move.effect == BattleEngine.EFFECT_SWAGGER
+      or move.effect == BattleEngine.EFFECT_FLATTER then
+    return move.power == 0 and move.target == 0 -- MOVE_TARGET_SELECTED
+  end
+  if move.effect == BattleEngine.EFFECT_TEETER_DANCE then
+    return move.power == 0 and move.target == 0x20 -- MOVE_TARGET_FOES_AND_ALLY
+  end
   return move.power > 0 or BattleEngine.STAT_STAGE_MOVES[move.effect] ~= nil
     or BattleEngine.SCREEN_MOVES[move.effect] ~= nil
     or move.effect == BattleEngine.EFFECT_PAIN_SPLIT
@@ -1147,7 +1176,7 @@ function BattleEngine:resolveStatusCancellers(attackerSide, attacker, moveId, mo
       -- Snore/Sleep Talk pass the canceller; Snore's own script prints
       -- "fast asleep" after attackcanceler, i.e. after every remaining
       -- canceller (data/battle_scripts_1.s:1253-1266), so it is emitted at
-      -- the end below. Its awake-failure branch is not modeled yet.
+      -- the end below. Its awake failure is handled in resolveMoveCore.
       if moveId ~= BattleEngine.MOVE_SNORE and moveId ~= BattleEngine.MOVE_SLEEP_TALK then
         events[#events + 1] = { type = "fastAsleep", side = attackerSide }
         return true
@@ -1329,6 +1358,42 @@ function BattleEngine:resolveConfusionSelfHit(side, battler, chosenMove, events)
   self:checkFaint(side, events)
 end
 
+-- SetMoveEffect MOVE_EFFECT_CONFUSION (src/battle_script_commands.c
+-- :2405-2418) after the caller's script gates: Own Tempo or already
+-- confused -> silent; otherwise `(Random() % 4) + 2` turns and "became
+-- confused!".
+function BattleEngine:applyConfusion(targetSide, target, events)
+  if target.ability == BattleEngine.ABILITY_OWN_TEMPO
+      or (target.confusionTurns or 0) > 0 then
+    return false
+  end
+  target.confusionTurns = (self.rng:next16() % 4) + 2
+  events[#events + 1] = { type = "confusionApplied", side = targetSide }
+  return true
+end
+
+-- Secondary confusion/flinch (SetMoveEffect, non-primary): Shield Dust
+-- blocks both (effect bytes 7 and 8 are <= 9, :2132-2134); target at 0 HP
+-- returns (:2140). Flinch: Inner Focus blocks silently (every in-scope
+-- flinch is a non-certain secondary); otherwise the bit is set only when
+-- the target has not had its turn yet (GetBattlerTurnOrderNum(target) >
+-- gCurrentTurnActionNumber, :2435-2436) -- in this singles engine, only the
+-- first mover of a two-move turn (self.flinchTargetPending). No message is
+-- printed when the bit is set.
+function BattleEngine:applySecondaryStatus2(targetSide, target, kind, events)
+  if target.ability == BattleEngine.ABILITY_SHIELD_DUST then return false end
+  if target.hp <= 0 then return false end
+  if kind == "confusion" then
+    return self:applyConfusion(targetSide, target, events)
+  end
+  if target.ability == BattleEngine.ABILITY_INNER_FOCUS then return false end
+  if self.flinchTargetPending then
+    target.flinched = true
+    return true
+  end
+  return false
+end
+
 function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
   local attacker = self:battler(attackerSide)
   local defenderSide = otherSide(attackerSide)
@@ -1498,6 +1563,74 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
       events[#events + 1] = { type = "moveFailed", side = attackerSide }
       return
     end
+  end
+
+  if move.effect == BattleEngine.EFFECT_CONFUSE or move.effect == BattleEngine.EFFECT_TEETER_DANCE then
+    -- BattleScript_EffectConfuse (data/battle_scripts_1.s:902-917) and, for
+    -- the lone singles target, BattleScript_EffectTeeterDance (:2566-2618):
+    -- attackstring/ppreduce, Own Tempo text, (Substitute), already confused
+    -- text, accuracycheck, seteffectprimary. No RNG before accuracy.
+    if slot then slot.pp = slot.pp - 1 end
+    if defender.ability == BattleEngine.ABILITY_OWN_TEMPO then
+      events[#events + 1] = { type = "confusionPrevented", side = defenderSide }
+      return
+    end
+    if (defender.confusionTurns or 0) > 0 then
+      events[#events + 1] = { type = "alreadyConfused", side = defenderSide }
+      return
+    end
+    if not BattleFormulas.accuracyCheck(move.accuracy, attacker.statStages.accuracy,
+        defender.statStages.evasion, self.rng, attacker.ability, move.type) then
+      events[#events + 1] = { type = "miss", side = attackerSide }
+      return
+    end
+    self:applyConfusion(defenderSide, defender, events)
+    return
+  end
+
+  if move.effect == BattleEngine.EFFECT_SWAGGER or move.effect == BattleEngine.EFFECT_FLATTER then
+    -- BattleScript_EffectSwagger/Flatter (:1604-1625, :2147-2168):
+    -- (Substitute), accuracycheck BEFORE attackstring (a miss still prints
+    -- "used" -- already emitted -- spends PP and misses), ppreduce;
+    -- jumpifconfusedandstatmaxed (`:8196-8203`): confused AND stat at +6 ->
+    -- But it failed; statbuffchange raises ATK+2 / SP.ATK+1 or skips
+    -- silently at +6; then Own Tempo text, else seteffectprimary confusion
+    -- (already confused: silent).
+    local stat, delta = "attack", 2
+    if move.effect == BattleEngine.EFFECT_FLATTER then stat, delta = "spAttack", 1 end
+    local hit = BattleFormulas.accuracyCheck(move.accuracy, attacker.statStages.accuracy,
+      defender.statStages.evasion, self.rng, attacker.ability, move.type)
+    if slot then slot.pp = slot.pp - 1 end
+    if not hit then
+      events[#events + 1] = { type = "miss", side = attackerSide }
+      return
+    end
+    local stages = defender.statStages
+    if (defender.confusionTurns or 0) > 0 and stages[stat] == BattleFormulas.MAX_STAT_STAGE then
+      events[#events + 1] = { type = "moveFailed", side = attackerSide }
+      return
+    end
+    if stages[stat] < BattleFormulas.MAX_STAT_STAGE then
+      stages[stat] = math.min(BattleFormulas.MAX_STAT_STAGE, stages[stat] + delta)
+      events[#events + 1] = {
+        type = "statChange", side = defenderSide, stat = stat, stages = delta, stage = stages[stat],
+      }
+    end
+    if defender.ability == BattleEngine.ABILITY_OWN_TEMPO then
+      events[#events + 1] = { type = "confusionPrevented", side = defenderSide }
+      return
+    end
+    self:applyConfusion(defenderSide, defender, events)
+    return
+  end
+
+  if move.effect == BattleEngine.EFFECT_SNORE
+      and not StatusConditions.isAsleep(attacker.status) then
+    -- BattleScript_EffectSnore (:1253-1258): awake (including just woken this
+    -- turn) -> attackstring, ppreduce, But it failed.
+    if slot then slot.pp = slot.pp - 1 end
+    events[#events + 1] = { type = "moveFailed", side = attackerSide }
+    return
   end
 
   if move.effect == BattleEngine.EFFECT_REFRESH then
@@ -2012,6 +2145,7 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
         or BattleEngine.SELF_DROP_HIT_MOVES[move.effect]
         or move.effect == BattleEngine.EFFECT_ALL_STATS_UP_HIT
         or BattleEngine.STATUS_HIT_MOVES[move.effect]
+        or BattleEngine.STATUS2_HIT_MOVES[move.effect]
         or move.effect == BattleEngine.EFFECT_SMELLINGSALT then
       -- Smelling Salt's byte is CERTAIN, which skips the roll only when the
       -- move had an effect; a no-effect hit falls to the rolling branch.
@@ -2135,6 +2269,12 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
     -- SetMoveEffect with MOVE_EFFECT_CERTAIN.
     self:applySecondaryStatus(defenderSide, statusKind,
       move.secondaryEffectChance >= 100, events)
+  end
+
+  local status2Kind = BattleEngine.STATUS2_HIT_MOVES[move.effect]
+  if status2Kind
+      and BattleFormulas.secondaryEffectRoll(self.rng, move.secondaryEffectChance) then
+    self:applySecondaryStatus2(defenderSide, defender, status2Kind, events)
   end
 
   if move.effect == BattleEngine.EFFECT_SMELLINGSALT and defender.hp > 0
@@ -2665,10 +2805,13 @@ function BattleEngine:runTurn(playerAction, foeAction)
     order = { { BattleEngine.SIDE_FOE, foeAction }, { BattleEngine.SIDE_PLAYER, playerAction } }
   end
 
-  for _, entry in ipairs(order) do
+  for index, entry in ipairs(order) do
     local side, action = entry[1], entry[2]
     if self:battler(side).hp > 0 then
+      -- Only the first mover's target still has its turn ahead (flinch).
+      self.flinchTargetPending = index == 1
       self:resolveMove(side, action.moveSlot, events)
+      self.flinchTargetPending = false
       -- A recoil/drain move can already have ended the battle -- OR queued
       -- a forced switch -- via the attacker's own faint inside resolveMove
       -- (real attacker-faints-first ordering -- see that function's step

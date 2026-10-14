@@ -40,7 +40,7 @@ local inventory = {
   [28] = {"blocked_on_state", false, 0, {18,46}}, -- EFFECT_ROAR
   [29] = {"represented", true, 1, {3,4,31,42,131,140,154,198,292,331,333,350}}, -- EFFECT_MULTI_HIT
   [30] = {"represented", true, 0, {160}}, -- EFFECT_CONVERSION: ROM fixture pending (phase4_conversion_memento_effect_rom_test)
-  [31] = {"blocked_on_state", true, 1, {27,29,44,125,157,158}}, -- EFFECT_FLINCH_HIT
+  [31] = {"represented", true, 1, {27,29,44,125,157,158}}, -- EFFECT_FLINCH_HIT: ROM fixture pending (phase4_confusion_flinch_effect_rom_test)
   [32] = {"represented", true, 0, {105,303}}, -- EFFECT_RESTORE_HP: Recover / Slack Off only
   [33] = {"represented", true, 0, {92}}, -- EFFECT_TOXIC: ROM fixture pending (phase4_primary_status_effect_rom_test)
   [34] = {"blocked_on_state", true, 1, {6}}, -- EFFECT_PAY_DAY
@@ -58,7 +58,7 @@ local inventory = {
   [46] = {"blocked_on_state", false, 0, {54}}, -- EFFECT_MIST
   [47] = {"blocked_on_state", false, 0, {116}}, -- EFFECT_FOCUS_ENERGY
   [48] = {"represented", true, 1, {36,66,165}}, -- EFFECT_RECOIL
-  [49] = {"blocked_on_state", false, 0, {48,109,186}}, -- EFFECT_CONFUSE
+  [49] = {"represented", true, 0, {48,109,186}}, -- EFFECT_CONFUSE: ROM fixture pending (phase4_confusion_flinch_effect_rom_test)
   [50] = {"represented", true, 0, {14}}, -- EFFECT_ATTACK_UP_2
   [51] = {"represented", true, 0, {112,151,334}}, -- EFFECT_DEFENSE_UP_2
   [52] = {"represented", true, 0, {97}}, -- EFFECT_SPEED_UP_2
@@ -85,7 +85,7 @@ local inventory = {
   [73] = {"represented", true, 1, {189,190,330}}, -- EFFECT_ACCURACY_DOWN_HIT
   [74] = {"unused", false, -1, {}}, -- EFFECT_EVASION_DOWN_HIT
   [75] = {"blocked_on_state", true, 1, {143}}, -- EFFECT_SKY_ATTACK
-  [76] = {"blocked_on_state", true, 1, {60,93,146,223,324,352}}, -- EFFECT_CONFUSE_HIT
+  [76] = {"represented", true, 1, {60,93,146,223,324,352}}, -- EFFECT_CONFUSE_HIT: ROM fixture pending (phase4_confusion_flinch_effect_rom_test)
   [77] = {"blocked_on_state", true, 1, {41}}, -- EFFECT_TWINEEDLE
   [78] = {"represented", true, 1, {233}}, -- EFFECT_VITAL_THROW
   [79] = {"blocked_on_state", false, 0, {164}}, -- EFFECT_SUBSTITUTE
@@ -101,7 +101,7 @@ local inventory = {
   [89] = {"blocked_on_state", true, 1, {68}}, -- EFFECT_COUNTER
   [90] = {"blocked_on_state", false, 0, {227}}, -- EFFECT_ENCORE
   [91] = {"represented", true, 0, {220}}, -- EFFECT_PAIN_SPLIT
-  [92] = {"blocked_on_state", true, 1, {173}}, -- EFFECT_SNORE
+  [92] = {"represented", true, 1, {173}}, -- EFFECT_SNORE: ROM fixture pending (phase4_confusion_flinch_effect_rom_test)
   [93] = {"blocked_on_state", false, 0, {176}}, -- EFFECT_CONVERSION_2
   [94] = {"blocked_on_state", false, 0, {170,199}}, -- EFFECT_LOCK_ON
   [95] = {"blocked_on_state", false, 0, {166}}, -- EFFECT_SKETCH
@@ -127,7 +127,7 @@ local inventory = {
   [115] = {"blocked_on_state", false, 0, {201}}, -- EFFECT_SANDSTORM
   [116] = {"blocked_on_state", false, 0, {203}}, -- EFFECT_ENDURE
   [117] = {"blocked_on_state", true, 1, {205,301}}, -- EFFECT_ROLLOUT
-  [118] = {"blocked_on_state", false, 0, {207}}, -- EFFECT_SWAGGER
+  [118] = {"represented", true, 0, {207}}, -- EFFECT_SWAGGER: ROM fixture pending (phase4_confusion_flinch_effect_rom_test)
   [119] = {"blocked_on_state", true, 1, {210}}, -- EFFECT_FURY_CUTTER
   [120] = {"blocked_on_state", false, 0, {213}}, -- EFFECT_ATTRACT
   [121] = {"blocked_on_state", true, 1, {216}}, -- EFFECT_RETURN
@@ -155,11 +155,11 @@ local inventory = {
   [143] = {"represented", true, 0, {244}}, -- EFFECT_PSYCH_UP: ROM fixture pending (phase4_batch3_status_effect_rom_test)
   [144] = {"blocked_on_state", true, 1, {243}}, -- EFFECT_MIRROR_COAT
   [145] = {"blocked_on_state", true, 1, {130}}, -- EFFECT_SKULL_BASH
-  [146] = {"blocked_on_state", true, 1, {239}}, -- EFFECT_TWISTER
+  [146] = {"represented", true, 1, {239}}, -- EFFECT_TWISTER: ROM fixture pending (phase4_confusion_flinch_effect_rom_test)
   [147] = {"blocked_on_state", true, 1, {89}}, -- EFFECT_EARTHQUAKE
   [148] = {"blocked_on_state", true, 1, {248,353}}, -- EFFECT_FUTURE_SIGHT
   [149] = {"blocked_on_state", true, 1, {16}}, -- EFFECT_GUST
-  [150] = {"blocked_on_state", true, 1, {23,302,310,326}}, -- EFFECT_FLINCH_MINIMIZE_HIT
+  [150] = {"represented", true, 1, {23,302,310,326}}, -- EFFECT_FLINCH_MINIMIZE_HIT: ROM fixture pending (phase4_confusion_flinch_effect_rom_test)
   [151] = {"blocked_on_state", true, 1, {76}}, -- EFFECT_SOLAR_BEAM
   [152] = {"blocked_on_state", true, 1, {87}}, -- EFFECT_THUNDER
   [153] = {"blocked_on_state", false, 0, {100}}, -- EFFECT_TELEPORT
@@ -175,7 +175,7 @@ local inventory = {
   [163] = {"unused", false, -1, {}}, -- EFFECT_UNUSED_A3
   [164] = {"blocked_on_state", false, 0, {258}}, -- EFFECT_HAIL
   [165] = {"blocked_on_state", false, 0, {259}}, -- EFFECT_TORMENT
-  [166] = {"blocked_on_state", false, 0, {260}}, -- EFFECT_FLATTER
+  [166] = {"represented", true, 0, {260}}, -- EFFECT_FLATTER: ROM fixture pending (phase4_confusion_flinch_effect_rom_test)
   [167] = {"represented", true, 0, {261}}, -- EFFECT_WILL_O_WISP: ROM fixture pending (phase4_primary_status_effect_rom_test)
   [168] = {"represented", true, 0, {262}}, -- EFFECT_MEMENTO: ROM fixture pending (phase4_conversion_memento_effect_rom_test)
   [169] = {"represented", true, 1, {263}}, -- EFFECT_FACADE: ROM fixture pending (phase4_status_s4_effect_rom_test)
@@ -208,7 +208,7 @@ local inventory = {
   [196] = {"blocked_on_state", true, 1, {67}}, -- EFFECT_LOW_KICK
   [197] = {"blocked_on_state", true, 1, {290}}, -- EFFECT_SECRET_POWER
   [198] = {"represented", true, 1, {38,344}}, -- EFFECT_DOUBLE_EDGE
-  [199] = {"blocked_on_state", false, 0, {298}}, -- EFFECT_TEETER_DANCE
+  [199] = {"represented", true, 0, {298}}, -- EFFECT_TEETER_DANCE: ROM fixture pending (phase4_confusion_flinch_effect_rom_test)
   [200] = {"blocked_on_state", true, 1, {299}}, -- EFFECT_BLAZE_KICK
   [201] = {"blocked_on_state", false, 0, {300}}, -- EFFECT_MUD_SPORT
   [202] = {"represented", true, 1, {305}}, -- EFFECT_POISON_FANG: ROM fixture pending (phase4_status_hit_effect_rom_test)
@@ -227,13 +227,13 @@ local inventory = {
 
 local expectedTotals = {
   moves = 354, defined = 214, used = 198, unused = 16,
-  positive = 216, zero = 138, admitted = 277, rejected = 77,
-  admitted_uncovered_positive = 74,
+  positive = 216, zero = 138, admitted = 283, rejected = 71,
+  admitted_uncovered_positive = 56,
 }
 local expectedClasses = {
-  represented = {families = 85, moves = 203, positive = 141, zero = 62},
+  represented = {families = 94, moves = 227, positive = 159, zero = 68},
   candidate = {families = 0, moves = 0, positive = 0, zero = 0},
-  blocked_on_state = {families = 112, moves = 150, positive = 74, zero = 76},
+  blocked_on_state = {families = 103, moves = 126, positive = 56, zero = 70},
   intentionally_rejected = {families = 1, moves = 1, positive = 1, zero = 0},
   unused = {families = 16, moves = 0, positive = 0, zero = 0},
 }
