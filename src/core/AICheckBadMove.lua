@@ -82,7 +82,8 @@
 --
 -- CONFIRMED NO-OP CLASS: this engine (see BattleEngine.lua's header: no
 -- abilities beyond the listed guards, held items, weather... or double
--- battles) has no code path that ever sets status2/status3, weather, or any
+-- battles) has no code path that ever sets status2 (beyond confusion and
+-- flinch), status3, weather, or any
 -- sideStatus beyond reflect/lightScreen, and no held-item or stockpile-
 -- counter state at all. Several real AI_CBM_* branches test exactly those
 -- fields (if_status2/if_status3/get_weather/if_side_affecting for
@@ -315,10 +316,10 @@ local function paralyze(user, target, move, typeChart)
   return 0
 end
 
--- AI_CBM_Confuse (data/battle_ai_scripts.s:390-395). Real
--- `if_status2 AI_TARGET STATUS2_CONFUSION` (already confused) is a
--- confirmed no-op.
+-- AI_CBM_Confuse (data/battle_ai_scripts.s:390-395): `if_status2 AI_TARGET,
+-- STATUS2_CONFUSION, Score_Minus5` reads the battler's confusion turns.
 local function confuse(user, target, move, typeChart)
+  if (target.confusionTurns or 0) > 0 then return -5 end
   if target.ability == ABILITY_OWN_TEMPO then return -10 end
   return 0
 end
