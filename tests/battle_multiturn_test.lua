@@ -131,6 +131,56 @@ do
     and find(events, "useMove", "player") and not b.player.recharging, types(events))
 end
 
+do
+  -- The recharge canceller stops the chain: no confusion decrement or
+  -- draw on the recharge turn; waking that turn prints, then must recharge.
+  local b = battle({ 0, 1, 0, MISS, MISS }, { playerMove = HYPER_BEAM })
+  b:runTurn(MOVE, MOVE)
+  b.player.confusionTurns = 3
+  local before = b.rng.draws
+  local events = b:runTurn(MOVE, MOVE)
+  check("recharge turn: no confusion tick or draw", find(events, "mustRecharge")
+    and not find(events, "confusedTurn") and b.player.confusionTurns == 3 and b.rng.draws == before + 1, types(events))
+  b = battle({ 0, 1, 0, MISS, MISS }, { playerMove = HYPER_BEAM })
+  b:runTurn(MOVE, MOVE)
+  b.player.status = 1
+  events = b:runTurn(MOVE, MOVE)
+  local w, wi = find(events, "wokeUp", "player")
+  local r, ri = find(events, "mustRecharge", "player")
+  check("waking on the recharge turn: woke up, then must recharge", w and r and wi < ri, types(events))
+  -- A locked foe uses its locked move after a player switch (and turn
+  -- order follows the locked move).
+  local fb = battle({ 0, 1, 0, MISS }, { foeMove = HYPER_BEAM, foeSpeed = 30 })
+  fb:runTurn(MOVE, MOVE)
+  local incoming = BattleEngine.makeBattler({ species = 1, level = 10, stats = stats(40, 20),
+    types = { 0, 0 }, moves = { { move = Data.MOVE_TACKLE, pp = 10 } } })
+  events = fb:runTurn({ action = "switch", battler = incoming }, { action = "move", moveSlot = 1 })
+  check("recharging foe after a player switch: must recharge", find(events, "switch")
+    and find(events, "mustRecharge", "foe"), types(events))
+end
+
+do
+  -- A charge lock survives the opponent's faint and hits the replacement.
+  local b = battle({ MISS }, { playerMove = RAZOR_WIND, hasReplacement = function() return true end })
+  b:runTurn(MOVE, MOVE)
+  b.foe.hp = 0
+  b:checkFaint("foe", {})
+  b:resolveForcedSwitch("foe", BattleEngine.makeBattler({ species = 4, level = 10, stats = stats(400, 10),
+    types = { 0, 0 }, moves = { { move = Data.MOVE_TACKLE, pp = 10 } } }))
+  b.rng = scriptedRng({ 0, 1, 0, MISS })
+  local events = b:runTurn(MOVE, MOVE)
+  check("the charge lock hits the replacement", find(events, "useMove", "player").move == RAZOR_WIND
+    and find(events, "damage", "player"), types(events))
+end
+
+do
+  -- Turn 1 stopped by a canceller: no PP, no lock.
+  local b = battle({ 4, MISS }, { playerMove = RAZOR_WIND, playerStatus = S.PARALYSIS, playerSpeed = 80 })
+  local events = b:runTurn(MOVE, MOVE)
+  check("turn 1 cancelled: no charge, no PP", find(events, "fullyParalyzed") and not b.player.charging
+    and b.player.moves[1].pp == 10, types(events))
+end
+
 ---------------------------------------------------------------------------
 -- Two-turn charge moves
 ---------------------------------------------------------------------------

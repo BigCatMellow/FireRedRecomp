@@ -1,6 +1,7 @@
 # Phase 4 proposal: locked multi-turn moves (charge and recharge)
 
-- Status: `PROPOSAL — awaiting independent design review; no implementation authority`
+- Status: `PROPOSAL — independently reviewed PASS WITH CORRECTIONS (applied)`
+- Review: [2026-10-14 design review](../reviews/2026-10-14-multiturn-design-review.md)
 - Date: 2026-10-14
 - Source pin: pret/pokefirered `c75f352304d529f6ba92d4f74b9cf8b5c3810788`
 - Lane: full relay (new cross-turn battle state and action-selection change).
@@ -79,8 +80,9 @@ Bounce), Rampage, Uproar, Rollout, Bide and Fury Cutter are later slices.
   helper called at the source points above.
 - Charge turn emits `chargeTurn {side, move}` instead of `useMove`; turn 2
   emits `useMove` and skips PP. Recharge emits `mustRecharge`.
-- AI: the AI_CBM scripts have no entries for these effects; AI_CV terms out
-  of scope.
+- AI: AI_CheckBadMove routes 39/80/145 to AI_CBM_HighRiskForDamage
+  (`data/battle_ai_scripts.s:128,151,183`), already ported; AI_CheckViability
+  terms out of scope; EarlyRivalAI rejects these effects loudly.
 
 ## Slices
 
@@ -95,3 +97,33 @@ Bounce), Rampage, Uproar, Rollout, Bide and Fury Cutter are later slices.
 - Controller change: action selection must not prompt or draw AI RNG for a
   locked side; tests through the controller.
 - Seeded replays: these families stop being one-turn plain hits.
+
+## Corrections from the design review (applied)
+
+- Recharge timer: source decrements in `TurnValuesCleanUp` at the end of
+  every turn (`src/battle_main.c:2970`); the engine decrements at the next
+  turn start and treats a timer of 1 as unlocked (`isLocked`), which is
+  equivalent.
+- The recharge canceller stops the chain (`effect = 1`): no confusion
+  decrement or confusion/paralysis draw on a recharge turn; a wake/thaw that
+  turn prints before "must recharge!"; staying asleep/frozen prints nothing
+  and the recharge lapses by the timer.
+- Cancel points: flinch canceller (`src/battle_util.c:1366`), paralysis via
+  its script (`data/battle_scripts_1.s:3717`; the C call is commented out),
+  confusion self-hit script (`:3742`), sleep and freeze application
+  (`src/battle_script_commands.c:2269` for freeze), the sleeping battler at
+  end of turn (`src/battle_main.c:2941-2942`); Protect on turn 2 also cancels
+  (unmodeled). A frozen charger keeps its lock only when already frozen
+  before charging; applying freeze cancels it. CancelMultiTurnMoves never
+  clears recharge.
+- Locked turns bypass the Struggle/noValidMoves and 0-PP checks
+  (`src/battle_script_commands.c:838-839`); a locked side's action is the
+  locked move in every runTurn branch (switch/capture/run never execute for
+  a locked player; a locked foe still uses its move after a player switch).
+- Controller entry points: auto-run at the end of `advanceMessage` and the
+  empty-list path of `_setMessages`; no `chooseFoeMove` call for a locked foe.
+- Turn 1 runs every canceller first (a stop spends no PP and sets no lock);
+  the charge lock clears after the turn-2 cancellers; a charge lock survives
+  the opponent's faint/switch; recharge applies before the faint checks.
+- Solar Beam "always charges" is exact while no weather exists; a weather
+  slice must note sun spends PP before the canceller.
