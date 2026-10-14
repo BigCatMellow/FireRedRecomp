@@ -97,7 +97,7 @@
 --
 -- Real modifiers NOT ported here (all no-ops in this slice, each because
 -- the system it depends on doesn't exist yet): held items and their hold
--- effects, abilities, badge stat boosts, weather,
+-- effects, abilities other than those listed in 7b/7c, badge stat boosts, weather,
 -- Explosion's defense halving, double-battle spread-damage halving,
 -- Helping Hand, Charge, Flash Fire, Levitate and Wonder Guard. Each is a
 -- documented gap, not an approximation: the ported code paths above are
@@ -107,6 +107,11 @@
 -- 7b. Burn's physical halving (Guts exempt) and paralysis's turn-order
 --    speed `/4` ARE supported, reading the battler's status1 word through
 --    StatusConditions (see calculateBaseDamage and effectiveSpeed).
+--
+-- 7c. Ability terms ARE supported where source applies them to raw stats
+--    or accuracy: Huge Power/Pure Power, Thick Fat, Hustle, Guts, Marvel
+--    Scale (abilityAdjustedStats) and Compound Eyes/Hustle accuracy
+--    (accuracyCheck).
 --
 -- 8. Reflect / Light Screen halving IS supported, inside
 --    calculateBaseDamage -- see that function's own comment for the exact
@@ -229,19 +234,51 @@ end
 --   function signature/call site). BattleEngine passes its
 --   self.sideStatus[defenderSide] table straight through, since that
 --   table already has exactly these two boolean fields.
+-- Real CalculateBaseDamage raw-stat ability terms (src/pokemon.c:2437-2491),
+-- applied before stat stages, in source order: Huge Power/Pure Power x2;
+-- Thick Fat halves spAttack against Fire/Ice; Hustle attack x150/100; Guts
+-- attack x150/100 with any status1; Marvel Scale defense x150/100 with any
+-- status1. Badge boosts, hold items and Plus/Minus (doubles) are not
+-- represented. Returns attack, defense, spAttack, spDefense.
+BattleFormulas.ABILITY_HUGE_POWER = 37
+BattleFormulas.ABILITY_THICK_FAT = 47
+BattleFormulas.ABILITY_MARVEL_SCALE = 63
+BattleFormulas.ABILITY_PURE_POWER = 74
+function BattleFormulas.abilityAdjustedStats(attacker, defender, moveType)
+  local attack, defense = attacker.attack, defender.defense
+  local spAttack, spDefense = attacker.spAttack, defender.spDefense
+  local atkAbility, defAbility = attacker.ability, defender.ability
+  if atkAbility == BattleFormulas.ABILITY_HUGE_POWER or atkAbility == BattleFormulas.ABILITY_PURE_POWER then
+    attack = attack * 2
+  end
+  if defAbility == BattleFormulas.ABILITY_THICK_FAT and (moveType == 10 or moveType == 15) then
+    spAttack = idiv(spAttack, 2)
+  end
+  if atkAbility == BattleFormulas.ABILITY_HUSTLE then attack = idiv(150 * attack, 100) end
+  if atkAbility == BattleFormulas.ABILITY_GUTS and (attacker.status or 0) ~= 0 then
+    attack = idiv(150 * attack, 100)
+  end
+  if defAbility == BattleFormulas.ABILITY_MARVEL_SCALE and (defender.status or 0) ~= 0 then
+    defense = idiv(150 * defense, 100)
+  end
+  return attack, defense, spAttack, spDefense
+end
+
 function BattleFormulas.calculateBaseDamage(attacker, defender, move, isCrit, defenderScreens)
   local moveType = move.type
   local power = move.power
   local damage = 0
+  local attack, defense, spAttack, spDefense =
+    BattleFormulas.abilityAdjustedStats(attacker, defender, moveType)
 
   if BattleFormulas.isPhysicalType(moveType) then
     -- Real: on a crit, a LOWERED attack stage is ignored (raw stat used),
     -- a raised one is still applied.
     local atkStage = stageOf(attacker, "attack")
     if isCrit and atkStage <= BattleFormulas.DEFAULT_STAT_STAGE then
-      damage = attacker.attack
+      damage = attack
     else
-      damage = BattleFormulas.applyStatMod(attacker.attack, atkStage)
+      damage = BattleFormulas.applyStatMod(attack, atkStage)
     end
 
     damage = damage * power
@@ -252,9 +289,9 @@ function BattleFormulas.calculateBaseDamage(attacker, defender, move, isCrit, de
     local defStage = stageOf(defender, "defense")
     local damageHelper
     if isCrit and defStage >= BattleFormulas.DEFAULT_STAT_STAGE then
-      damageHelper = defender.defense
+      damageHelper = defense
     else
-      damageHelper = BattleFormulas.applyStatMod(defender.defense, defStage)
+      damageHelper = BattleFormulas.applyStatMod(defense, defStage)
     end
 
     damage = idiv(damage, damageHelper)
@@ -296,9 +333,9 @@ function BattleFormulas.calculateBaseDamage(attacker, defender, move, isCrit, de
   if BattleFormulas.isSpecialType(moveType) then
     local spAtkStage = stageOf(attacker, "spAttack")
     if isCrit and spAtkStage <= BattleFormulas.DEFAULT_STAT_STAGE then
-      damage = attacker.spAttack
+      damage = spAttack
     else
-      damage = BattleFormulas.applyStatMod(attacker.spAttack, spAtkStage)
+      damage = BattleFormulas.applyStatMod(spAttack, spAtkStage)
     end
 
     damage = damage * power
@@ -307,9 +344,9 @@ function BattleFormulas.calculateBaseDamage(attacker, defender, move, isCrit, de
     local spDefStage = stageOf(defender, "spDefense")
     local damageHelper
     if isCrit and spDefStage >= BattleFormulas.DEFAULT_STAT_STAGE then
-      damageHelper = defender.spDefense
+      damageHelper = spDefense
     else
-      damageHelper = BattleFormulas.applyStatMod(defender.spDefense, spDefStage)
+      damageHelper = BattleFormulas.applyStatMod(spDefense, spDefStage)
     end
 
     damage = idiv(damage, damageHelper)
@@ -442,7 +479,13 @@ end
 -- Real accuracy check from Cmd_accuracycheck (src/battle_script_commands.c
 -- :1003). Consumes exactly one Random() call. Returns true on a hit.
 -- accStage/evasionStage are real 0..12 stages (default 6).
-function BattleFormulas.accuracyCheck(moveAccuracy, accStage, evasionStage, rng)
+-- attackerAbility/moveType (optional) apply Cmd_accuracycheck's ability
+-- terms (src/battle_script_commands.c:1069-1074) after the stage ratio:
+-- Compound Eyes `calc * 130 / 100`; Hustle `calc * 80 / 100` for a
+-- physical-type move. Sand Veil needs weather and is not represented.
+BattleFormulas.ABILITY_COMPOUND_EYES = 14
+BattleFormulas.ABILITY_HUSTLE = 55
+function BattleFormulas.accuracyCheck(moveAccuracy, accStage, evasionStage, rng, attackerAbility, moveType)
   accStage = accStage or BattleFormulas.DEFAULT_STAT_STAGE
   evasionStage = evasionStage or BattleFormulas.DEFAULT_STAT_STAGE
 
@@ -452,6 +495,13 @@ function BattleFormulas.accuracyCheck(moveAccuracy, accStage, evasionStage, rng)
 
   local ratio = BattleFormulas.ACCURACY_STAGE_RATIOS[buff]
   local calc = idiv(ratio[1] * moveAccuracy, ratio[2])
+  if attackerAbility == BattleFormulas.ABILITY_COMPOUND_EYES then
+    calc = idiv(calc * 130, 100)
+  end
+  if attackerAbility == BattleFormulas.ABILITY_HUSTLE and moveType ~= nil
+      and BattleFormulas.isPhysicalType(moveType) then
+    calc = idiv(calc * 80, 100)
+  end
 
   return not ((rng:next16() % 100 + 1) > calc)
 end
