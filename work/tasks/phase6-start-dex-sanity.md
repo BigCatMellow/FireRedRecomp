@@ -107,3 +107,20 @@ Stop if reference source disagrees with seen-count semantics, save-block seen is
   Orchestrator for the same independent Reviewer's exact-revision recheck.
   Local passing checks are not acceptance, merge authorization or phase
   completion; no non-skipped ROM/runtime evidence is claimed.
+
+### Final integration receipt — 2026-10-14
+
+- Substantive correction `b832e956587227fd3c10e77085708d189396aca4`
+  fast-forward published to existing PR #5. Exact-head public no-ROM runs
+  [38544831616](https://github.com/BigCatMellow/FireRedRecomp/actions/runs/38544831616)
+  and [38544830211](https://github.com/BigCatMellow/FireRedRecomp/actions/runs/38544830211)
+  both completed SUCCESS.
+- Fresh main advanced during publication to
+  `f50383e` (disjoint confusion/flinch package). Merged normally without
+  conflicts at `54a08d78c3209cb04fa585cd9d1661d90ef9c3f0` and repeated
+  final integration verification: Dex **56/0**, StartMenu **21/0**, full
+  **167-file no-ROM suite PASS**, checker **294 Lua / 316 Markdown / 1025
+  targets PASS**, and `git diff --check origin/main HEAD` clean.
+- No correction code changed during that integration; tracker/test hashes
+  above remain exact. Final publication's CI and independent review remain
+  separate exact-head gates; this receipt is not a Reviewer verdict.
