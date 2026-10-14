@@ -74,9 +74,9 @@
 -- 5. Cmd_critcalc (src/battle_script_commands.c:1170) -- crit roll:
 --      sCriticalHitChance[] = {16, 8, 4, 3, 2}; crit if
 --      (Random() % sCriticalHitChance[critChance]) == 0, i.e. 1/16 at the
---      base stage. critChance stage sources (Focus Energy, high-crit
---      moves, Scope Lens/Lucky Punch/Stick) are out of this slice's scope;
---      the stage index is a parameter here so they can be added later.
+--      base stage. The stage is a parameter: BattleEngine:critStageFor
+--      supplies Focus Energy (+2) and the high-crit moves (+1); Scope
+--      Lens/Lucky Punch/Stick are not represented.
 --
 -- 6. GetWhoStrikesFirst (src/battle_main.c:3400) -- turn order:
 --      speed = speed * gStatStageRatios[stage][0] / gStatStageRatios[stage][1]
@@ -527,9 +527,9 @@ end
 
 -- Real crit roll from Cmd_critcalc (src/battle_script_commands.c:1170).
 -- Consumes exactly one Random() call. critStage defaults to 0 (the base
--- 1/16); the real stage sources (Focus Energy, high-crit-ratio moves,
--- Scope Lens/Lucky Punch/Stick) are out of this slice's scope, but the
--- real clamp to the last table entry is kept so they drop straight in.
+-- 1/16); BattleEngine:critStageFor supplies Focus Energy and the
+-- high-crit-ratio moves. The real clamp to the last table entry is kept
+-- (unreachable until held crit items exist).
 function BattleFormulas.critRoll(rng, critStage)
   critStage = critStage or 0
   if critStage > 4 then critStage = 4 end

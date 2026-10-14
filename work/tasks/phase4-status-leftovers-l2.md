@@ -1,7 +1,7 @@
 # Task: status leftovers, slice L2 (Rest, Focus Energy)
 
 - Task ID: `P4-STATUS-LEFTOVERS-L2`
-- Status: `IMPLEMENTED — awaiting independent review`; ROM fixture pending
+- Status: `DONE — independently reviewed PASS`; ROM fixture pending
 - Design: [proposal](../reports/phase4-status-leftovers-design-proposal.md)
   (L2 parts), independently reviewed
   [PASS WITH CORRECTIONS](../reviews/2026-10-14-status-leftovers-design-review.md);
@@ -108,3 +108,10 @@ save and party bridges, coordination/roadmap files.
 - `lua5.1 tests/battle_status_leftovers_test.lua` (L1): 101 passed.
 - `tests/phase4_status_leftovers_l2_effect_rom_test.lua`: skips without a
   ROM.
+
+## Review (2026-10-14)
+
+[Implementation review](../reviews/2026-10-14-status-leftovers-l2-implementation-review.md):
+PASS. F3 applied (stale `BattleFormulas.lua` crit-stage comments updated).
+F1 (asleep/Insomnia order untested; both unreachable), F2 (clamp unreachable
+without held items), F4-F6 informational.
