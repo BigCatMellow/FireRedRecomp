@@ -274,6 +274,75 @@ do
   check("turn 3 snaps out", find(events, "confusionEnded", "player") and b.player.confusionTurns == 0, types(events))
 end
 
+---------------------------------------------------------------------------
+-- Interplay with status1 cancellers (design review F2/F7/F8)
+---------------------------------------------------------------------------
+moves[173] = { effect = 92, power = 40, type = Data.TYPE_NORMAL, accuracy = 100, pp = 15,
+  secondaryEffectChance = 30, target = 0, priority = 0, flags = 0x12 } -- Snore
+do
+  -- Confusion does not tick while the battler stays asleep or frozen.
+  local b = battle({}, { playerStatus = 3 })
+  b.player.confusionTurns = 3
+  local ev = {}
+  b:resolveMove("player", 1, ev)
+  check("asleep (non-Snore): confusion does not tick", find(ev, "fastAsleep") and b.player.confusionTurns == 3)
+  b = battle({ 1 }, { playerStatus = S.FREEZE })
+  b.player.confusionTurns = 3
+  ev = {}
+  b:resolveMove("player", 1, ev)
+  check("frozen: confusion does not tick", find(ev, "frozenSolid") and b.player.confusionTurns == 3)
+  -- Waking continues into the confusion check.
+  b = battle({ 1, 0, 1, 0 }, { playerStatus = 1 })
+  b.player.confusionTurns = 3
+  ev = {}
+  b:resolveMove("player", 1, ev)
+  local w, wi = find(ev, "wokeUp")
+  local c, ci = find(ev, "confusedTurn")
+  check("waking continues into the confusion check", w and c and wi < ci and find(ev, "useMove"), types(ev))
+  -- Thawing continues into the flinch check.
+  b = battle({ 0 }, { playerStatus = S.FREEZE })
+  b.player.flinched = true
+  ev = {}
+  b:resolveMove("player", 1, ev)
+  check("thawing continues into the flinch check", find(ev, "thawed") and find(ev, "flinched")
+    and not find(ev, "useMove"), types(ev))
+end
+
+do
+  -- Snore's "fast asleep" comes after the flinch/confusion cancellers.
+  local b = battle({}, { playerStatus = 3, playerMove = 173 })
+  b.player.flinched = true
+  local ev = {}
+  b:resolveMove("player", 1, ev)
+  check("flinched sleeping Snore user: only flinched", find(ev, "flinched") and not find(ev, "fastAsleep"), types(ev))
+  b = battle({ 1, 0, 1, 0 }, { playerStatus = 3, playerMove = 173 })
+  b.player.confusionTurns = 3
+  ev = {}
+  b:resolveMove("player", 1, ev)
+  local c, ci = find(ev, "confusedTurn")
+  local f, fi = find(ev, "fastAsleep")
+  local u, ui = find(ev, "useMove")
+  check("confused sleeping Snore user: is confused, fast asleep, then Snore", c and f and u and ci < fi and fi < ui,
+    types(ev))
+  b = battle({ 2, 0 }, { playerStatus = 3, playerMove = 173 })
+  b.player.confusionTurns = 3
+  ev = {}
+  b:resolveMove("player", 1, ev)
+  check("Snore user that hurts itself prints no fast asleep", find(ev, "confusionSelfHit")
+    and not find(ev, "fastAsleep"), types(ev))
+end
+
+do
+  -- Self-hit KO with a replacement halts the turn (recoil-KO policy) and
+  -- the end-of-turn phase still runs for the other battler.
+  local b = battle({ 2, 0 }, { playerCurrentHP = 3, foeStatus = S.POISON,
+    hasReplacement = function() return true end })
+  b.player.confusionTurns = 3
+  local events = b:runTurn(MOVE, MOVE)
+  check("self-hit KO with a replacement: foe does not act, end-of-turn still runs",
+    not find(events, "useMove", "foe") and find(events, "statusDamage", "foe"), types(events))
+end
+
 do
   -- Status-free, confusion-free battles keep their draw count.
   local b = battle({ 0, 1, 0, 0, 1, 0 })

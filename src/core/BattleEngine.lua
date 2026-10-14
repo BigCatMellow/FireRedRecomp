@@ -1132,19 +1132,21 @@ end
 function BattleEngine:resolveStatusCancellers(attackerSide, attacker, moveId, move, events)
   local S = StatusConditions
   local status = attacker.status or 0
+  local snoreAsleep = false
   if S.isAsleep(status) then
     -- CANCELLER_ASLEEP: decrement first (Early Bird not represented).
     local turns = S.sleepTurns(status) - 1
     attacker.status = S.withSleepTurns(status, turns)
     if turns > 0 then
-      events[#events + 1] = { type = "fastAsleep", side = attackerSide }
-      -- Snore/Sleep Talk pass the canceller; Snore's own script then prints
-      -- "fast asleep" before attackstring (data/battle_scripts_1.s
-      -- :1253-1266), so the same event precedes its use. Its awake-failure
-      -- branch is not modeled (pre-existing family 92 gap).
+      -- Snore/Sleep Talk pass the canceller; Snore's own script prints
+      -- "fast asleep" after attackcanceler, i.e. after every remaining
+      -- canceller (data/battle_scripts_1.s:1253-1266), so it is emitted at
+      -- the end below. Its awake-failure branch is not modeled yet.
       if moveId ~= BattleEngine.MOVE_SNORE and moveId ~= BattleEngine.MOVE_SLEEP_TALK then
+        events[#events + 1] = { type = "fastAsleep", side = attackerSide }
         return true
       end
+      snoreAsleep = true
     else
       events[#events + 1] = { type = "wokeUp", side = attackerSide }
     end
@@ -1191,6 +1193,9 @@ function BattleEngine:resolveStatusCancellers(attackerSide, attacker, moveId, mo
     -- CANCELLER_THAW
     attacker.status = attacker.status - S.FREEZE
     events[#events + 1] = { type = "defrostedByMove", side = attackerSide, move = moveId }
+  end
+  if snoreAsleep then
+    events[#events + 1] = { type = "fastAsleep", side = attackerSide }
   end
   return false
 end
@@ -2456,6 +2461,7 @@ local function sidesOf(order)
 end
 
 function BattleEngine:resolveEndTurn(events, sides)
+  -- HandleEndTurn_ContinueBattle clears flinch before end-turn effects.
   self.player.flinched, self.foe.flinched = false, false
   self:decaySideTimers(events)
   self:resolveStatusEndTurn(events, sides)
@@ -2523,7 +2529,8 @@ function BattleEngine:runTurn(playerAction, foeAction)
   self.turn = self.turn + 1
   events[#events + 1] = { type = "turnStart", turn = self.turn }
   -- STATUS2_FLINCHED is cleared for every battler between turns
-  -- (src/battle_main.c:2917,2940).
+  -- (src/battle_main.c:2940 HandleEndTurn_ContinueBattle; flinch only
+  -- matters within the turn it was set, so clearing here is equivalent).
   self.player.flinched, self.foe.flinched = false, false
 
   -- Real SetActionsAndBattlersTurnOrder puts B_ACTION_SWITCH in the same

@@ -32,7 +32,18 @@
 No move applies confusion or flinch yet (slice C2). No main.lua, save or
 admission change.
 
+## Design review carry-over (applied to C1)
+
+- F2: Snore's "fast asleep" moved after the flinch/confusion cancellers,
+  with flinched / confused / self-hit tests.
+- F7: self-hit KO outcomes tested (no replacement ends the battle; with a
+  replacement the turn halts and end-of-turn still runs).
+- F8: interplay tests (no confusion tick while asleep or frozen; waking and
+  thawing continue into flinch/confusion; paralysis after both proceed
+  paths).
+- F1: flinch-clear citation corrected.
+
 ## Evidence (Worker, 2026-10-14)
 
-Confusion/flinch 27/0; AI 43/0; controller 141/0; full suite and
+Confusion/flinch 35/0; AI 43/0; controller 141/0; full suite and
 repository checker in the PR.

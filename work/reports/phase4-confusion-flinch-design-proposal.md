@@ -1,6 +1,7 @@
 # Phase 4 proposal: confusion and flinch (status2)
 
-- Status: `PROPOSAL — awaiting independent design review; no implementation authority`
+- Status: `PROPOSAL — independently reviewed PASS WITH CORRECTIONS (applied)`
+- Review: [2026-10-14 design review](../reviews/2026-10-14-confusion-flinch-design-review.md)
 - Date: 2026-10-14
 - Source pin: pret/pokefirered `c75f352304d529f6ba92d4f74b9cf8b5c3810788`
 - Builds on: the primary status slices S1-S4 (status1) and their reviews.
@@ -29,8 +30,9 @@ battle end.
   the bit is set only if `GetBattlerTurnOrderNum(target) >
   gCurrentTurnActionNumber`, i.e. the target has not acted yet this turn.
   Shield Dust also blocks (byte 8).
-- Flinch is cleared for every battler at turn end and turn start
-  (`src/battle_main.c:2917,2940`).
+- Flinch is cleared for every battler after all actions and before the
+  end-turn effects (`src/battle_main.c:2940`, `HandleEndTurn_ContinueBattle`;
+  `:2917` is the once-per-battle `TryDoEventsBeforeFirstTurn`).
 
 ### Move-time cancellers (`src/battle_util.c:1233-1250` order)
 
@@ -45,7 +47,8 @@ canceller with an effect; a script that pushes the cursor returns to
   confused: "X is confused!" (`:114`) then `Random() & 1`: nonzero → the move
   proceeds (the cursor returns, so the paralysis check still runs after);
   zero → self-hit: `CalculateBaseDamage(attacker, attacker, MOVE_POUND,
-  sideStatus 0, power 40, type 0)` (typeless Normal-physical base with the
+  sideStatus 0, power 40, type 0)` (type 0 means no override, so Pound's
+  Normal type: a physical base with the
   attacker's own attack/defense, stat stages, burn halving and ability
   terms; no crit, no STAB/typecalc, no screens), then
   `Cmd_adjustnormaldamage2` (`:1620-1660`: the random multiplier draw; Focus
@@ -70,7 +73,10 @@ canceller with an effect; a script that pushes the cursor returns to
 | 92 Snore | 1 | (now) awake → attackstring/ppreduce → But it failed; asleep → fast asleep text → hit + FLINCH 30% |
 
 Not in scope: 27 Rampage (locked move), 158 Fake Out (first-turn state),
-two-turn charge moves, King's Rock.
+two-turn charge moves (incl. Sky Attack's flinch), King's Rock, Serene Grace,
+Safeguard, Substitute, Persim/Lum confusion cures, badge boosts and held
+items in the self-hit. Future contact abilities must not trigger on a
+self-hit.
 
 ### AI
 
@@ -89,10 +95,30 @@ treats the status2 branch as a confirmed no-op.
   reuses `BattleFormulas.calculateBaseDamage` with a Pound-like record
   (power 40, Normal, effect 7 only when the chosen move is Explosion's
   family) and `applyRandomDamageMultiplier`, then the attacker faint path.
-- Flinch application records which battlers already acted this turn
-  (`actedThisTurn`), set when a side's action resolves (hoisted switch/item/
-  run actions count as acted); flinch flags cleared at `runTurn` start and
-  in the end-turn phase.
+- Flinch applies only when the attacker is `order[1]` of a two-move turn
+  (the target has not had its turn): never in hoisted switch/capture/run
+  turns, never from the second mover; a first mover whose move was cancelled
+  still had its turn. Keyed by side (switch-ins are fresh objects); no new
+  state. Flinch flags cleared at `runTurn` start (equivalent single point).
+- Snore's "fast asleep" is printed by its script after attackcanceler, i.e.
+  after the flinch and confusion cancellers (a flinched sleeping Snore user
+  prints only "flinched"; a confused one prints "is confused!" then "fast
+  asleep"; a self-hit prints no "fast asleep").
+- A self-hit KO follows the recoil-KO policy: no replacement ends the
+  battle; with a replacement the turn halts and end-of-turn still runs.
+- C2 secondary rolls: effects 31, 76, 146, 150 and Snore's asleep path draw
+  the seteffectwithchance roll also on a no-effect hit, a KO, Shield Dust or
+  an already-confused target (where the `% 4` draw is skipped); Dynamic
+  Punch (100%) still draws.
+- Swagger/Flatter: Substitute before accuracy; a miss prints "used", spends
+  PP, then "missed"; "But it failed" only when confused and the stat is at
+  +6; already confused with the stat below +6 raises the stat and skips the
+  confusion silently; stat at +6 and not confused prints no stat text and
+  still confuses; the Own Tempo text comes after the stat step.
+- AI_CBM_Confuse branches are exclusive (confused −5 ends; else Own Tempo
+  −10); the Safeguard line is commented out; AI_CV terms out of scope.
+- `flinchPrevented` (Inner Focus text) is unreachable in C1/C2: every
+  in-scope flinch is a 10-30% secondary, so Inner Focus blocks silently.
 - Events: `flinched`, `confusedTurn` (is confused), `confusionSelfHit`
   (amount, hpRemaining), `confusionEnded`, `confusionApplied`,
   `alreadyConfused`, `confusionPrevented` (Own Tempo), `flinchPrevented`
