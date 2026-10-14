@@ -969,10 +969,12 @@ function BattleEngine:finalizeFaintSequence(events)
   end
   local queued = {}
   for _, side in ipairs(self.pendingForcedSwitches) do queued[side] = true end
-  for _, recorded in ipairs(fainted) do
-    if not queued[recorded] then
-      queued[recorded] = true
-      events[#events + 1] = { type = "forcedSwitchNeeded", side = recorded }
+  for _, side in ipairs({ BattleEngine.SIDE_PLAYER, BattleEngine.SIDE_FOE }) do
+    for _, recorded in ipairs(fainted) do
+      if recorded == side and not queued[side] then
+        queued[side] = true
+        events[#events + 1] = { type = "forcedSwitchNeeded", side = side }
+      end
     end
   end
   -- Real HandleFaintedMonActions walks battlers in id order, so the

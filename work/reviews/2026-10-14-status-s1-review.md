@@ -278,4 +278,96 @@ equivalent or unreachable (M4, M10, M14, M15).
 ## Worker disposition (2026-10-14)
 
 F1-F3 fixed with tests (see the task file); F5 asleep-Snore order fixed;
+re-review R-1 fixed (same-sequence notices player-first again); R-2 left for the party-select UI;
 F4/F5 awake failure/F6 recorded as follow-ups in the task file.
+
+## Re-review (fix commit `ca39623`)
+
+- Reviewer: the same independent Reviewer. Date: 2026-10-14.
+- Artifact: `git show ca39623` (`BattleEngine.lua` `finalizeFaintSequence` and the sleep
+  canceller; new engine and controller tests; follow-ups added to the task file).
+- **Final verdict: PASS.**
+
+### Fix verification
+
+**F1 (decided outcome clears the queue): fixed.**
+- Code: when an outcome is set, `pendingForcedSwitches = {}` is followed by
+  `_syncForcedSwitchHead()`. This matches the source: `HandleFaintedMon` runs `checkteamslost`,
+  and with `gBattleOutcome != 0` it ends without a replacement.
+- Engine probe: player poisoned on their last Pokémon, KOs a foe that has a replacement, then
+  dies to poison. Result: `outcome=playerLost`, nothing pending.
+- Controller probe with the main.lua-style hook: the state reaches `complete` and the trainer
+  sends out no replacement.
+- Still holds: `simultaneous exhaustion` and `one-side exhaustion` in
+  `phase4_two_sided_replacement_state_test` (10/0).
+
+**F2 (queue player-first across faint sequences): fixed.**
+- The queue is rebuilt in player-then-foe order from the union of the existing and new entries.
+  This matches `HandleFaintedMonActions` walking battler IDs from 0 (`battle_util.c:1185-1199`).
+- Probes now give `player,foe` for both cases:
+  - both poisoned, foe faster;
+  - foe KO'd by a move, then the player poisoned out.
+- The controller now goes to `party` first.
+- Existing callers are unaffected:
+  - `TrainerBattleOrchestrator.resolveFoeReplacement` still asserts the head is `"foe"`, and the
+    head only becomes foe after the player resolves.
+  - main.lua's `onMessagesComplete` / `onForcedSwitchChoice` follow the same player-then-foe
+    sequence that `phase4_two_sided_replacement_state_test` already exercised.
+  - `phase4_player_forced_replacement_controller_test` passes (7/0).
+
+**F3: fixed.** M2, M30, M32 and M36 are now killed (table below).
+
+**F5 (partial): correct.**
+- `BattleScript_EffectSnore` (`battle_scripts_1.s:1253-1266`) prints `PKMNFASTASLEEP` before
+  `attackstring`, so emitting `fastAsleep` before `useMove` for an asleep Snore is right.
+- Sleep Talk does the same at `:1313-1317`, but it is unsupported anyway.
+- The change sits inside the sleep canceller, which is equivalent because no canceller between
+  sleep and Snore's script is modelled.
+- The awake-failure branch is recorded as a follow-up.
+
+**F4 and F6:** recorded as follow-ups in the task file. Acceptable for S1.
+
+### New observations
+
+**R-1 (Info): `forcedSwitchNeeded` events now follow faint-recording order.**
+- For a same-sequence double faint (Explosion, both sides with a bench), the placeholder
+  `forcedSwitchNeeded` events now come foe-then-player. Before, they came player-then-foe.
+- The queue order is still player-first, and source shows no such message (it is a documented
+  placeholder). No test or caller depends on the event order.
+
+**R-2 (Info): the foe's placeholder still prints on a loss.**
+- In the F1 scenario, the foe's "must send out a new POKEMON!" placeholder is still printed
+  before the player's poison faint ends the battle.
+- This is the same cosmetic placeholder class, and it is no longer acted on. Can be revisited
+  when the party-select UI replaces the placeholder.
+
+### Checks
+
+- `battle_status_engine_test`: 78/0
+- `battle_scene_controller_test`: 119/0
+- `battle_party_bridge_test`: 32/0
+- `battle_engine_test`: 568/0
+- `phase4_two_sided_replacement_state_test`: 10/0
+- `phase4_player_forced_replacement_controller_test`: 7/0
+- `bash scripts/test_all.sh`: PASS (163 files)
+- `check_repository.lua`: PASS
+
+### Mutation re-run
+
+The four source files at `ca39623` were saved, mutated one at a time, and restored. `sha1sum -c`
+reports OK for all four.
+
+| # | Mutant | Result | Killed by / note |
+|---|---|---|---|
+| M2 | paralysis `% 4 == 0` → `% 2 == 0` | killed | "paralysis draw 2 does not fully paralyze" |
+| M30 | capture site not converted | killed | "failed capture turn still ticks" |
+| M32 | attacker-faint early site not converted | killed | "recoil self-KO with a pending switch still ticks the foe" |
+| M36 | 0 HP battler not skipped | killed | "end-of-turn skips a battler at 0 HP" |
+| R1 | no queue clear on decided outcome | killed | "decided battle leaves no forced switch pending" |
+| R2 | no player-first reorder (append order) | killed | "player's forced switch comes first" |
+| R3 | reorder foe-first | killed | same |
+| R4 | dedup of already-queued side removed | survived | equivalent: the queue is rebuilt from a set, and a side already queued sits at 0 HP and is skipped by the end-of-turn phase, so it cannot faint again |
+| R5 | asleep Snore without `fastAsleep` | killed | Snore fast-asleep order test |
+| R6 | queue cleared without head sync | killed | "decided battle leaves no forced switch pending" |
+
+No remaining Blocker, Major or Minor findings for S1.

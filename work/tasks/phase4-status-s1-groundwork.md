@@ -1,7 +1,7 @@
 # Task: primary status conditions, slice S1 (groundwork)
 
 - Task ID: `P4-STATUS-S1`
-- Status: `IMPLEMENTED — awaiting independent review`
+- Status: `CLOSED — REVIEWED PASS` after re-review ([review](../reviews/2026-10-14-status-s1-review.md))
 - Lane: full relay (new cross-turn and saved state). Owner delegation
   2026-10-14 ("just continue working where you can"); scoped to battle files
   only, away from in-flight Codex work (main.lua, party/Dex, coordination).
