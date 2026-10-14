@@ -11,11 +11,11 @@ package.path = package.path .. ";./?.lua"
 local inventory = {
   [0] = {"represented", true, 1, {1,5,10,11,15,17,21,22,25,30,33,55,56,57,64,65,70,88,121,127,224,304,337}}, -- EFFECT_HIT
   [1] = {"blocked_on_state", false, 0, {47,79,95,142,147,320}}, -- EFFECT_SLEEP
-  [2] = {"blocked_on_state", true, 1, {40,123,124,188}}, -- EFFECT_POISON_HIT
+  [2] = {"represented", true, 1, {40,123,124,188}}, -- EFFECT_POISON_HIT: ROM fixture pending (phase4_status_hit_effect_rom_test)
   [3] = {"represented", true, 1, {71,72,141,202}}, -- EFFECT_ABSORB
-  [4] = {"blocked_on_state", true, 1, {7,52,53,126,257}}, -- EFFECT_BURN_HIT
-  [5] = {"blocked_on_state", true, 1, {8,58,59,181}}, -- EFFECT_FREEZE_HIT
-  [6] = {"blocked_on_state", true, 1, {9,34,84,85,122,192,209,225}}, -- EFFECT_PARALYZE_HIT
+  [4] = {"represented", true, 1, {7,52,53,126,257}}, -- EFFECT_BURN_HIT: ROM fixture pending (phase4_status_hit_effect_rom_test)
+  [5] = {"represented", true, 1, {8,58,59,181}}, -- EFFECT_FREEZE_HIT: ROM fixture pending (phase4_status_hit_effect_rom_test)
+  [6] = {"represented", true, 1, {9,34,84,85,122,192,209,225}}, -- EFFECT_PARALYZE_HIT: ROM fixture pending (phase4_status_hit_effect_rom_test)
   [7] = {"represented", true, 1, {120,153}}, -- EFFECT_EXPLOSION
   [8] = {"intentionally_rejected", false, 1, {138}}, -- EFFECT_DREAM_EATER
   [9] = {"blocked_on_state", false, 0, {119}}, -- EFFECT_MIRROR_MOVE
@@ -211,14 +211,14 @@ local inventory = {
   [199] = {"blocked_on_state", false, 0, {298}}, -- EFFECT_TEETER_DANCE
   [200] = {"blocked_on_state", true, 1, {299}}, -- EFFECT_BLAZE_KICK
   [201] = {"blocked_on_state", false, 0, {300}}, -- EFFECT_MUD_SPORT
-  [202] = {"blocked_on_state", true, 1, {305}}, -- EFFECT_POISON_FANG
+  [202] = {"represented", true, 1, {305}}, -- EFFECT_POISON_FANG: ROM fixture pending (phase4_status_hit_effect_rom_test)
   [203] = {"blocked_on_state", true, 1, {311}}, -- EFFECT_WEATHER_BALL
   [204] = {"represented", true, 1, {315,354}}, -- EFFECT_OVERHEAT: ROM fixture pending (phase4_self_drop_tickle_effect_rom_test)
   [205] = {"represented", true, 0, {321}}, -- EFFECT_TICKLE: ROM fixture pending (phase4_self_drop_tickle_effect_rom_test)
   [206] = {"represented", true, 0, {322}}, -- EFFECT_COSMIC_POWER: ROM fixture pending (phase4_dual_stat_up_effect_rom_test)
   [207] = {"blocked_on_state", true, 1, {327}}, -- EFFECT_SKY_UPPERCUT
   [208] = {"represented", true, 0, {339}}, -- EFFECT_BULK_UP: ROM fixture pending (phase4_dual_stat_up_effect_rom_test)
-  [209] = {"blocked_on_state", true, 1, {342}}, -- EFFECT_POISON_TAIL
+  [209] = {"represented", true, 1, {342}}, -- EFFECT_POISON_TAIL: ROM fixture pending (phase4_status_hit_effect_rom_test)
   [210] = {"blocked_on_state", false, 0, {346}}, -- EFFECT_WATER_SPORT
   [211] = {"represented", true, 0, {347}}, -- EFFECT_CALM_MIND: ROM fixture pending (phase4_dual_stat_up_effect_rom_test)
   [212] = {"represented", true, 0, {349}}, -- EFFECT_DRAGON_DANCE: ROM fixture pending (phase4_dual_stat_up_effect_rom_test)
@@ -228,12 +228,12 @@ local inventory = {
 local expectedTotals = {
   moves = 354, defined = 214, used = 198, unused = 16,
   positive = 216, zero = 138, admitted = 263, rejected = 91,
-  admitted_uncovered_positive = 101,
+  admitted_uncovered_positive = 78,
 }
 local expectedClasses = {
-  represented = {families = 70, moves = 162, positive = 114, zero = 48},
+  represented = {families = 76, moves = 185, positive = 137, zero = 48},
   candidate = {families = 0, moves = 0, positive = 0, zero = 0},
-  blocked_on_state = {families = 127, moves = 191, positive = 101, zero = 90},
+  blocked_on_state = {families = 121, moves = 168, positive = 78, zero = 90},
   intentionally_rejected = {families = 1, moves = 1, positive = 1, zero = 0},
   unused = {families = 16, moves = 0, positive = 0, zero = 0},
 }

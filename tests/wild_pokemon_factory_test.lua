@@ -172,6 +172,13 @@ check("capture records ball and rewrites OT", caughtBox.substructs[3].pokeball =
 check("capture preserves current party battle state", caught.hp == 4 and caught.maxHP == 15
   and caught.status == 0x40 and caught.moves[1].pp == 31 and caught.moves[2].pp == 27)
 
+local toxicCaught = WildPokemonFactory.capture(mon, {
+  ball=3, hp=4, status=0x80 + 6 * 256,
+  moveSlots={ {move=33,pp=31}, {move=39,pp=27} },
+  trainer={id=0x88776655, name=leafName, gender=1},
+})
+check("capture masks the battle-local toxic counter", toxicCaught.status == 0x80, toxicCaught.status)
+
 local party = PartyModel.new()
 check("captured record stores directly in PartyModel", party:add(caught) == 1 and party:get(1) == caught)
 local sb1Bytes = SaveFileCodec.encodeSaveBlock1({playerPartyCount=1, playerParty={caught}}, 0)

@@ -66,6 +66,10 @@
 --   {type="defrostedByFire", side=<defender>} -- MOVEEND_DEFROST
 --   {type="statusDamage", side=, kind="poison"|"toxic"|"burn", amount=,
 --    hpRemaining=}                    -- end-of-turn status damage
+--   {type="statusApplied", side=<target>, kind="poison"|"toxic"|"burn"|
+--    "freeze"|"paralysis"|"sleep"}    -- status newly set
+--   {type="statusPrevented", side=<target>, kind=, ability=} -- certain
+--    effect blocked by Immunity/Water Veil/Limber
 --   {type="battleEnd", outcome="playerWon"|"playerLost"|"ran"|"caught"}
 --
 -- Real turn structure ported, in real execution order:
@@ -229,7 +233,8 @@
 --     BattleFormulas), Fire defrost at move end, end-of-turn poison/toxic/
 --     burn damage, and faint clearing status (resolveStatusCancellers,
 --     resolveMove, resolveStatusEndTurn, recordFaint). No move APPLIES a
---     status yet; those families stay blocked until later slices.
+--     status as a primary effect yet; the status-on-hit families
+--     (STATUS_HIT_MOVES, slice S2) apply one through applySecondaryStatus.
 --   * No abilities, held items, weather,
 --     multi-turn/charging moves, trapping, forced switching, OHKO moves,
 --     double battles, trainer AI, or EXP/level-up on victory.
@@ -706,6 +711,30 @@ BattleEngine.MOVE_SLEEP_TALK = 214
 BattleEngine.EFFECT_THAW_HIT = 125
 BattleEngine.TYPE_FIRE = 10
 
+-- Status-on-hit families (slice S2): the stock hit script with a
+-- setmoveeffect status byte applied by seteffectwithchance
+-- (data/battle_scripts_1.s:321-374, :2632; Poison Tail shares the Poison
+-- Hit script at :233). Poison Tail also adds one crit stage (Cmd_critcalc,
+-- src/battle_script_commands.c:1184-1188).
+BattleEngine.EFFECT_POISON_TAIL = 209
+BattleEngine.STATUS_HIT_MOVES = {
+  [2] = "poison",      -- EFFECT_POISON_HIT
+  [4] = "burn",        -- EFFECT_BURN_HIT
+  [5] = "freeze",      -- EFFECT_FREEZE_HIT
+  [6] = "paralysis",   -- EFFECT_PARALYZE_HIT
+  [202] = "toxic",     -- EFFECT_POISON_FANG
+  [209] = "poison",    -- EFFECT_POISON_TAIL
+}
+-- SetMoveEffect ability guards (include/constants/abilities.h ids).
+BattleEngine.ABILITY_LIMBER = 7
+BattleEngine.ABILITY_IMMUNITY = 17
+BattleEngine.ABILITY_SHIELD_DUST = 19
+BattleEngine.ABILITY_MAGMA_ARMOR = 40
+BattleEngine.ABILITY_WATER_VEIL = 41
+local STATUS_BLOCKING_ABILITY = {
+  poison = 17, toxic = 17, burn = 41, paralysis = 7, freeze = 40,
+}
+
 -- The real drain family: EFFECT_ABSORB (Absorb, Mega Drain, Giga Drain,
 -- Leech Life -- confirmed against src/data/battle_moves.h) heals the
 -- attacker by a fraction of the actual HP just dealt. Real Cmd_negativedamage
@@ -1101,6 +1130,37 @@ function BattleEngine:resolveStatusCancellers(attackerSide, attacker, moveId, mo
     events[#events + 1] = { type = "defrostedByMove", side = attackerSide, move = moveId }
   end
   return false
+end
+
+-- Real SetMoveEffect for a secondary (non-primary) status byte on the
+-- target (src/battle_script_commands.c:2110-2370). Represented guards in
+-- source order: Shield Dust blocks every secondary status (:2132-2134);
+-- target at 0 HP (:2140); the per-status ability (Immunity, Water Veil,
+-- Limber print their prevention text only when `certain`, else fail
+-- silently; Magma Armor is always silent); then type immunity and an
+-- existing status (StatusConditions.canApply), which fail silently for a
+-- secondary effect. Safeguard and Substitute are not represented.
+function BattleEngine:applySecondaryStatus(targetSide, kind, certain, events)
+  local target = self:battler(targetSide)
+  if target.ability == BattleEngine.ABILITY_SHIELD_DUST then return false end
+  if target.hp <= 0 then return false end
+  local blocking = STATUS_BLOCKING_ABILITY[kind]
+  if target.ability == blocking and kind ~= "freeze" then
+    if certain then
+      events[#events + 1] = {
+        type = "statusPrevented", side = targetSide, kind = kind, ability = blocking,
+      }
+    end
+    return false
+  end
+  local ok = StatusConditions.canApply(target, kind)
+  if not ok then return false end
+  if kind == "freeze" and target.ability == BattleEngine.ABILITY_MAGMA_ARMOR then
+    return false
+  end
+  StatusConditions.apply(target, kind, self.rng)
+  events[#events + 1] = { type = "statusApplied", side = targetSide, kind = kind }
+  return true
 end
 
 function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
@@ -1697,7 +1757,8 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
   -- FIRST_BATTLE flag check, so the roll is still consumed while criticals
   -- are suppressed. Suppression is global until the first player damage
   -- message flips Oak's state flag, including a foe that attacks first.
-  local critStage = move.effect == BattleEngine.EFFECT_HIGH_CRITICAL and 1 or 0
+  local critStage = (move.effect == BattleEngine.EFFECT_HIGH_CRITICAL
+    or move.effect == BattleEngine.EFFECT_POISON_TAIL) and 1 or 0
   local rolledCrit = BattleFormulas.critRoll(self.rng, critStage)
   local isCrit = rolledCrit and not (self.firstBattle and not self.tutorialPlayerDamageDone)
 
@@ -1745,7 +1806,8 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
     -- simply discarded. See BattleFormulas.secondaryEffectRoll's comment.
     if BattleEngine.HIT_VARIANT_STAT_MOVES[move.effect]
         or BattleEngine.SELF_DROP_HIT_MOVES[move.effect]
-        or move.effect == BattleEngine.EFFECT_ALL_STATS_UP_HIT then
+        or move.effect == BattleEngine.EFFECT_ALL_STATS_UP_HIT
+        or BattleEngine.STATUS_HIT_MOVES[move.effect] then
       BattleFormulas.secondaryEffectRoll(self.rng, move.secondaryEffectChance)
     end
     return
@@ -1857,6 +1919,15 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
         end
       end
     end
+  end
+
+  local statusKind = BattleEngine.STATUS_HIT_MOVES[move.effect]
+  if statusKind
+      and BattleFormulas.secondaryEffectRoll(self.rng, move.secondaryEffectChance) then
+    -- Cmd_seteffectwithchance (:2789-2796): a chance of 100 or more calls
+    -- SetMoveEffect with MOVE_EFFECT_CERTAIN.
+    self:applySecondaryStatus(defenderSide, statusKind,
+      move.secondaryEffectChance >= 100, events)
   end
 
   local hitVariant = BattleEngine.HIT_VARIANT_STAT_MOVES[move.effect]
