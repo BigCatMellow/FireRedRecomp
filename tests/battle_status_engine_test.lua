@@ -637,12 +637,18 @@ do
 end
 
 do
-  -- A failed Poke Ball against a burned foe uses the 15/10 catch value
-  -- through the engine (catch rate 45, full HP: 15 -> 22).
-  local b = battle({ 65535, MISS }, { foeStatus = S.BURN, foeHP = 400 })
+  -- The engine's Poke Ball uses the foe's status: catch rate 45 at full HP
+  -- gives catch value 15 (threshold 32767) healthy, 22 (threshold 36157)
+  -- burned. Draw 34000 passes only the burned threshold.
+  local b = battle({ 34000, 65535, MISS }, { foeStatus = S.BURN, foeHP = 400 })
   b.foe.catchRate = 45
   local events = b:runTurn({ action = "capture" }, MOVE)
-  check("engine capture reads the foe's status", find(events, "capture") and b.rng.draws == 2, types(events))
+  check("engine capture reads the foe's status (one shake only when burned)",
+    find(events, "capture") and find(events, "capture").shakes == 1, types(events))
+  b = battle({ 34000, MISS }, { foeHP = 400 })
+  b.foe.catchRate = 45
+  events = b:runTurn({ action = "capture" }, MOVE)
+  check("the same draw fails at once against a healthy foe", find(events, "capture").shakes == 0)
 end
 
 ---------------------------------------------------------------------------

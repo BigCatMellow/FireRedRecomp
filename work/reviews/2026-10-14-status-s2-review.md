@@ -239,3 +239,89 @@ test gap (F3).
 
 F1 fixed by option (a): `CaptureRules.statusMultiplier` feeds `tryPokeBall`
 with source oracles; F2 recorded as limits/follow-ups; F3 test added.
+
+## Re-review (2026-10-14, commit `19e15f0`)
+
+- Reviewer: independent Reviewer (Claude)
+- Fix commit: `19e15f0` (Status S2: apply review round 1)
+- Final verdict: **PASS**. Two Minor test-strength notes remain (R-1). Neither blocks the merge.
+
+### F1: capture status multiplier, resolved
+
+- Source `Cmd_handleballthrow` (bsc.c:9548-9556) computes the odds in this
+  order:
+  1. `odds = (catchRate*ballMultiplier/10) * (3*maxHP - 2*hp) / (3*maxHP)`.
+     Each C operation truncates in turn, so this is
+     `floor(floor(cr*bm/10)*(3M-2h)/(3M))`.
+  2. `odds *= 2` if the word has SLEEP or FREEZE.
+  3. A separate `if` for POISON/BURN/PARALYSIS/TOXIC:
+     `odds = (odds*15)/10`, applied to the already-truncated odds.
+- `CaptureRules.calculateCatchValue` follows the same order:
+  `floor(cr*bm/10)`, then `floor(cv*(3M-2h)/(3M))`, then
+  `floor(cv*num/den)`, with `(2,1)` or `(15,10)` from `statusMultiplier`.
+  - For ×2 the result is exact.
+  - For ×15/10 it is the same as source's `(odds*15)/10` on the truncated
+    odds, since all values are non-negative and far below 2^53.
+  - A word with both classes set (not valid in practice) gives `num 30/den 10`, i.e. `3*cv`. Source gives `floor(2cv*15/10) = 3cv`, so even that case is identical.
+- The bit tests are correct:
+  - `isAsleep` is `status % 8 > 0`, which matches STATUS1_SLEEP = 7.
+  - FREEZE is 32; PSN/BRN/PAR/TOX are 8/16/64/128.
+  - Toxic counter bits (0xF00) don't affect the result, and that case is tested.
+- `tryPokeBall` reads `target.status`, and the engine passes `self.foe`.
+- I recomputed the oracles independently:
+  - 45/30/30 gives 15. Burned gives floor(22.5) = 22; asleep gives 30.
+  - Catch rate 255 at 1/30 HP gives floor(255*88/90) = 249, which needs 4
+    shake draws. Frozen gives 498 > 254, an automatic catch with no draws.
+- The `CaptureRules.lua` scope change is recorded in the task's MAY CHANGE,
+  and the S4 row of the design proposal notes the move.
+
+### F2 and F3: resolved
+
+- F2: Synchronize, Serene Grace and the contact-status abilities are now in
+  the task's follow-ups. Synchronize appears in the six inventory rows.
+- F3: there is now a test for Poison Fang against an Immunity target. M27 is
+  now killed.
+
+### Mutants (re-review)
+
+Originals were restored and verified with `cmp`.
+
+| # | Mutant | Result |
+| --- | --- | --- |
+| R1 | M27: Immunity no longer blocks toxic | Killed (status engine) |
+| R2 | `tryPokeBall` ignores status (1/1) | Killed (capture rules only) |
+| R3 | ×15/10 written as ×3/2 | Killed, but only by the "15/10" string check; numerically equivalent |
+| R4 | ×15/10 → ×14/10 | Killed |
+| R5 | Sleep/freeze factor 2 → 3 | Killed |
+| R6 | Freeze missing | Killed |
+| R7 | Toxic missing | Killed |
+| R8 | Sleep check uses raw `status ~= 0` | Killed |
+| R9 | Paralysis missing | Killed |
+| R10 | Status factor applied before the HP term | **Survived** |
+
+### R-1 (Minor, non-blocking): test strength
+
+- R10 is not equivalent. With catch rate 45, maxHP 30, hp 1 and burn,
+  source order gives floor(floor(45*88/90)*15/10) = 66, but the swapped
+  order gives floor(floor(45*15/10)*88/90) = 65. The current oracles
+  (full HP, or a ×2 factor) can't tell the two orders apart. Suggested fix:
+  add the 45/30/1-burned oracle with catch value 66.
+- The engine capture test in `battle_status_engine_test.lua` ("engine
+  capture reads the foe's status") also passes when status is ignored
+  (R2): draw 65535 fails at both threshold 15 and threshold 22. Suggested
+  fix: assert the `capture` event's shake count with a draw that passes
+  only at the burned threshold, or check the threshold directly.
+
+### Commands
+
+- `capture_rules_test`: 38/0
+- `battle_status_engine_test`: 111/0
+- `battle_engine_test`: 568/0
+- `bash scripts/test_all.sh`: PASS, 164 files in no-ROM mode
+- `lua5.1 scripts/check_repository.lua`: PASS
+
+The guarded verified-ROM run is still needed for the S2 ROM fixture and for
+seeded ROM replays whose RNG changed (Ember's effect roll), as the task
+already notes.
+
+Re-review R-1 test notes applied (HP-order oracle 66; engine capture shake assertion).

@@ -182,6 +182,9 @@ do
   check("status changes the shake threshold",
     burned.shakeThreshold == CaptureRules.calculateShakeThreshold(22)
       and burned.shakeThreshold > healthy.shakeThreshold)
+  local lowBurned = CaptureRules.tryPokeBall({ catchRate = 45, maxHP = 30, hp = 1, status = 16 }, scriptedRng({ 65535 }))
+  check("status factor applies after the HP term (45/30/1 burned = 66, not 65)", lowBurned.catchValue == 66,
+    lowBurned.catchValue)
   local low = { catchRate = 255, maxHP = 30, hp = 1 }
   local plain = CaptureRules.tryPokeBall(low, scriptedRng({ 0, 0, 0, 0 }))
   low.status = 32

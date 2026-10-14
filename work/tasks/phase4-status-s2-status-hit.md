@@ -1,7 +1,7 @@
 # Task: primary status conditions, slice S2 (status on hit)
 
 - Task ID: `P4-STATUS-S2`
-- Status: `IMPLEMENTED — awaiting independent review`; ROM fixture pending
+- Status: `CLOSED — REVIEWED PASS` after re-review ([review](../reviews/2026-10-14-status-s2-review.md)); ROM fixture pending
 - Lane: full relay (applies saved status in ordinary play). Owner delegation
   2026-10-14; battle files only, away from in-flight Codex work.
 - Builds on: [S1](phase4-status-s1-groundwork.md); design
