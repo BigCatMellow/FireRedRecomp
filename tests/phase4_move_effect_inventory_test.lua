@@ -46,7 +46,7 @@ local inventory = {
   [34] = {"blocked_on_state", true, 1, {6}}, -- EFFECT_PAY_DAY
   [35] = {"represented", true, 0, {113}}, -- EFFECT_LIGHT_SCREEN
   [36] = {"represented", true, 1, {161}}, -- EFFECT_TRI_ATTACK: ROM fixture pending (phase4_status_leftovers_effect_rom_test)
-  [37] = {"blocked_on_state", false, 0, {156}}, -- EFFECT_REST
+  [37] = {"represented", true, 0, {156}}, -- EFFECT_REST: ROM fixture pending (phase4_status_leftovers_l2_effect_rom_test)
   [38] = {"represented", true, 1, {12,32,90,329}}, -- EFFECT_OHKO
   [39] = {"represented", true, 1, {13}}, -- EFFECT_RAZOR_WIND: ROM fixture pending (phase4_multiturn_effect_rom_test)
   [40] = {"represented", true, 1, {162}}, -- EFFECT_SUPER_FANG
@@ -56,7 +56,7 @@ local inventory = {
   [44] = {"represented", true, 1, {24,155}}, -- EFFECT_DOUBLE_HIT
   [45] = {"represented", true, 1, {26,136}}, -- EFFECT_RECOIL_IF_MISS: ordinary selected singles only
   [46] = {"blocked_on_state", false, 0, {54}}, -- EFFECT_MIST
-  [47] = {"blocked_on_state", false, 0, {116}}, -- EFFECT_FOCUS_ENERGY
+  [47] = {"represented", true, 0, {116}}, -- EFFECT_FOCUS_ENERGY: ROM fixture pending (phase4_status_leftovers_l2_effect_rom_test)
   [48] = {"represented", true, 1, {36,66,165}}, -- EFFECT_RECOIL
   [49] = {"represented", true, 0, {48,109,186}}, -- EFFECT_CONFUSE: ROM fixture pending (phase4_confusion_flinch_effect_rom_test)
   [50] = {"represented", true, 0, {14}}, -- EFFECT_ATTACK_UP_2
@@ -227,13 +227,13 @@ local inventory = {
 
 local expectedTotals = {
   moves = 354, defined = 214, used = 198, unused = 16,
-  positive = 216, zero = 138, admitted = 283, rejected = 71,
+  positive = 216, zero = 138, admitted = 285, rejected = 69,
   admitted_uncovered_positive = 34,
 }
 local expectedClasses = {
-  represented = {families = 108, moves = 249, positive = 181, zero = 68},
+  represented = {families = 110, moves = 251, positive = 181, zero = 70},
   candidate = {families = 0, moves = 0, positive = 0, zero = 0},
-  blocked_on_state = {families = 89, moves = 104, positive = 34, zero = 70},
+  blocked_on_state = {families = 87, moves = 102, positive = 34, zero = 68},
   intentionally_rejected = {families = 1, moves = 1, positive = 1, zero = 0},
   unused = {families = 16, moves = 0, positive = 0, zero = 0},
 }

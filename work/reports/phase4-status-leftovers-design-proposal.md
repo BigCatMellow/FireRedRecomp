@@ -579,3 +579,18 @@ Implemented by [task L1](../tasks/phase4-status-leftovers-l1.md).
   effect 36 is in the no-effect roll list.
 - No committed replay uses moves 41, 161 or 299 (the runtime replays are
   the house exit and Route 1 wild battles).
+
+## L2 implementation notes
+
+Implemented by [task L2](../tasks/phase4-status-leftovers-l2.md) (awaiting
+independent review).
+
+- `critStageFor` returns `2 * (attacker.focusEnergy and 1 or 0)` plus the
+  `CRIT_STAGE_EFFECTS` entry.
+- Rest and Focus Energy are early branches directly after Refresh in
+  `resolveMoveCore`. Rest's `statused` uses the five `StatusConditions`
+  predicates, so a counter-only word gives "went to sleep!" as in source.
+- `AICheckBadMove` row 47 is a new `focusEnergy` handler; the module header
+  sentence "status2 ... beyond confusion and flinch" was left as is (outside
+  the slice's AI scope) and is recorded as a known stale comment.
+- L2 tests live in a separate file, `tests/battle_status_leftovers_l2_test.lua`.

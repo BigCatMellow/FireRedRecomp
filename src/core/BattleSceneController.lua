@@ -423,6 +423,16 @@ function BattleSceneController:_eventMessages(events)
       add(name(event.side) .. " stayed awake\nusing its " .. (STATUS_ABILITY_NAMES[event.ability] or "ABILITY") .. "!")
     elseif event.type == "statusCured" then
       add(possessive(name(event.side)) .. " status\nreturned to normal!") -- :222
+    elseif event.type == "restSlept" then
+      -- gRestUsedStringIds (battle_message.c:973-977): B_MSG_REST_STATUSED
+      -- when trysetrest saw any of status1 bits 3-7.
+      if event.statused then
+        add(name(event.side) .. " slept and\nbecame healthy!") -- :134
+      else
+        add(name(event.side) .. " went\nto sleep!") -- :133
+      end
+    elseif event.type == "focusEnergy" then
+      add(name(event.side) .. " is getting\npumped!") -- gBattleText_GetPumped :153
     elseif event.type == "paralysisHealed" then
       add(name(event.side) .. " was\nhealed of paralysis!") -- :108
     elseif event.type == "confusionApplied" then

@@ -74,6 +74,9 @@
 --    a target that already has that status
 --   {type="stayedAwake", side=<target>, ability=} -- Insomnia/Vital Spirit
 --   {type="statusCured", side=<attacker>}   -- Refresh
+--   {type="restSlept", side=<attacker>, statused=} -- Rest: "went to sleep!"
+--    or (statused) "slept and became healthy!"; a restoreHP event follows
+--   {type="focusEnergy", side=<attacker>}  -- Focus Energy: "is getting pumped!"
 --   {type="paralysisHealed", side=<target>} -- Smelling Salt
 --   {type="flinched", side=}          -- flinch canceller: move not used
 --   {type="confusedTurn", side=}      -- "is confused!" (still confused)
@@ -289,8 +292,9 @@
 --     ported: MOVE_EFFECT_CERTAIN (always-trigger; no move wired here uses
 --     it) and Serene Grace's chance-doubling (no ability system exists yet).
 --     Still explicitly not ported: non-pure-single-stat effects
---     (EFFECT_FOCUS_ENERGY, EFFECT_TRANSFORM, EFFECT_REST, etc).
---     supportsMove() correctly rejects those. (EFFECT_HAZE is now handled
+--     (EFFECT_TRANSFORM etc). supportsMove() correctly rejects those.
+--     (EFFECT_REST and EFFECT_FOCUS_ENERGY have their own early branches
+--     in resolveMoveCore since status-leftovers slice L2.) (EFFECT_HAZE is now handled
 --     by the fast-lane batch-3 path.)
 --   * Recoil and drain ARE supported -- see BattleEngine.RECOIL_MOVES /
 --     BattleEngine.DRAIN_MOVES and resolveMove's step 8a. EFFECT_RECOIL=48
@@ -825,6 +829,11 @@ BattleEngine.ABILITY_INNER_FOCUS = 39
 BattleEngine.EFFECT_FACADE = 169
 BattleEngine.EFFECT_SMELLINGSALT = 171
 BattleEngine.EFFECT_REFRESH = 193
+-- Status-leftovers slice L2 (BattleScript_EffectRest, bs1.s:735-759;
+-- BattleScript_EffectFocusEnergy, bs1.s:884-894).
+BattleEngine.EFFECT_REST = 37
+BattleEngine.EFFECT_FOCUS_ENERGY = 47
+BattleEngine.MOVE_REST = 156
 -- SetMoveEffect ability guards (include/constants/abilities.h ids).
 BattleEngine.ABILITY_LIMBER = 7
 BattleEngine.ABILITY_IMMUNITY = 17
@@ -975,6 +984,10 @@ function BattleEngine.makeBattler(opts)
     -- never persisted (include/constants/battle.h:105-107).
     confusionTurns = 0,
     flinched = false,
+    -- STATUS2_FOCUS_ENERGY (battle.h:120): set by Focus Energy, +2 crit
+    -- stages in critStageFor; battle-only, never persisted, no timer.
+    -- Cleared on faint (recordFaint); a switch-in is a fresh battler.
+    focusEnergy = false,
     -- Locked moves (status2 MULTIPLETURNS / RECHARGE, gLockedMoves).
     charging = false,
     semiInvulnerable = nil, -- "air" / "underground" / "underwater"
@@ -1096,10 +1109,11 @@ function BattleEngine:recordFaint(side, events)
   battler.hp = 0
   -- Real Cmd_cleareffectsonfaint (src/battle_script_commands.c:2930-2938)
   -- zeroes status1 and writes it to the party copy; FaintClearSetData
-  -- clears status2 (confusion, flinch).
+  -- clears status2 (confusion, flinch, Focus Energy).
   battler.status = 0
   battler.confusionTurns = 0
   battler.flinched = false
+  battler.focusEnergy = false
   battler.charging, battler.recharging, battler.rechargeTimer, battler.lockedSlot = false, false, 0, nil
   battler.semiInvulnerable = nil
   battler.rampageTurns = 0
@@ -1193,6 +1207,13 @@ function BattleEngine:supportsMove(move, moveId)
     return move.power == 0 and move.target == 0 -- MOVE_TARGET_SELECTED
   end
   if move.effect == BattleEngine.EFFECT_REFRESH then
+    return move.power == 0 and move.target == MOVE_TARGET_USER
+  end
+  if move.effect == BattleEngine.EFFECT_REST then
+    return moveId == BattleEngine.MOVE_REST
+      and move.power == 0 and move.target == MOVE_TARGET_USER
+  end
+  if move.effect == BattleEngine.EFFECT_FOCUS_ENERGY then
     return move.power == 0 and move.target == MOVE_TARGET_USER
   end
   if move.effect == BattleEngine.EFFECT_CONFUSE or move.effect == BattleEngine.EFFECT_SWAGGER
@@ -1839,6 +1860,63 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
       events[#events + 1] = { type = "statusCured", side = attackerSide }
     else
       events[#events + 1] = { type = "moveFailed", side = attackerSide }
+    end
+    return
+  end
+
+  if move.effect == BattleEngine.EFFECT_REST then
+    -- BattleScript_EffectRest (data/battle_scripts_1.s:735-759):
+    -- attackcanceler/attackstring/ppreduce, no accuracycheck, no RNG.
+    if slot then slot.pp = slot.pp - 1 end
+    local st = attacker.status or 0
+    if StatusConditions.isAsleep(st) then
+      -- jumpifstatus STATUS1_SLEEP -> "is already asleep!" (:86). Defensive:
+      -- CANCELLER_ASLEEP stops a sleeping user before this script.
+      events[#events + 1] = { type = "statusAlready", side = attackerSide, kind = "sleep" }
+      return
+    end
+    -- jumpifcantmakeasleep (src/battle_script_commands.c:6546-6566): the
+    -- target is the user for MOVE_TARGET_USER. Uproar is not represented.
+    if attacker.ability == BattleEngine.ABILITY_INSOMNIA
+        or attacker.ability == BattleEngine.ABILITY_VITAL_SPIRIT then
+      events[#events + 1] = { type = "stayedAwake", side = attackerSide, ability = attacker.ability }
+      return
+    end
+    -- Cmd_trysetrest (:6480-6502): full HP -> BattleScript_AlreadyAtFullHp.
+    if attacker.hp == attacker.maxHP then
+      events[#events + 1] = { type = "restoreHPFull", side = attackerSide }
+      return
+    end
+    -- `status1 & (u8)~STATUS1_SLEEP`: bits 3-7 (PSN/BRN/FRZ/PAR/TOX); the
+    -- toxic counter (bits 8-11) does not count. Then status1 is overwritten
+    -- with STATUS1_SLEEP_TURN(3), clearing every other bit and the counter.
+    local statused = StatusConditions.isPoisoned(st) or StatusConditions.isBurned(st)
+      or StatusConditions.isFrozen(st) or StatusConditions.isParalyzed(st)
+      or StatusConditions.isBadlyPoisoned(st)
+    attacker.status = StatusConditions.withSleepTurns(0, 3)
+    events[#events + 1] = { type = "restSlept", side = attackerSide, statused = statused and true or false }
+    -- BattleScript_PresentHealTarget (:2028-2036): damage = -maxHP,
+    -- datahpupdate clamps to maxHP, "regained health!".
+    local beforeHP = attacker.hp
+    attacker.hp = attacker.maxHP
+    events[#events + 1] = {
+      type = "restoreHP", side = attackerSide, beforeHP = beforeHP,
+      hpRemaining = attacker.hp, amount = attacker.hp - beforeHP,
+    }
+    return
+  end
+
+  if move.effect == BattleEngine.EFFECT_FOCUS_ENERGY then
+    -- BattleScript_EffectFocusEnergy (data/battle_scripts_1.s:884-894):
+    -- attackcanceler/attackstring/ppreduce, no accuracycheck, no RNG;
+    -- jumpifstatus2 STATUS2_FOCUS_ENERGY -> But it failed!; otherwise
+    -- Cmd_setfocusenergy (src/battle_script_commands.c:7383-7396).
+    if slot then slot.pp = slot.pp - 1 end
+    if attacker.focusEnergy then
+      events[#events + 1] = { type = "moveFailed", side = attackerSide }
+    else
+      attacker.focusEnergy = true
+      events[#events + 1] = { type = "focusEnergy", side = attackerSide }
     end
     return
   end
@@ -2886,8 +2964,9 @@ end
 -- each resolveMultiHit iteration and each Triple Kick kick (helper H1,
 -- status-leftovers slice L1). +1 for EFFECT_HIGH_CRITICAL, EFFECT_SKY_ATTACK,
 -- EFFECT_BLAZE_KICK and EFFECT_POISON_TAIL; BattleFormulas.critRoll clamps
--- to index 4. The `2 * STATUS2_FOCUS_ENERGY` term is added by slice L2;
--- Scope Lens, Lucky Punch and Stick are not represented (no held items).
+-- to index 4. `2 * STATUS2_FOCUS_ENERGY` (attacker.focusEnergy, slice L2)
+-- comes first; Scope Lens, Lucky Punch and Stick are not represented (no
+-- held items).
 BattleEngine.CRIT_STAGE_EFFECTS = {
   [43] = 1,  -- EFFECT_HIGH_CRITICAL
   [75] = 1,  -- EFFECT_SKY_ATTACK
@@ -2895,7 +2974,8 @@ BattleEngine.CRIT_STAGE_EFFECTS = {
   [209] = 1, -- EFFECT_POISON_TAIL
 }
 function BattleEngine:critStageFor(attacker, move)
-  return BattleEngine.CRIT_STAGE_EFFECTS[move.effect] or 0
+  return 2 * (attacker.focusEnergy and 1 or 0)
+    + (BattleEngine.CRIT_STAGE_EFFECTS[move.effect] or 0)
 end
 
 -- Checks for a faint on `side`, appending events and setting the outcome.

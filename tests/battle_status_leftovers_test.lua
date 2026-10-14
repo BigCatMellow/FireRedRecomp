@@ -127,7 +127,7 @@ do
       others = false
     end
   end
-  check("H1: every other effect is stage 0 (no Focus Energy term in L1)", others)
+  check("H1: every other effect is stage 0 (without Focus Energy)", others)
 end
 
 -- Spy on the helper at each site: it must be called once per critcalc with

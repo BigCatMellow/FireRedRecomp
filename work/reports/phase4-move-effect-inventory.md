@@ -22,7 +22,7 @@ Existing accepted engine families retain their documented limits.
 
 A separate source-only invocation of the actual current
 `BattleEngine:supportsMove` on source-derived effect/power metadata returned
-248 admissions and 106 rejections at that refresh (now 283/71 after the status slices and
+248 admissions and 106 rejections at that refresh (now 285/69 after the status slices and
 fast-lane batches; the test is authoritative). These are source/predicate observations,
 **not a local ROM result**. The checked-in [inventory test](../../tests/phase4_move_effect_inventory_test.lua)
 contains literal expected membership, admission and coverage metadata. It does
@@ -35,11 +35,11 @@ labels `defined_source=214`; the ROM gate checks member usage and unused IDs.
 
 | Source-confirmed semantic class | Used families | Moves | Positive power | Zero power | Admitted / rejected |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| Represented with stated limits | 108 | 249 | 181 | 68 | 249 / 0 |
+| Represented with stated limits | 110 | 251 | 181 | 70 | 251 / 0 |
 | Candidate for separate discovery | 0 | 0 | 0 | 0 | 0 / 0 |
-| Blocked on additional state or an absent cross-component path | 89 | 104 | 34 | 70 | 34 / 70 |
+| Blocked on additional state or an absent cross-component path | 87 | 102 | 34 | 68 | 34 / 68 |
 | Intentionally rejected | 1 | 1 | 1 | 0 | 0 / 1 |
-| Total used | 198 | 354 | 216 | 138 | 283 / 71 |
+| Total used | 198 | 354 | 216 | 138 | 285 / 69 |
 | Defined but unused | 16 | 0 | 0 | 0 | no real-record claim |
 
 `represented` means an existing bounded mechanism plus checked-in tests/source
@@ -140,7 +140,7 @@ body (Protect/Endure, Return/Frustration, sunlight recovery, Mud/Water Sport).
 | 34 `EFFECT_PAY_DAY` | 6 (1; P) | yes | B | [`BattleScript_EffectPayDay`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L720) | Pay Day secondary needs battle money accumulator and post-battle settlement. |
 | 35 `EFFECT_LIGHT_SCREEN` | 113 (1; Z) | yes | R / R6 | [`BattleScript_EffectLightScreen`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L724) | Singles screen damage modifier, duplicate failure and five-turn side timer; Brick Break removal covered by batch 4. |
 | 36 `EFFECT_TRI_ATTACK` | 161 (1; P) | yes | R | [`BattleScript_EffectTriAttack`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L731) | Stock hit then seteffectwithchance (one `%100`, also on no-effect); on a pass, Shield Dust, 0 HP or any status1 word (`status ~= 0`) exits silently with no draw, else `%3` picks burn/freeze/paralysis and the recursive SetMoveEffect fails silently on Fire/Water Veil, Ice/Magma Armor or Limber; freeze cancels multi-turn moves. Status-leftovers slice [L1](../tasks/phase4-status-leftovers-l1.md); Safeguard/Substitute/sun/Synchronize/Serene Grace absent; ROM fixture pending. |
-| 37 `EFFECT_REST` | 156 (1; Z) | no | B | [`BattleScript_EffectRest`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L735) | trysetrest needs sleep preconditions/status update/lifecycle as well as healing. |
+| 37 `EFFECT_REST` | 156 (1; Z) | yes | R | [`BattleScript_EffectRest`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L735) | No accuracy, no RNG, one PP; gates in order: already asleep (defensive; the sleep canceller stops a sleeping user first), Insomnia/Vital Spirit on the user ("stayed awake"), full HP ("HP is full!", status kept); then status1 is overwritten with sleep 3 (other bits and the toxic counter cleared), "went to sleep!" or, with any of bits 3-7, "slept and became healthy!", and a full heal; the existing canceller gives two fast-asleep turns, then the user wakes and acts. Status-leftovers slice [L2](../tasks/phase4-status-leftovers-l2.md); Uproar/Sleep Talk calling Rest/Early Bird absent; ROM fixture pending. |
 | 38 `EFFECT_OHKO` | 12, 32, 90, 329 (4; P) | yes | R / R13 | [`BattleScript_EffectOHKO`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L761) | Reviewed level condition and one KO roll; no Sturdy/Lock-On/Protect/Endure/items. |
 | 39 `EFFECT_RAZOR_WIND` | 13 (1; P) | yes | R | [`BattleScript_EffectRazorWind`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L777) | Turn 1 whirlwind text, PP, lock; turn 2 hit without PP. Multi-turn slice [M1](../tasks/phase4-multiturn-m1.md); ROM fixture pending. |
 | 40 `EFFECT_SUPER_FANG` | 162 (1; P) | yes | R / R10 | [`BattleScript_EffectSuperFang`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L808) | Reviewed floor(target HP/2), minimum-one and shared immunity path. |
@@ -150,7 +150,7 @@ body (Protect/Endure, Return/Frustration, sunlight recovery, Mud/Water Sport).
 | 44 `EFFECT_DOUBLE_HIT` | 24, 155 (2; P) | yes | R / R3 | [`BattleScript_EffectDoubleHit`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L838) | Shared accuracy/PP, per-hit critical/damage, stop-on-KO/immunity; no item/ability hit reactions. |
 | 45 `EFFECT_RECOIL_IF_MISS` | 26, 136 (2; P) | yes | R | [`BattleScript_EffectRecoilIfMiss`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L848) | Miss-only damagecalc/manipulatedamage and attacker faint; exact miss/RNG/type/order contract needed. |
 | 46 `EFFECT_MIST` | 54 (1; Z) | no | B | [`BattleScript_EffectMist`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L873) | setmist side timer and stat-drop prevention hooks absent. |
-| 47 `EFFECT_FOCUS_ENERGY` | 116 (1; Z) | no | B | [`BattleScript_EffectFocusEnergy`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L884) | setfocusenergy volatile state and critical-stage consumption/reset absent. |
+| 47 `EFFECT_FOCUS_ENERGY` | 116 (1; Z) | yes | R | [`BattleScript_EffectFocusEnergy`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L884) | No accuracy, no RNG, one PP; battle-only `focusEnergy` volatile (STATUS2_FOCUS_ENERGY): "is getting pumped!", or "But it failed!" when already set; +2 crit stages at every critcalc site via critStageFor (stage 2 alone `%4`, 3 with a +1 move `%3`, clamped to 4); cleared on faint, absent after a switch-in; AI_CBM_FocusEnergy -10 when set. Status-leftovers slice [L2](../tasks/phase4-status-leftovers-l2.md); Baton Pass/Lansat Berry/Dire Hit absent; ROM fixture pending. |
 | 48 `EFFECT_RECOIL` | 36, 66, 165 (3; P) | yes | R / R2 | [`BattleScript_EffectRecoil`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L896) | Quarter recoil; #165 additionally implements PP-exhaustion selection and neutral typing; #36/#66 ordinary recoil. |
 | 49 `EFFECT_CONFUSE` | 48, 109, 186 (3; Z) | yes | R | [`BattleScript_EffectConfuse`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L902) | Own Tempo text, already confused text, accuracycheck, seteffectprimary 2-5 turns; Substitute/Safeguard absent. Soundproof absent. Confusion/flinch slice [C2](../tasks/phase4-confusion-flinch-c2.md); ROM fixture pending. |
 | 50 `EFFECT_ATTACK_UP_2` | 14 (1; Z) | yes | R / R4 | [`BattleScript_EffectAttackUp2`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L925) | Pure single-stat stages/clamps and self/foe accuracy path; no prevention abilities/Substitute/Mist. |
