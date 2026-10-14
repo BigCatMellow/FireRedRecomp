@@ -267,5 +267,21 @@ do
   check("AI_CBM_Refresh: badly poisoned user 0", score(toxic, healthy, refreshMove, 287) == 0)
 end
 
+do
+  -- AI_CBM_Confuse (data/battle_ai_scripts.s:390-395): already confused -5
+  -- (checked before Own Tempo's -10); Swagger/Flatter share it.
+  local function statusMove(effect) return { effect = effect, power = 0, type = 0,
+    accuracy = 100, pp = 10, secondaryEffectChance = 0, target = 0, priority = 0, flags = 0 } end
+  local user, target = mon({}), mon({})
+  check("AI_CBM_Confuse: healthy target 0", score(user, target, statusMove(49), 48) == 0)
+  target.confusionTurns = 2
+  check("AI_CBM_Confuse: confused target -5", score(user, target, statusMove(49), 48) == -5)
+  local ownTempo = mon({ ability = 20 }); ownTempo.confusionTurns = 2
+  check("AI_CBM_Confuse: confusion branch precedes Own Tempo", score(user, ownTempo, statusMove(49), 48) == -5)
+  ownTempo.confusionTurns = 0
+  check("AI_CBM_Confuse: Own Tempo -10", score(user, ownTempo, statusMove(49), 48) == -10)
+  check("Swagger shares AI_CBM_Confuse", score(user, target, statusMove(118), 207) == -5)
+end
+
 print(("%d passed, %d failed"):format(passed, failed))
 os.exit(failed == 0 and 0 or 1)

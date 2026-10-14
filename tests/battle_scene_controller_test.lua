@@ -705,5 +705,20 @@ do
   check("Smelling Salt heal text (:108)", m[2].text == "CHARMANDER was\nhealed of paralysis!", m[2].text)
 end
 
+do
+  local c = controller()
+  local m = c:_eventMessages({
+    { type = "flinched", side = "foe" },
+    { type = "confusedTurn", side = "player" },
+    { type = "confusionSelfHit", side = "player", amount = 3, hpRemaining = 16 },
+    { type = "confusionEnded", side = "foe" },
+  })
+  check("flinched (:123)", m[1].text == "CHARMANDER flinched!", m[1].text)
+  check("is confused (:114)", m[2].text == "BULBASAUR is\nconfused!", m[2].text)
+  check("hurt itself then HP (:337)", m[3].text == "It hurt itself in its\nconfusion!"
+    and m[4].hpSide == "player" and m[4].hp == 16 and m[4].text == nil, m[3].text)
+  check("snapped out (:115)", m[5].text == "CHARMANDER snapped\nout of confusion!", m[5].text)
+end
+
 print(("%d passed, %d failed"):format(passed, failed))
 os.exit(failed == 0 and 0 or 1)
