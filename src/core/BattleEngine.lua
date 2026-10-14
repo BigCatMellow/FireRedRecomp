@@ -82,6 +82,8 @@
 --   {type="confusionApplied", side=<target>}   -- "became confused!"
 --   {type="alreadyConfused", side=<target>}
 --   {type="confusionPrevented", side=<target>} -- Own Tempo
+--   {type="chargeTurn", side=, move=, kind=}  -- two-turn move, turn 1
+--   {type="mustRecharge", side=}       -- recharge canceller
 --   {type="battleEnd", outcome="playerWon"|"playerLost"|"ran"|"caught"}
 --
 -- Real turn structure ported, in real execution order:
@@ -755,8 +757,21 @@ BattleEngine.STATUS2_HIT_MOVES = {
   [150] = "flinch",    -- EFFECT_FLINCH_MINIMIZE_HIT (:1894-1897; Minimize unmodeled)
   [146] = "flinch",    -- EFFECT_TWISTER (:1822-1828; on-air unmodeled)
   [92] = "flinch",     -- EFFECT_SNORE (asleep path, :1264-1268)
+  [75] = "flinch",     -- EFFECT_SKY_ATTACK (second turn, :790-791)
 }
 BattleEngine.EFFECT_SNORE = 92
+-- Locked multi-turn slice M1: recharge (EFFECT_RECHARGE 80) and two-turn
+-- charge moves (data/battle_scripts_1.s:777-806, :1061-1066, :1107-1111,
+-- :1807-1820, :1899-1913).
+BattleEngine.EFFECT_RECHARGE = 80
+BattleEngine.EFFECT_SKY_ATTACK = 75
+BattleEngine.EFFECT_SKULL_BASH = 145
+BattleEngine.CHARGE_MOVES = {
+  [39] = "razorWind",   -- EFFECT_RAZOR_WIND
+  [75] = "skyAttack",   -- EFFECT_SKY_ATTACK
+  [145] = "skullBash",  -- EFFECT_SKULL_BASH
+  [151] = "solarBeam",  -- EFFECT_SOLAR_BEAM (weather unmodeled: always charges)
+}
 BattleEngine.EFFECT_CONFUSE = 49
 BattleEngine.EFFECT_SWAGGER = 118
 BattleEngine.EFFECT_FLATTER = 166
@@ -908,6 +923,11 @@ function BattleEngine.makeBattler(opts)
     -- never persisted (include/constants/battle.h:105-107).
     confusionTurns = 0,
     flinched = false,
+    -- Locked moves (status2 MULTIPLETURNS / RECHARGE, gLockedMoves).
+    charging = false,
+    recharging = false,
+    rechargeTimer = 0,
+    lockedSlot = nil,
     moves = {},
     statStages = {
       attack = BattleFormulas.DEFAULT_STAT_STAGE,
@@ -1022,6 +1042,7 @@ function BattleEngine:recordFaint(side, events)
   battler.status = 0
   battler.confusionTurns = 0
   battler.flinched = false
+  battler.charging, battler.recharging, battler.rechargeTimer, battler.lockedSlot = false, false, 0, nil
   for _, recorded in ipairs(self.faintSequence) do
     if recorded == side then return false end
   end
@@ -1198,9 +1219,18 @@ function BattleEngine:resolveStatusCancellers(attackerSide, attacker, moveId, mo
       events[#events + 1] = { type = "thawed", side = attackerSide }
     end
   end
+  if attacker.recharging then
+    -- CANCELLER_RECHARGE (src/battle_util.c:1349-1358).
+    attacker.recharging = false
+    attacker.rechargeTimer = 0
+    self:cancelMultiTurnMoves(attacker)
+    events[#events + 1] = { type = "mustRecharge", side = attackerSide }
+    return true
+  end
   if attacker.flinched then
     -- CANCELLER_FLINCH (src/battle_util.c:1361-1371).
     attacker.flinched = false
+    self:cancelMultiTurnMoves(attacker)
     events[#events + 1] = { type = "flinched", side = attackerSide }
     return true
   end
@@ -1222,6 +1252,7 @@ function BattleEngine:resolveStatusCancellers(attackerSide, attacker, moveId, mo
   if S.isParalyzed(attacker.status) and self.rng:next16() % 4 == 0 then
     -- CANCELLER_PARALYSED
     events[#events + 1] = { type = "fullyParalyzed", side = attackerSide }
+    self:cancelMultiTurnMoves(attacker) -- cancelmultiturnmoves (:3717)
     return true
   end
   if S.isFrozen(attacker.status) and move.effect == BattleEngine.EFFECT_THAW_HIT then
@@ -1262,6 +1293,7 @@ function BattleEngine:applySecondaryStatus(targetSide, kind, certain, events)
     return false
   end
   StatusConditions.apply(target, kind, self.rng)
+  if kind == "sleep" or kind == "freeze" then self:cancelMultiTurnMoves(target) end
   events[#events + 1] = { type = "statusApplied", side = targetSide, kind = kind }
   return true
 end
@@ -1331,6 +1363,7 @@ function BattleEngine:resolvePrimaryStatusMove(attackerSide, attacker, defenderS
     return
   end
   S.apply(defender, kind, self.rng)
+  if kind == "sleep" then self:cancelMultiTurnMoves(defender) end
   events[#events + 1] = { type = "statusApplied", side = defenderSide, kind = kind }
 end
 
@@ -1348,6 +1381,7 @@ function BattleEngine:resolveConfusionSelfHit(side, battler, chosenMove, events)
     effect = (chosenMove and chosenMove.effect == BattleEngine.EFFECT_EXPLOSION)
       and BattleEngine.EFFECT_EXPLOSION or 0,
   }
+  self:cancelMultiTurnMoves(battler) -- cancelmultiturnmoves (:3742)
   local damage = BattleFormulas.calculateBaseDamage(battler, battler, pound, false, nil)
   damage = BattleFormulas.applyRandomDamageMultiplier(damage, self.rng)
   if damage > battler.hp then damage = battler.hp end
@@ -1394,6 +1428,23 @@ function BattleEngine:applySecondaryStatus2(targetSide, target, kind, events)
   return false
 end
 
+-- CancelMultiTurnMoves (src/battle_util.c:203-214), reduced to the
+-- represented multi-turn state: the two-turn charge lock.
+function BattleEngine:cancelMultiTurnMoves(battler)
+  battler.charging = false
+  if not battler.recharging then battler.lockedSlot = nil end
+end
+
+-- True when the side skips action selection for the coming turn
+-- (MULTIPLETURNS or RECHARGE, src/battle_main.c:3125-3130): the controller
+-- must not open a menu or run the foe AI, and runTurn uses the locked move.
+-- A recharge whose timer would lapse at this turn's start (timer 1, the
+-- battler did not act last turn) no longer locks.
+function BattleEngine:isLocked(side)
+  local b = self:battler(side)
+  return b.charging or (b.recharging and b.rechargeTimer > 1)
+end
+
 function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
   local attacker = self:battler(attackerSide)
   local defenderSide = otherSide(attackerSide)
@@ -1415,6 +1466,19 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
       allMovesUnusable = false
       break
     end
+  end
+  -- A locked battler skips action selection, so noValidMoves is never set
+  -- and gLockedMoves is used (src/battle_main.c:3125-3130, 3983-3992).
+  -- A side locked at this turn's start keeps its locked action even when
+  -- the lock is cancelled before it moves (sleep/freeze applied by a faster
+  -- foe); source chose that move at selection time.
+  local turnLocked = self.lockedThisTurn and self.lockedThisTurn[attackerSide]
+  local lockedTurn = attacker.charging or attacker.recharging or turnLocked
+  if lockedTurn then
+    allMovesUnusable = false
+    -- runTurn already passed the locked slot; a lock cancelled earlier this
+    -- turn has cleared lockedSlot, so keep the slot the turn started with.
+    moveSlot = attacker.lockedSlot or moveSlot
   end
 
   local slot, move
@@ -1463,6 +1527,8 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
     move = dynamicMove
   end
 
+  -- (A locked action is exempt here; its 0-PP case is handled after the
+  -- cancellers, as in source.)
   -- Defensive path only, real-game-unreachable: the caller selected a
   -- specific 0-PP slot while at least one OTHER slot of this battler still
   -- has PP (allMovesUnusable is false, so `slot` is set here, not Struggle).
@@ -1471,7 +1537,7 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
   -- this engine performs no UI-level move-menu validation, so a caller can
   -- still pass such a moveSlot. Don't crash, don't invent an action: keep
   -- the pre-existing no-op/noPP behavior for this specific unreachable case.
-  if slot and slot.pp <= 0 then
+  if slot and slot.pp <= 0 and not lockedTurn then
     events[#events + 1] = { type = "noPP", side = attackerSide, move = slot.move }
     return
   end
@@ -1479,6 +1545,41 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
   local moveId = effectiveMoveId
   if self:resolveStatusCancellers(attackerSide, attacker, moveId, move, events) then
     return
+  end
+  -- Source checks PP after the cancellers (src/battle_script_commands.c
+  -- :833-842); a locked action whose lock was cancelled earlier this turn
+  -- reaches it with no NO_PPDEDUCT, so a spent move reports no PP here.
+  if lockedTurn and not attacker.charging and not attacker.recharging
+      and slot and slot.pp <= 0 then
+    events[#events + 1] = { type = "noPP", side = attackerSide, move = slot.move }
+    return
+  end
+  self.noPPDeduct = false
+  local chargeKind = BattleEngine.CHARGE_MOVES[move.effect]
+  if chargeKind then
+    if not attacker.charging then
+      -- BattleScriptFirstChargingTurn: no attackstring, ppreduce,
+      -- MOVE_EFFECT_CHARGING (lock), the turn-1 text; Skull Bash then DEF+1
+      -- (silent at +6).
+      if slot then slot.pp = slot.pp - 1 end
+      attacker.charging = true
+      attacker.lockedSlot = moveSlot
+      events[#events + 1] = { type = "chargeTurn", side = attackerSide, move = moveId, kind = chargeKind }
+      if move.effect == BattleEngine.EFFECT_SKULL_BASH
+          and attacker.statStages.defense < BattleFormulas.MAX_STAT_STAGE then
+        attacker.statStages.defense = attacker.statStages.defense + 1
+        events[#events + 1] = {
+          type = "statChange", side = attackerSide, stat = "defense", stages = 1,
+          stage = attacker.statStages.defense,
+        }
+      end
+      return
+    end
+    -- BattleScript_TwoTurnMovesSecondTurn: clear the lock, no PP, then the
+    -- ordinary hit from accuracycheck.
+    attacker.charging = false
+    attacker.lockedSlot = nil
+    self.noPPDeduct = true
   end
   self.currentMove = move
   events[#events + 1] = { type = "useMove", side = attackerSide, move = moveId }
@@ -1719,7 +1820,7 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
   -- runs ppreduce). Real HITMARKER_NO_PPDEDUCT means Struggle (no `slot`,
   -- see above) skips this step entirely -- there is no move slot of its
   -- own to decrement.
-  if slot and not isEndeavor and not isMagnitude then
+  if slot and not isEndeavor and not isMagnitude and not self.noPPDeduct then
     slot.pp = slot.pp - 1
   end
 
@@ -2082,7 +2183,8 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
   -- are suppressed. Suppression is global until the first player damage
   -- message flips Oak's state flag, including a foe that attacks first.
   local critStage = (move.effect == BattleEngine.EFFECT_HIGH_CRITICAL
-    or move.effect == BattleEngine.EFFECT_POISON_TAIL) and 1 or 0
+    or move.effect == BattleEngine.EFFECT_POISON_TAIL
+    or move.effect == BattleEngine.EFFECT_SKY_ATTACK) and 1 or 0
   local rolledCrit = BattleFormulas.critRoll(self.rng, critStage)
   local isCrit = rolledCrit and not (self.firstBattle and not self.tutorialPlayerDamageDone)
 
@@ -2146,7 +2248,8 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
         or move.effect == BattleEngine.EFFECT_ALL_STATS_UP_HIT
         or BattleEngine.STATUS_HIT_MOVES[move.effect]
         or BattleEngine.STATUS2_HIT_MOVES[move.effect]
-        or move.effect == BattleEngine.EFFECT_SMELLINGSALT then
+        or move.effect == BattleEngine.EFFECT_SMELLINGSALT
+        or move.effect == BattleEngine.EFFECT_RECHARGE then
       -- Smelling Salt's byte is CERTAIN, which skips the roll only when the
       -- move had an effect; a no-effect hit falls to the rolling branch.
       BattleFormulas.secondaryEffectRoll(self.rng, move.secondaryEffectChance)
@@ -2269,6 +2372,15 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
     -- SetMoveEffect with MOVE_EFFECT_CERTAIN.
     self:applySecondaryStatus(defenderSide, statusKind,
       move.secondaryEffectChance >= 100, events)
+  end
+
+  if move.effect == BattleEngine.EFFECT_RECHARGE and attacker.hp > 0 then
+    -- MOVE_EFFECT_RECHARGE | AFFECTS_USER | CERTAIN: no roll when the move
+    -- had an effect, including a KO (src/battle_script_commands.c
+    -- :2600-2605).
+    attacker.recharging = true
+    attacker.rechargeTimer = 2
+    attacker.lockedSlot = moveSlot
   end
 
   local status2Kind = BattleEngine.STATUS2_HIT_MOVES[move.effect]
@@ -2609,6 +2721,10 @@ end
 function BattleEngine:resolveEndTurn(events, sides)
   -- HandleEndTurn_ContinueBattle clears flinch before end-turn effects.
   self.player.flinched, self.foe.flinched = false, false
+  -- ...and cancels a sleeping battler's multi-turn move (:2941-2942).
+  for _, b in ipairs({ self.player, self.foe }) do
+    if StatusConditions.isAsleep(b.status) and b.charging then self:cancelMultiTurnMoves(b) end
+  end
   self:decaySideTimers(events)
   self:resolveStatusEndTurn(events, sides)
 end
@@ -2678,6 +2794,28 @@ function BattleEngine:runTurn(playerAction, foeAction)
   -- (src/battle_main.c:2940 HandleEndTurn_ContinueBattle; flinch only
   -- matters within the turn it was set, so clearing here is equivalent).
   self.player.flinched, self.foe.flinched = false, false
+  -- A locked side's chosen action is replaced by its locked move.
+  self.lockedThisTurn = {
+    [BattleEngine.SIDE_PLAYER] = self:isLocked(BattleEngine.SIDE_PLAYER),
+    [BattleEngine.SIDE_FOE] = self:isLocked(BattleEngine.SIDE_FOE),
+  }
+  if self:isLocked(BattleEngine.SIDE_PLAYER) then
+    playerAction = { action = "move", moveSlot = self.player.lockedSlot }
+  end
+  if self:isLocked(BattleEngine.SIDE_FOE) then
+    foeAction = { action = "move", moveSlot = self.foe.lockedSlot }
+  end
+  -- rechargeTimer counts down at each turn's action start; at 0 the
+  -- recharge lapses unused (src/battle_main.c:3641-3646).
+  for _, b in ipairs({ self.player, self.foe }) do
+    if b.rechargeTimer > 0 then
+      b.rechargeTimer = b.rechargeTimer - 1
+      if b.rechargeTimer == 0 and b.recharging then
+        b.recharging = false
+        if not b.charging then b.lockedSlot = nil end
+      end
+    end
+  end
 
   -- Real SetActionsAndBattlersTurnOrder puts B_ACTION_SWITCH in the same
   -- early group as B_ACTION_USE_ITEM, both hoisted ahead of any move
