@@ -95,3 +95,73 @@ pinned 386 boundary, then dispatch the smallest Worker correction and an
 independent exact-revision recheck. Keep PR #5 unmerged until that passes.
 No ROM/bridge work, Pokédex screen implementation, unrelated P6 work, or phase
 completion is authorized or established by this review.
+
+## Independent correction recheck — 2026-10-14
+
+Verdict: **PASS** for exact implementation/integration head
+`55797822b5e4e7401669d7afd46446988b5c35e0` under corrected Orchestrator
+authority `4eb53da`. This supersedes the original BLOCK only for this corrected
+revision; the original finding and evidence above remain historical.
+
+The same independent Reviewer inspected the full substantive PR delta, not
+only the Worker handoff. The source pin remains `c75f352304d529f6ba92d4f74b9cf8b5c3810788`.
+The authority explicitly permits correcting the old tracker range to 386,
+resolving the previous scope ambiguity without changing the 52-byte layout.
+
+### Source, scope and assertions
+
+- `NATIONAL_DEX_COUNT` is now literal 386. All four existing getter/setter
+  methods reject out-of-range entries through the unchanged shared assertion;
+  valid 1–386 operations and both 52-byte arrays retain their existing shape.
+- The serialized counter reads seen bytes only, counts 1–386 and ignores all
+  remaining bits through 416. Nil, wrong-length and non-string inputs remain
+  unknown rather than fabricated zero. Mirror validation stays excluded.
+- New oracles use literal source boundaries, not values derived from the
+  implementation: #386 is bit 1 of zero-based byte 48; #387/#411/#416 cannot
+  contribute; all-set bytes count 386. The real StartMenu/InputState path
+  asserts trailing-only arrays leave the menu open and #1/#386 allow selection.
+- Independently exercised the exact `world.openStartMenu` function extracted
+  from this head with real DexTracker/StartMenu/InputState and synthetic
+  session-shaped bytes. With owned bytes all set: empty seen and #387/#411/#416
+  alone produced count 0 / menu open; #386 produced 1 / selected; all-set seen
+  produced 386 / selected. Thus normal wiring reads the correct live field.
+- Relative to integrated runtime main `f50383e`, the substantive delta is
+  exactly the four implementation/task paths plus this separately authorized
+  independent review record. No save/schema, flag/story, ordering, Pokédex
+  screen, ROM, runner or workflow change. Later live main `a9e8868` has no
+  change from `f50383e` in any of the four implementation/task paths; those
+  intervening battle changes are not re-reviewed or accepted by this report.
+
+### Independently reproduced evidence
+
+All local executions unset both `POKEPORT_ROM` and `POKEPORT_RUNTIME_REPLAY`:
+
+- Dex tests: **56 passed / 0 failed**; StartMenu tests: **21/0**.
+- Full suite at exact `5579782`: **PASS, 167 test files, no-ROM mode**.
+- Repository checker: **PASS, 294 Lua / 316 Markdown / 1025 targets**.
+- Whitespace check against `f50383e`: clean; review worktree remained clean
+  before this append.
+- Old-code witness: loaded the exact `118cd11` DexTracker into Lua memory
+  while running the new tests, without changing files. Result **39 passed /
+  17 failed**, exit 1. Failures include the invalid getter/setter range,
+  trailing-only counts, all-set total and actual menu admission. The new
+  tests detect the original defect rather than merely preserve green CI.
+- Tracker SHA-256:
+  `5b37e33dd4bf44690ebadd1b9fc526bf5cee6434f50b7ee9888dfe8d3663724d`;
+  Dex tests SHA-256:
+  `affebb11d99e972a1ed618554b540c8853b589186d1dd8c20475c429caedfd7a`.
+- Independently queried GitHub run metadata confirms exact head `5579782`
+  for both completed SUCCESS runs:
+  [PR run 38544944339](https://github.com/BigCatMellow/FireRedRecomp/actions/runs/38544944339)
+  and [push run 38544937873](https://github.com/BigCatMellow/FireRedRecomp/actions/runs/38544937873).
+  Remote PR branch remained at the reviewed head immediately before the
+  review-only publication step.
+
+### Corrected next allowance
+
+Orchestrator may accept and merge this bounded START zero-seen guard after
+normal final publication checks, then reconcile only P6-03. No further Worker
+fix is required by this review. The unavailable Pokédex screen, malformed-save
+and mirror validation, ROM presentation/replay, other P6 packages and phase
+completion remain outside this acceptance. This Reviewer publishes only the
+review record and does not merge the PR or modify implementation.
