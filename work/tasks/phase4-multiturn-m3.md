@@ -1,7 +1,9 @@
 # Task: locked multi-turn moves, slice M3 (Rampage)
 
 - Task ID: `P4-MULTITURN-M3`
-- Status: `IMPLEMENTED — awaiting independent review`; ROM fixture pending
+- Status: `DONE — independently reviewed PASS WITH CORRECTIONS (applied)`; ROM fixture pending
+- Reviews: [design](../reviews/2026-10-14-multiturn-m3-design-review.md),
+  [implementation](../reviews/2026-10-14-multiturn-m3-implementation-review.md)
 - Design review: [PASS WITH CORRECTIONS](../reviews/2026-10-14-multiturn-m3-design-review.md);
   F1-F4 applied in the addendum and the implementation.
 - Lane: full relay (cross-turn lock state, end-of-turn confusion, RNG
@@ -95,3 +97,12 @@ an immune target text outside Rampage and Jump Kick.
   92/107 blocked, 37 admitted uncovered positive.
 - `bash scripts/test_all.sh`: 173 test files PASS (no-ROM mode);
   `lua5.1 scripts/check_repository.lua`: PASS.
+
+## Review corrections (2026-10-14)
+
+The implementation review's F1/F2 test gaps are closed in
+`tests/battle_rampage_test.lua` (49 passed, 0 failed): poison damage before
+the fatigue text, poison KO on the last turn (no `%4`), a thawed rampager
+starting a fresh rampage, and snapping out of confusion on the last locked
+turn still confusing. Moving the tick before status damage now fails two
+checks.

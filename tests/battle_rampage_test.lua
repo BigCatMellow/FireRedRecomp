@@ -194,6 +194,45 @@ do
     and not b:isLocked("player"), b.rng.draws)
 end
 
+do
+  -- Review F1: the tick runs after the rampager's own status damage.
+  local b = battle({ 0, 1, 0, 0, 0 }, { playerStatus = S.POISON })
+  b:runTurn(MOVE, MOVE)
+  local events = turn(b, { 0, 1, 0, 0, 3 })
+  local _, pi = find(events, "statusDamage", "player")
+  local f, fi = find(events, "fatigueConfusion", "player")
+  check("poisoned rampager: poison damage, then fatigue confusion (%4 = 3 -> 5 turns)",
+    pi and f and pi < fi and b.rng.draws == 5 and b.player.confusionTurns == 5, types(events))
+  -- Poison KO on the last turn: no fatigue text and no %4 draw.
+  b = battle({ 0, 1, 0, 0, 0 }, { playerStatus = S.POISON, hasReplacement = function() return true end })
+  b:runTurn(MOVE, MOVE)
+  b.player.hp = 1
+  events = turn(b, { 0, 1, 0, 0, 3 })
+  check("poison KO on the last turn: faint, no fatigue, no %4", find(events, "faint", "player")
+    and not find(events, "fatigueConfusion") and b.rng.draws == 4, types(events))
+end
+
+do
+  -- Review F2: a cancelled rampage restarts after a thaw (PP, new roll).
+  local b = battle({ 0, 1, 0, 0, 1 })
+  b:runTurn(MOVE, MOVE)
+  b.player.status = S.FREEZE
+  b:cancelMultiTurnMoves(b.player)
+  check("freeze cancels the rampage", not b:isLocked("player") and b.player.rampageTurns == 0)
+  local events = turn(b, { 0, 0, 1, 0, 0, 0 })
+  check("thawed: a fresh rampage (thaw, 5 hit draws, PP spent, roll 0)", find(events, "thawed", "player")
+    and b.rng.draws == 6 and b.player.moves[1].pp == 18 and b.player.rampageTurns == 1, types(events))
+  -- Snapping out of confusion on the last locked turn still confuses.
+  b = battle({ 0, 1, 0, 0, 0 })
+  b:runTurn(MOVE, MOVE)
+  b.player.confusionTurns = 1
+  events = turn(b, { 0, 1, 0, 0, 2 })
+  local _, ei = find(events, "confusionEnded", "player")
+  local f, fi = find(events, "fatigueConfusion", "player")
+  check("snapped out on the last turn: fatigue confusion still applies", ei and f and ei < fi
+    and b.player.confusionTurns == 4 and b.rng.draws == 5, types(events))
+end
+
 ---------------------------------------------------------------------------
 -- No effect, immune miss, semi-invulnerable miss
 ---------------------------------------------------------------------------
