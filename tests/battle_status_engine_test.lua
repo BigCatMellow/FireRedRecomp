@@ -253,8 +253,10 @@ do
   local reflected = BattleFormulas.calculateBaseDamage(atk, def, tackle, false, { reflect = true })
   check("burn then Reflect: 30 -> 15 -> 7, +2", reflected == 9, reflected)
   atk.ability = BattleFormulas.ABILITY_GUTS
-  check("Guts is exempt from burn halving",
-    BattleFormulas.calculateBaseDamage(atk, def, tackle, false, nil) == 32)
+  -- Guts: no burn halving and attack x150/100 while statused (pokemon.c
+  -- :2488): 150*35*22/50/50 = 46, +2.
+  check("Guts is exempt from burn halving and boosts attack while statused",
+    BattleFormulas.calculateBaseDamage(atk, def, tackle, false, nil) == 48)
   atk.ability = 0
   local ember = moves[Data.MOVE_EMBER]
   local specialBurned = BattleFormulas.calculateBaseDamage(atk, def, ember, false, nil)
@@ -266,6 +268,149 @@ do
   def.defense = 400
   check("burned minimum damage still clamps to 1 then +2",
     BattleFormulas.calculateBaseDamage(atk, def, tackle, false, nil) == 3)
+end
+
+---------------------------------------------------------------------------
+-- Ability stat and accuracy terms (pokemon.c:2437-2491; bsc.c:1069-1074)
+---------------------------------------------------------------------------
+do
+  local function mk(ability, status)
+    local b = BattleEngine.makeBattler({ species = 1, level = 50, stats = stats(100, 10), types = { 0, 0 } })
+    b.attack, b.defense, b.spAttack, b.spDefense = 100, 50, 100, 50
+    b.ability, b.status = ability, status or 0
+    return b
+  end
+  local tackle, ember = moves[Data.MOVE_TACKLE], moves[Data.MOVE_EMBER]
+  local base = BattleFormulas.calculateBaseDamage(mk(0), mk(0), tackle, false, nil)
+  check("baseline physical damage is 32", base == 32, base)
+  check("Guts without a status gives no boost",
+    BattleFormulas.calculateBaseDamage(mk(BattleFormulas.ABILITY_GUTS), mk(0), tackle, false, nil) == 32)
+  check("Guts with poison: attack 150 -> 48",
+    BattleFormulas.calculateBaseDamage(mk(BattleFormulas.ABILITY_GUTS, S.POISON), mk(0), tackle, false, nil) == 48)
+  check("Hustle: attack 150 -> 48",
+    BattleFormulas.calculateBaseDamage(mk(BattleFormulas.ABILITY_HUSTLE), mk(0), tackle, false, nil) == 48)
+  check("Huge Power: attack 200 -> 63",
+    BattleFormulas.calculateBaseDamage(mk(BattleFormulas.ABILITY_HUGE_POWER), mk(0), tackle, false, nil) == 63)
+  check("Pure Power matches Huge Power",
+    BattleFormulas.calculateBaseDamage(mk(BattleFormulas.ABILITY_PURE_POWER), mk(0), tackle, false, nil) == 63)
+  check("Marvel Scale with a status: defense 75 -> 22",
+    BattleFormulas.calculateBaseDamage(mk(0), mk(BattleFormulas.ABILITY_MARVEL_SCALE, S.BURN), tackle, false, nil) == 22)
+  check("Marvel Scale without a status gives no boost",
+    BattleFormulas.calculateBaseDamage(mk(0), mk(BattleFormulas.ABILITY_MARVEL_SCALE), tackle, false, nil) == 32)
+  local specialBase = BattleFormulas.calculateBaseDamage(mk(0), mk(0), ember, false, nil)
+  check("Thick Fat halves spAttack against Fire", BattleFormulas.calculateBaseDamage(mk(0),
+    mk(BattleFormulas.ABILITY_THICK_FAT), ember, false, nil) < specialBase)
+  check("Thick Fat ignores a Normal move",
+    BattleFormulas.calculateBaseDamage(mk(0), mk(BattleFormulas.ABILITY_THICK_FAT), tackle, false, nil) == 32)
+  check("Hustle does not boost special attack",
+    BattleFormulas.calculateBaseDamage(mk(BattleFormulas.ABILITY_HUSTLE), mk(0), ember, false, nil) == specialBase)
+
+  -- Crit branches read the ability-adjusted stats (source uses the local
+  -- attack/defense/spAttack after the ability terms).
+  local hustle = mk(BattleFormulas.ABILITY_HUSTLE); hustle.statStages.attack = 5
+  check("crit with a lowered attack stage uses the Hustle-adjusted attack",
+    BattleFormulas.calculateBaseDamage(hustle, mk(0), tackle, true, nil) == 48)
+  local marvel = mk(BattleFormulas.ABILITY_MARVEL_SCALE, S.BURN); marvel.statStages.defense = 7
+  check("crit with a raised defense stage uses the Marvel Scale defense",
+    BattleFormulas.calculateBaseDamage(mk(0), marvel, tackle, true, nil) == 22)
+  local lowSp = mk(0); lowSp.statStages.spAttack = 5
+  check("crit with a lowered spAttack stage uses the Thick Fat spAttack (Ember 37 -> 19)",
+    BattleFormulas.calculateBaseDamage(lowSp, mk(BattleFormulas.ABILITY_THICK_FAT), ember, true, nil) == 19)
+  check("Ember 37, and 19 against Thick Fat", specialBase == 37
+    and BattleFormulas.calculateBaseDamage(mk(0), mk(BattleFormulas.ABILITY_THICK_FAT), ember, false, nil) == 19)
+  local iceBeam = { effect = 5, power = 95, type = Data.TYPE_ICE, accuracy = 100, pp = 10,
+    secondaryEffectChance = 10, target = 0, priority = 0, flags = 0x12 }
+  check("Thick Fat halves spAttack against Ice (85 -> 43)",
+    BattleFormulas.calculateBaseDamage(mk(0), mk(0), iceBeam, false, nil) == 85
+      and BattleFormulas.calculateBaseDamage(mk(0), mk(BattleFormulas.ABILITY_THICK_FAT), iceBeam, false, nil) == 43)
+
+  -- Explosion halves defense after Marvel Scale (pokemon.c:2505-2507):
+  -- 51 -> 76 -> 38; 100*250*22/38/50 = 289, +2 = 291 (the reverse order
+  -- would give 299).
+  local explosion = { effect = 7, power = 250, type = Data.TYPE_NORMAL, accuracy = 100, pp = 5,
+    secondaryEffectChance = 0, target = 8, priority = 0, flags = 0x32 }
+  local scale = mk(BattleFormulas.ABILITY_MARVEL_SCALE, S.POISON); scale.defense = 51
+  check("Explosion halves defense after Marvel Scale (291)",
+    BattleFormulas.calculateBaseDamage(mk(0), scale, explosion, false, nil) == 291,
+    BattleFormulas.calculateBaseDamage(mk(0), scale, explosion, false, nil))
+  local plain = mk(0); plain.defense = 51
+  check("Explosion alone halves defense (51 -> 25): 100*250*22/25/50 = 440, +2",
+    BattleFormulas.calculateBaseDamage(mk(0), plain, explosion, false, nil) == 442)
+
+  -- Pinch abilities (pokemon.c:2496-2503): matching type at hp <= maxHP/3.
+  local blaze = mk(66); blaze.hp = 33
+  check("Blaze at 33/100 HP: Ember power 60 -> 54", BattleFormulas.calculateBaseDamage(blaze, mk(0), ember, false, nil) == 54)
+  blaze.hp = 34
+  check("Blaze at 34/100 HP: no boost", BattleFormulas.calculateBaseDamage(blaze, mk(0), ember, false, nil) == 37)
+  blaze.hp = 1
+  check("Blaze does not boost a Normal move", BattleFormulas.calculateBaseDamage(blaze, mk(0), tackle, false, nil) == 32)
+  local torrent = mk(67); torrent.hp = 10
+  check("Torrent does not boost Fire", BattleFormulas.calculateBaseDamage(torrent, mk(0), ember, false, nil) == 37)
+  local overgrow = mk(65); overgrow.hp = 10
+  local vineWhip = { effect = 0, power = 35, type = Data.TYPE_GRASS, accuracy = 100, pp = 10,
+    secondaryEffectChance = 0, target = 0, priority = 0, flags = 0x13 }
+  check("Overgrow boosts a Grass move at low HP",
+    BattleFormulas.calculateBaseDamage(overgrow, mk(0), vineWhip, false, nil)
+      > BattleFormulas.calculateBaseDamage(mk(0), mk(0), vineWhip, false, nil))
+  local swarm = mk(68); swarm.hp = 10
+  local bugBite = { effect = 0, power = 35, type = Data.TYPE_BUG, accuracy = 100, pp = 10,
+    secondaryEffectChance = 0, target = 0, priority = 0, flags = 0x13 }
+  check("Swarm boosts a Bug move at low HP",
+    BattleFormulas.calculateBaseDamage(swarm, mk(0), bugBite, false, nil)
+      > BattleFormulas.calculateBaseDamage(mk(0), mk(0), bugBite, false, nil))
+  local torrentHit = mk(67); torrentHit.hp = 10
+  local waterGun = { effect = 0, power = 40, type = Data.TYPE_WATER, accuracy = 100, pp = 25,
+    secondaryEffectChance = 0, target = 0, priority = 0, flags = 0x12 }
+  check("Torrent boosts Water at low HP (37 -> 54)",
+    BattleFormulas.calculateBaseDamage(torrentHit, mk(0), waterGun, false, nil) == 54)
+
+  -- Accuracy: 75% move at neutral stages. Compound Eyes 75*130/100 = 97:
+  -- draw 96 (roll 97) hits. Hustle on a physical move 75*80/100 = 60: draw
+  -- 60 (roll 61) misses; a special move is unaffected.
+  local function acc(a, ability, t) return BattleFormulas.accuracyCheck(75, 6, 6, scriptedRng({ a }), ability, t) end
+  check("plain 75% misses on draw 75", not acc(75, 0, Data.TYPE_NORMAL) and acc(74, 0, Data.TYPE_NORMAL))
+  check("Compound Eyes: 75 -> 97", acc(96, BattleFormulas.ABILITY_COMPOUND_EYES, Data.TYPE_GRASS)
+    and not acc(97, BattleFormulas.ABILITY_COMPOUND_EYES, Data.TYPE_GRASS))
+  check("Hustle on a physical move: 75 -> 60", acc(59, BattleFormulas.ABILITY_HUSTLE, Data.TYPE_NORMAL)
+    and not acc(60, BattleFormulas.ABILITY_HUSTLE, Data.TYPE_NORMAL))
+  check("Hustle leaves a special move at 75", acc(74, BattleFormulas.ABILITY_HUSTLE, Data.TYPE_FIRE))
+  -- Every engine accuracy site passes the attacker's ability and move type.
+  -- Foe evasion +6 makes the ratio 33/100: a 100% move needs roll <= 33,
+  -- Compound Eyes 42.
+  local function ceBattle(values, move)
+    local eb = battle(values, { playerMove = move, foeHP = 400 })
+    eb.player.ability = BattleFormulas.ABILITY_COMPOUND_EYES
+    eb.foe.statStages.evasion = 12
+    return eb, eb:runTurn(MOVE, MOVE)
+  end
+  moves[7] = explosion
+  local _, ev = ceBattle({ 1, 0, 40 }, 7)
+  check("Explosion accuracy uses Compound Eyes (crit, random, then roll 41)",
+    find(ev, "damage", "player") ~= nil and not find(ev, "miss"), types(ev))
+  moves[500] = { effect = 0, power = 40, type = Data.TYPE_NORMAL, accuracy = 100, pp = 10,
+    secondaryEffectChance = 0, target = 0, priority = 0, flags = 0x13 }
+  _, ev = ceBattle({ 40, 1, 0, MISS }, 500)
+  check("ordinary hit accuracy uses Compound Eyes", find(ev, "damage", "player") ~= nil, types(ev))
+  moves[167] = { effect = 104, power = 10, type = 1, accuracy = 90, pp = 10,
+    secondaryEffectChance = 0, target = 0, priority = 0, flags = 0x33 } -- Triple Kick
+  -- 90% at evasion +6: 90*33/100 = 29, Compound Eyes 37: roll 31 hits.
+  _, ev = ceBattle({ 30, 1, 0, 99, MISS }, 167)
+  check("Triple Kick per-kick accuracy uses Compound Eyes", find(ev, "damage", "player") ~= nil, types(ev))
+  local hb = battle({ 80, MISS }, { playerMove = Data.MOVE_TACKLE, foeHP = 400 })
+  hb.player.ability = BattleFormulas.ABILITY_HUSTLE
+  ev = hb:runTurn(MOVE, MOVE)
+  check("ordinary hit passes the move type for Hustle (Tackle 95 -> 76 misses roll 81)",
+    find(ev, "miss", "player") ~= nil, types(ev))
+  moves[7], moves[500], moves[167] = nil, nil, nil
+
+  -- Through the engine: a Compound Eyes Hypnosis (60%) hits on draw 77.
+  moves[95] = { effect = 1, power = 0, type = Data.TYPE_PSYCHIC, accuracy = 60, pp = 20,
+    secondaryEffectChance = 0, target = 0, priority = 0, flags = 0x16 } -- Hypnosis
+  local b = battle({ 77, 0, MISS }, { playerMove = 95 })
+  b.player.ability = BattleFormulas.ABILITY_COMPOUND_EYES
+  local events = b:runTurn(MOVE, MOVE)
+  check("engine passes the attacker's ability to accuracy (Compound Eyes Hypnosis 60 -> 78)",
+    find(events, "statusApplied", "foe") ~= nil, types(events))
 end
 
 ---------------------------------------------------------------------------

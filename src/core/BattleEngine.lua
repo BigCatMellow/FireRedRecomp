@@ -1244,7 +1244,7 @@ function BattleEngine:resolvePrimaryStatusMove(attackerSide, attacker, defenderS
   end
 
   if not BattleFormulas.accuracyCheck(move.accuracy, attacker.statStages.accuracy,
-      defender.statStages.evasion, self.rng) then
+      defender.statStages.evasion, self.rng, attacker.ability, move.type) then
     events[#events + 1] = { type = "miss", side = attackerSide }
     return
   end
@@ -1383,11 +1383,10 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
     -- on the miss path.
     local rolledCrit = BattleFormulas.critRoll(self.rng, 0)
     local isCrit = rolledCrit and not (self.firstBattle and not self.tutorialPlayerDamageDone)
-    local explosionDefender = {}
-    for k, v in pairs(defender) do explosionDefender[k] = v end
-    explosionDefender.defense = math.max(1, math.floor(defender.defense / 2))
+    -- calculateBaseDamage halves defense for EFFECT_EXPLOSION after the
+    -- ability terms (source order, src/pokemon.c:2505-2507).
     local damage = BattleFormulas.calculateBaseDamage(
-      attacker, explosionDefender, move, isCrit, self.sideStatus[defenderSide])
+      attacker, defender, move, isCrit, self.sideStatus[defenderSide])
     if isCrit then damage = damage * BattleFormulas.CRIT_MULTIPLIER end
     local flags
     damage, flags = BattleFormulas.typeCalc(
@@ -1395,7 +1394,7 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
     damage = BattleFormulas.applyRandomDamageMultiplier(damage, self.rng)
     local hit = BattleFormulas.accuracyCheck(
       move.accuracy, attacker.statStages.accuracy,
-      defender.statStages.evasion, self.rng)
+      defender.statStages.evasion, self.rng, attacker.ability, move.type)
     if not hit then
       events[#events + 1] = { type = "miss", side = attackerSide }
       settleExplosion(false)
@@ -1482,7 +1481,7 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
   if needsAccuracyCheck then
     hit = tutorialAccuracy or BattleFormulas.accuracyCheck(
       move.accuracy, attacker.statStages.accuracy,
-      defender.statStages.evasion, self.rng)
+      defender.statStages.evasion, self.rng, attacker.ability, move.type)
   else
     hit = true
   end
@@ -2266,7 +2265,7 @@ function BattleEngine:resolveTripleKick(attackerSide, attacker, defenderSide, de
   for _ = 1, 3 do
     if defender.hp <= 0 then break end
     if not BattleFormulas.accuracyCheck(move.accuracy, attacker.statStages.accuracy,
-        defender.statStages.evasion, self.rng) then
+        defender.statStages.evasion, self.rng, attacker.ability, move.type) then
       stopped = "miss"
       break
     end
