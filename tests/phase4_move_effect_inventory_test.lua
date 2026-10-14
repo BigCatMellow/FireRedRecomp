@@ -45,7 +45,7 @@ local inventory = {
   [33] = {"represented", true, 0, {92}}, -- EFFECT_TOXIC: ROM fixture pending (phase4_primary_status_effect_rom_test)
   [34] = {"blocked_on_state", true, 1, {6}}, -- EFFECT_PAY_DAY
   [35] = {"represented", true, 0, {113}}, -- EFFECT_LIGHT_SCREEN
-  [36] = {"blocked_on_state", true, 1, {161}}, -- EFFECT_TRI_ATTACK
+  [36] = {"represented", true, 1, {161}}, -- EFFECT_TRI_ATTACK: ROM fixture pending (phase4_status_leftovers_effect_rom_test)
   [37] = {"blocked_on_state", false, 0, {156}}, -- EFFECT_REST
   [38] = {"represented", true, 1, {12,32,90,329}}, -- EFFECT_OHKO
   [39] = {"represented", true, 1, {13}}, -- EFFECT_RAZOR_WIND: ROM fixture pending (phase4_multiturn_effect_rom_test)
@@ -86,7 +86,7 @@ local inventory = {
   [74] = {"unused", false, -1, {}}, -- EFFECT_EVASION_DOWN_HIT
   [75] = {"represented", true, 1, {143}}, -- EFFECT_SKY_ATTACK: ROM fixture pending (phase4_multiturn_effect_rom_test)
   [76] = {"represented", true, 1, {60,93,146,223,324,352}}, -- EFFECT_CONFUSE_HIT: ROM fixture pending (phase4_confusion_flinch_effect_rom_test)
-  [77] = {"blocked_on_state", true, 1, {41}}, -- EFFECT_TWINEEDLE
+  [77] = {"represented", true, 1, {41}}, -- EFFECT_TWINEEDLE: ROM fixture pending (phase4_status_leftovers_effect_rom_test)
   [78] = {"represented", true, 1, {233}}, -- EFFECT_VITAL_THROW
   [79] = {"blocked_on_state", false, 0, {164}}, -- EFFECT_SUBSTITUTE
   [80] = {"represented", true, 1, {63,307,308,338}}, -- EFFECT_RECHARGE: ROM fixture pending (phase4_multiturn_effect_rom_test)
@@ -209,7 +209,7 @@ local inventory = {
   [197] = {"blocked_on_state", true, 1, {290}}, -- EFFECT_SECRET_POWER
   [198] = {"represented", true, 1, {38,344}}, -- EFFECT_DOUBLE_EDGE
   [199] = {"represented", true, 0, {298}}, -- EFFECT_TEETER_DANCE: ROM fixture pending (phase4_confusion_flinch_effect_rom_test)
-  [200] = {"blocked_on_state", true, 1, {299}}, -- EFFECT_BLAZE_KICK
+  [200] = {"represented", true, 1, {299}}, -- EFFECT_BLAZE_KICK: ROM fixture pending (phase4_status_leftovers_effect_rom_test)
   [201] = {"blocked_on_state", false, 0, {300}}, -- EFFECT_MUD_SPORT
   [202] = {"represented", true, 1, {305}}, -- EFFECT_POISON_FANG: ROM fixture pending (phase4_status_hit_effect_rom_test)
   [203] = {"blocked_on_state", true, 1, {311}}, -- EFFECT_WEATHER_BALL
@@ -228,12 +228,12 @@ local inventory = {
 local expectedTotals = {
   moves = 354, defined = 214, used = 198, unused = 16,
   positive = 216, zero = 138, admitted = 283, rejected = 71,
-  admitted_uncovered_positive = 37,
+  admitted_uncovered_positive = 34,
 }
 local expectedClasses = {
-  represented = {families = 105, moves = 246, positive = 178, zero = 68},
+  represented = {families = 108, moves = 249, positive = 181, zero = 68},
   candidate = {families = 0, moves = 0, positive = 0, zero = 0},
-  blocked_on_state = {families = 92, moves = 107, positive = 37, zero = 70},
+  blocked_on_state = {families = 89, moves = 104, positive = 34, zero = 70},
   intentionally_rejected = {families = 1, moves = 1, positive = 1, zero = 0},
   unused = {families = 16, moves = 0, positive = 0, zero = 0},
 }

@@ -251,7 +251,11 @@
 --     resolveMove, resolveStatusEndTurn, recordFaint). Moves apply a
 --     status through the status-on-hit families (STATUS_HIT_MOVES, slice S2,
 --     applySecondaryStatus) and the primary status moves
---     (PRIMARY_STATUS_MOVES, slice S3, resolvePrimaryStatusMove).
+--     (PRIMARY_STATUS_MOVES, slice S3, resolvePrimaryStatusMove). Slice L1
+--     adds Blaze Kick to STATUS_HIT_MOVES, Tri Attack's `% 3` status choice
+--     (EFFECT_TRI_ATTACK) and Twineedle's trailing poison roll
+--     (MULTI_HIT_MOVES[77]); the crit stage of every critcalc site comes
+--     from critStageFor.
 --   * Confusion and flinch (status2) cancellers, the confusion self-hit and
 --     flinch clearing are supported (resolveStatusCancellers,
 --     resolveConfusionSelfHit); battle-only, never persisted. Moves apply
@@ -369,14 +373,18 @@
 --     2 or 3; two Random() calls if the first roll is 2 or 3, a second roll
 --     then giving count 2-5). EFFECT_DOUBLE_HIT=44 (Double Kick, Bonemerang)
 --     is always exactly 2 hits with ZERO hit-count RNG (real script passes
---     a fixed `setmultihitcounter 2` arg). Both share one real fact this
+--     a fixed `setmultihitcounter 2` arg). EFFECT_TWINEEDLE=77 (slice L1)
+--     is the same fixed 2 hits plus one trailing poison roll and the
+--     source KO tail (count, roll, then the caller's faint); 29/44 still
+--     emit the faint inside the loop and omit the count and the trailing
+--     roll (tracked follow-up). All share one real fact this
 --     port depends on: accuracy is checked and PP is deducted exactly ONCE
 --     for the whole move (real BattleScript_EffectMultiHit/EffectDoubleHit:
 --     accuracycheck -> ... -> ppreduce -> setmultihitcounter, all BEFORE
 --     the hit-count is even rolled) -- individual hits get their own crit
 --     roll and damage roll only, never a repeat accuracy roll. Verified
 --     against BattleScript_MultiHitLoop (data/battle_scripts_1.s): a
---     defender that reaches 0 HP partway through the sequence stops it
+--     defender that reaches 0 HP during the sequence stops it
 --     immediately (real per-iteration `jumpifhasnohp BS_TARGET`), and a
 --     hit that resolves to MOVE_RESULT_NO_EFFECT (0x type effectiveness)
 --     stops the ENTIRE sequence right there (real `jumpifmovehadnoeffect`)
@@ -750,7 +758,22 @@ BattleEngine.STATUS_HIT_MOVES = {
   [209] = "poison",    -- EFFECT_POISON_TAIL
   [125] = "burn",      -- EFFECT_THAW_HIT (data/battle_scripts_1.s:1675-1677)
   [152] = "paralysis", -- EFFECT_THUNDER (:1916-1919)
+  [200] = "burn",      -- EFFECT_BLAZE_KICK (BattleScript_EffectBurnHit, :224, :364-366);
+                       -- its +1 crit stage comes from critStageFor (slice L1)
 }
+-- Status-leftovers slice L1 (work/reports/phase4-status-leftovers-design-proposal.md).
+-- EFFECT_TRI_ATTACK: the stock hit script with MOVE_EFFECT_TRI_ATTACK
+-- (data/battle_scripts_1.s:731-733), resolved after the landed hit in
+-- resolveMoveCore. EFFECT_TWINEEDLE is a MULTI_HIT_MOVES entry with a
+-- trailing poison roll. EFFECT_BLAZE_KICK is the burn-hit row above plus
+-- one crit stage.
+BattleEngine.EFFECT_TRI_ATTACK = 36
+BattleEngine.EFFECT_TWINEEDLE = 77
+BattleEngine.EFFECT_BLAZE_KICK = 200
+-- SetMoveEffect's MOVE_EFFECT_TRI_ATTACK case (src/battle_script_commands.c
+-- :2466-2475): byte `Random() % 3 + 3`, i.e. 3 burn, 4 freeze, 5 paralysis
+-- (include/constants/battle.h:223-225), indexed here by `% 3 + 1`.
+BattleEngine.TRI_ATTACK_KINDS = { "burn", "freeze", "paralysis" }
 -- Status slice S4 (data/battle_scripts_1.s:2247-2270, :2515-2525).
 -- Confusion/flinch slice C2: status2 secondaries (seteffectwithchance) and
 -- the confusion-causing status moves.
@@ -886,11 +909,19 @@ BattleEngine.CURRENT_HP_DAMAGE_MOVES = {
 -- a real 2-5 hit count. Confirmed against src/data/battle_moves.h: no real
 -- gBattleMoves entry uses EFFECT_DOUBLE_HIT differently (Double Kick and
 -- Bonemerang both just use it plainly, no special-casing needed).
+-- EFFECT_TWINEEDLE=77 (slice L1, data/battle_scripts_1.s:1072-1080) also
+-- passes a literal 2 and sets sMULTIHIT_EFFECT = MOVE_EFFECT_POISON:
+-- `statusKind` selects resolveMultiHit's source tail (a KO breaks the
+-- loop, the hit count is still emitted, then ONE trailing
+-- seteffectwithchance roll for the whole move, then the caller's faint
+-- check). Entries without `statusKind` (29, 44) keep the older in-loop
+-- faint shape; see resolveMultiHit.
 BattleEngine.MULTI_HIT_MOVES = {
   [29] = { fixed = nil }, -- EFFECT_MULTI_HIT (Double Slap, Comet Punch, Fury Attack, Pin Missile,
                           -- Spike Cannon, Barrage, Fury Swipes, Bone Rush, Arm Thrust, Bullet Seed,
                           -- Icicle Spear, Rock Blast): rolled 2-5 hits.
   [44] = { fixed = 2 },   -- EFFECT_DOUBLE_HIT (Double Kick, Bonemerang): always exactly 2 hits.
+  [77] = { fixed = 2, statusKind = "poison" }, -- EFFECT_TWINEEDLE: 2 hits, then one 20% poison roll.
 }
 
 -- The real screen family: a self-target (real MOVE_TARGET_USER, same
@@ -1687,7 +1718,7 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
     -- typecalc, and adjustnormaldamage before accuracycheck. Their critical
     -- and random draws are therefore consumed before accuracy, including
     -- on the miss path.
-    local rolledCrit = BattleFormulas.critRoll(self.rng, 0)
+    local rolledCrit = BattleFormulas.critRoll(self.rng, self:critStageFor(attacker, move))
     local isCrit = rolledCrit and not (self.firstBattle and not self.tutorialPlayerDamageDone)
     -- calculateBaseDamage halves defense for EFFECT_EXPLOSION after the
     -- ability terms (source order, src/pokemon.c:2505-2507).
@@ -2297,10 +2328,7 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
   -- FIRST_BATTLE flag check, so the roll is still consumed while criticals
   -- are suppressed. Suppression is global until the first player damage
   -- message flips Oak's state flag, including a foe that attacks first.
-  local critStage = (move.effect == BattleEngine.EFFECT_HIGH_CRITICAL
-    or move.effect == BattleEngine.EFFECT_POISON_TAIL
-    or move.effect == BattleEngine.EFFECT_SKY_ATTACK) and 1 or 0
-  local rolledCrit = BattleFormulas.critRoll(self.rng, critStage)
+  local rolledCrit = BattleFormulas.critRoll(self.rng, self:critStageFor(attacker, move))
   local isCrit = rolledCrit and not (self.firstBattle and not self.tutorialPlayerDamageDone)
 
   -- 4. damagecalc: base damage, then the real x2 crit multiply, which
@@ -2371,6 +2399,7 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
         or BattleEngine.SELF_DROP_HIT_MOVES[move.effect]
         or move.effect == BattleEngine.EFFECT_ALL_STATS_UP_HIT
         or BattleEngine.STATUS_HIT_MOVES[move.effect]
+        or move.effect == BattleEngine.EFFECT_TRI_ATTACK
         or moveId == BattleEngine.MOVE_BOUNCE
         or BattleEngine.STATUS2_HIT_MOVES[move.effect]
         or move.effect == BattleEngine.EFFECT_SMELLINGSALT
@@ -2499,6 +2528,22 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
     -- SetMoveEffect with MOVE_EFFECT_CERTAIN.
     self:applySecondaryStatus(defenderSide, statusKind,
       move.secondaryEffectChance >= 100, events)
+  end
+
+  if move.effect == BattleEngine.EFFECT_TRI_ATTACK
+      and BattleFormulas.secondaryEffectRoll(self.rng, move.secondaryEffectChance) then
+    -- SetMoveEffect's outer call (src/battle_script_commands.c:2131-2146,
+    -- :2466-2475): Shield Dust (byte 9 <= 9), then 0 HP, then the WHOLE
+    -- status1 word (`if (status1)`, counter bits included -- not
+    -- StatusConditions.hasAny). Each exits silently with no `% 3` draw.
+    -- Otherwise `Random() % 3` picks the status and the recursive
+    -- SetMoveEffect(FALSE, 0) re-runs the guards in applySecondaryStatus,
+    -- whose ability/type/Magma Armor failures are silent after the draw.
+    if defender.ability ~= BattleEngine.ABILITY_SHIELD_DUST and defender.hp > 0
+        and (defender.status or 0) == 0 then
+      local kind = BattleEngine.TRI_ATTACK_KINDS[(self.rng:next16() % 3) + 1]
+      self:applySecondaryStatus(defenderSide, kind, false, events)
+    end
   end
 
   if move.effect == BattleEngine.EFFECT_RECHARGE and attacker.hp > 0 then
@@ -2668,8 +2713,9 @@ end
 -- Runs the real per-hit loop (BattleScript_MultiHitLoop, data/
 -- battle_scripts_1.s) after the caller (resolveMove) has already checked
 -- accuracy exactly once and deducted PP exactly once for the whole move --
--- neither repeats here. `entry.fixed` is EFFECT_DOUBLE_HIT's real fixed
--- `setmultihitcounter 2` arg (zero hit-count RNG); otherwise this is
+-- neither repeats here. `entry.fixed` is EFFECT_DOUBLE_HIT's and
+-- EFFECT_TWINEEDLE's real fixed `setmultihitcounter 2` arg (zero hit-count
+-- RNG); otherwise this is
 -- EFFECT_MULTI_HIT and rolls the real 2-5 count via
 -- BattleFormulas.rollMultiHitCount (its own RNG-draw-count doc explains the
 -- variable 1-or-2-draw consumption).
@@ -2682,11 +2728,11 @@ end
 -- skips that Random() call entirely, since type doesn't change between
 -- hits this is only ever reachable on the first hit, but the real script
 -- structurally rechecks it every iteration and this ports that literally)
--- -> adjustnormaldamage -> apply damage -> tryfaintmon BS_TARGET. Real
--- BattleScript_MultiHitLoop also opens with `jumpifhasnohp BS_ATTACKER`
+-- -> adjustnormaldamage -> apply damage (the faint handling depends on the
+-- tail, see below). Real BattleScript_MultiHitLoop also opens with `jumpifhasnohp BS_ATTACKER`
 -- (jumps to MultiHitEnd) before the BS_TARGET check -- confirmed dead code
 -- for every move this engine actually supports: no real EFFECT_MULTI_HIT
--- or EFFECT_DOUBLE_HIT move also carries a recoil effect in this
+-- EFFECT_DOUBLE_HIT or EFFECT_TWINEEDLE move also carries a recoil effect in this
 -- generation (checked against src/data/battle_moves.h's real records), so
 -- the attacker can never reach 0 HP mid-sequence here. Not ported as a
 -- branch; documented here instead, matching this file's existing practice
@@ -2698,14 +2744,27 @@ end
 -- exact same {type="critical"}/{type="damage"} events the single-hit path
 -- emits, one pair per landed hit, in order -- so a UI layer that already
 -- knows how to animate a single hit needs no new event types to animate a
--- multi-hit sequence. A trailing {type="multiHit", hits=} event is emitted
--- only when the loop completes all its rolled/fixed hits without an early
--- stop (mirroring real STRINGID_HITXTIMES, which real
--- BattleScript_MultiHitPrintStrings only reaches when the move didn't end
--- in MOVE_RESULT_NO_EFFECT) -- an early stop from a mid-sequence faint
--- already ends the battle via checkFaint's own faint/battleEnd events,
--- which communicate the same "sequence is over" information, so no
--- separate multiHit summary is emitted in that terminal case.
+-- multi-hit sequence.
+--
+-- Two tails, selected by `entry.statusKind`:
+--   * Entries WITH statusKind (EFFECT_TWINEEDLE, slice L1) follow the source
+--     tail exactly (data/battle_scripts_1.s:613-655): a target at 0 HP
+--     BREAKS the loop (jumpifhasnohp BS_TARGET -> MultiHitPrintStrings, no
+--     in-loop checkFaint); {type="multiHit", hits=<hits landed>} is then
+--     emitted ("Hit N time(s)!"); then ONE seteffectwithchance roll for the
+--     whole move (BattleScript_MultiHitEnd), whose SetMoveEffect returns on
+--     the 0-HP guard after a KO; the caller's ordinary defender faint check
+--     (runTurn) emits `faint` after all of that (tryfaintmon). The no-effect
+--     exit also reaches MultiHitEnd and draws the roll (unreachable for Bug).
+--   * Entries WITHOUT statusKind (29, 44) keep the older shape: checkFaint
+--     runs after every landed hit, so ANY KO during the sequence (including
+--     the final hit) emits `faint` and omits {type="multiHit"}, and the
+--     trailing seteffectwithchance `% 100` draw is not spent on landed or
+--     no-effect paths. Source prints the count before the faint and always
+--     draws that roll; this is a tracked divergence scheduled as a separate
+--     follow-up (see the status-leftovers proposal's Risks), not fixed here.
+--     Note the KO need not end the battle: with a replacement available
+--     checkFaint leaves a forced switch pending instead.
 function BattleEngine:resolveMultiHit(attackerSide, attacker, defenderSide, defender, move, entry, events)
   local hitCount
   if entry.fixed then
@@ -2713,7 +2772,9 @@ function BattleEngine:resolveMultiHit(attackerSide, attacker, defenderSide, defe
   else
     hitCount = BattleFormulas.rollMultiHitCount(self.rng)
   end
+  local sourceTail = entry.statusKind ~= nil
 
+  local hits = 0
   for i = 1, hitCount do
     -- Real jumpifhasnohp BS_TARGET (top of BattleScript_MultiHitLoop): stop
     -- immediately if an earlier hit in this same sequence already fainted
@@ -2721,7 +2782,7 @@ function BattleEngine:resolveMultiHit(attackerSide, attacker, defenderSide, defe
     -- a battler with hp > 0), but real for i>1.
     if defender.hp <= 0 then break end
 
-    local rolledCrit = BattleFormulas.critRoll(self.rng, 0)
+    local rolledCrit = BattleFormulas.critRoll(self.rng, self:critStageFor(attacker, move))
     local isCrit = rolledCrit and not (self.firstBattle and not self.tutorialPlayerDamageDone)
 
     local damage = BattleFormulas.calculateBaseDamage(
@@ -2739,6 +2800,11 @@ function BattleEngine:resolveMultiHit(attackerSide, attacker, defenderSide, defe
       -- Real jumpifmovehadnoeffect: the ENTIRE sequence stops here, not
       -- just this one hit -- a type-immune target takes zero hits total.
       events[#events + 1] = { type = "noEffect", side = attackerSide, target = defenderSide }
+      if sourceTail then
+        -- MultiHitNoMoreHits -> PrintStrings (no count) -> MultiHitEnd:
+        -- seteffectwithchance still draws and never applies (NO_EFFECT).
+        BattleFormulas.secondaryEffectRoll(self.rng, move.secondaryEffectChance)
+      end
       return
     end
 
@@ -2749,16 +2815,24 @@ function BattleEngine:resolveMultiHit(attackerSide, attacker, defenderSide, defe
     end
 
     self:applyDamage(attackerSide, defenderSide, defender, damage, flags, events)
+    hits = hits + 1
 
-    -- Real tryfaintmon BS_TARGET, checked every iteration (not just once
-    -- at the end) so the sequence stops the instant HP hits 0, matching
-    -- the real per-iteration jumpifhasnohp check at the top of the loop.
-    if self:checkFaint(defenderSide, events) then
+    -- Older shape only (see above): tryfaintmon BS_TARGET checked every
+    -- iteration, which stops the sequence and emits the faint at once.
+    if not sourceTail and self:checkFaint(defenderSide, events) then
       return
     end
   end
 
-  events[#events + 1] = { type = "multiHit", side = attackerSide, hits = hitCount }
+  events[#events + 1] = { type = "multiHit", side = attackerSide, hits = hits }
+
+  if sourceTail
+      and BattleFormulas.secondaryEffectRoll(self.rng, move.secondaryEffectChance) then
+    -- Shield Dust, 0 HP, Immunity, Poison/Steel type and an existing status
+    -- all fail silently inside applySecondaryStatus (certain = false).
+    self:applySecondaryStatus(defenderSide, entry.statusKind,
+      move.secondaryEffectChance >= 100, events)
+  end
 end
 
 -- EFFECT_TRIPLE_KICK loop (see the constant's comment). Per-hit power is
@@ -2780,7 +2854,7 @@ function BattleEngine:resolveTripleKick(attackerSide, attacker, defenderSide, de
     end
     power = power + 10
     local kick = setmetatable({ power = power }, { __index = move })
-    local rolledCrit = BattleFormulas.critRoll(self.rng, 0)
+    local rolledCrit = BattleFormulas.critRoll(self.rng, self:critStageFor(attacker, move))
     local isCrit = rolledCrit and not (self.firstBattle and not self.tutorialPlayerDamageDone)
     local damage = BattleFormulas.calculateBaseDamage(
       attacker, defender, kick, isCrit, self.sideStatus[defenderSide])
@@ -2805,6 +2879,23 @@ function BattleEngine:resolveTripleKick(attackerSide, attacker, defenderSide, de
     return
   end
   events[#events + 1] = { type = "multiHit", side = attackerSide, hits = hits }
+end
+
+-- Cmd_critcalc's stage (src/battle_script_commands.c:1184-1194), shared by
+-- every critcalc site: the ordinary hit, Explosion's pre-accuracy calc,
+-- each resolveMultiHit iteration and each Triple Kick kick (helper H1,
+-- status-leftovers slice L1). +1 for EFFECT_HIGH_CRITICAL, EFFECT_SKY_ATTACK,
+-- EFFECT_BLAZE_KICK and EFFECT_POISON_TAIL; BattleFormulas.critRoll clamps
+-- to index 4. The `2 * STATUS2_FOCUS_ENERGY` term is added by slice L2;
+-- Scope Lens, Lucky Punch and Stick are not represented (no held items).
+BattleEngine.CRIT_STAGE_EFFECTS = {
+  [43] = 1,  -- EFFECT_HIGH_CRITICAL
+  [75] = 1,  -- EFFECT_SKY_ATTACK
+  [200] = 1, -- EFFECT_BLAZE_KICK
+  [209] = 1, -- EFFECT_POISON_TAIL
+}
+function BattleEngine:critStageFor(attacker, move)
+  return BattleEngine.CRIT_STAGE_EFFECTS[move.effect] or 0
 end
 
 -- Checks for a faint on `side`, appending events and setting the outcome.
