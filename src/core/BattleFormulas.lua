@@ -98,7 +98,7 @@
 -- Real modifiers NOT ported here (all no-ops in this slice, each because
 -- the system it depends on doesn't exist yet): held items and their hold
 -- effects, abilities other than those listed in 7b/7c, badge stat boosts, weather,
--- Explosion's defense halving, double-battle spread-damage halving,
+-- double-battle spread-damage halving,
 -- Helping Hand, Charge, Flash Fire, Levitate and Wonder Guard. Each is a
 -- documented gap, not an approximation: the ported code paths above are
 -- byte-for-byte the real ones for a plain single-battle direct-damage move
@@ -110,8 +110,9 @@
 --
 -- 7c. Ability terms ARE supported where source applies them to raw stats
 --    or accuracy: Huge Power/Pure Power, Thick Fat, Hustle, Guts, Marvel
---    Scale (abilityAdjustedStats) and Compound Eyes/Hustle accuracy
---    (accuracyCheck).
+--    Scale (abilityAdjustedStats), Overgrow/Blaze/Torrent/Swarm power,
+--    Explosion's defense halving after them, and Compound Eyes/Hustle
+--    accuracy (accuracyCheck).
 --
 -- 8. Reflect / Light Screen halving IS supported, inside
 --    calculateBaseDamage -- see that function's own comment for the exact
@@ -240,6 +241,12 @@ end
 -- attack x150/100 with any status1; Marvel Scale defense x150/100 with any
 -- status1. Badge boosts, hold items and Plus/Minus (doubles) are not
 -- represented. Returns attack, defense, spAttack, spDefense.
+BattleFormulas.EFFECT_EXPLOSION = 7
+BattleFormulas.TYPE_FIRE = 10
+BattleFormulas.TYPE_ICE = 15
+-- Overgrow 65 (Grass 12), Blaze 66 (Fire 10), Torrent 67 (Water 11),
+-- Swarm 68 (Bug 6): include/constants/abilities.h, pokemon.h.
+BattleFormulas.PINCH_ABILITY_TYPES = { [65] = 12, [66] = 10, [67] = 11, [68] = 6 }
 BattleFormulas.ABILITY_HUGE_POWER = 37
 BattleFormulas.ABILITY_THICK_FAT = 47
 BattleFormulas.ABILITY_MARVEL_SCALE = 63
@@ -251,7 +258,7 @@ function BattleFormulas.abilityAdjustedStats(attacker, defender, moveType)
   if atkAbility == BattleFormulas.ABILITY_HUGE_POWER or atkAbility == BattleFormulas.ABILITY_PURE_POWER then
     attack = attack * 2
   end
-  if defAbility == BattleFormulas.ABILITY_THICK_FAT and (moveType == 10 or moveType == 15) then
+  if defAbility == BattleFormulas.ABILITY_THICK_FAT and (moveType == BattleFormulas.TYPE_FIRE or moveType == BattleFormulas.TYPE_ICE) then
     spAttack = idiv(spAttack, 2)
   end
   if atkAbility == BattleFormulas.ABILITY_HUSTLE then attack = idiv(150 * attack, 100) end
@@ -270,6 +277,18 @@ function BattleFormulas.calculateBaseDamage(attacker, defender, move, isCrit, de
   local damage = 0
   local attack, defense, spAttack, spDefense =
     BattleFormulas.abilityAdjustedStats(attacker, defender, moveType)
+  -- Pinch abilities (src/pokemon.c:2496-2503): a matching-type move's power
+  -- x150/100 at hp <= maxHP/3.
+  local pinchType = BattleFormulas.PINCH_ABILITY_TYPES[attacker.ability]
+  if pinchType and pinchType == moveType and attacker.hp <= idiv(attacker.maxHP, 3) then
+    power = idiv(150 * power, 100)
+  end
+  -- Self-Destruct/Explosion halve defense after the ability terms
+  -- (src/pokemon.c:2505-2507). The max(1) keeps the engine's existing guard
+  -- against a 0 divisor (source would divide by zero at defense 1).
+  if move.effect == BattleFormulas.EFFECT_EXPLOSION then
+    defense = math.max(1, idiv(defense, 2))
+  end
 
   if BattleFormulas.isPhysicalType(moveType) then
     -- Real: on a crit, a LOWERED attack stage is ignored (raw stat used),

@@ -1383,11 +1383,10 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
     -- on the miss path.
     local rolledCrit = BattleFormulas.critRoll(self.rng, 0)
     local isCrit = rolledCrit and not (self.firstBattle and not self.tutorialPlayerDamageDone)
-    local explosionDefender = {}
-    for k, v in pairs(defender) do explosionDefender[k] = v end
-    explosionDefender.defense = math.max(1, math.floor(defender.defense / 2))
+    -- calculateBaseDamage halves defense for EFFECT_EXPLOSION after the
+    -- ability terms (source order, src/pokemon.c:2505-2507).
     local damage = BattleFormulas.calculateBaseDamage(
-      attacker, explosionDefender, move, isCrit, self.sideStatus[defenderSide])
+      attacker, defender, move, isCrit, self.sideStatus[defenderSide])
     if isCrit then damage = damage * BattleFormulas.CRIT_MULTIPLIER end
     local flags
     damage, flags = BattleFormulas.typeCalc(
