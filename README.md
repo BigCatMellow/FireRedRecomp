@@ -69,11 +69,12 @@ supplies their own dump.
 | Pokémon FireRed (US) v1.0 | `41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc` | Supported |
 | Pokémon FireRed (US) v1.1 (rev1) | `dd5945db9b930750cb39d00c84da8571feebf417` | Not yet |
 
-Hashes are taken from the local `pokefirered-master` decompilation's own
-`firered.sha1` / `firered_rev1.sha1` files, which is also the disassembly
-this project uses as a behavior/data reference (see source inventory doc
-above) — it is not bundled here and is not a build dependency of the ROM
-itself.
+The ROM hashes match the canonical `pret/pokefirered` decompilation. This
+project uses that decomp as a behavior/data reference, pinned in the
+[source inventory](docs/reference/source-inventory.md) to
+`037335f4c725d7c9aecdac87066f2002b4bd7e14`. The decomp is not vendored
+here and is not a FireRedRecomp build or runtime dependency; the application
+continues to import a player-supplied, verified ROM.
 
 ## Running
 
