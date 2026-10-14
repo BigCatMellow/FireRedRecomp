@@ -181,7 +181,9 @@ local function move2x2(cursor, input, count)
   return nextCursor
 end
 
-local STATUS_ABILITY_NAMES = { [7] = "LIMBER", [17] = "IMMUNITY", [41] = "WATER VEIL" }
+local STATUS_ABILITY_NAMES = {
+  [7] = "LIMBER", [15] = "INSOMNIA", [17] = "IMMUNITY", [41] = "WATER VEIL", [72] = "VITAL SPIRIT",
+}
 
 function BattleSceneController:_eventMessages(events)
   local entries = {}
@@ -394,6 +396,17 @@ function BattleSceneController:_eventMessages(events)
       elseif event.kind == "paralysis" then add(who .. "\nprevents paralysis!")
       else add(who .. "\nprevents poisoning!")
       end
+    elseif event.type == "statusAlready" then
+      -- Primary status scripts' "already" branches (battle_message.c).
+      local n = name(event.side)
+      if event.kind == "sleep" then add(n .. " is\nalready asleep!") -- :85
+      elseif event.kind == "paralysis" then add(n .. " is\nalready paralyzed!") -- :107
+      elseif event.kind == "burn" then add(n .. " already\nhas a burn.") -- :97
+      else add(n .. " is already\npoisoned.") -- :91 (poison and toxic)
+      end
+    elseif event.type == "stayedAwake" then
+      -- sText_PkmnStayedAwakeUsing (:174) via jumpifcantmakeasleep.
+      add(name(event.side) .. " stayed awake\nusing its " .. (STATUS_ABILITY_NAMES[event.ability] or "ABILITY") .. "!")
     elseif event.type == "statusDamage" then
       -- Message before the HP update (printstring, then datahpupdate).
       if event.kind == "burn" then

@@ -10,7 +10,7 @@ package.path = package.path .. ";./?.lua"
 
 local inventory = {
   [0] = {"represented", true, 1, {1,5,10,11,15,17,21,22,25,30,33,55,56,57,64,65,70,88,121,127,224,304,337}}, -- EFFECT_HIT
-  [1] = {"blocked_on_state", false, 0, {47,79,95,142,147,320}}, -- EFFECT_SLEEP
+  [1] = {"represented", true, 0, {47,79,95,142,147,320}}, -- EFFECT_SLEEP: ROM fixture pending (phase4_primary_status_effect_rom_test)
   [2] = {"represented", true, 1, {40,123,124,188}}, -- EFFECT_POISON_HIT: ROM fixture pending (phase4_status_hit_effect_rom_test)
   [3] = {"represented", true, 1, {71,72,141,202}}, -- EFFECT_ABSORB
   [4] = {"represented", true, 1, {7,52,53,126,257}}, -- EFFECT_BURN_HIT: ROM fixture pending (phase4_status_hit_effect_rom_test)
@@ -42,7 +42,7 @@ local inventory = {
   [30] = {"represented", true, 0, {160}}, -- EFFECT_CONVERSION: ROM fixture pending (phase4_conversion_memento_effect_rom_test)
   [31] = {"blocked_on_state", true, 1, {27,29,44,125,157,158}}, -- EFFECT_FLINCH_HIT
   [32] = {"represented", true, 0, {105,303}}, -- EFFECT_RESTORE_HP: Recover / Slack Off only
-  [33] = {"blocked_on_state", false, 0, {92}}, -- EFFECT_TOXIC
+  [33] = {"represented", true, 0, {92}}, -- EFFECT_TOXIC: ROM fixture pending (phase4_primary_status_effect_rom_test)
   [34] = {"blocked_on_state", true, 1, {6}}, -- EFFECT_PAY_DAY
   [35] = {"represented", true, 0, {113}}, -- EFFECT_LIGHT_SCREEN
   [36] = {"blocked_on_state", true, 1, {161}}, -- EFFECT_TRI_ATTACK
@@ -75,8 +75,8 @@ local inventory = {
   [63] = {"unused", false, -1, {}}, -- EFFECT_ACCURACY_DOWN_2
   [64] = {"unused", false, -1, {}}, -- EFFECT_EVASION_DOWN_2
   [65] = {"represented", true, 0, {115}}, -- EFFECT_REFLECT
-  [66] = {"blocked_on_state", false, 0, {77,139}}, -- EFFECT_POISON
-  [67] = {"blocked_on_state", false, 0, {78,86,137}}, -- EFFECT_PARALYZE
+  [66] = {"represented", true, 0, {77,139}}, -- EFFECT_POISON: ROM fixture pending (phase4_primary_status_effect_rom_test)
+  [67] = {"represented", true, 0, {78,86,137}}, -- EFFECT_PARALYZE: ROM fixture pending (phase4_primary_status_effect_rom_test)
   [68] = {"represented", true, 1, {62}}, -- EFFECT_ATTACK_DOWN_HIT
   [69] = {"represented", true, 1, {51,231,249,306}}, -- EFFECT_DEFENSE_DOWN_HIT
   [70] = {"represented", true, 1, {61,132,145,196,317,341}}, -- EFFECT_SPEED_DOWN_HIT
@@ -176,7 +176,7 @@ local inventory = {
   [164] = {"blocked_on_state", false, 0, {258}}, -- EFFECT_HAIL
   [165] = {"blocked_on_state", false, 0, {259}}, -- EFFECT_TORMENT
   [166] = {"blocked_on_state", false, 0, {260}}, -- EFFECT_FLATTER
-  [167] = {"blocked_on_state", false, 0, {261}}, -- EFFECT_WILL_O_WISP
+  [167] = {"represented", true, 0, {261}}, -- EFFECT_WILL_O_WISP: ROM fixture pending (phase4_primary_status_effect_rom_test)
   [168] = {"represented", true, 0, {262}}, -- EFFECT_MEMENTO: ROM fixture pending (phase4_conversion_memento_effect_rom_test)
   [169] = {"blocked_on_state", true, 1, {263}}, -- EFFECT_FACADE
   [170] = {"blocked_on_state", true, 1, {264}}, -- EFFECT_FOCUS_PUNCH
@@ -227,13 +227,13 @@ local inventory = {
 
 local expectedTotals = {
   moves = 354, defined = 214, used = 198, unused = 16,
-  positive = 216, zero = 138, admitted = 263, rejected = 91,
+  positive = 216, zero = 138, admitted = 276, rejected = 78,
   admitted_uncovered_positive = 78,
 }
 local expectedClasses = {
-  represented = {families = 76, moves = 185, positive = 137, zero = 48},
+  represented = {families = 81, moves = 198, positive = 137, zero = 61},
   candidate = {families = 0, moves = 0, positive = 0, zero = 0},
-  blocked_on_state = {families = 121, moves = 168, positive = 78, zero = 90},
+  blocked_on_state = {families = 116, moves = 155, positive = 78, zero = 77},
   intentionally_rejected = {families = 1, moves = 1, positive = 1, zero = 0},
   unused = {families = 16, moves = 0, positive = 0, zero = 0},
 }

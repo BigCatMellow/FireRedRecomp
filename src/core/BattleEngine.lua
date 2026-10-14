@@ -70,6 +70,9 @@
 --    "freeze"|"paralysis"|"sleep"}    -- status newly set
 --   {type="statusPrevented", side=<target>, kind=, ability=} -- certain
 --    effect blocked by Immunity/Water Veil/Limber
+--   {type="statusAlready", side=<target>, kind=} -- primary status move on
+--    a target that already has that status
+--   {type="stayedAwake", side=<target>, ability=} -- Insomnia/Vital Spirit
 --   {type="battleEnd", outcome="playerWon"|"playerLost"|"ran"|"caught"}
 --
 -- Real turn structure ported, in real execution order:
@@ -232,9 +235,10 @@
 --     burn's physical halving and paralysis's turn-order speed (in
 --     BattleFormulas), Fire defrost at move end, end-of-turn poison/toxic/
 --     burn damage, and faint clearing status (resolveStatusCancellers,
---     resolveMove, resolveStatusEndTurn, recordFaint). No move APPLIES a
---     status as a primary effect yet; the status-on-hit families
---     (STATUS_HIT_MOVES, slice S2) apply one through applySecondaryStatus.
+--     resolveMove, resolveStatusEndTurn, recordFaint). Moves apply a
+--     status through the status-on-hit families (STATUS_HIT_MOVES, slice S2,
+--     applySecondaryStatus) and the primary status moves
+--     (PRIMARY_STATUS_MOVES, slice S3, resolvePrimaryStatusMove).
 --   * No abilities, held items, weather,
 --     multi-turn/charging moves, trapping, forced switching, OHKO moves,
 --     double battles, trainer AI, or EXP/level-up on victory.
@@ -731,6 +735,19 @@ BattleEngine.ABILITY_IMMUNITY = 17
 BattleEngine.ABILITY_SHIELD_DUST = 19
 BattleEngine.ABILITY_MAGMA_ARMOR = 40
 BattleEngine.ABILITY_WATER_VEIL = 41
+BattleEngine.ABILITY_INSOMNIA = 15
+BattleEngine.ABILITY_VITAL_SPIRIT = 72
+-- Primary status moves (slice S3): zero-power scripts with their own gate
+-- order before accuracycheck (data/battle_scripts_1.s:287-301 Sleep,
+-- :984-1003 Poison, :1005-1024 Paralyze, :687-706 Toxic, :2170-2185
+-- Will-O-Wisp), then seteffectprimary.
+BattleEngine.PRIMARY_STATUS_MOVES = {
+  [1] = "sleep",       -- EFFECT_SLEEP
+  [66] = "poison",     -- EFFECT_POISON
+  [67] = "paralysis",  -- EFFECT_PARALYZE
+  [33] = "toxic",      -- EFFECT_TOXIC
+  [167] = "burn",      -- EFFECT_WILL_O_WISP
+}
 local STATUS_BLOCKING_ABILITY = {
   poison = 17, toxic = 17, burn = 41, paralysis = 7, freeze = 40,
 }
@@ -1047,6 +1064,9 @@ function BattleEngine:supportsMove(move, moveId)
   if move.effect == BattleEngine.EFFECT_TICKLE then
     return move.power == 0 and move.target == 0 -- MOVE_TARGET_SELECTED
   end
+  if BattleEngine.PRIMARY_STATUS_MOVES[move.effect] then
+    return move.power == 0 and move.target == 0 -- MOVE_TARGET_SELECTED
+  end
   return move.power > 0 or BattleEngine.STAT_STAGE_MOVES[move.effect] ~= nil
     or BattleEngine.SCREEN_MOVES[move.effect] ~= nil
     or move.effect == BattleEngine.EFFECT_PAIN_SPLIT
@@ -1161,6 +1181,74 @@ function BattleEngine:applySecondaryStatus(targetSide, kind, certain, events)
   StatusConditions.apply(target, kind, self.rng)
   events[#events + 1] = { type = "statusApplied", side = targetSide, kind = kind }
   return true
+end
+
+-- The primary status scripts' gates, in each script's own order (Substitute
+-- and Safeguard are not represented). Every gate is RNG-free; the one
+-- accuracycheck draw follows them, then seteffectprimary applies the
+-- status (sleep draws its 2-5 turns there). Failure events:
+--   statusAlready   "already asleep/poisoned/paralyzed/has a burn"
+--   statusPrevented Immunity / Limber / Water Veil text (primary always prints)
+--   stayedAwake     Insomnia / Vital Spirit (jumpifcantmakeasleep)
+--   noEffect        "It doesn't affect" (Poison/Steel, Fire, typecalc x0)
+--   moveFailed      any other existing status
+function BattleEngine:resolvePrimaryStatusMove(attackerSide, attacker, defenderSide, defender, move, kind, events)
+  local S = StatusConditions
+  local status = defender.status or 0
+  local function isType(t) return defender.types[1] == t or defender.types[2] == t end
+  local function already()
+    events[#events + 1] = { type = "statusAlready", side = defenderSide, kind = kind }
+  end
+  local function prevented(ability)
+    events[#events + 1] = { type = "statusPrevented", side = defenderSide, kind = kind, ability = ability }
+  end
+  local function notAffected()
+    events[#events + 1] = { type = "noEffect", side = attackerSide, target = defenderSide }
+  end
+  local function failed()
+    events[#events + 1] = { type = "moveFailed", side = attackerSide }
+  end
+  local poisonOrSteel = isType(S.TYPE_POISON) or isType(S.TYPE_STEEL)
+  local anyStatus = S.hasAny(status)
+
+  if kind == "sleep" then
+    if S.isAsleep(status) then return already() end
+    if defender.ability == BattleEngine.ABILITY_INSOMNIA
+        or defender.ability == BattleEngine.ABILITY_VITAL_SPIRIT then
+      events[#events + 1] = { type = "stayedAwake", side = defenderSide, ability = defender.ability }
+      return
+    end
+    if anyStatus then return failed() end
+  elseif kind == "poison" then
+    if defender.ability == BattleEngine.ABILITY_IMMUNITY then return prevented(defender.ability) end
+    if S.isPoisoned(status) or S.isBadlyPoisoned(status) then return already() end
+    if poisonOrSteel then return notAffected() end
+    if anyStatus then return failed() end
+  elseif kind == "paralysis" then
+    if defender.ability == BattleEngine.ABILITY_LIMBER then return prevented(defender.ability) end
+    local _, flags = BattleFormulas.typeCalc(1, move.type, attacker.types, defender.types, self.typeChart)
+    if flags.noEffect then return notAffected() end
+    if S.isParalyzed(status) then return already() end
+    if anyStatus then return failed() end
+  elseif kind == "toxic" then
+    if defender.ability == BattleEngine.ABILITY_IMMUNITY then return prevented(defender.ability) end
+    if S.isPoisoned(status) or S.isBadlyPoisoned(status) then return already() end
+    if anyStatus then return failed() end
+    if poisonOrSteel then return notAffected() end
+  elseif kind == "burn" then
+    if S.isBurned(status) then return already() end
+    if isType(S.TYPE_FIRE) then return notAffected() end
+    if defender.ability == BattleEngine.ABILITY_WATER_VEIL then return prevented(defender.ability) end
+    if anyStatus then return failed() end
+  end
+
+  if not BattleFormulas.accuracyCheck(move.accuracy, attacker.statStages.accuracy,
+      defender.statStages.evasion, self.rng) then
+    events[#events + 1] = { type = "miss", side = attackerSide }
+    return
+  end
+  S.apply(defender, kind, self.rng)
+  events[#events + 1] = { type = "statusApplied", side = defenderSide, kind = kind }
 end
 
 function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
@@ -1333,6 +1421,15 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
       events[#events + 1] = { type = "moveFailed", side = attackerSide }
       return
     end
+  end
+
+  local primaryStatus = BattleEngine.PRIMARY_STATUS_MOVES[move.effect]
+  if primaryStatus then
+    -- attackstring/ppreduce precede every gate in these scripts.
+    if slot then slot.pp = slot.pp - 1 end
+    self:resolvePrimaryStatusMove(attackerSide, attacker, defenderSide, defender,
+      move, primaryStatus, events)
+    return
   end
 
   -- Real BattleScript_EffectStatUp (every self-target UP/UP_2 effect) has
