@@ -106,7 +106,8 @@ check("Growl executes through the controller and spends PP",
 
 -- Other power-zero effects still fail visibly instead of fabricating rules.
 c = controller(); c:advanceMessage(); c:advanceMessage()
-Data.moves[999] = { effect=1, power=0, type=0, accuracy=100, pp=10,
+-- (EFFECT_CONFUSE=49; EFFECT_SLEEP became supported in status slice S3.)
+Data.moves[999] = { effect=49, power=0, type=0, accuracy=100, pp=10,
   secondaryEffectChance=0, target=0, priority=0, flags=0 }
 c.engine.player.moves = { {move=999,pp=10}, {move=Data.MOVE_TACKLE,pp=35} }
 c:processInput(input(InputState.A_BUTTON)); c:processInput(input(InputState.A_BUTTON))
@@ -669,6 +670,29 @@ do
   check("Limber prevents paralysis (:270)", m[6].text == "CHARMANDER's LIMBER\nprevents paralysis!", m[6].text)
   check("Immunity prevents poisoning (:272)", m[7].text == "BULBASAUR's IMMUNITY\nprevents poisoning!", m[7].text)
   check("Water Veil prevents burns (:280)", m[8].text == "CHARMANDER's WATER VEIL\nprevents burns!", m[8].text)
+end
+
+-- Status slice S3 texts (battle_message.c lines).
+do
+  local c = controller()
+  local m = c:_eventMessages({
+    { type = "statusAlready", side = "foe", kind = "sleep" },
+    { type = "statusAlready", side = "foe", kind = "poison" },
+    { type = "statusAlready", side = "foe", kind = "toxic" },
+    { type = "statusAlready", side = "player", kind = "paralysis" },
+    { type = "statusAlready", side = "player", kind = "burn" },
+    { type = "stayedAwake", side = "foe", ability = 15 },
+    { type = "stayedAwake", side = "foe", ability = 72 },
+    { type = "statusApplied", side = "foe", kind = "sleep" },
+  })
+  check("already asleep (:85)", m[1].text == "CHARMANDER is\nalready asleep!", m[1].text)
+  check("already poisoned (:91)", m[2].text == "CHARMANDER is already\npoisoned.", m[2].text)
+  check("Toxic on a poisoned target uses the same text", m[3].text == m[2].text)
+  check("already paralyzed (:107)", m[4].text == "BULBASAUR is\nalready paralyzed!", m[4].text)
+  check("already has a burn (:97)", m[5].text == "BULBASAUR already\nhas a burn.", m[5].text)
+  check("stayed awake using Insomnia (:174)", m[6].text == "CHARMANDER stayed awake\nusing its INSOMNIA!", m[6].text)
+  check("stayed awake using Vital Spirit", m[7].text == "CHARMANDER stayed awake\nusing its VITAL SPIRIT!", m[7].text)
+  check("fell asleep (:83)", m[8].text == "CHARMANDER\nfell asleep!", m[8].text)
 end
 
 print(("%d passed, %d failed"):format(passed, failed))

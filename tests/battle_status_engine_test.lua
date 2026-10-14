@@ -652,6 +652,160 @@ do
 end
 
 ---------------------------------------------------------------------------
+-- Slice S3: primary status moves
+---------------------------------------------------------------------------
+local MOVE_SPORE, MOVE_HYPNOSIS, MOVE_POISON_POWDER, MOVE_THUNDER_WAVE = 147, 95, 77, 86
+local MOVE_GLARE, MOVE_TOXIC, MOVE_WILL_O_WISP = 137, 92, 261
+local SF = 0x16 -- protect/magic coat/mirror flags; not read by the engine
+local function statusMove(effect, type_, accuracy, pp, chance)
+  return { effect = effect, power = 0, type = type_, accuracy = accuracy, pp = pp,
+    secondaryEffectChance = chance or 0, target = 0, priority = 0, flags = SF }
+end
+moves[MOVE_SPORE] = statusMove(1, Data.TYPE_GRASS, 100, 15)
+moves[MOVE_HYPNOSIS] = statusMove(1, Data.TYPE_PSYCHIC, 60, 20)
+moves[MOVE_POISON_POWDER] = statusMove(66, Data.TYPE_POISON, 75, 35)
+moves[MOVE_THUNDER_WAVE] = statusMove(67, Data.TYPE_ELECTRIC, 100, 20)
+moves[MOVE_GLARE] = statusMove(67, Data.TYPE_NORMAL, 75, 30)
+moves[MOVE_TOXIC] = statusMove(33, Data.TYPE_POISON, 85, 10, 100)
+moves[MOVE_WILL_O_WISP] = statusMove(167, Data.TYPE_FIRE, 75, 15)
+
+-- Player uses a status move; the foe then misses (unless it is cancelled).
+local function useStatus(move, values, opts)
+  opts = opts or {}
+  opts.playerMove = move
+  local b = battle(values, opts)
+  if opts.foeAbility then b.foe.ability = opts.foeAbility end
+  local events = b:runTurn(MOVE, MOVE)
+  return b, events
+end
+
+do
+  check("primary status moves are admitted", BattleEngine.new and
+    battle({}):supportsMove(moves[MOVE_SPORE], MOVE_SPORE)
+    and battle({}):supportsMove(moves[MOVE_WILL_O_WISP], MOVE_WILL_O_WISP))
+  local hit = {}
+  for k, v in pairs(moves[MOVE_SPORE]) do hit[k] = v end
+  hit.target = 0x10
+  check("a self-targeted record is not admitted", not battle({}):supportsMove(hit, MOVE_SPORE))
+end
+
+do
+  -- Spore: accuracy draw 0 hits, sleep draw 3 -> 5 turns; the sleeping foe
+  -- is then fast asleep (counter 4) without drawing.
+  local b, events = useStatus(MOVE_SPORE, { 0, 3 })
+  local st, si = find(events, "statusApplied", "foe")
+  check("Spore puts the target to sleep for (Random() & 3) + 2 turns",
+    st and st.kind == "sleep" and S.sleepTurns(b.foe.status) == 4, types(events))
+  check("Spore spends PP", b.player.moves[1].pp == 9)
+  check("the slept foe is fast asleep the same turn", find(events, "fastAsleep", "foe")
+    and select(2, find(events, "fastAsleep", "foe")) > si)
+  check("Spore draws accuracy then duration only", b.rng.draws == 2, b.rng.draws)
+end
+
+do
+  local b, events = useStatus(MOVE_SPORE, { MISS }, { foeStatus = 2 })
+  check("already asleep: statusAlready, no accuracy draw", find(events, "statusAlready", "foe")
+    and find(events, "statusAlready", "foe").kind == "sleep" and b.player.moves[1].pp == 9, types(events))
+  b, events = useStatus(MOVE_SPORE, { MISS }, { foeAbility = BattleEngine.ABILITY_INSOMNIA })
+  local w = find(events, "stayedAwake", "foe")
+  check("Insomnia: stayed awake, no status", w and w.ability == BattleEngine.ABILITY_INSOMNIA
+    and b.foe.status == 0, types(events))
+  b, events = useStatus(MOVE_SPORE, { MISS }, { foeAbility = BattleEngine.ABILITY_INSOMNIA, foeStatus = 2 })
+  check("already asleep precedes Insomnia", find(events, "statusAlready", "foe")
+    and not find(events, "stayedAwake"), types(events))
+  b, events = useStatus(MOVE_SPORE, { MISS }, { foeAbility = BattleEngine.ABILITY_VITAL_SPIRIT })
+  check("Vital Spirit: stayed awake", find(events, "stayedAwake", "foe") ~= nil)
+  b, events = useStatus(MOVE_SPORE, { MISS }, { foeStatus = S.BURN })
+  check("other status: But it failed! (no accuracy draw; only the foe's)", find(events, "moveFailed", "player")
+    and b.foe.status == S.BURN and b.rng.draws == 1, types(events))
+  b, events = useStatus(MOVE_HYPNOSIS, { 60, MISS })
+  check("Hypnosis misses on draw 60 (60% accuracy)", find(events, "miss", "player") and b.foe.status == 0
+    and b.player.moves[1].pp == 9, types(events))
+end
+
+do
+  local b, events = useStatus(MOVE_POISON_POWDER, { 0, MISS })
+  check("Poison Powder poisons", find(events, "statusApplied", "foe").kind == "poison" and S.isPoisoned(b.foe.status))
+  b, events = useStatus(MOVE_POISON_POWDER, { MISS }, { foeAbility = BattleEngine.ABILITY_IMMUNITY,
+    foeTypes = { Data.TYPE_POISON, Data.TYPE_POISON }, foeStatus = S.POISON })
+  check("poison checks Immunity first", find(events, "statusPrevented", "foe")
+    and find(events, "statusPrevented", "foe").ability == BattleEngine.ABILITY_IMMUNITY, types(events))
+  b, events = useStatus(MOVE_POISON_POWDER, { MISS }, { foeStatus = S.TOXIC_POISON,
+    foeTypes = { Data.TYPE_STEEL, Data.TYPE_STEEL } })
+  check("already badly poisoned counts as already poisoned (before type)",
+    find(events, "statusAlready", "foe") and find(events, "statusAlready", "foe").kind == "poison", types(events))
+  b, events = useStatus(MOVE_POISON_POWDER, { MISS }, { foeTypes = { Data.TYPE_STEEL, Data.TYPE_STEEL }, foeStatus = S.BURN })
+  check("Steel type: It doesn't affect (before the any-status failure)", find(events, "noEffect")
+    and not find(events, "moveFailed"), types(events))
+  b, events = useStatus(MOVE_POISON_POWDER, { MISS }, { foeStatus = S.PARALYSIS })
+  check("poison vs another status: But it failed!", find(events, "moveFailed"))
+end
+
+do
+  local b, events = useStatus(MOVE_THUNDER_WAVE, { 0, 1, MISS })
+  check("Thunder Wave paralyzes", S.isParalyzed(b.foe.status) and find(events, "statusApplied", "foe"), types(events))
+  b, events = useStatus(MOVE_THUNDER_WAVE, { MISS }, { foeTypes = { Data.TYPE_GROUND, Data.TYPE_GROUND } })
+  check("Thunder Wave vs Ground: It doesn't affect, no accuracy draw", find(events, "noEffect")
+    and b.rng.draws == 1 and b.foe.status == 0, types(events))
+  b, events = useStatus(MOVE_THUNDER_WAVE, { MISS }, { foeTypes = { Data.TYPE_GROUND, Data.TYPE_GROUND },
+    foeStatus = S.PARALYSIS })
+  check("typecalc immunity precedes already-paralyzed", find(events, "noEffect") and not find(events, "statusAlready"))
+  b, events = useStatus(MOVE_GLARE, { MISS }, { foeTypes = { Data.TYPE_GHOST, Data.TYPE_GHOST } })
+  check("Glare (Normal) vs Ghost: It doesn't affect", find(events, "noEffect") ~= nil)
+  b, events = useStatus(MOVE_THUNDER_WAVE, { MISS }, { foeStatus = S.PARALYSIS })
+  check("already paralyzed", find(events, "statusAlready", "foe").kind == "paralysis")
+  b, events = useStatus(MOVE_THUNDER_WAVE, { MISS }, { foeAbility = BattleEngine.ABILITY_LIMBER,
+    foeTypes = { Data.TYPE_GROUND, Data.TYPE_GROUND } })
+  check("Limber precedes typecalc and always prints", find(events, "statusPrevented", "foe")
+    and not find(events, "noEffect"), types(events))
+  b, events = useStatus(MOVE_THUNDER_WAVE, { 0, 1, MISS }, { foeTypes = { Data.TYPE_ELECTRIC, Data.TYPE_ELECTRIC } })
+  check("Electric type can be paralyzed by Thunder Wave", S.isParalyzed(b.foe.status))
+end
+
+do
+  local b, events = useStatus(MOVE_TOXIC, { 84, MISS })
+  check("Toxic hits on draw 84 (85%) and badly poisons", find(events, "statusApplied", "foe").kind == "toxic"
+    and S.isBadlyPoisoned(b.foe.status), types(events))
+  b, events = useStatus(MOVE_TOXIC, { 85, MISS })
+  check("Toxic misses on draw 85", find(events, "miss", "player") and b.foe.status == 0)
+  b, events = useStatus(MOVE_TOXIC, { MISS }, { foeTypes = { Data.TYPE_POISON, Data.TYPE_POISON }, foeStatus = S.BURN })
+  check("Toxic: other status fails before the type check", find(events, "moveFailed")
+    and not find(events, "noEffect"), types(events))
+  b, events = useStatus(MOVE_TOXIC, { MISS }, { foeTypes = { Data.TYPE_POISON, Data.TYPE_POISON } })
+  check("Toxic vs healthy Poison type: It doesn't affect", find(events, "noEffect") ~= nil)
+  b, events = useStatus(MOVE_TOXIC, { MISS }, { foeStatus = S.POISON })
+  check("Toxic vs poisoned: already poisoned", find(events, "statusAlready", "foe").kind == "toxic")
+  b, events = useStatus(MOVE_TOXIC, { MISS }, { foeAbility = BattleEngine.ABILITY_IMMUNITY })
+  check("Toxic vs Immunity: prevented", find(events, "statusPrevented", "foe") ~= nil)
+  b, events = useStatus(MOVE_TOXIC, { MISS }, { foeAbility = BattleEngine.ABILITY_IMMUNITY, foeStatus = S.POISON })
+  check("Toxic: Immunity precedes already poisoned", find(events, "statusPrevented", "foe")
+    and not find(events, "statusAlready"), types(events))
+end
+
+do
+  local b, events = useStatus(MOVE_WILL_O_WISP, { 0, MISS })
+  check("Will-O-Wisp burns", S.isBurned(b.foe.status) and find(events, "statusApplied", "foe").kind == "burn")
+  b, events = useStatus(MOVE_WILL_O_WISP, { MISS }, { foeStatus = S.BURN, foeTypes = { Data.TYPE_FIRE, Data.TYPE_FIRE } })
+  check("already burned precedes Fire type", find(events, "statusAlready", "foe")
+    and find(events, "statusAlready", "foe").kind == "burn")
+  b, events = useStatus(MOVE_WILL_O_WISP, { MISS }, { foeTypes = { Data.TYPE_FIRE, Data.TYPE_FIRE },
+    foeAbility = BattleEngine.ABILITY_WATER_VEIL })
+  check("Fire type precedes Water Veil", find(events, "noEffect") and not find(events, "statusPrevented"))
+  b, events = useStatus(MOVE_WILL_O_WISP, { MISS }, { foeAbility = BattleEngine.ABILITY_WATER_VEIL, foeStatus = S.POISON })
+  check("Water Veil precedes the any-status failure", find(events, "statusPrevented", "foe")
+    and not find(events, "moveFailed"), types(events))
+end
+
+do
+  -- The foe AI can use a status move on the player, and the player then
+  -- ticks/cancels through S1.
+  local b = battle({ 0, MISS, 0 }, { foeMove = MOVE_POISON_POWDER, foeSpeed = 30 })
+  local events = b:runTurn(MOVE, MOVE)
+  check("foe Poison Powder poisons the player, who ticks at end of turn",
+    S.isPoisoned(b.player.status) and find(events, "statusDamage", "player"), types(events))
+end
+
+---------------------------------------------------------------------------
 -- Status-free battles keep their RNG sequence
 ---------------------------------------------------------------------------
 do
