@@ -61,7 +61,26 @@ party record that already has a status.
 6. Status-free turns keep their draw count; full no-ROM suite and
    repository checker pass.
 
+## Review round 1 (NEEDS_FIX) disposition
+
+- F1/F2 fixed in `finalizeFaintSequence`: a decided battle clears the
+  forced-switch queue; the queue stays player-first across faint sequences.
+  Engine and controller tests added (fail on the previous commit).
+- F3 tests added: paralysis draw 2, failed-capture site, attacker-faint
+  early-return site, 0-HP skip.
+- F5 partly: asleep Snore now emits "fast asleep" before its use (Snore
+  script `data/battle_scripts_1.s:1253-1266`).
+
+## Follow-ups (not in S1)
+
+- AICheckBadMove "confirmed no-op" status branches must be revisited when
+  S2/S3 let status be applied (review F4).
+- Snore's awake failure (family 92) and flinch remain unmodeled.
+- Capture must pass a status multiplier from a masked status word (S4).
+- End-of-turn uses an `elseif` chain; equivalent for valid status words.
+- Defrost uses the base move type (Hidden Power dynamic type unmodeled).
+
 ## Evidence (Worker, 2026-10-14)
 
-Status engine 69/0; controller 118/0 (was 105); party bridge 32/0 (was 29);
+Status engine 78/0; controller 119/0 (was 105); party bridge 32/0 (was 29);
 battle engine 568/0 unchanged; full suite and repository checker in the PR.

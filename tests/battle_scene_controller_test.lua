@@ -629,5 +629,24 @@ do
     tick and m[tick + 1].hpSide == "player" and m[tick + 1].hp == c.engine.player.hp)
 end
 
+do
+  -- S1 review F2: a move KO (foe queued) then an end-of-turn poison KO
+  -- (player queued) must hand control to the player's party selector.
+  local engine = BattleEngine.new({
+    player = BattleEngine.makeBattler({ species=1,level=5,stats=bs,types=Data.BULBASAUR.types,moves={{move=Data.MOVE_TACKLE,pp=35}} }),
+    foe = BattleEngine.makeBattler({ species=4,level=5,stats=cs,types=Data.CHARMANDER.types,moves={{move=Data.MOVE_TACKLE,pp=35}} }),
+    moves=Data.moves,typeChart=Data.typeChart,rng=rng,
+    hasReplacement=function() return true end,
+  })
+  engine.player.speed, engine.player.hp, engine.player.status = 50, 1, 8
+  engine.foe.hp = 1
+  local ctrl = BattleSceneController.new({ engine=engine,playerName="BULBASAUR",foeName="CHARMANDER",
+    moveName=function() return "TACKLE" end })
+  ctrl:_runTurn({action="move",moveSlot=1})
+  check("move KO then poison KO hands control to the player's party selector",
+    ctrl.afterMessages == BattleSceneController.PARTY and engine.awaitingForcedSwitch == "player",
+    tostring(ctrl.afterMessages))
+end
+
 print(("%d passed, %d failed"):format(passed, failed))
 os.exit(failed == 0 and 0 or 1)

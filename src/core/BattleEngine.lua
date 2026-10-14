@@ -959,15 +959,30 @@ function BattleEngine:finalizeFaintSequence(events)
     self.outcome = "playerWon"
   end
   if self.outcome then
+    -- A decided battle sends no replacement (checkteamslost ends it before
+    -- HandleFaintedMonActions), including a switch queued by an earlier
+    -- faint sequence this turn (e.g. an end-of-turn status faint).
+    self.pendingForcedSwitches = {}
+    self:_syncForcedSwitchHead()
     events[#events + 1] = { type = "battleEnd", outcome = self.outcome }
     return true
   end
+  local queued = {}
+  for _, side in ipairs(self.pendingForcedSwitches) do queued[side] = true end
+  for _, recorded in ipairs(fainted) do
+    if not queued[recorded] then
+      queued[recorded] = true
+      events[#events + 1] = { type = "forcedSwitchNeeded", side = recorded }
+    end
+  end
+  -- Real HandleFaintedMonActions walks battlers in id order, so the
+  -- player's replacement always comes first, even when separate faint
+  -- sequences in one turn (move, then end-of-turn status) queued the foe
+  -- first.
+  self.pendingForcedSwitches = {}
   for _, side in ipairs({ BattleEngine.SIDE_PLAYER, BattleEngine.SIDE_FOE }) do
-    for _, recorded in ipairs(fainted) do
-      if recorded == side then
-        self.pendingForcedSwitches[#self.pendingForcedSwitches + 1] = side
-        events[#events + 1] = { type = "forcedSwitchNeeded", side = side }
-      end
+    if queued[side] then
+      self.pendingForcedSwitches[#self.pendingForcedSwitches + 1] = side
     end
   end
   self:_syncForcedSwitchHead()
@@ -1049,8 +1064,12 @@ function BattleEngine:resolveStatusCancellers(attackerSide, attacker, moveId, mo
     local turns = S.sleepTurns(status) - 1
     attacker.status = S.withSleepTurns(status, turns)
     if turns > 0 then
+      events[#events + 1] = { type = "fastAsleep", side = attackerSide }
+      -- Snore/Sleep Talk pass the canceller; Snore's own script then prints
+      -- "fast asleep" before attackstring (data/battle_scripts_1.s
+      -- :1253-1266), so the same event precedes its use. Its awake-failure
+      -- branch is not modeled (pre-existing family 92 gap).
       if moveId ~= BattleEngine.MOVE_SNORE and moveId ~= BattleEngine.MOVE_SLEEP_TALK then
-        events[#events + 1] = { type = "fastAsleep", side = attackerSide }
         return true
       end
     else

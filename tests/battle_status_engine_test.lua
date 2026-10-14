@@ -124,8 +124,10 @@ end
 do
   local b = battle({ MISS, MISS }, { playerStatus = 3, playerMove = MOVE_SNORE })
   local events = b:runTurn(MOVE, MOVE)
-  check("Snore is used while asleep (source gCurrentMove != MOVE_SNORE)",
-    find(events, "useMove", "player") and not find(events, "fastAsleep"), types(events))
+  local asleep, ai = find(events, "fastAsleep", "player")
+  local used, ui = find(events, "useMove", "player")
+  check("Snore is used while asleep, after its own fast-asleep text (bs1 :1253-1266)",
+    asleep and used and ai < ui, types(events))
   check("Snore still decrements sleep", b.player.status == 2, b.player.status)
 end
 
@@ -415,6 +417,76 @@ do
   events = slow:runTurn({ action = "run" }, MOVE)
   check("failed run turn still ticks", not find(events, "run").success and find(events, "statusDamage", "player"),
     types(events))
+end
+
+---------------------------------------------------------------------------
+-- Review-driven coverage (work/reviews/2026-10-14-status-s1-review.md)
+---------------------------------------------------------------------------
+do
+  -- Draw 2: 2 % 4 ~= 0 (a %2 check would wrongly paralyze).
+  local b = battle({ MISS, 2, MISS }, { playerStatus = S.PARALYSIS })
+  local events = b:runTurn(MOVE, MOVE)
+  check("paralysis draw 2 does not fully paralyze", not find(events, "fullyParalyzed")
+    and find(events, "useMove", "player"), types(events))
+end
+
+do
+  -- Failed capture turn still ticks (hoisted site).
+  local values = {}
+  for i = 1, 12 do values[i] = 65535 end
+  local b = battle(values, { playerStatus = S.POISON, foeHP = 400 })
+  b.foe.catchRate = 3
+  local events = b:runTurn({ action = "capture" }, MOVE)
+  check("failed capture turn still ticks", find(events, "capture") and not find(events, "capture").success
+    and find(events, "statusDamage", "player"), types(events))
+end
+
+do
+  -- Attacker-faint early return (recoil KO with a replacement) still runs
+  -- the end-of-turn phase for the other battler.
+  local b = battle({ 0, 1, 0 }, { playerMove = Data.MOVE_DOUBLE_EDGE, playerCurrentHP = 1,
+    foeHP = 400, foeStatus = S.POISON, hasReplacement = function(side) return side == "player" end })
+  local events = b:runTurn(MOVE, MOVE)
+  check("recoil self-KO with a pending switch still ticks the foe",
+    find(events, "forcedSwitchNeeded", "player") and find(events, "statusDamage", "foe")
+      and not find(events, "useMove", "foe"), types(events))
+end
+
+do
+  -- 0-HP battlers are skipped even if a status word were present.
+  local b = battle({}, { foeStatus = S.POISON })
+  b.foe.hp = 0
+  local events = {}
+  b:resolveStatusEndTurn(events, { "player", "foe" })
+  check("end-of-turn skips a battler at 0 HP", #events == 0, types(events))
+end
+
+do
+  -- F1: a battle-deciding end-of-turn faint clears a forced switch queued
+  -- earlier in the turn. Player (last Pokemon, poisoned, 1 HP) KOs a foe
+  -- that has a replacement, then faints to poison.
+  local b = battle({ 0, 1, 0 }, { playerStatus = S.POISON, playerCurrentHP = 1, foeCurrentHP = 1,
+    hasReplacement = function(side) return side == "foe" end })
+  local events = b:runTurn(MOVE, MOVE)
+  check("player loss by poison after a foe KO ends the battle", b.outcome == "playerLost", types(events))
+  check("decided battle leaves no forced switch pending",
+    b.awaitingForcedSwitch == nil and #b.pendingForcedSwitches == 0, tostring(b.awaitingForcedSwitch))
+end
+
+do
+  -- F2: separate faint sequences queue the player's switch first.
+  local b = battle({ 0, 1, 0 }, { playerStatus = S.POISON, playerCurrentHP = 1, foeCurrentHP = 1,
+    hasReplacement = function() return true end })
+  local events = b:runTurn(MOVE, MOVE)
+  check("move KO then poison KO queue both switches",
+    count(events, "forcedSwitchNeeded") == 2 and not b:isOver(), types(events))
+  check("player's forced switch comes first (battler id order)",
+    b.pendingForcedSwitches[1] == "player" and b.pendingForcedSwitches[2] == "foe"
+      and b.awaitingForcedSwitch == "player")
+  local replacement = BattleEngine.makeBattler({ species = 1, level = 10, stats = stats(40, 20),
+    types = { 0, 0 }, moves = { { move = Data.MOVE_TACKLE, pp = 10 } } })
+  b:resolveForcedSwitch("player", replacement)
+  check("foe switch follows the player's", b.awaitingForcedSwitch == "foe")
 end
 
 ---------------------------------------------------------------------------
