@@ -31,23 +31,30 @@ strategic phase
 
 Default to one critical-path Worker package at a time.
 
-## Current critical path — reconciled 2026-10-13
+## Current critical path — reconciled 2026-10-14
 
 [Effect45 outcome PASS](../reviews/2026-10-13-recoil-if-miss-implementation-outcome-review.md)
 closes `cfdbb96` and guarded run `38434551595`; do not repeat its consumed
 probe/request or review. Six owner-merged fast-lane batches (PR10–15) have
 final independent PASS records indexed in the task register. The current
-inventory has 70 represented families; six new ROM fixtures remain pending.
+inventory at `3adc7e8` has 85 represented families after additional owner-merged
+status/ability work. Nine new ROM fixtures remain pending (six fast-lane and
+three status). Status S1–S4 are full-relay packages: their design requires
+guarded evidence for changed RNG/turn-order replays. Bounded no-ROM PASS
+reviews are retained, but these missing gates are not waived by S3/S4 review
+wording invoking the fast lane. No new request has been authorized here.
 Representation is bounded engine behavior, not complete trainer AI, whole-turn
 RNG or full Phase 4 parity. Preserve all review exclusions and follow-ups.
 
-Next active leaf is independent review of existing owner-dispatched
+Next active leaf is source-bound correction of existing owner-dispatched
 [PR5](https://github.com/BigCatMellow/FireRedRecomp/pull/5): the normal START
-Pokédex zero-seen guard. Its contract lives on its branch until merged. Review
-source/count bounds and live wiring before accepting; route only the smallest
-correction on disagreement. PR3 design must be reviewed before PR6 Party
-SUMMARY can be accepted. A disjoint read-only Memento trainer-AI feasibility
-check does not authorize adding party context, persistent state or main wiring.
+Pokédex zero-seen guard. Independent review found386 real entries, not411;
+amended branch contract `4eb53da` authorizes the smallest tracker/count/test
+correction, then independent recheck. PR3 design is under disjoint independent
+review and must pass before PR6 Party
+SUMMARY can be accepted. Read-only Memento AI feasibility found an existing
+replacement callback; this is not implementation authority and must be checked
+against later battle changes before a separate task.
 
 Owner-approved battle fast lane in root AGENTS governs eligible source-known,
 no-ROM-testable packages; do not reinstate per-effect setup ceremony. Full

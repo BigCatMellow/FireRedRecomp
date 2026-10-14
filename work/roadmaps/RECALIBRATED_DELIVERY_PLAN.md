@@ -1,4 +1,4 @@
-# Recalibrated delivery plan — routing reconciled 2026-10-13
+# Recalibrated delivery plan — routing reconciled 2026-10-14
 
 This is the concise current routing view. The capability checklist remains the
 canonical phase-status authority; task contracts and independent reviews remain
@@ -29,10 +29,16 @@ rule or traversal work without an evidenced dependency.
 2. [Effect45 implementation `cfdbb96` independently passed](../reviews/2026-10-13-recoil-if-miss-implementation-outcome-review.md).
    Its guarded request is terminal. Owner-merged fast-lane batches PR10–15
    add 17 bounded families with final independent PASS records; inventory
-   now has 70 represented families. Six new ROM fixtures await the next
-   authorized guarded full suite; failing evidence reopens the affected leaf.
+   at `3adc7e8` now has85 represented families including owner-merged status
+   work. Nine new ROM fixtures await guarded evidence. Status S1–S4 are not
+   fast-lane eligible: the accepted design also requires changed-RNG/turn-order
+   guarded replay evidence, absent from the merged records. Retain bounded
+   no-ROM PASS results without promoting these missing gates. Scope the
+   evidence package separately; never reuse a consumed request.
 3. Recover existing first-corridor integration work before inventing another
-   effect batch: review normal START Pokédex-count PR5 now, then the Party
+   effect batch: correct normal START Pokédex-count PR5's independently found
+   411-versus386 source-bound bug under amended contract `4eb53da`, re-review,
+   then the Party
    design prerequisite PR3 before implementation PR6. No rendered Pokédex,
    full Party UI or normal traversal proof is implied. Memento's trainer-AI
    reserve-count gap is separately under read-only feasibility inspection;

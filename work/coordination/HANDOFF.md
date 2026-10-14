@@ -1,11 +1,46 @@
 # FireRedRecomp Coordination Handoff
 
-- Status: `READY_FOR_REVIEWER — existing START Pokédex-count PR5`
+- Status: `READY_FOR_WORKER — source-bound correction of START Pokédex-count PR5`
 - Task ID: `P6-03-START-DEX-SANITY`
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
 - Current plan: [`../roadmaps/RECALIBRATED_DELIVERY_PLAN.md`](../roadmaps/RECALIBRATED_DELIVERY_PLAN.md)
 
-## Current relay — 2026-10-13
+## Current relay — 2026-10-14
+
+Main recovered at `3adc7e8`; owner-merged status/ability work PR16–25 is
+preserved. Disjoint read-only audit is checking final review records for
+reconciliation, not repeating completed implementation. Active owner battle
+PR26 is outside this Worker scope. Root AGENTS is unchanged. Local main
+baseline166 no-ROM test files PASS.
+
+Audit complete: preserve bounded no-ROM PASS reviews and exact reviewed versus
+later disposition revisions (STATE records them). Current inventory85 families/
+203moves is not full battle parity. Nine new ROM fixtures remain pending.
+Status S1–S4 declare full relay, and their design requires guarded changed-RNG/
+turn-order replay evidence; merged records do not supply it. S3/S4 review
+language invoking fast-lane deferral cannot amend AGENTS. Guarded acceptance
+remains open; a separately scoped evidence package is needed, not an old retry.
+
+Independent PR5 review BLOCKED `118cd11`: pinned source counts National Dex
+1–386, while the proposed counter/tests count411. Trailing-only #387/#411
+flags incorrectly unlock the START selection. Orchestrator corrected the
+existing four-path contract and recorded the unchanged independent report at
+`4eb53da` in `/tmp/firered-start-dex-review-UA2MPZ`. This explicitly permits
+correcting the existing tracker range too; 52-byte storage/schema stays intact.
+
+Exact next action: Worker implements that correction and source-derived
+old-code-failing boundary/real StartMenu tests, merges fresh main normally,
+runs focused/full no-ROM/checker evidence, and fast-forward updates existing
+PR5. Then the separate Reviewer rechecks its exact head before merge.
+The previous Worker hit a usage limit before editing; this resume verified
+clean `4eb53da` and restarted it. No ROM/bridge/new menu feature authorized.
+
+Disjoint independent review of existing PR3 Party design is now assigned;
+its acceptance is required before PR6 implementation review. Memento AI feasibility found an existing
+`engine.hasReplacement` data path without new persistent state, but no code
+task was dispatched; newer battle changes must be checked before resuming it.
+
+## Previous checkpoint — 2026-10-13 (historical)
 
 Live main recovered at `a49e103`; public CI `38466928294` and local 161-file
 no-ROM suite PASS. Effect45 `cfdbb96` is CLOSED by independent outcome review
