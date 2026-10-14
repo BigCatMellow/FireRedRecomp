@@ -64,8 +64,8 @@ chance` roll, already modeled for stat hit variants).
 | Effect | Source | Detail |
 | --- | --- | --- |
 | Sleep check | `battle_util.c:1266-1308` (`CANCELLER_ASLEEP`) | decrement first (Early Bird −2); if still asleep the move fails ("fast asleep"), unless Snore/Sleep Talk; reaching 0 wakes and the move proceeds |
-| Freeze check | `:1310-1333` (`CANCELLER_FROZEN`) | `Random() % 5`: nonzero → stays frozen (move fails); zero → thaws and acts (20%). Flame Wheel/Sacred Fire (`EFFECT_THAW_HIT`) thaw the user at `CANCELLER_THAW` `:1510-1522` |
-| Paralysis check | `:1439-1449` (`CANCELLER_PARALYSED`) | `Random() % 4 == 0` → fully paralyzed (25%); runs after confusion in canceller order (`:1236-1250`) |
+| Freeze check | `:1310-1333` (`CANCELLER_FROZEN`) | `Random() % 5`: nonzero → stays frozen (move fails); zero → thaws and acts (20%). Flame Wheel/Sacred Fire (`EFFECT_THAW_HIT`) thaw the user at `CANCELLER_THAW` `:1513-1525` |
+| Paralysis check | `:1439-1449` (`CANCELLER_PARALYSED`) | `Random() % 4 == 0` → fully paralyzed (25%); runs after confusion in canceller order (`:1233-1250`) |
 | Paralysis speed | `battle_main.c:3449-3450` | speed / 4 in `GetWhoStrikesFirst` |
 | Burn attack | `pokemon.c:2540` | physical damage halved unless Guts |
 | Defrost by Fire | `battle_script_commands.c:4103-4116` (`MOVEEND_DEFROST`) | a damaging Fire move that affects a frozen target thaws it |
@@ -75,9 +75,9 @@ exists) happen before the move's accuracy/crit/damage draws.
 
 ## End of turn (`battle_util.c:726-845`, `DoBattlerEndTurnEffects`)
 
-Per battler, in this order among the status cases: poison `maxHP/8` (min 1),
-toxic `maxHP/16 × n` with n incremented first and capped at 15, burn `maxHP/8`
-(min 1). Each can faint the battler. The engine currently has only field-level
+Per battler, in this order among the status cases: poison `max(1, maxHP/8)`,
+toxic `max(1, maxHP/16) × n` with n incremented first and capped at 15, burn
+`max(1, maxHP/8)`. Each can faint the battler. The engine currently has only field-level
 end-of-turn effects (screens), so a per-battler end-turn phase is new.
 
 ## Outside battle
@@ -85,8 +85,8 @@ end-of-turn effects (screens), so a per-battler end-turn phase is new.
 | Item | Source | Status here |
 | --- | --- | --- |
 | Capture odds | `battle_script_commands.c:9553-9556` | sleep/freeze ×2, others ×1.5 (hook exists) |
-| Field poison damage | `src/field_poison.c` | `UNKNOWN` — step interval, 1-HP survival vs faint in FRLG not checked here |
-| Toxic after switch/battle | | `UNKNOWN` — counter reset behavior not source-locked here |
+| Field poison damage | `src/field_poison.c` | Resolved in the [design proposal](phase4-status-conditions-design-proposal.md): every 5 steps −1 HP; 0 HP faints (no 1-HP survival) |
+| Toxic after switch/battle | `battle_util.c:817-830`, `battle_script_commands.c:2363,4461` | Counter is battle-local and never written to the party copy; it restarts at 0 on each switch-in and after battle |
 | Status healing items / Pokémon Center | `pokemon.c:4183,4664` (item cure paths) | not in scope of a first slice |
 
 ## Unlock map
