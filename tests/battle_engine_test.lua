@@ -917,7 +917,7 @@ check("Struggle bypasses a real Ghost-type immunity to Normal",
 -- convention as the rest of this file). Every landed or no-effect sequence
 -- then draws ONE trailing `% 100` (multi-hit tail follow-up): the
 -- seteffectwithchance at BattleScript_MultiHitEnd (data/battle_scripts_1.s
--- :651) evaluates `Random() % 100` first (src/battle_script_commands.c
+-- :652) evaluates `Random() % 100` first (src/battle_script_commands.c
 -- :2789) even though 29/44 carry effect byte 0 and chance 0. The draw
 -- counts below were each raised by 1 on purpose for that roll.
 
@@ -1056,7 +1056,7 @@ check("a type-immune multi-hit move emits a single noEffect and zero damage even
   statEvents[2].type == "noEffect" and #statEvents == 2, statEvents)
 -- Was 3 (accuracy+hitcount+crit); multi-hit tail follow-up adds the
 -- trailing `% 100`: MultiHitNoMoreHits -> PrintStrings -> jumpifmovehadnoeffect
--- MultiHitEnd -> seteffectwithchance (bs1.s:624, :642-647, :651; bsc.c:2789).
+-- MultiHitEnd -> seteffectwithchance (bs1.s:624, :642-647, :652; bsc.c:2789).
 check("no-effect stops before adjustnormaldamage's Random() call -- accuracy+hitcount+crit, then the trailing % 100",
   battle.rng.draws == 4, battle.rng.draws)
 
