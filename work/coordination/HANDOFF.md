@@ -1,11 +1,32 @@
 # FireRedRecomp Coordination Handoff
 
-- Status: `READY_FOR_WORKER — source-bound correction of START Pokédex-count PR5`
+- Status: `READY_FOR_REVIEWER — corrected START Pokédex-count PR5 at5579782`
 - Task ID: `P6-03-START-DEX-SANITY`
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
 - Current plan: [`../roadmaps/RECALIBRATED_DELIVERY_PLAN.md`](../roadmaps/RECALIBRATED_DELIVERY_PLAN.md)
 
 ## Current relay — 2026-10-14
+
+### Latest resume — 22:09 UTC
+
+PR5 correction is published at `5579782`, with integrated runtime `f50383e`.
+Source-bound Dex tests56/0, START21/0, full167 no-ROM files and checker PASS;
+old411 implementation fails17 new assertions. Exact-head public runs
+`38544944339` / `38544937873` passed. Independent re-review was interrupted
+before a final report; resumed in `/tmp/firered-start-dex-recheck-Ely6Vt`.
+Exact next action: finish/publish that verdict, then merge only on PASS.
+
+PR3 design review at `8a9ca76` returned NEEDS_FIX. Its report is preserved
+in `/tmp/firered-party-design-review-uRnvJN`; Worker restarted the authorized
+two-document correction (literal successor proposal, no-cycling/same-slot,
+Egg scope and repeated no-wrap input). No PR6 code acceptance is implied.
+
+New owner battle work throughPR33/main `a9e8868` was fast-forwarded without
+overwrites; it does not touch the four PR5 paths or AGENTS. Preserve its own
+review/evidence boundaries; this resume does not certify those changes.
+Earlier Worker-active descriptions below are historical, not redispatch.
+
+### Earlier checkpoint — 09:45 UTC
 
 Main recovered at `3adc7e8`; owner-merged status/ability work PR16–25 is
 preserved. Disjoint read-only audit is checking final review records for
