@@ -73,6 +73,8 @@
 --   {type="statusAlready", side=<target>, kind=} -- primary status move on
 --    a target that already has that status
 --   {type="stayedAwake", side=<target>, ability=} -- Insomnia/Vital Spirit
+--   {type="statusCured", side=<attacker>}   -- Refresh
+--   {type="paralysisHealed", side=<target>} -- Smelling Salt
 --   {type="battleEnd", outcome="playerWon"|"playerLost"|"ran"|"caught"}
 --
 -- Real turn structure ported, in real execution order:
@@ -729,7 +731,12 @@ BattleEngine.STATUS_HIT_MOVES = {
   [6] = "paralysis",   -- EFFECT_PARALYZE_HIT
   [202] = "toxic",     -- EFFECT_POISON_FANG
   [209] = "poison",    -- EFFECT_POISON_TAIL
+  [125] = "burn",      -- EFFECT_THAW_HIT (data/battle_scripts_1.s:1675-1677)
 }
+-- Status slice S4 (data/battle_scripts_1.s:2247-2270, :2515-2525).
+BattleEngine.EFFECT_FACADE = 169
+BattleEngine.EFFECT_SMELLINGSALT = 171
+BattleEngine.EFFECT_REFRESH = 193
 -- SetMoveEffect ability guards (include/constants/abilities.h ids).
 BattleEngine.ABILITY_LIMBER = 7
 BattleEngine.ABILITY_IMMUNITY = 17
@@ -1067,6 +1074,9 @@ function BattleEngine:supportsMove(move, moveId)
   end
   if BattleEngine.PRIMARY_STATUS_MOVES[move.effect] then
     return move.power == 0 and move.target == 0 -- MOVE_TARGET_SELECTED
+  end
+  if move.effect == BattleEngine.EFFECT_REFRESH then
+    return move.power == 0 and move.target == MOVE_TARGET_USER
   end
   return move.power > 0 or BattleEngine.STAT_STAGE_MOVES[move.effect] ~= nil
     or BattleEngine.SCREEN_MOVES[move.effect] ~= nil
@@ -1421,6 +1431,23 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
       events[#events + 1] = { type = "moveFailed", side = attackerSide }
       return
     end
+  end
+
+  if move.effect == BattleEngine.EFFECT_REFRESH then
+    -- attackcanceler/attackstring/ppreduce, then
+    -- Cmd_cureifburnedparalysedorpoisoned (src/battle_script_commands.c
+    -- :8728-8742): any PSN/BRN/PAR/TOX on the user sets status1 to 0;
+    -- otherwise "But it failed!". No accuracycheck, no RNG.
+    if slot then slot.pp = slot.pp - 1 end
+    local st = attacker.status or 0
+    if StatusConditions.isPoisoned(st) or StatusConditions.isBurned(st)
+        or StatusConditions.isParalyzed(st) or StatusConditions.isBadlyPoisoned(st) then
+      attacker.status = 0
+      events[#events + 1] = { type = "statusCured", side = attackerSide }
+    else
+      events[#events + 1] = { type = "moveFailed", side = attackerSide }
+    end
+    return
   end
 
   local primaryStatus = BattleEngine.PRIMARY_STATUS_MOVES[move.effect]
@@ -1869,6 +1896,19 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
   if isCrit then
     damage = damage * BattleFormulas.CRIT_MULTIPLIER
   end
+  -- Cmd_damagecalc's dmgMultiplier (src/battle_script_commands.c:1215):
+  -- Facade doubles when the user has PSN/BRN/PAR/TOX (burn halving still
+  -- applies inside the base damage); Smelling Salt doubles against a
+  -- paralyzed target (Substitute not represented).
+  local st = attacker.status or 0
+  if move.effect == BattleEngine.EFFECT_FACADE
+      and (StatusConditions.isPoisoned(st) or StatusConditions.isBurned(st)
+        or StatusConditions.isParalyzed(st) or StatusConditions.isBadlyPoisoned(st)) then
+    damage = damage * 2
+  elseif move.effect == BattleEngine.EFFECT_SMELLINGSALT
+      and StatusConditions.isParalyzed(defender.status) then
+    damage = damage * 2
+  end
 
   -- 5. typecalc: STAB then per-row type effectiveness. Real Cmd_typecalc
   -- special-cases MOVE_STRUGGLE to skip this step entirely (`if
@@ -1904,7 +1944,10 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
     if BattleEngine.HIT_VARIANT_STAT_MOVES[move.effect]
         or BattleEngine.SELF_DROP_HIT_MOVES[move.effect]
         or move.effect == BattleEngine.EFFECT_ALL_STATS_UP_HIT
-        or BattleEngine.STATUS_HIT_MOVES[move.effect] then
+        or BattleEngine.STATUS_HIT_MOVES[move.effect]
+        or move.effect == BattleEngine.EFFECT_SMELLINGSALT then
+      -- Smelling Salt's byte is CERTAIN, which skips the roll only when the
+      -- move had an effect; a no-effect hit falls to the rolling branch.
       BattleFormulas.secondaryEffectRoll(self.rng, move.secondaryEffectChance)
     end
     return
@@ -2025,6 +2068,13 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
     -- SetMoveEffect with MOVE_EFFECT_CERTAIN.
     self:applySecondaryStatus(defenderSide, statusKind,
       move.secondaryEffectChance >= 100, events)
+  end
+
+  if move.effect == BattleEngine.EFFECT_SMELLINGSALT and defender.hp > 0
+      and StatusConditions.isParalyzed(defender.status) then
+    -- MOVE_EFFECT_REMOVE_PARALYSIS | CERTAIN (no roll; :2690-2705).
+    defender.status = defender.status - StatusConditions.PARALYSIS
+    events[#events + 1] = { type = "paralysisHealed", side = defenderSide }
   end
 
   local hitVariant = BattleEngine.HIT_VARIANT_STAT_MOVES[move.effect]

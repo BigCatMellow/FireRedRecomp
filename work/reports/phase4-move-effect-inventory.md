@@ -22,7 +22,7 @@ Existing accepted engine families retain their documented limits.
 
 A separate source-only invocation of the actual current
 `BattleEngine:supportsMove` on source-derived effect/power metadata returned
-248 admissions and 106 rejections at that refresh (now 276/78 after the status slices and
+248 admissions and 106 rejections at that refresh (now 277/77 after the status slices and
 fast-lane batches; the test is authoritative). These are source/predicate observations,
 **not a local ROM result**. The checked-in [inventory test](../../tests/phase4_move_effect_inventory_test.lua)
 contains literal expected membership, admission and coverage metadata. It does
@@ -35,11 +35,11 @@ labels `defined_source=214`; the ROM gate checks member usage and unused IDs.
 
 | Source-confirmed semantic class | Used families | Moves | Positive power | Zero power | Admitted / rejected |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| Represented with stated limits | 81 | 198 | 137 | 61 | 198 / 0 |
+| Represented with stated limits | 85 | 203 | 141 | 62 | 203 / 0 |
 | Candidate for separate discovery | 0 | 0 | 0 | 0 | 0 / 0 |
-| Blocked on additional state or an absent cross-component path | 116 | 155 | 78 | 77 | 78 / 77 |
+| Blocked on additional state or an absent cross-component path | 112 | 150 | 74 | 76 | 74 / 76 |
 | Intentionally rejected | 1 | 1 | 1 | 0 | 0 / 1 |
-| Total used | 198 | 354 | 216 | 138 | 276 / 78 |
+| Total used | 198 | 354 | 216 | 138 | 277 / 77 |
 | Defined but unused | 16 | 0 | 0 | 0 | no real-record claim |
 
 `represented` means an existing bounded mechanism plus checked-in tests/source
@@ -53,12 +53,12 @@ families are unimplemented, not a policy decision that they should never work.
 
 ## Coverage and admission are separate
 
-The **78 admitted, semantically uncovered positive-power records** occupy
-48 effects: `26, 27, 31, 34, 36, 39, 42, 75, 76, 77, 80, 81, 89, 92, 105, 117, 119, 121, 122, 123, 125, 128, 129, 135, 144, 145, 146, 147, 148, 149, 150, 151, 152, 154, 155, 158, 159, 161, 169, 170, 171, 185, 188, 196, 197, 200, 203, 207`.
+The **74 admitted, semantically uncovered positive-power records** occupy
+45 effects: `26, 27, 31, 34, 36, 39, 42, 75, 76, 77, 80, 81, 89, 92, 105, 117, 119, 121, 122, 123, 128, 129, 135, 144, 145, 146, 147, 148, 149, 150, 151, 152, 154, 155, 158, 159, 161, 170, 185, 188, 196, 197, 200, 203, 207`.
 Their precise move members and counts are the `yes / C` and `yes / B` rows
 below. They reach ordinary damage because of the positive-power fallback;
 admission does not implement their effects. None is a candidate record; all
-78 need additional state/path work. This refresh supersedes the older
+74 need additional state/path work. This refresh supersedes the older
 140-fallback positive-only count; accepted intervening leaves account for the
 reduction, while 138 zero-power records are now included explicitly.
 
@@ -228,7 +228,7 @@ body (Protect/Endure, Return/Frustration, sunlight recovery, Mud/Water Sport).
 | 122 `EFFECT_PRESENT` | 217 (1; P) | yes | B | [`BattleScript_EffectPresent`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L1660) | Random damage versus target-heal sequence and healing events absent. |
 | 123 `EFFECT_FRUSTRATION` | 218 (1; P) | yes | B | [`BattleScript_EffectFrustration`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L1654) | Friendship formula lacks friendship retained in battler input. |
 | 124 `EFFECT_SAFEGUARD` | 219 (1; Z) | no | B | [`BattleScript_EffectSafeguard`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L1668) | Safeguard side timer and primary/secondary status-prevention hooks absent. |
-| 125 `EFFECT_THAW_HIT` | 172, 221 (2; P) | yes | B | [`BattleScript_EffectThawHit`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L1675) | Burn secondary plus frozen-user thaw handling in action cancellation absent. |
+| 125 `EFFECT_THAW_HIT` | 172, 221 (2; P) | yes | R | [`BattleScript_EffectThawHit`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L1675) | Burn Hit script (seteffectwithchance burn) plus the user's canceller thaw (CANCELLER_FROZEN draw, CANCELLER_THAW). Status slice [S4](../tasks/phase4-status-s4.md); ROM fixture pending. |
 | 126 `EFFECT_MAGNITUDE` | 222 (1; P) | yes | R | [`BattleScript_EffectMagnitude`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L1679) | magnitudedamagecalculation plus underground/multi-target loop; possible singles subset needs explicit exclusions. |
 | 127 `EFFECT_BATON_PASS` | 226 (1; Z) | no | B | [`BattleScript_EffectBatonPass`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L1690) | Baton Pass needs selected volatile/stage transfer through switch; ordinary/faint switching is insufficient. |
 | 128 `EFFECT_PURSUIT` | 228 (1; P) | yes | B | [`BattleScript_EffectHit`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L239) | Hit dispatch also has trypursuit interception in switching; interception/damage modifier absent. |
@@ -272,9 +272,9 @@ body (Protect/Endure, Return/Frustration, sunlight recovery, Mud/Water Sport).
 | 166 `EFFECT_FLATTER` | 260 (1; Z) | no | B | [`BattleScript_EffectFlatter`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L2147) | Confusion duration/self-hit/action gate absent; #207/#260 also change stats, #298 loops non-user targets. |
 | 167 `EFFECT_WILL_O_WISP` | 261 (1; Z) | yes | R | [`BattleScript_EffectWillOWisp`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L2170) | Gates: already burned, Fire, Water Veil, other status; one accuracycheck; seteffectprimary. Status slice [S3](../tasks/phase4-status-s3-primary-status.md); Substitute/Safeguard/Magic Coat/Synchronize/Compound Eyes/Hustle absent; ROM fixture pending. |
 | 168 `EFFECT_MEMENTO` | 262 (1; Z) | yes | R | [`BattleScript_EffectMemento`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L2199) | User HP to 0, target ATK/SP.ATK -2 (each skipped at -6), user faints; fails without fainting if both at -6. Protect/Substitute/Mist/abilities not modeled. Fast-lane batch [P4-FL6](../tasks/phase4-conversion-memento.md); ROM fixture pending. |
-| 169 `EFFECT_FACADE` | 263 (1; P) | yes | B | [`BattleScript_EffectFacade`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L2247) | Status-dependent damage missing; #265 additionally cures target paralysis. |
+| 169 `EFFECT_FACADE` | 263 (1; P) | yes | R | [`BattleScript_EffectFacade`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L2247) | Hit script with dmgMultiplier 2 while the user has PSN/BRN/PAR/TOX (burn halving still applies). Status slice [S4](../tasks/phase4-status-s4.md); ROM fixture pending. |
 | 170 `EFFECT_FOCUS_PUNCH` | 264 (1; P) | yes | B | [`BattleScript_EffectFocusPunch`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L2255) | Damage-received history with source/category/turn identity absent. |
-| 171 `EFFECT_SMELLINGSALT` | 265 (1; P) | yes | B | [`BattleScript_EffectSmellingsalt`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L2263) | Status-dependent damage missing; #265 additionally cures target paralysis. |
+| 171 `EFFECT_SMELLINGSALT` | 265 (1; P) | yes | R | [`BattleScript_EffectSmellingsalt`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L2263) | Hit with dmgMultiplier 2 vs a paralyzed target, then certain REMOVE_PARALYSIS (no roll unless no effect); Substitute absent. Status slice [S4](../tasks/phase4-status-s4.md); ROM fixture pending. |
 | 172 `EFFECT_FOLLOW_ME` | 266 (1; Z) | no | B | [`BattleScript_EffectFollowMe`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L2272) | Target redirection/helping-hand needs doubles ally/target model. |
 | 173 `EFFECT_NATURE_POWER` | 267 (1; Z) | no | B | [`BattleScript_EffectNaturePower`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L2283) | Terrain selects called move/secondary/type; terrain input and corresponding dispatch/status changes absent. |
 | 174 `EFFECT_CHARGE` | 268 (1; Z) | no | B | [`BattleScript_EffectCharge`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L2292) | Charge volatile timer and later Electric-damage consumption/reset absent. |
@@ -296,7 +296,7 @@ body (Protect/Endure, Return/Frustration, sunlight recovery, Mud/Water Sport).
 | 190 `EFFECT_ERUPTION` | 284, 323 (2; P) | yes | R / R11 | [`BattleScript_EffectEruption`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L2488) | Reviewed current-HP power formula for one target; no multi-target or other dynamic-power interactions. |
 | 191 `EFFECT_SKILL_SWAP` | 285 (1; Z) | no | B | [`BattleScript_EffectSkillSwap`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L2492) | Copy/swap abilities need general ability state beyond bounded Damp check. |
 | 192 `EFFECT_IMPRISON` | 286 (1; Z) | no | B | [`BattleScript_EffectImprison`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L2504) | Move-history/counter/selection restriction commands absent; Spite also requires last-used-slot PP provenance. |
-| 193 `EFFECT_REFRESH` | 287 (1; Z) | no | B | [`BattleScript_EffectRefresh`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L2515) | Refresh needs persistent status plus cure/update semantics. |
+| 193 `EFFECT_REFRESH` | 287 (1; Z) | yes | R | [`BattleScript_EffectRefresh`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L2515) | Self-target cure of PSN/BRN/PAR/TOX via cureifburnedparalysedorpoisoned, else But it failed; no RNG. Status slice [S4](../tasks/phase4-status-s4.md); ROM fixture pending. |
 | 194 `EFFECT_GRUDGE` | 288 (1; Z) | no | B | [`BattleScript_EffectGrudge`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L2527) | Destiny Bond/Grudge need volatile lifecycle and faint-time KO/PP response. |
 | 195 `EFFECT_SNATCH` | 289 (1; Z) | no | B | [`BattleScript_EffectSnatch`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L2538) | Magic Coat/Snatch need turn-local owner, action interception/redirection and effect filtering. |
 | 196 `EFFECT_LOW_KICK` | 67 (1; P) | yes | B | [`BattleScript_EffectLowKick`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L2550) | Low Kick needs species-weight input and category formula. |
