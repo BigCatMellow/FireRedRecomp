@@ -485,6 +485,14 @@ local function refresh(user, target, move, typeChart)
   return 0
 end
 
+-- AI_CBM_FocusEnergy (data/battle_ai_scripts.s:386-388): `if_status2
+-- AI_USER, STATUS2_FOCUS_ENERGY, Score_Minus10` reads the battler's
+-- focusEnergy volatile (status-leftovers slice L2).
+local function focusEnergy(user, target, move, typeChart)
+  if user.focusEnergy then return -10 end
+  return 0
+end
+
 -- AI_CBM_Teleport (data/battle_ai_scripts.s:185): real dispatch entry jumps
 -- straight to Score_Minus10 unconditionally, no sub-label at all.
 local function alwaysMinus10(user, target, move, typeChart)
@@ -529,7 +537,7 @@ local EFFECT_HANDLERS = {
   [39] = highRiskForDamage,                        -- EFFECT_RAZOR_WIND
   [40] = highRiskForDamage,                        -- EFFECT_SUPER_FANG
   [46] = alwaysNoPenalty,                          -- EFFECT_MIST: SIDE_STATUS_MIST unmodeled
-  [47] = alwaysNoPenalty,                          -- EFFECT_FOCUS_ENERGY: status2 unmodeled
+  [47] = focusEnergy,                              -- EFFECT_FOCUS_ENERGY -> AI_CBM_FocusEnergy
   [49] = confuse,                                  -- EFFECT_CONFUSE -> AI_CBM_Confuse
   [50] = statUp("attack"),                         -- EFFECT_ATTACK_UP_2
   [51] = statUp("defense"),                        -- EFFECT_DEFENSE_UP_2
