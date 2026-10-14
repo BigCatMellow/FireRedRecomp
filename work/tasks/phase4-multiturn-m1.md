@@ -1,7 +1,7 @@
 # Task: locked multi-turn moves, slice M1 (charge and recharge)
 
 - Task ID: `P4-MULTITURN-M1`
-- Status: `IMPLEMENTED — awaiting independent review`; ROM fixture pending
+- Status: `CLOSED — REVIEWED PASS` after re-review ([review](../reviews/2026-10-14-multiturn-m1-review.md)); ROM fixture pending
 - Lane: full relay (cross-turn state, action-selection change). Owner
   delegation 2026-10-14 ("Keep going"); battle files and the battle scene
   controller only (no main.lua).

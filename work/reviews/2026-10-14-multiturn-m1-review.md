@@ -260,3 +260,102 @@ test gaps.
 ## Worker disposition (2026-10-14)
 
 F1 fixed: actions locked at turn start keep the locked slot and check PP after the cancellers (a cancelled lock no longer reports no PP early or substitutes Struggle); the stale comment updated; a crash the new test exposed (lockedSlot cleared by the cancel) fixed. F2 guard added. F3 tests added (recharge before flinch, freeze cancel, locked foe order, failed-capture branch, follow-up auto-run, forced-switch guard).
+
+## Re-review (fix commit `ecf3977`)
+
+- Reviewer: the same independent implementation Reviewer.
+- Date: 2026-10-14.
+- Subject: `git show ecf3977 -- src tests`. The diff changes
+  `BattleEngine.lua` (+24/−4), `BattleSceneController.lua` (1 line) and
+  `tests/battle_multiturn_test.lua` (+92).
+
+### Re-review verdict
+
+**PASS**
+
+### Changes verified
+
+1. **Finding 1 is fixed.**
+   - `runTurn` records `self.lockedThisTurn` from `isLocked` before the
+     override and the timer decrement.
+   - In `resolveMoveCore`, a turn-locked action skips the Struggle
+     substitution and the early `noPP` guard. It keeps the turn's slot when
+     `cancelMultiTurnMoves` has already cleared `lockedSlot`.
+   - After the cancellers, it emits `noPP` only when the lock is no longer
+     live and the slot has 0 PP. This matches source `Cmd_attackcanceler`
+     (`bsc.c:833-842`): the cancellers run first, then the PP check, which is
+     skipped only under MULTIPLETURNS. With `noValidMoves` unset
+     (`battle_main.c:3982-3992`), the move is `moves[gCurrMovePos]`.
+   - The stale "real-game-unreachable" comment now notes the exemption.
+2. **Finding 2 is fixed.** `_enterAction` now also requires
+   `not engine.awaitingForcedSwitch`. My earlier crash probe (Hyper Beam KO,
+   foe replacement pending, no hook) now drains to ACTION without asserting.
+3. **Finding 3 is fixed.** New tests kill M03 (flinched recharger), M24
+   (freeze application), M17 (a locked foe with a passed Quick Attack slot),
+   the failed-capture branch with a recharging foe, the F6(d) follow-up
+   auto-run, and the forced-switch guard.
+
+### F1 sequence probes
+
+Each probe runs the real `runTurn`. The setup is Razor Wind at PP 1, spent on
+turn 1, against a faster foe on turn 2. Source expectations come from the
+lines cited above.
+
+| Case | Engine events (player) | Source | Match |
+| --- | --- | --- | --- |
+| Faster Hypnosis, other slot has PP | `statusApplied`, `fastAsleep`; sleep counter 4→3 | sleep canceller decrements and prints "fast asleep" | yes |
+| Faster Hypnosis, all slots 0 | same (no Struggle) | same | yes |
+| Ice Beam freeze, stays frozen (other PP 10 or 0) | `frozenSolid`, freeze roll drawn (5 draws) | `Random() % 5`, "frozen solid" | yes |
+| Ice Beam freeze, thaws (other PP 10 or 0) | `thawed`, `noPP`; no Struggle, no PP change | "was defrosted", then "no PP left" | yes |
+| Thaw with PP > 0 (F9 edge) | `thawed`, `chargeTurn`, PP spent again | turn 1 runs again | yes |
+| Slept on turn 1 after charging (lock cancelled, did not act while locked); next turn, other PP | normal selection, not locked; slot 2 used | normal selection | yes |
+| Same, all slots 0 | Struggle at selection | `AreAllMovesUnusable` gives Struggle | yes |
+| Never locked: selected 0-PP slot / all 0 PP | early `noPP` / Struggle (unchanged) | unchanged pre-existing behavior | yes |
+
+No regression in the ordinary `noPP` or Struggle paths: when
+`lockedThisTurn[side]` is false, the code path is identical to `b9e7a6f`.
+
+### Commands (at `ecf3977`)
+
+| Command | Result |
+| --- | --- |
+| `tests/battle_multiturn_test.lua` | 45 / 0 |
+| `tests/battle_confusion_flinch_test.lua`, `tests/battle_status_engine_test.lua`, `tests/battle_scene_controller_test.lua` | 75/0, 202/0, 144/0 |
+| `tests/phase4_*controller*_test.lua` | 8/0, 7/0, 9/0 |
+| `bash scripts/test_all.sh` | PASS, 170 files, rc 0 |
+| `lua5.1 scripts/check_repository.lua` | PASS |
+
+### Mutation round 2
+
+All 32 earlier mutants were rerun against the new code. M15 and M19 were
+re-anchored to the new text. The new N-series mutants target the fix. The
+files were restored after each mutant. The SHA-1 values match the pre-run
+values (`BattleEngine.lua` 10f4caf6…, `BattleSceneController.lua` 04425924…).
+
+| # | Mutant | Result |
+| --- | --- | --- |
+| M01-M02, M04-M16, M18-M23, M26-M32 | as in round 1 | all KILLED |
+| M03 | recharge canceller after flinch | KILLED (flinched recharger test) |
+| M17 | foe override removed | KILLED (Quick Attack slot test) |
+| M24 | secondary sleep/freeze cancel removed | KILLED (freeze application test) |
+| M25 | primary sleep cancel removed | SURVIVED, equivalent: masked by the end-turn sleeping-charger cancel (unchanged from round 1) |
+| N1 | `lockedThisTurn` ignored | KILLED |
+| N2 | PP check before cancellers (early guard restored, post-canceller check removed) | KILLED |
+| N3 | slot fallback removed (`moveSlot = attacker.lockedSlot`) | KILLED (nil-slot crash) |
+| N4 | post-canceller `noPP` removed | KILLED (turn 1 would rerun at 0 PP) |
+| N5 | controller forced-switch guard removed | KILLED |
+| N6 | `lockedThisTurn` snapshot taken after the timer decrement | SURVIVED, equivalent: for a recharger, `recharging` alone keeps `lockedTurn` true, and only its own canceller clears it; charging is unaffected by the timer |
+
+Score: 36 killed of 38. Both survivors are equivalent mutants.
+
+### Remaining notes (non-blocking)
+
+- **INFO.** `self.lockedThisTurn` persists on the engine after `runTurn`
+  returns. Production calls `resolveMove` only from `runTurn`, which resets
+  it, so this is harmless. A direct `resolveMove` caller (tests) sees the
+  previous turn's snapshot. Clearing it at the end of `runTurn` would be
+  tidier.
+- **INFO.** The "cancelled lock with 0 PP" unit test sets `lockedThisTurn`
+  by hand. The end-to-end freeze/thaw case is verified only by this review's
+  probes. A `runTurn`-level freeze-thaw test would pin it.
+- **INFO.** Finding 4 (no foe name prefix) is unchanged and out of scope.
