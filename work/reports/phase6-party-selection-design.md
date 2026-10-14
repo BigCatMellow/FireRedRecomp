@@ -24,10 +24,10 @@ moves, switching and held-item actions must remain explicit limitations.
 | --- | --- | --- | --- |
 | START → Party | `src/start_menu.c:StartMenuPokemonCallback`, `src/party_menu.c:CB2_PartyMenuFromStartMenu` | `main.lua:world.handleStartMenuSelection` creates a `PartyScreen` adapter over `saveBlock1.playerParty` | Retain normal START entry and existing list input |
 | A on Pokémon | `HandleChooseMonSelection` default → `Task_TryCreateSelectionWindow` | `PartyScreen.CONFIRMED`; `main.lua` currently discards the selection | Keep selected slot and open a second bounded action state |
-| Actions | `SetPartyMonFieldSelectionActions` appends SUMMARY first, then conditionals, CANCEL last; Egg branch differs | No submenu yet | Expose only SUMMARY/CANCEL; label partial scope, do not invent SWITCH/ITEM |
-| Action cursor | `Task_HandleSelectionMenuInput` uses no-wrap for ≤3 actions | `MenuCursor:processInputNoWrap` already exists | Reuse exactly two-row no-wrap action cursor |
+| Actions | `party_menu.c:2963-2988` appends SUMMARY first and CANCEL last; field Eggs use ACTIONS_SWITCH at `:2996-3001`, mapped to SUMMARY/SWITCH/CANCEL in `data/party_menu.h:1093,1127` | No submenu yet | Expose only SUMMARY/CANCEL for ordinary records and valid Eggs; explicitly reduced scope |
+| Action cursor | `party_menu.c:3062-3093` uses `Menu_ProcessInputNoWrapAround_other` for ≤3 actions; `menu.c:425-450` uses new A/B but repeated D-pad | Shared `MenuCursor:processInputNoWrap` uses new D-pad only, so it is not equivalent | Implement repeated no-wrap input locally in action flow; reuse only `moveCursorNoWrap`; do not change shared helpers |
 | Enter SUMMARY | `CursorCB_Summary` → `CB2_ShowPokemonSummaryScreen` | `PartyScreen:rowData` decodes nickname/species and cached HP/level | Read-only saved-stat/info projection. No GBA summary graphics or move pages claimed |
-| Return from SUMMARY | `CB2_ReturnToPartyMenuFromSummaryScreen` restores selected slot and selection-window callback | Discarding `PartyScreen` loses selected position | B returns to actions on same slot; B/CANCEL actions returns to list at the selected cursor |
+| Return from SUMMARY | `party_menu.c:3109-3114` restores `GetLastViewedMonIndex()`, not necessarily the original slot; `pokemon_summary_screen.c:1168-1177,3387-3390` permits Up/Down mon cycling and returns the last index | Discarding `PartyScreen` loses selected position | Explicitly exclude summary mon cycling; only under that restriction does B return to actions on the same slot |
 | Exit Party | `HandleChooseMonCancel` → `CB2_ReturnToFieldWithOpenMenu` | List B/CANCEL closes Party, leaves START | Preserve this existing list exit |
 | Integrity | `SetPartyMonFieldSelectionActions` only dispatches on subsequent input | `PartyScreen:rowData` is read-only and `PartyModel` owns mutation | No party/write operations in selection flow, summary, or cancel transitions |
 
@@ -49,36 +49,134 @@ branch must not process list movement while actions/summary is active.
 The summary screen returns a data projection; it must not write to
 `saveBlock1`, `playerParty`, decoded box bytes, inventory or session flags.
 
-## Implementable boundary and required tests
+Summary Up/Down, Left/Right and L/R do not change the selected Pokémon or page;
+A does not open move or other actions. Only newly pressed B returns to actions.
+This deliberately omits the retail mon-cycling/page behavior. The same-slot
+return above is a property of this reduced view, not a general source claim.
 
-The smallest expected implementation surface is:
-`main.lua` (Party input/display/cleanup),
-`src/core/PartyScreen.lua` (explicit resume and read-only saved-data projection),
-one small pure action-flow module, focused no-ROM tests, and the implementation
-task. No importer, ROM, runner, save codec, general menu, battle, or story edits.
+Valid saved Eggs can enter SUMMARY: source does not reject them. Their view
+must be explicitly labeled as a reduced **Egg saved-data projection**, not a
+retail Egg-stat screen. It may expose the decoded nickname, numeric species,
+Egg marker and already cached level/HP/status/stat values as saved values;
+it must not invent hatch progress, Egg messages, graphics, hidden-stat rules
+or retail page parity. Retail has separate Egg tilemap and display branches
+(`pokemon_summary_screen.c:1938-1951,2428-2441`). Invalid/checksum-failing
+records retain existing decode failure behavior; no repair or new Bad Egg
+support is implied.
 
-Test obligations:
-1. A on a populated slot enters actions for the correct 1-based slot.
-2. SUMMARY reads real cached stats and decoded saved record, not fabricated data.
-3. B from summary returns to actions for that slot; B/CANCEL from actions
-   returns to same cursor in Party; list B returns to START.
-4. No-wrap action navigation and inert input after closure.
-5. Party count, encoded records, HP and status remain byte/value-identical.
-6. No-ROM focused suite, repository checker, full public CI; record that
-   public CI cannot prove live ROM scenes, presentation, or field replay.
+## Follow-on implementation task PROPOSAL — not active authority
+
+Proposed task: `P6-04-PARTY-SUMMARY`, to be reconciled by the Orchestrator with
+the existing separate draft PR #6 only after independent design acceptance.
+This proposal neither changes PR #6 nor approves its current implementation.
+
+### Outcome and literal MAY CHANGE
+
+Implement only normal field START → POKÉMON → occupied slot → SUMMARY/CANCEL
+→ reduced read-only SUMMARY, with the exact reduced return chain and Egg/input
+constraints above. Preserve existing Party list semantics and the still-open
+START menu. The complete proposed six-path allowlist is:
+
+| Literal path | Permitted implementation responsibility |
+| --- | --- |
+| `main.lua` | Only Party imports, entry/cleanup, active input dispatch and existing text overlay display; retain normal START entry and isolate field input |
+| `src/core/PartyScreen.lua` | Read-only summary projection and explicit resume-to-browsing on the previously confirmed slot; no party mutation |
+| `src/core/PartySelectionFlow.lua` | New pure two-action state machine, selected-slot ownership and local repeated no-wrap action input |
+| `tests/party_screen_test.lua` | Existing list-return and decoded/cached projection tests, including valid Egg and byte/value integrity cases |
+| `tests/party_selection_flow_test.lua` | New no-ROM flow/input/isolation/Egg tests, including bounded production Party input-dispatch checks with synthetic state |
+| `work/tasks/phase6-party-summary.md` | Successor contract, source lock, explicit acceptance and Worker evidence/handoff; not broader coordination status |
+
+No seventh implementation/test path is implicitly allowed. The current design
+task still permits edits only to its own two documents. The separate review
+artifact is authored by the independent Reviewer, not implementation authority.
+
+### Proposed local input contract
+
+In actions, process newly pressed A first, then newly pressed B, then repeated
+D-pad per `menu.c:425-450`. Move only when the repeated D-pad mask equals UP
+alone or DOWN alone; diagonal/opposite-direction chords must not move it.
+Use the existing `InputState` repeat stream and `MenuCursor:moveCursorNoWrap`
+to clamp at SUMMARY/CANCEL. Do not call `processInputNoWrap` and claim it
+matches the source, and do not change shared `MenuCursor` or `InputState`.
+No input event may cascade through more than one screen in the same tick.
+
+### Proposed acceptance assertions
+
+1. Normal START's party adapter opens the existing list without developer
+   keys. A on each occupied slot opens SUMMARY/CANCEL for that 1-based slot;
+   empty-party handling and list CANCEL remain unchanged.
+2. SUMMARY projects decoded nickname/species/Egg marker and cached saved
+   level/current-max HP/status/Attack/Defense/Speed/Sp. Attack/Sp. Defense.
+   Synthetic records with distinctive literal values verify the fields;
+   no recalculation, fabricated defaults, importer or ROM dependency is added.
+3. B from summary returns to actions; B or A on action CANCEL resumes the
+   same Party cursor; list B or A on list CANCEL returns to still-open START.
+   Reopening the Party view must not retain stale flow state.
+4. With at least two distinct records, summary directional/L/R input cannot
+   change the selected slot or projection. A is inert there; newly pressed B
+   alone unwinds. Test this restriction explicitly instead of treating the
+   retail last-viewed index as always equal to the initially selected index.
+5. A valid synthetic Egg is eligible for the reduced SUMMARY, carries the
+   explicit non-retail saved-data label/marker and returns by the same chain.
+   Assertions distinguish Egg from an ordinary record; no hatch state or
+   retail Egg display semantics are inferred from cached numeric fields.
+6. Action fresh/repeated UP/DOWN clamp at both ends. Use real InputState held
+   timing and a local cursor-call observer or repeat-only event witness so
+   tests distinguish repeated processing from a new-only implementation even
+   when a two-row cursor is already clamped. Check no movement between repeat
+   events, D-pad chords ignored, and held A/B never repeatedly confirm/cancel
+   across state boundaries. Shared menu helper behavior must remain unchanged.
+7. Verify production Party input dispatch with synthetic session/field state:
+   action and summary ticks do not process list navigation, move the player,
+   dispatch field interaction, open Bag, or reprocess the retained START menu.
+   After closure, the inactive flow consumes no further input. Model tests
+   alone must not be described as proof of production field-input isolation.
+8. Snapshot every party record (encoded box bytes plus all cached values),
+   party count/order and relevant synthetic session fields before opening,
+   projection and every cancel transition. Require byte/value identity after
+   each step for ordinary and Egg records, including nonselected records.
+   Read-only inspection must not mutate HP, PP, status, inventory, flags,
+   battle state or saves, nor recalculate stats or repair malformed records.
+
+### Proposed MUST NOT CHANGE, evidence and stops
+
+No SWITCH/reorder, ITEM/MAIL, field moves, move pages, summary mon cycling,
+PC/Pokédex screens, retail graphics/audio, Egg-specific retail pages, importer,
+save codec/schema, battle/story progression, shared input/menu helpers,
+workflows, runner, ROM/cache, other PRs or canonical phase status. Existing
+saved-data decoding remains the boundary, not a new corruption policy.
+
+After Orchestrator approval of a successor contract, run no-ROM baseline and
+after suites (`bash scripts/test_all.sh` with ROM/runtime opt-ins unset),
+focused `lua5.1 tests/party_screen_test.lua`,
+`lua5.1 tests/party_selection_flow_test.lua` and existing shared-helper
+regression `lua5.1 tests/menu_cursor_test.lua`, plus
+`lua5.1 scripts/check_repository.lua` and `git diff --check`. Require exact-head
+public no-ROM CI and independent review of source, production dispatch,
+assertions, six-path scope and no-mutation evidence before acceptance/merge.
+Record expected skips. No unit/CI result establishes live ROM scene, rendered
+parity, save/reload or normal-route replay proof.
+
+Stop/re-scope if required source behavior is UNKNOWN, the six-path boundary
+cannot establish the slice, field-input isolation needs a broader refactor,
+valid saved records cannot be projected without writes, verified-ROM/runtime
+proof becomes essential, or active work overlaps this behavior. Do not expand
+the UI or claim a phase gate to resolve a stop. Design acceptance alone does
+not permit implementation or accept the existing PR #6.
 
 ## Dependencies and explicit unknowns
 
 - Already available: `PartyScreen`, `MenuCursor`, `InputState`,
   `BattlePartyBridge.decodeRecord`, `BoxPokemonCodec`, saved party stats.
-- Excluded: retail SUMMARY pages and graphics, ability/held-item/move name display,
+- Excluded: summary mon cycling, retail SUMMARY/Egg pages and graphics, ability/held-item/move name display,
   Pokémon SWITCH mutation and reorder semantics, GIVE/TAKE ITEM, field moves,
   optional visual parity and full screen-to-screen ROM-backed replay.
 - Unknown: production first-Gym traversal and full retail presentation;
   a clean no-ROM state test cannot establish either.
-- Private-ROM runner remains blocked separately. The code slice is designed
-  to be verifiable without that private dependency, but ROM replay evidence
-  must not be fabricated.
+- The private-ROM runner blocker recorded on 2026-10-09 is historical, not a
+  current readiness claim or retry authorization. This slice is proposed as
+  no-ROM-verifiable regardless of runner state; ROM replay evidence is absent
+  here and must not be fabricated.
 
 ## Handoff
 

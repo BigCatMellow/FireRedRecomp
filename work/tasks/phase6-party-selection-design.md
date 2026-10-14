@@ -1,9 +1,9 @@
 # P6-02 proposal — normal Party selection design
 
 - Task ID: `P6-02-PARTY-SELECTION-DESIGN`
-- Status: `READY_FOR_REVIEWER` — evidence-only design, no implementation acceptance
+- Status: `READY_FOR_REVIEWER` — 2026-10-14 bounded correction after independent NEEDS_FIX; no implementation acceptance
 - Type: `DESIGN / SOURCE-LOCK; NO IMPLEMENTATION AUTHORITY`
-- Parent: Phase 6; separate from the blocked P4/P5 private-ROM bridge
+- Parent: Phase 6; separate from P4/P5 private-ROM bridge work
 - Basis: independently accepted `P6-01-FIELD-MENU-INVENTORY` at `ee7535d6`; see [inventory](../reports/phase6-field-menu-coverage-inventory.md)
 - Risk: low for this design; later runtime modifications require their own bounded authorization and review
 
@@ -40,10 +40,55 @@ Check that the proposed design corresponds to source and tested runtime branches
 
 Stop if the selected action requires broad new UI infrastructure, an unverified ROM-dependent assumption, unrelated progression work, or overlapping active implementation. Return a narrower source-lock/UNKNOWN rather than expanding the scope.
 
-## Relationship to current blocker
+## Historical relationship to runner blocker
 
-This is disjoint research that can proceed while `RUNNER-LUA5-RECOVERY` remains terminally blocked by private ROM availability. It grants no retry of probe `37554725384`, P4 implementation, or P5 readiness; those require operator-side ROM availability plus separate recovery authorization.
+The 2026-10-09 dispatch was disjoint research while `RUNNER-LUA5-RECOVERY`
+was blocked by private ROM availability. That observation is historical,
+not current runner readiness. This design grants no retry of probe
+`37554725384`, P4 implementation, P5 readiness, or private-runner action;
+fresh coordination and separate bounded authority govern any such work.
 
 ## Evidence handoff — 2026-10-09
 
 The source-locked [design report](../reports/phase6-party-selection-design.md) was prepared at `e46652afd7998a142e6c418ace7ecf9a046f5332` using pinned `pret/pokefirered` source symbols and current production Party/START code. It selects reduced read-only SUMMARY/CANCEL navigation with explicit exclusions for SWITCH/ITEM/field moves, documents the input/return chain and test matrix, and does not change runtime or canonical status. Independent acceptance of this design is required before implementation acceptance. Separate draft PR #6 is **not** approved by this handoff.
+
+## Correction handoff — 2026-10-14
+
+The independent [NEEDS_FIX review](../reviews/2026-10-14-party-selection-design-review.md)
+of PR #3 head `8a9ca761bb407d9b498052626893ffb33564508d` remains unchanged.
+The corrected report addresses its three findings within this two-document
+design scope:
+
+- F1: complete successor **PROPOSAL**, not authority, with six literal paths
+  (`main.lua`, `src/core/PartyScreen.lua`, `src/core/PartySelectionFlow.lua`,
+  `tests/party_screen_test.lua`, `tests/party_selection_flow_test.lua`,
+  `work/tasks/phase6-party-summary.md`), explicit exclusions, focused source
+  assertions, production field-input isolation, byte/value-identical records,
+  stops and exact-head public CI/independent-review gates.
+- F2: source restores the last-viewed mon; same-slot return is justified only
+  by excluding mon cycling in this reduced view. Valid Eggs are supported
+  only as a labeled, read-only saved-data projection; Egg retail display/stat
+  parity is explicitly not claimed. Proposal requires ordinary/Egg integrity
+  tests and no selection changes under summary navigation input.
+- F3: source uses new A/B and repeated no-wrap D-pad. Proposed action flow
+  implements that variant locally, including exact direction-mask matching;
+  shared MenuCursor/InputState remain unchanged. Held-input tests must detect
+  repetition even at a clamped two-row boundary, not merely assert no wrap.
+
+Pinned source remains `c75f352304d529f6ba92d4f74b9cf8b5c3810788`; newly checked
+anchors are recorded in the report. Existing runtime seams were read at the
+unchanged PR baseline/head; no runtime or test implementation was altered.
+Do not infer that the existing draft PR #6 already meets the corrected proposal.
+Orchestrator must reconcile/authorize its contract after design review, and
+its implementation still needs separate exact-head review before acceptance.
+
+Worker checks: baseline repository checker PASS (276 tracked Lua / 205
+Markdown / 620 local targets); after correction and preservation of the
+independent report, checker PASS (276 / 206 / 621), and `git diff --check`
+clean. Authored diff is exactly the two design documents. The independent
+review is included separately at `e093612`, byte-for-byte SHA-256
+`12e7089308edfc2775f690f2e9a0bbf145914f416dbc6844a23376d79ff08a18`.
+No local runtime/test suite, ROM, replay or PR #6 action was performed for
+this documentation correction. Publish only to existing PR #3 and route the
+exact published head/public CI to an independent recheck; no self-review,
+merge, implementation authority or capability advancement is claimed.
