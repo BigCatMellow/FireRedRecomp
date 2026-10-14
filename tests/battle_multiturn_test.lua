@@ -490,6 +490,131 @@ do
 end
 
 ---------------------------------------------------------------------------
+-- Slice M2 review corrections: every accuracycheck site, result texts, x2
+---------------------------------------------------------------------------
+local VITAL_THROW, FISSURE, PAIN_SPLIT, MAGNITUDE, HI_JUMP_KICK, EXPLOSION =
+  233, 90, 220, 222, 136, 153
+local THUNDER_WAVE, SUPERSONIC, SWAGGER, TRIPLE_KICK = 86, 48, 207, 167
+moves[VITAL_THROW] = rec(78, 70, Data.TYPE_FIGHTING, 100, 10, 0, 0, 0x33)
+moves[VITAL_THROW].priority = -1
+moves[FISSURE] = rec(38, 1, Data.TYPE_GROUND, 30, 5, 0, 0, 0x12)
+moves[PAIN_SPLIT] = rec(91, 0, Data.TYPE_NORMAL, 100, 20, 0, 0, 0x12)
+moves[MAGNITUDE] = rec(126, 1, Data.TYPE_GROUND, 100, 30, 0, 0x20, 0x32)
+moves[HI_JUMP_KICK] = rec(45, 85, Data.TYPE_FIGHTING, 90, 20, 0, 0, 0x33)
+moves[EXPLOSION] = rec(7, 250, Data.TYPE_NORMAL, 100, 5, 0, 0x20, 0x32)
+moves[THUNDER_WAVE] = rec(67, 0, Data.TYPE_ELECTRIC, 100, 20, 0, 0, 0x16)
+moves[SUPERSONIC] = rec(49, 0, Data.TYPE_NORMAL, 55, 20, 0, 0, 0x16)
+moves[SWAGGER] = rec(118, 0, Data.TYPE_NORMAL, 90, 15, 100, 0, 0x16)
+moves[TRIPLE_KICK] = rec(104, 10, Data.TYPE_FIGHTING, 90, 10, 0, 0, 0x33)
+
+-- The faster foe uses `foeMove` on turn 1 (semi-invulnerable from then on);
+-- the player then uses `playerMove` against it.
+local function semiFoe(foeMove, playerMove, foeTypes)
+  return battle({}, { foeMove = foeMove, foeSpeed = 30, playerMove = playerMove, foeTypes = foeTypes })
+end
+
+do
+  -- Every accuracycheck site misses without RNG; PP is still spent.
+  for _, case in ipairs({
+    { VITAL_THROW, "Vital Throw" }, { THUNDER_WAVE, "Thunder Wave" }, { SUPERSONIC, "Supersonic" },
+    { SWAGGER, "Swagger" }, { TRIPLE_KICK, "Triple Kick" },
+  }) do
+    local b = semiFoe(FLY, case[1])
+    local events = b:runTurn(MOVE, MOVE)
+    check(case[2] .. " misses a flier with no draw", find(events, "miss", "player")
+      and b.rng.draws == 0 and b.player.moves[1].pp == 9
+      and not find(events, "damage", "player") and not find(events, "statusApplied")
+      and not find(events, "statChange") and not find(events, "confusionApplied"),
+      case[2] .. ": " .. types(events) .. " draws " .. b.rng.draws)
+  end
+  -- OHKO and Pain Split: NO_ACC_CALC fails ("But it failed!"), not a miss.
+  for _, case in ipairs({ { FISSURE, "Fissure" }, { PAIN_SPLIT, "Pain Split" } }) do
+    local b = semiFoe(DIG, case[1])
+    local events = b:runTurn(MOVE, MOVE)
+    check(case[2] .. " vs a digger: But it failed, PP spent, no draw", find(events, "moveFailed", "player")
+      and not find(events, "miss", "player") and b.rng.draws == 0 and b.player.moves[1].pp == 9
+      and b.foe.hp == 400, types(events))
+  end
+  -- Bounce is ON_AIR too: Tackle misses, Gust reaches it.
+  local b = semiFoe(BOUNCE, Data.MOVE_TACKLE)
+  local events = b:runTurn(MOVE, MOVE)
+  check("Bounce puts the user in the air", b.foe.semiInvulnerable == "air"
+    and find(events, "chargeTurn", "foe").kind == "bounce" and find(events, "miss", "player"), types(events))
+  b = semiFoe(BOUNCE, GUST)
+  b.rng = scriptedRng({ 0, 1, 0 })
+  events = b:runTurn(MOVE, MOVE)
+  check("Gust hits a bouncer", find(events, "damage", "player") ~= nil, types(events))
+end
+
+do
+  -- Earthquake / Magnitude against a Flying-type flier: the missed leaf's
+  -- typecalc prints "It doesn't affect" (no RNG beyond Magnitude's roll).
+  local b = semiFoe(FLY, EARTHQUAKE, { Data.TYPE_FLYING, Data.TYPE_FLYING })
+  local events = b:runTurn(MOVE, MOVE)
+  check("Earthquake vs a Flying-type flier: no effect", find(events, "noEffect", "player")
+    and not find(events, "miss", "player") and b.rng.draws == 0, types(events))
+  b = semiFoe(DIVE, MAGNITUDE)
+  b.rng = scriptedRng({ 50 })
+  events = b:runTurn(MOVE, MOVE)
+  check("Magnitude misses a diver after its strength roll", find(events, "magnitude")
+    and find(events, "miss", "player") and b.rng.draws == 1, types(events))
+end
+
+do
+  -- Explosion after typecalc: an immune semi-invulnerable target prints no
+  -- effect; a non-immune one misses; crit and random are drawn either way.
+  local b = semiFoe(DIG, EXPLOSION, { Data.TYPE_GHOST, Data.TYPE_GHOST })
+  local events = b:runTurn(MOVE, MOVE)
+  check("Explosion vs a Ghost digger: no effect, user faints, 2 draws", find(events, "noEffect", "player")
+    and not find(events, "miss", "player") and b.player.hp == 0 and b.rng.draws == 2, types(events))
+  b = semiFoe(DIG, EXPLOSION)
+  events = b:runTurn(MOVE, MOVE)
+  check("Explosion vs a digger: missed, 2 draws", find(events, "miss", "player")
+    and b.foe.hp == 400 and b.rng.draws == 2, types(events))
+end
+
+do
+  -- Hi Jump Kick vs a Ghost digger: the semi miss skips the immunity scan,
+  -- so it prints missed and crashes for 1 (random multiplier drawn).
+  local b = semiFoe(DIG, HI_JUMP_KICK, { Data.TYPE_GHOST, Data.TYPE_GHOST })
+  local events = b:runTurn(MOVE, MOVE)
+  local crash = find(events, "crash", "player")
+  check("Hi Jump Kick vs a Ghost digger crashes for 1", find(events, "miss", "player")
+    and not find(events, "noEffect") and crash and crash.amount == 1 and b.rng.draws == 1,
+    types(events) .. " draws " .. b.rng.draws)
+end
+
+do
+  -- Doubling: compare against the same move on a plain target with the
+  -- same draws (x2 sits before the random multiplier, so allow +-1).
+  local function plainDamage(moveId, values)
+    local p = battle(values, { playerMove = moveId })
+    local ev = {}
+    p:resolveMove("player", 1, ev)
+    return find(ev, "damage", "player").amount
+  end
+  local function doubled(foeMove, moveId, values, label)
+    local base = plainDamage(moveId, values)
+    local b = semiFoe(foeMove, moveId)
+    b.rng = scriptedRng(values)
+    local events = b:runTurn(MOVE, MOVE)
+    local d = find(events, "damage", "player")
+    check(label .. " doubles", d and d.amount >= base * 2 - 1 and d.amount <= base * 2 + 1,
+      (d and d.amount or "none") .. " vs base " .. base)
+  end
+  doubled(FLY, TWISTER, { 0, 1, 0, 99 }, "Twister vs a flier")
+  doubled(DIG, EARTHQUAKE, { 0, 1, 0 }, "Earthquake vs a digger")
+  doubled(DIG, MAGNITUDE, { 50, 0, 1, 0 }, "Magnitude vs a digger")
+  doubled(DIVE, SURF, { 0, 1, 0 }, "Surf vs a diver")
+  -- Sky Uppercut and Thunder reach a flier without doubling.
+  local base = plainDamage(SKY_UPPERCUT, { 0, 1, 0 })
+  local b = semiFoe(FLY, SKY_UPPERCUT)
+  b.rng = scriptedRng({ 0, 1, 0 })
+  local events = b:runTurn(MOVE, MOVE)
+  check("Sky Uppercut does not double", find(events, "damage", "player").amount == base)
+end
+
+---------------------------------------------------------------------------
 -- Controller: no menu or AI for a locked side
 ---------------------------------------------------------------------------
 do

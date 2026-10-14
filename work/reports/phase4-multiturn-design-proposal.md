@@ -128,7 +128,10 @@ Bounce), Rampage, Uproar, Rollout, Bide and Fury Cutter are later slices.
 - Solar Beam "always charges" is exact while no weather exists; a weather
   slice must note sun spends PP before the canceller.
 
-## Slice M2 addendum: semi-invulnerable moves (proposal, awaiting review)
+## Slice M2 addendum: semi-invulnerable moves
+
+- Review: [M2 design review](../reviews/2026-10-14-multiturn-m2-design-review.md)
+  (PASS WITH CORRECTIONS, applied below and in the implementation).
 
 Families: 155 Semi-Invulnerable (Fly 19, Dig 91, Dive 291, Bounce 340), and
 the moves that reach a semi-invulnerable target: 149 Gust, 152 Thunder,
@@ -150,7 +153,9 @@ Source facts:
   every `accuracycheck` against an ON_AIR / UNDERGROUND / UNDERWATER target
   misses without RNG unless the move set the matching IGNORE hitmarker. It
   runs before the ALWAYS_HIT/Vital Throw short-circuit, so Swift and Vital
-  Throw miss too; OHKO and Pain Split (NO_ACC_CALC_CHECK_LOCK_ON) also miss.
+  Throw miss too. OHKO and Pain Split (NO_ACC_CALC_CHECK_LOCK_ON) jump to their
+  failure label without MISSED (`:1022-1025`): "But it failed!", PP spent, no
+  RNG.
   Scripts with no accuracycheck (self moves, Psych Up, Memento) are
   unaffected.
 - Hit-through: Gust and Twister (ON_AIR: IGNORE + damage x2, `:1822-1828,
@@ -170,3 +175,22 @@ script has an `accuracycheck` (the main hit path including ALWAYS_HIT, Vital
 Throw, OHKO and Pain Split, Explosion after its crit/damage draws, Triple
 Kick per kick, the primary status / confuse / Swagger handlers); the
 damage multiplier block gains the x2 cases.
+
+Corrections from the M2 design and implementation reviews (applied):
+
+- OHKO / Pain Split against a semi-invulnerable target: `moveFailed`, not a
+  miss (above).
+- Earthquake / Magnitude miss leaf (`data/battle_scripts_1.s:1867-1875`) runs
+  typecalc: an immune target prints "It doesn't affect" (resultmessage,
+  `src/battle_script_commands.c:1937`), no RNG. Explosion's miss after its
+  typecalc does the same (this also corrects its ordinary-miss text).
+- Jump Kick / Hi Jump Kick: the semi-invulnerable miss returns before
+  `CheckWonderGuardAndLevitate`, so the immunity pre-scan is skipped: "missed"
+  and the crash (1 HP against an immune target, random multiplier drawn).
+- The semi-invulnerable check replaces the roll at each existing accuracy
+  site, after that move's own gates (status/confuse/Teeter/Tickle gates,
+  Endeavor's HP gate, Explosion's Damp and crit/damage draws, Magnitude's
+  strength roll).
+- AI_CheckBadMove has no branch for 147/149/152/155/207 (returns 0); weather
+  is unmodeled, so Thunder always rolls 70. Gust, Sky Uppercut, Surf and the
+  Fly/Dig/Dive turn-2 hit share the tracked plain-hit roll gap.

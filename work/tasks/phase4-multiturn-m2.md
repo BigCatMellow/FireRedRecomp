@@ -1,7 +1,9 @@
 # Task: locked multi-turn moves, slice M2 (semi-invulnerable)
 
 - Task ID: `P4-MULTITURN-M2`
-- Status: `IMPLEMENTED — awaiting independent review`; ROM fixture pending
+- Status: `DONE — independently reviewed PASS WITH CORRECTIONS (applied)`; ROM fixture pending
+- Reviews: [design](../reviews/2026-10-14-multiturn-m2-design-review.md),
+  [implementation](../reviews/2026-10-14-multiturn-m2-implementation-review.md)
 - Lane: full relay. Owner delegation 2026-10-14 ("Keep going"); battle files.
 - Builds on: [M1](phase4-multiturn-m1.md); design
   [proposal, M2 addendum](../reports/phase4-multiturn-design-proposal.md).
@@ -28,8 +30,15 @@ See the M2 addendum: `data/battle_scripts_1.s:239-243,1822-1858,1888-1891,
 ## Known limits
 
 Weather (Thunder accuracy in rain/sun), Lock-On/Mind Reader, Protect,
-Whirlpool (trap family blocked), double battles.
+Whirlpool (trap family blocked), double battles, Transform. Gust, Sky
+Uppercut, Surf and the Fly/Dig/Dive turn-2 hit draw one fewer `Random()`
+than source (the tracked plain-hit `seteffectwithchance` gap). Oak's
+tutorial accuracy short-circuit runs before the semi check in source
+(unreachable: no semi-invulnerable foe in the first battle).
 
 ## Evidence (Worker, 2026-10-14)
 
-Multi-turn 64/0; full suite and repository checker in the PR.
+Multi-turn 64/0 at 396b34b. After the review corrections: multi-turn 83/0
+(19 new checks: every accuracy site, OHKO/Pain Split failure, Earthquake/
+Explosion no-effect texts, Hi Jump Kick crash, Bounce air, x2 per move);
+mutations of each correction and multiplier are killed; full suite 171 PASS.

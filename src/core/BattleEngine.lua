@@ -1682,7 +1682,9 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
       damage, move.type, attacker.types, defender.types, self.typeChart)
     damage = BattleFormulas.applyRandomDamageMultiplier(damage, self.rng)
     local hit = self:accuracyRoll(attacker, defender, move, moveId)
-    if not hit then
+    -- A miss after typecalc keeps DOESNT_AFFECT_FOE, so resultmessage
+    -- (bsc.c:1937) prints "It doesn't affect" for an immune target.
+    if not hit and not flags.noEffect then
       events[#events + 1] = { type = "miss", side = attackerSide }
       settleExplosion(false)
       return
@@ -1855,8 +1857,9 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
     or move.effect == BattleEngine.EFFECT_VITAL_THROW
     or move.effect == BattleEngine.EFFECT_OHKO
     or move.effect == BattleEngine.EFFECT_PAIN_SPLIT
+  local semiMiss = scriptHasAccuracyCheck and self:semiInvulnerableMiss(defender, move, moveId)
   local hit
-  if scriptHasAccuracyCheck and self:semiInvulnerableMiss(defender, move, moveId) then
+  if semiMiss then
     hit = false
   elseif needsAccuracyCheck then
     hit = tutorialAccuracy or self:accuracyRoll(attacker, defender, move, moveId)
@@ -1875,12 +1878,33 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
   end
 
   if not hit then
+    if semiMiss and (move.effect == BattleEngine.EFFECT_OHKO
+        or move.effect == BattleEngine.EFFECT_PAIN_SPLIT) then
+      -- NO_ACC_CALC(_CHECK_LOCK_ON) against a semi-invulnerable target jumps
+      -- to the script's failure label without MISSED (bsc.c:1022-1025):
+      -- "But it failed!", PP already spent, no RNG.
+      events[#events + 1] = { type = "moveFailed", side = attackerSide }
+      return
+    end
+    if BattleEngine.HITS_UNDERGROUND[move.effect] then
+      -- BattleScript_HitAllWithUndergroundBonusMissed (bs1.s:1867-1875)
+      -- runs typecalc: an immune target prints "It doesn't affect" instead
+      -- of "missed" (resultmessage, bsc.c:1937). No RNG.
+      local _, immunity = BattleFormulas.typeCalc(
+        1, move.type, attacker.types, defender.types, self.typeChart)
+      events[#events + 1] = immunity.noEffect
+        and { type = "noEffect", side = attackerSide, target = defenderSide }
+        or { type = "miss", side = attackerSide }
+      return
+    end
     if move.effect == 45 and (moveId == 26 or moveId == 136) then
       -- Ordinary accuracy failure already scans type immunity in source,
       -- before resultmessage/the crash guard. This pure query spends no RNG.
+      -- AccuracyCalcHelper's semi-invulnerable miss returns before that
+      -- scan, so the crash happens even against an immune target.
       local _, immunity = BattleFormulas.typeCalc(
         1, move.type, attacker.types, defender.types, self.typeChart)
-      if immunity.noEffect then
+      if immunity.noEffect and not semiMiss then
         events[#events + 1] = { type = "noEffect", side = attackerSide, target = defenderSide }
         return
       end
