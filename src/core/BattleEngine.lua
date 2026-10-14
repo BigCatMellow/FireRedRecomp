@@ -2837,12 +2837,12 @@ end
 --         is no in-loop checkFaint;
 --       - the per-hit damage events carry no effectiveness flags: the loop
 --         body has critmessage but no resultmessage (:633). The single
---         `resultmessage` at MultiHitPrintStrings (:644-645) reports the
+--         `resultmessage` at MultiHitPrintStrings (:645) reports the
 --         LAST landed hit's flags (movevaluescleanup resets them per hit),
 --         so they ride on the multiHit event, which the controller prints
 --         before "Hit N time(s)!";
 --       - {type="multiHit", hits=<hits landed>} is then emitted (:646-649);
---       - then ONE seteffectwithchance (BattleScript_MultiHitEnd, :651)
+--       - then ONE seteffectwithchance (BattleScript_MultiHitEnd, :652)
 --         for the whole move. Its `Random() % 100` is the first `&&`
 --         operand (src/battle_script_commands.c:2789), so it is drawn on
 --         every path that reaches MultiHitEnd whatever the effect byte and
@@ -2936,7 +2936,7 @@ function BattleEngine:resolveMultiHit(attackerSide, attacker, defenderSide, defe
   -- instead of returning, so the count is emitted for it too.
   events[#events + 1] = {
     type = "multiHit", side = attackerSide, hits = hits,
-    -- MultiHitPrintStrings' resultmessage (bs1.s:644-645), last hit's flags.
+    -- MultiHitPrintStrings' resultmessage (bs1.s:645), last hit's flags.
     superEffective = (lastFlags and lastFlags.superEffective) == true,
     notVeryEffective = (lastFlags and lastFlags.notVeryEffective) == true,
   }

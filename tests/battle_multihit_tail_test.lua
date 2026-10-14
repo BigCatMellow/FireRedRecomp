@@ -8,12 +8,12 @@
 --   * a KO on any hit breaks the loop; "Hit N time(s)!" (hits landed), then
 --     the trailing seteffectwithchance, then tryfaintmon (the caller's faint
 --     check, :653), then forcedSwitchNeeded when a replacement exists;
---   * MultiHitEnd's `Random() % 100` (:651; src/battle_script_commands.c
+--   * MultiHitEnd's `Random() % 100` (:652; src/battle_script_commands.c
 --     :2789, the first `&&` operand) is drawn on every landed path and on
 --     the no-effect path, although 29/44 carry effect byte 0 (`setbyte
 --     sMULTIHIT_EFFECT, 0`, :612, :845) and secondaryEffectChance 0;
 --   * the effectiveness text is printed once, by MultiHitPrintStrings'
---     resultmessage (:644-645), just before the count (:649).
+--     resultmessage (:645), just before the count (:649).
 -- Per-hit RNG is (crit, random); crit value 1 = no crit, random 0 = 100%.
 package.path = package.path .. ";./?.lua"
 
@@ -185,7 +185,7 @@ end
 do
   -- No effect (Fighting vs Ghost): acc, crit, then MultiHitNoMoreHits ->
   -- resultmessage -> jumpifmovehadnoeffect MultiHitEnd -> the % 100
-  -- (bs1.s:624, :642-647, :651). No random (it is after the no-effect
+  -- (bs1.s:624, :642-647, :652). No random (it is after the no-effect
   -- jump, :625), no count, no damage.
   local b, events = use({ 0, 1, NO_STATUS_ROLL }, { playerMove = DOUBLE_KICK, foeTypes = GHOST })
   check("Double Kick vs Ghost: noEffect only, 3 draws (acc, crit, % 100)",
@@ -340,6 +340,40 @@ do
   local _, fi = find(turn, "faint", "foe")
   check("Triple Kick unchanged: KO on kick 1 prints the count before the faint, 3 draws",
     hi and fi and hi < fi and b2.rng.draws == 3, types(turn))
+end
+
+-- Review F1: a real battler always has a numeric ability; a passing
+-- trailing roll on a 29/44 move must apply nothing (no statusKind).
+do
+  local b = battle({ 0, 1, 0, 1, 0, PASSING_ROLL }, { playerMove = DOUBLE_KICK })
+  b.foe.ability = 66
+  local events = {}
+  local ok, err = pcall(function() b:resolveMove(BattleEngine.SIDE_PLAYER, 1, events) end)
+  check("passing trailing roll vs a numeric ability applies nothing", ok and b.foe.status == 0
+    and b.rng.draws == 6 and not types(events):find("statusApplied"), tostring(err) .. " " .. types(events))
+end
+
+-- Review F4: a foe multi-hit KO on a player switch turn with a replacement
+-- emits exactly one faint (the old code emitted faint, forcedSwitchNeeded,
+-- faint).
+do
+  local b = BattleEngine.new({
+    player = BattleEngine.makeBattler({ species = 1, level = 10, stats = stats(40, 20),
+      types = NORMAL, moves = { { move = Data.MOVE_TACKLE, pp = 10 } } }),
+    foe = BattleEngine.makeBattler({ species = 4, level = 10, stats = stats(400, 10),
+      types = NORMAL, moves = { { move = DOUBLE_KICK, pp = 10 } } }),
+    moves = moves, typeChart = Data.typeChart, rng = scriptedRng({ 0, 1, 0, NO_STATUS_ROLL }),
+    hasReplacement = function() return true end,
+  })
+  local incoming = BattleEngine.makeBattler({ species = 7, level = 10, stats = stats(1, 20),
+    types = NORMAL, moves = { { move = Data.MOVE_TACKLE, pp = 10 } } })
+  local events = b:runTurn({ action = "switch", battler = incoming }, MOVE)
+  local faints = 0
+  for _, e in ipairs(events) do if e.type == "faint" then faints = faints + 1 end end
+  local hi = select(2, (function() for i, e in ipairs(events) do if e.type == "multiHit" then return e, i end end end)())
+  local fi = select(2, (function() for i, e in ipairs(events) do if e.type == "faint" then return e, i end end end)())
+  check("foe multi-hit KO on a switch turn: one faint, count first", faints == 1 and hi and fi and hi < fi
+    and b.rng.draws == 4, types(events))
 end
 
 print(("%d passed, %d failed"):format(passed, failed))

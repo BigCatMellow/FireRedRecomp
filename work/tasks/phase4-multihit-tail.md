@@ -1,7 +1,7 @@
 # Task: multi-hit KO tail for 29/44 (and Twineedle's effectiveness text)
 
 - Task ID: `P4-MULTIHIT-TAIL`
-- Status: `IMPLEMENTED — awaiting independent review`
+- Status: `DONE — independently reviewed PASS WITH CORRECTIONS (applied)`
 - Spec: [proposal follow-up](../reports/phase4-status-leftovers-design-proposal.md)
   ("Follow-up: multi-hit KO tail for 29/44"), from
   [design review](../reviews/2026-10-14-status-leftovers-design-review.md) F1
@@ -95,3 +95,19 @@
   trailing roll (inventory row 104).
 - Endure / Focus Band (`MOVE_RESULT_FOE_ENDURED` break, `:639`), Serene
   Grace, Synchronize and per-hit MOVEEND reactions are not represented.
+
+## Review (2026-10-14)
+
+[Implementation review](../reviews/2026-10-14-multihit-tail-implementation-review.md):
+PASS WITH CORRECTIONS, applied.
+
+- F1: new test, a 29/44 hit with a numeric foe ability and a passing trailing
+  roll applies nothing; removing the `entry.statusKind` guard now fails it.
+- F2: inventory row 104 wording updated.
+- F3: citations point at the commands (`bs1.s:645`, `:652`), not the labels.
+- F4: recorded event change: a foe multi-hit KO on a player switch, capture or
+  run turn with a replacement now emits a single faint (the old code emitted
+  `faint, forcedSwitchNeeded, faint`); regression test added for the switch
+  turn.
+
+`tests/battle_multihit_tail_test.lua`: 83 passed, 0 failed.

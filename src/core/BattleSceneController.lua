@@ -341,7 +341,7 @@ function BattleSceneController:_eventMessages(events)
       -- families the effectiveness flags ride on this event, not on each
       -- damage event: source prints them once via MultiHitPrintStrings'
       -- resultmessage, just before the count (data/battle_scripts_1.s
-      -- :644-649). Triple Kick's damage events still carry their own.
+      -- :645-649). Triple Kick's damage events still carry their own.
       if event.superEffective then add("It's super effective!") end
       if event.notVeryEffective then add("It's not very effective...") end
       add(("Hit %d time(s)!"):format(event.hits))

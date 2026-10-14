@@ -935,7 +935,7 @@ check("Double Kick (EFFECT_DOUBLE_HIT) lands exactly 2 hits", #dmgEvents == 2, #
 check("Double Kick's trailing multiHit event reports 2 hits",
   statEvents[#statEvents].type == "multiHit" and statEvents[#statEvents].hits == 2, statEvents[#statEvents])
 -- Was 5 before the multi-hit tail follow-up; +1 for MultiHitEnd's
--- seteffectwithchance roll (bs1.s:651, bsc.c:2789).
+-- seteffectwithchance roll (bs1.s:652, bsc.c:2789).
 check("Double Kick consumes exactly 6 RNG draws (1 accuracy + 2*(crit+damage) + 1 trailing % 100, zero hit-count RNG)",
   battle.rng.draws == 6, battle.rng.draws)
 
@@ -964,7 +964,7 @@ for _, e in ipairs(statEvents) do
   if e.type == "damage" then dmgEvents[#dmgEvents + 1] = e end
 end
 check("Double Slap's single-roll branch (first roll 1) lands exactly 3 hits", #dmgEvents == 3, #dmgEvents)
--- Was 8; +1 for MultiHitEnd's seteffectwithchance roll (bs1.s:651).
+-- Was 8; +1 for MultiHitEnd's seteffectwithchance roll (bs1.s:652).
 check("single-roll branch consumes exactly 9 draws (1 acc + 1 hitcount + 3*(crit+damage) + 1 % 100)",
   battle.rng.draws == 9, battle.rng.draws)
 
@@ -982,7 +982,7 @@ for _, e in ipairs(statEvents) do
   if e.type == "damage" then dmgEvents[#dmgEvents + 1] = e end
 end
 check("Fury Attack's two-roll branch (first=3, second=3) lands exactly 5 hits", #dmgEvents == 5, #dmgEvents)
--- Was 13; +1 for MultiHitEnd's seteffectwithchance roll (bs1.s:651).
+-- Was 13; +1 for MultiHitEnd's seteffectwithchance roll (bs1.s:652).
 check("two-roll branch consumes exactly 14 draws (1 acc + 2 hitcount + 5*(crit+damage) + 1 % 100)",
   battle.rng.draws == 14, battle.rng.draws)
 
@@ -999,7 +999,7 @@ for _, e in ipairs(statEvents) do
 end
 check("Fury Attack's two-roll branch (first=2, second=0) lands exactly 2 hits", #dmgEvents == 2, #dmgEvents)
 -- Was 7 (design review F1 named this assertion); +1 for MultiHitEnd's
--- seteffectwithchance roll (bs1.s:651).
+-- seteffectwithchance roll (bs1.s:652).
 check("that two-roll branch consumes exactly 8 draws (1 acc + 2 hitcount + 2*(crit+damage) + 1 % 100)",
   battle.rng.draws == 8, battle.rng.draws)
 
@@ -1009,7 +1009,7 @@ check("that two-roll branch consumes exactly 8 draws (1 acc + 2 hitcount + 2*(cr
 -- Multi-hit tail follow-up (intentional change): source breaks the loop at
 -- `jumpifhasnohp BS_TARGET` -> BattleScript_MultiHitPrintStrings, prints
 -- "Hit 1 time(s)!" (data/battle_scripts_1.s:615, :646-649), draws
--- MultiHitEnd's `% 100` (:651) and only then runs `tryfaintmon BS_TARGET`
+-- MultiHitEnd's `% 100` (:652) and only then runs `tryfaintmon BS_TARGET`
 -- (:653), which is the CALLER's faint check here. So resolveMove itself no
 -- longer emits the faint; this test previously asserted the old in-loop
 -- faint and "no trailing multiHit" shape.

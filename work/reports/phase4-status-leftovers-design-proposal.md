@@ -510,7 +510,7 @@ Recorded from review F1 as a separate fast-lane correction. It must cover:
   shape;
 - the effectiveness text ("It's super effective!" / "not very
   effective...") printed once after the loop, just before "Hit N
-  time(s)!" (`data/battle_scripts_1.s:644-649`), not after every hit; this
+  time(s)!" (`data/battle_scripts_1.s:645-649`), not after every hit; this
   also applies to Twineedle (L1 implementation review F1);
 - a dedicated source-order flag for the multi-hit tail instead of keying it
   on `statusKind` (review F2).
@@ -519,7 +519,7 @@ Recorded from review F1 as a separate fast-lane correction. It must cover:
 
 - Multi-hit effectiveness text: resolved for 29, 44 and 77 by the
   follow-up above (printed once, just before "Hit N time(s)!",
-  `bs1.s:644-649`). Triple Kick (104) has its own loop and still prints it
+  `bs1.s:645-649`). Triple Kick (104) has its own loop and still prints it
   per kick (inventory row 104; out of this follow-up's scope).
 - Not represented:
   - Battle Armor / Shell Armor skipping the crit draw (an existing gap,
