@@ -197,8 +197,10 @@ Corrections from the M2 design and implementation reviews (applied):
 
 ## Slice M3 addendum: Rampage
 
-- Status: `PROPOSAL — awaiting design review`
+- Status: `PROPOSAL — independently reviewed PASS WITH CORRECTIONS (applied)`
 - Task: [P4-MULTITURN-M3](../tasks/phase4-multiturn-m3.md)
+- Review: [M3 design review](../reviews/2026-10-14-multiturn-m3-design-review.md)
+  (PASS WITH CORRECTIONS; F1-F4 applied below and in the implementation).
 
 Family: 27 Rampage: Thrash (37, Normal 90), Petal Dance (80, Grass 70),
 Outrage (200, Dragon 90). All three have accuracy 100,
@@ -279,7 +281,11 @@ Source facts:
     at end of turn, with **no confusion even on the last turn**.
   - Missed roll against an immune target: `CheckWonderGuardAndLevitate`
     (`:1102`) sets `targetNotAffected` and the text is "It doesn't affect"
-    (`:1937`). This has the same end-of-turn cancel.
+    (`:1937`). This has the same end-of-turn cancel. **Not** against a
+    semi-invulnerable target (review F1): `AccuracyCalcHelper` returns
+    before the roll and before that scan (`bsc.c:958-1001`), so the miss
+    draws nothing, prints "missed", sets no flag, and the lock continues
+    (a last turn still confuses).
   - Ordinary miss: the lock continues and the counter ticks. A miss on
     the last turn still confuses.
   - Faint clears status2. A freshly frozen battler that thaws later in the
@@ -299,13 +305,15 @@ Design:
   MULTIPLETURNS and LOCK_CONFUSE equal for this family, so one field is
   enough, and it is exclusive with `charging`. It reuses `lockedSlot`.
   Faint, switch-in and `cancelMultiTurnMoves` clear it.
-  `isLocked` = `charging or rampageTurns > 0 or recharge`. A per-turn
+  `isLocked` = `charging or rampageTurns > 0 or (recharging and
+  rechargeTimer > 1)` (F4: the recharge term is unchanged). A per-turn
   `targetNotAffected` flag on the battler is reset at `runTurn` start and
   set by a no-effect hit or by a missed roll against an immune target.
 - Move path: `useMove` every turn, then accuracy.
-  - Miss: PP (when `pp > 0`, also on locked turns). On a no-effect miss,
-    the `noEffect` text and the flag, with no RNG (a pure `typeCalc`
-    query, as for Jump Kick). Otherwise `miss`.
+  - Miss: PP (when `pp > 0`, also on locked turns). On a no-effect miss
+    that is not a semi-invulnerable miss (F1: `not semiMiss`, as for Jump
+    Kick), the `noEffect` text and the flag, with no RNG (a pure
+    `typeCalc` query). Otherwise `miss`.
   - Hit: PP only when `rampageTurns == 0`. The ordinary crit, damage,
     typecalc and random multiplier. The seteffectwithchance draw always
     happens, also in the no-effect branch. On turn 1, a hit with an
@@ -320,6 +328,16 @@ Design:
   draws `% 4` and emits `fatigueConfusion {side}` instead of
   `confusionApplied`. The sleeping-battler cancel in `resolveEndTurn`
   also covers `rampageTurns`.
+- Engine sites (review F3):
+  1. ppreduce: split. A hit skips it while `rampageTurns > 0`; a miss
+     decrements only when `pp > 0` (the M2 `noPPDeduct` flag is not
+     reused, since it also suppresses the miss deduction).
+  2. The no-effect seteffect-roll whitelist gains `EFFECT_RAMPAGE`.
+  3. The generic miss branch gets the Rampage `typeCalc` query (F1 gate)
+     before its plain `miss`.
+  4. The natural lock end in the end-of-turn tick also sets
+     `lockedSlot = nil`, as `cancelMultiTurnMoves` does.
+  Plus the post-canceller 0-PP check, which exempts a live rampage.
 - Controller: one text, `fatigueConfusion` → "X became\nconfused due to
   fatigue!" (`battle_message.c:177`). The menu skip and the foe AI skip
   already follow `isLocked`.
@@ -331,10 +349,16 @@ doubles-only, `src/battle_main.c:4093-4111`):
 | Turn | Draws (in order) |
 | --- | --- |
 | 1, hit with effect | [cancellers] accuracy, crit, damage multiplier, seteffect `%100`, `&1` (lock length) |
-| 1, no-effect hit | accuracy, crit, damage multiplier, seteffect `%100` (no lock; PP spent) |
-| 1 or locked, miss | accuracy only |
-| locked, hit or no-effect hit | accuracy, crit, damage multiplier, seteffect `%100` |
+| 1, no-effect hit | [cancellers] accuracy, crit, damage multiplier, seteffect `%100` (no lock; PP spent) |
+| 1 or locked, miss | [cancellers] accuracy only (no draw against a semi-invulnerable target) |
+| locked, hit or no-effect hit | [cancellers] accuracy, crit, damage multiplier, seteffect `%100` |
 | end of last turn | `%4` confusion length, unless already confused, Own Tempo, or unable |
+
+`[cancellers]` (review F2) means, on every turn including locked ones: a
+battler frozen (also earlier this turn) draws `%5`; a confused battler
+draws `&1`, plus the self-hit damage multiplier on a self-hit (which ends
+the turn and the lock); a paralyzed battler draws `%4` (0 ends the turn
+and the lock).
 
 Known limits: Protect, Disable, Taunt, Imprison, Encore, Torment, Truant,
 Attract and Yawn, with their cancel and unable flags. Wonder Guard (sets

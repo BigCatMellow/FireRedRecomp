@@ -83,6 +83,8 @@
 --   {type="alreadyConfused", side=<target>}
 --   {type="confusionPrevented", side=<target>} -- Own Tempo
 --   {type="chargeTurn", side=, move=, kind=}  -- two-turn move, turn 1
+--   {type="fatigueConfusion", side=}  -- rampage lock ended: "became
+--    confused due to fatigue!" (ENDTURN_THRASH)
 --   {type="mustRecharge", side=}       -- recharge canceller
 --   {type="battleEnd", outcome="playerWon"|"playerLost"|"ran"|"caught"}
 --
@@ -765,6 +767,8 @@ BattleEngine.EFFECT_SNORE = 92
 -- charge moves (data/battle_scripts_1.s:777-806, :1061-1066, :1107-1111,
 -- :1807-1820, :1899-1913).
 BattleEngine.EFFECT_RECHARGE = 80
+-- Slice M3: Thrash/Petal Dance/Outrage (data/battle_scripts_1.s:585-593).
+BattleEngine.EFFECT_RAMPAGE = 27
 BattleEngine.EFFECT_SEMI_INVULNERABLE = 155
 BattleEngine.MOVE_SURF = 57
 BattleEngine.MOVE_BOUNCE = 340
@@ -945,6 +949,11 @@ function BattleEngine.makeBattler(opts)
     semiInvulnerable = nil, -- "air" / "underground" / "underwater"
     recharging = false,
     rechargeTimer = 0,
+    -- Rampage: STATUS2_LOCK_CONFUSE turns (0-3; MULTIPLETURNS is set exactly
+    -- while it is nonzero for this family) and this turn's
+    -- gProtectStructs[].targetNotAffected (reset at each runTurn start).
+    rampageTurns = 0,
+    targetNotAffected = false,
     lockedSlot = nil,
     moves = {},
     statStages = {
@@ -1062,6 +1071,7 @@ function BattleEngine:recordFaint(side, events)
   battler.flinched = false
   battler.charging, battler.recharging, battler.rechargeTimer, battler.lockedSlot = false, false, 0, nil
   battler.semiInvulnerable = nil
+  battler.rampageTurns = 0
   for _, recorded in ipairs(self.faintSequence) do
     if recorded == side then return false end
   end
@@ -1413,14 +1423,15 @@ end
 -- SetMoveEffect MOVE_EFFECT_CONFUSION (src/battle_script_commands.c
 -- :2405-2418) after the caller's script gates: Own Tempo or already
 -- confused -> silent; otherwise `(Random() % 4) + 2` turns and "became
--- confused!".
-function BattleEngine:applyConfusion(targetSide, target, events)
+-- confused!". `eventType` replaces that text's event (the rampage end runs
+-- BattleScript_ThrashConfuses instead, src/battle_util.c:966-968).
+function BattleEngine:applyConfusion(targetSide, target, events, eventType)
   if target.ability == BattleEngine.ABILITY_OWN_TEMPO
       or (target.confusionTurns or 0) > 0 then
     return false
   end
   target.confusionTurns = (self.rng:next16() % 4) + 2
-  events[#events + 1] = { type = "confusionApplied", side = targetSide }
+  events[#events + 1] = { type = eventType or "confusionApplied", side = targetSide }
   return true
 end
 
@@ -1447,10 +1458,12 @@ function BattleEngine:applySecondaryStatus2(targetSide, target, kind, events)
 end
 
 -- CancelMultiTurnMoves (src/battle_util.c:203-214), reduced to the
--- represented multi-turn state: the two-turn charge lock.
+-- represented multi-turn state: the two-turn charge lock and the rampage
+-- lock (MULTIPLETURNS + LOCK_CONFUSE; no fatigue confusion follows).
 function BattleEngine:cancelMultiTurnMoves(battler)
   battler.charging = false
   battler.semiInvulnerable = nil
+  battler.rampageTurns = 0
   if not battler.recharging then battler.lockedSlot = nil end
 end
 
@@ -1458,10 +1471,11 @@ end
 -- (MULTIPLETURNS or RECHARGE, src/battle_main.c:3125-3130): the controller
 -- must not open a menu or run the foe AI, and runTurn uses the locked move.
 -- A recharge whose timer would lapse at this turn's start (timer 1, the
--- battler did not act last turn) no longer locks.
+-- battler did not act last turn) no longer locks. A rampage locks while
+-- its LOCK_CONFUSE counter is nonzero.
 function BattleEngine:isLocked(side)
   local b = self:battler(side)
-  return b.charging or (b.recharging and b.rechargeTimer > 1)
+  return b.charging or (b.rampageTurns or 0) > 0 or (b.recharging and b.rechargeTimer > 1)
 end
 
 -- AccuracyCalcHelper's semi-invulnerable checks: an ON_AIR / UNDERGROUND /
@@ -1511,7 +1525,8 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
   -- the lock is cancelled before it moves (sleep/freeze applied by a faster
   -- foe); source chose that move at selection time.
   local turnLocked = self.lockedThisTurn and self.lockedThisTurn[attackerSide]
-  local lockedTurn = attacker.charging or attacker.recharging or turnLocked
+  local rampaging = (attacker.rampageTurns or 0) > 0
+  local lockedTurn = attacker.charging or attacker.recharging or rampaging or turnLocked
   if lockedTurn then
     allMovesUnusable = false
     -- runTurn already passed the locked slot; a lock cancelled earlier this
@@ -1587,7 +1602,9 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
   -- Source checks PP after the cancellers (src/battle_script_commands.c
   -- :833-842); a locked action whose lock was cancelled earlier this turn
   -- reaches it with no NO_PPDEDUCT, so a spent move reports no PP here.
+  -- A live rampage (MULTIPLETURNS) bypasses the check (:838-839).
   if lockedTurn and not attacker.charging and not attacker.recharging
+      and (attacker.rampageTurns or 0) == 0
       and slot and slot.pp <= 0 then
     events[#events + 1] = { type = "noPP", side = attackerSide, move = slot.move }
     return
@@ -1873,8 +1890,18 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
   -- runs ppreduce). Real HITMARKER_NO_PPDEDUCT means Struggle (no `slot`,
   -- see above) skips this step entirely -- there is no move slot of its
   -- own to decrement.
+  -- Rampage (data/battle_scripts_1.s:585-593): a locked hit jumps over
+  -- ppreduce (jumpifstatus2 MULTIPLETURNS), but a locked miss reaches
+  -- BattleScript_PrintMoveMissed's ppreduce, which spends nothing at 0 PP
+  -- (bsc.c:1147; reachable because the 0-PP check is bypassed while locked).
+  local rampageLocked = move.effect == BattleEngine.EFFECT_RAMPAGE
+    and (attacker.rampageTurns or 0) > 0
   if slot and not isEndeavor and not isMagnitude and not self.noPPDeduct then
-    slot.pp = slot.pp - 1
+    if not rampageLocked then
+      slot.pp = slot.pp - 1
+    elseif not hit and slot.pp > 0 then
+      slot.pp = slot.pp - 1
+    end
   end
 
   if not hit then
@@ -1922,6 +1949,20 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
       -- damage tutorial. No hit/effectiveness or ordinary recoil result here.
       self:checkFaint(attackerSide, events)
       return
+    end
+    if move.effect == BattleEngine.EFFECT_RAMPAGE and not semiMiss then
+      -- A failed roll runs CheckWonderGuardAndLevitate (bsc.c:1102): an
+      -- immune target sets targetNotAffected and resultmessage prints "It
+      -- doesn't affect" (:1937); the rampage is cancelled at end of turn.
+      -- AccuracyCalcHelper's semi-invulnerable miss returns before that
+      -- scan (:958-1001): plain "missed", lock kept. Pure query, no RNG.
+      local _, immunity = BattleFormulas.typeCalc(
+        1, move.type, attacker.types, defender.types, self.typeChart)
+      if immunity.noEffect then
+        attacker.targetNotAffected = true
+        events[#events + 1] = { type = "noEffect", side = attackerSide, target = defenderSide }
+        return
+      end
     end
     events[#events + 1] = { type = "miss", side = attackerSide }
     return
@@ -2323,6 +2364,9 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
     -- the later `&&` term that checks MOVE_RESULT_NO_EFFECT and blocks the
     -- actual effect. The roll must still be consumed here; its result is
     -- simply discarded. See BattleFormulas.secondaryEffectRoll's comment.
+    -- Rampage: typecalc sets targetNotAffected (bsc.c:1340); turn 1 sets
+    -- no lock, a locked turn is cancelled at end of turn (no confusion).
+    if move.effect == BattleEngine.EFFECT_RAMPAGE then attacker.targetNotAffected = true end
     if BattleEngine.HIT_VARIANT_STAT_MOVES[move.effect]
         or BattleEngine.SELF_DROP_HIT_MOVES[move.effect]
         or move.effect == BattleEngine.EFFECT_ALL_STATS_UP_HIT
@@ -2330,7 +2374,8 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
         or moveId == BattleEngine.MOVE_BOUNCE
         or BattleEngine.STATUS2_HIT_MOVES[move.effect]
         or move.effect == BattleEngine.EFFECT_SMELLINGSALT
-        or move.effect == BattleEngine.EFFECT_RECHARGE then
+        or move.effect == BattleEngine.EFFECT_RECHARGE
+        or move.effect == BattleEngine.EFFECT_RAMPAGE then
       -- Smelling Salt's byte is CERTAIN, which skips the roll only when the
       -- move had an effect; a no-effect hit falls to the rolling branch.
       BattleFormulas.secondaryEffectRoll(self.rng, move.secondaryEffectChance)
@@ -2463,6 +2508,20 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
     attacker.recharging = true
     attacker.rechargeTimer = 2
     attacker.lockedSlot = moveSlot
+  end
+
+  if move.effect == BattleEngine.EFFECT_RAMPAGE then
+    -- seteffectwithchance always draws `Random() % 100` (chance 100, not
+    -- CERTAIN). confuseifrepeatingattackends set MOVE_EFFECT_THRASH |
+    -- AFFECTS_USER only when LOCK_CONFUSE was clear (bsc.c:6849-6855), so
+    -- only turn 1 locks: MULTIPLETURNS, gLockedMoves and
+    -- LOCK_CONFUSE_TURN((Random() & 1) + 2) (:2719-2730). The guards test
+    -- the live attacker, so a KO of the target still locks.
+    BattleFormulas.secondaryEffectRoll(self.rng, move.secondaryEffectChance)
+    if (attacker.rampageTurns or 0) == 0 and attacker.hp > 0 then
+      attacker.rampageTurns = (self.rng:next16() % 2) + 2
+      attacker.lockedSlot = moveSlot
+    end
   end
 
   local status2Kind = BattleEngine.STATUS2_HIT_MOVES[move.effect]
@@ -2804,7 +2863,9 @@ function BattleEngine:resolveEndTurn(events, sides)
   self.player.flinched, self.foe.flinched = false, false
   -- ...and cancels a sleeping battler's multi-turn move (:2941-2942).
   for _, b in ipairs({ self.player, self.foe }) do
-    if StatusConditions.isAsleep(b.status) and b.charging then self:cancelMultiTurnMoves(b) end
+    if StatusConditions.isAsleep(b.status) and (b.charging or (b.rampageTurns or 0) > 0) then
+      self:cancelMultiTurnMoves(b)
+    end
   end
   self:decaySideTimers(events)
   self:resolveStatusEndTurn(events, sides)
@@ -2852,6 +2913,23 @@ function BattleEngine:resolveStatusEndTurn(events, sides)
         end
       end
     end
+    -- ENDTURN_THRASH (src/battle_util.c:953-973), after this battler's
+    -- status damage. A faint above already cleared the lock (recordFaint).
+    if (battler.rampageTurns or 0) > 0 then
+      battler.rampageTurns = battler.rampageTurns - 1
+      if battler.targetNotAffected then
+        -- WasUnableToUseMove: the cancel points that set the other flags
+        -- already called cancelMultiTurnMoves during the turn.
+        self:cancelMultiTurnMoves(battler)
+      elseif battler.rampageTurns == 0 then
+        battler.lockedSlot = nil
+        if (battler.confusionTurns or 0) == 0 then
+          -- SetMoveEffect(TRUE, CONFUSION | AFFECTS_USER): primary, so no
+          -- Shield Dust/Safeguard; Own Tempo silent with no draw.
+          self:applyConfusion(side, battler, events, "fatigueConfusion")
+        end
+      end
+    end
   end
 end
 
@@ -2875,6 +2953,9 @@ function BattleEngine:runTurn(playerAction, foeAction)
   -- (src/battle_main.c:2940 HandleEndTurn_ContinueBattle; flinch only
   -- matters within the turn it was set, so clearing here is equivalent).
   self.player.flinched, self.foe.flinched = false, false
+  -- gProtectStructs[].targetNotAffected is per turn (cleared with the
+  -- other protect structs after the end-of-turn effects).
+  self.player.targetNotAffected, self.foe.targetNotAffected = false, false
   -- A locked side's chosen action is replaced by its locked move.
   self.lockedThisTurn = {
     [BattleEngine.SIDE_PLAYER] = self:isLocked(BattleEngine.SIDE_PLAYER),

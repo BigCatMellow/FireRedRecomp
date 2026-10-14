@@ -115,7 +115,7 @@ function BattleSceneController:_applyInvisibleEntries()
   end
 end
 
--- A locked player (charging/recharging) gets no action menu: the turn runs
+-- A locked player (charging/recharging/rampaging) gets no action menu: the turn runs
 -- with the locked move as soon as the controller would enter ACTION.
 function BattleSceneController:_enterAction()
   local engine = self.engine
@@ -427,6 +427,8 @@ function BattleSceneController:_eventMessages(events)
       add(name(event.side) .. " was\nhealed of paralysis!") -- :108
     elseif event.type == "confusionApplied" then
       add(name(event.side) .. " became\nconfused!") -- battle_message.c:116
+    elseif event.type == "fatigueConfusion" then
+      add(name(event.side) .. " became\nconfused due to fatigue!") -- :177
     elseif event.type == "alreadyConfused" then
       add(name(event.side) .. " is\nalready confused!") -- :117
     elseif event.type == "confusionPrevented" then
@@ -495,7 +497,7 @@ function BattleSceneController:_runTurn(playerAction)
       return
     end
   end
-  -- A locked foe (charging/recharging) chooses nothing: no AI script, so no
+  -- A locked foe (charging/recharging/rampaging) chooses nothing: no AI script, so no
   -- AI RNG (src/battle_main.c:3125-3130); the engine uses its locked move.
   local foeMoveSlot
   if self.engine.isLocked and self.engine:isLocked("foe") then

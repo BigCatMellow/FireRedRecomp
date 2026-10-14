@@ -35,9 +35,9 @@ labels `defined_source=214`; the ROM gate checks member usage and unused IDs.
 
 | Source-confirmed semantic class | Used families | Moves | Positive power | Zero power | Admitted / rejected |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| Represented with stated limits | 104 | 243 | 175 | 68 | 243 / 0 |
+| Represented with stated limits | 105 | 246 | 178 | 68 | 246 / 0 |
 | Candidate for separate discovery | 0 | 0 | 0 | 0 | 0 / 0 |
-| Blocked on additional state or an absent cross-component path | 93 | 110 | 40 | 70 | 40 / 70 |
+| Blocked on additional state or an absent cross-component path | 92 | 107 | 37 | 70 | 37 / 70 |
 | Intentionally rejected | 1 | 1 | 1 | 0 | 0 / 1 |
 | Total used | 198 | 354 | 216 | 138 | 283 / 71 |
 | Defined but unused | 16 | 0 | 0 | 0 | no real-record claim |
@@ -53,12 +53,12 @@ families are unimplemented, not a policy decision that they should never work.
 
 ## Coverage and admission are separate
 
-The **40 admitted, semantically uncovered positive-power records** occupy
-30 effects: `26, 27, 34, 36, 42, 77, 81, 89, 105, 117, 119, 121, 122, 123, 128, 129, 135, 144, 148, 154, 158, 159, 161, 170, 185, 188, 196, 197, 200, 203`.
+The **37 admitted, semantically uncovered positive-power records** occupy
+29 effects: `26, 34, 36, 42, 77, 81, 89, 105, 117, 119, 121, 122, 123, 128, 129, 135, 144, 148, 154, 158, 159, 161, 170, 185, 188, 196, 197, 200, 203`.
 Their precise move members and counts are the `yes / C` and `yes / B` rows
 below. They reach ordinary damage because of the positive-power fallback;
 admission does not implement their effects. None is a candidate record; all
-40 need additional state/path work. This refresh supersedes the older
+37 need additional state/path work. This refresh supersedes the older
 140-fallback positive-only count; accepted intervening leaves account for the
 reduction, while 138 zero-power records are now included explicitly.
 
@@ -130,7 +130,7 @@ body (Protect/Endure, Return/Frustration, sunlight recovery, Mud/Water Sport).
 | 24 `EFFECT_EVASION_DOWN` | 230 (1; Z) | yes | R / R4 | [`BattleScript_EffectEvasionDown`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L534) | Pure single-stat stages/clamps and self/foe accuracy path; no prevention abilities/Substitute/Mist. |
 | 25 `EFFECT_HAZE` | 114 (1; Z) | yes | R | [`BattleScript_EffectHaze`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L564) | All seven stages of both battlers reset to neutral. Fast-lane batch [P4-FL3](../tasks/phase4-batch3-status-moves.md); ROM fixture pending. |
 | 26 `EFFECT_BIDE` | 117 (1; P) | yes | B | [`BattleScript_EffectBide`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L575) | setbide needs delayed damage accumulation, locked turns and release lifecycle. |
-| 27 `EFFECT_RAMPAGE` | 37, 80, 200 (3; P) | yes | B | [`BattleScript_EffectRampage`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L585) | Multiple-turn repeat and confusion-on-end need forced selection, counters and confusion. |
+| 27 `EFFECT_RAMPAGE` | 37, 80, 200 (3; P) | yes | R | [`BattleScript_EffectRampage`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L585) | Turn 1 hit sets MULTIPLETURNS and LOCK_CONFUSE (`&1`: 2-3 attacking turns, also on a KO); seteffect `%100` drawn on every hit, also no-effect; locked: no selection, no AI, PP only on a miss (0-PP check bypassed); end of the last turn "became confused due to fatigue!" (Own Tempo/already confused silent); no-effect hit or immune miss (not semi-invulnerable) cancels; flinch/paralysis/confusion self-hit/sleep/freeze cancel without confusion. Multi-turn slice [M3](../tasks/phase4-multiturn-m3.md); Protect/Disable/Taunt/Encore/Truant/Attract/Wonder Guard/Pressure/doubles absent; ROM fixture pending. |
 | 28 `EFFECT_ROAR` | 18, 46 (2; Z) | no | B | [`BattleScript_EffectRoar`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L595) | forcerandomswitch needs living-target phazing/escape, bench selection and rooted/ability veto, distinct from faint replacement. |
 | 29 `EFFECT_MULTI_HIT` | 3, 4, 31, 42, 131, 140, 154, 198, 292, 331, 333, 350 (12; P) | yes | R / R3 | [`BattleScript_EffectMultiHit`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L605) | Shared accuracy/PP, per-hit critical/damage, stop-on-KO/immunity; no item/ability hit reactions. |
 | 30 `EFFECT_CONVERSION` | 160 (1; Z) | yes | R | [`BattleScript_EffectConversion`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L658) | Random()&3 rejection loop over leading move slots to a type the user lacks (??? reads GHOST/NORMAL); fails if none. Fast-lane batch [P4-FL6](../tasks/phase4-conversion-memento.md); ROM fixture pending. |

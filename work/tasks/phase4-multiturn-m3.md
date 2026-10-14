@@ -1,7 +1,9 @@
 # Task: locked multi-turn moves, slice M3 (Rampage)
 
 - Task ID: `P4-MULTITURN-M3`
-- Status: `PROPOSAL — awaiting design review`
+- Status: `IMPLEMENTED — awaiting independent review`; ROM fixture pending
+- Design review: [PASS WITH CORRECTIONS](../reviews/2026-10-14-multiturn-m3-design-review.md);
+  F1-F4 applied in the addendum and the implementation.
 - Lane: full relay (cross-turn lock state, end-of-turn confusion, RNG
   order of moves that are already admitted).
 - Builds on: [M1](phase4-multiturn-m1.md), [M2](phase4-multiturn-m2.md),
@@ -30,6 +32,12 @@ See the M3 addendum: `data/battle_scripts_1.s:251-285,585-593,3717,
   - The `ENDTURN_THRASH` tick in `resolveStatusEndTurn`, with the
     `fatigueConfusion` event.
   - The sleeping-battler cancel and the 0-PP exemption.
+  - Review F3 sites: the split ppreduce (a locked hit skips it, a miss
+    spends PP only when `pp > 0`), `EFFECT_RAMPAGE` in the no-effect
+    roll whitelist, the Rampage immunity query on the generic miss branch
+    (gated on `not semiMiss`, F1), and `lockedSlot = nil` at the natural
+    lock end.
+  - `applyConfusion` gains an optional event-type parameter.
 - `src/core/BattleSceneController.lua`: one text.
 - Tests: multi-turn additions, inventory row 27 → `represented`, new
   `tests/phase4_rampage_effect_rom_test.lua`; report rows.
@@ -52,6 +60,8 @@ the save and party bridges (status2 is never persisted).
   applied ends the lock with no confusion.
 - A no-effect locked turn (Thrash into a Ghost) ends the lock at end of
   turn with no confusion, also on the last turn.
+- A locked miss against a semi-invulnerable target (a Ghost using Dig)
+  draws nothing, prints "missed", spends PP and keeps the lock (F1).
 - A target faint or switch keeps the lock against the replacement.
 
 ## Known limits
@@ -61,3 +71,27 @@ Wonder Guard, Pressure, Substitute, King's Rock, Persim and Lum Berries,
 Roar and Whirlwind, doubles (random target). The inherited mid-turn faint
 halt: a rampager that does not act still ticks. The general miss against
 an immune target text outside Rampage and Jump Kick.
+
+## Evidence (Worker, 2026-10-14)
+
+- Engine: `src/core/BattleEngine.lua` (`EFFECT_RAMPAGE`, `rampageTurns`,
+  `targetNotAffected`, `isLocked`, `cancelMultiTurnMoves`, `recordFaint`,
+  `resolveMoveCore` locked/0-PP/ppreduce/miss/no-effect/lock-roll sites,
+  `resolveEndTurn` sleep cancel, `resolveStatusEndTurn` ENDTURN_THRASH
+  tick, `runTurn` per-turn flag reset). Controller: `fatigueConfusion` →
+  "X became\nconfused due to fatigue!" (`battle_message.c:177`).
+- `lua5.1 tests/battle_rampage_test.lua`: 44 passed, 0 failed (scripted
+  RNG with exact draw counts: turn 1 5 draws, locked hit 4, miss 1, end
+  `%4`; 2- and 3-turn locks for all three moves; PP on turn 1, locked
+  miss, 0-PP locked hit and miss; Own Tempo and already-confused; turn-1
+  and locked no-effect hits; immune miss; semi-invulnerable miss;
+  paralysis, flinch, confusion self-hit, sleep applied and end-of-turn
+  sleep cancels; turn-1 KO and the replacement; faint clear; controller
+  menu/AI skip for both sides; text). Each F1/F3 site was mutation-checked
+  against these tests.
+- `tests/battle_multiturn_test.lua`: 83 passed, 0 failed (unchanged).
+- `tests/phase4_rampage_effect_rom_test.lua`: skips without a ROM.
+- Inventory row 27 → `represented`; partition counts 105/246 represented,
+  92/107 blocked, 37 admitted uncovered positive.
+- `bash scripts/test_all.sh`: 173 test files PASS (no-ROM mode);
+  `lua5.1 scripts/check_repository.lua`: PASS.
