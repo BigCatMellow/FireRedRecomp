@@ -1,0 +1,305 @@
+diff --git a/scripts/runtime_phase4_magnitude_replay.sh b/scripts/runtime_phase4_magnitude_replay.sh
+new file mode 100644
+index 0000000..3c06fb4
+--- /dev/null
++++ b/scripts/runtime_phase4_magnitude_replay.sh
+@@ -0,0 +1,9 @@
++#!/usr/bin/env bash
++set -euo pipefail
++ROOT=$(cd "$(dirname "$0")/.." && pwd); cd "$ROOT"
++: "${POKEPORT_ROM:?set POKEPORT_ROM to verified FireRed US v1.0}"
++lua5.1 tests/battle_engine_test.lua
++lua5.1 tests/battle_scene_controller_test.lua
++lua5.1 tests/phase4_move_effect_inventory_test.lua
++lua5.1 tests/phase4_magnitude_effect_rom_test.lua
++echo "RUNTIME_REPLAY phase4_magnitude PASS effect=126 move=222 represented-state=true singles=true"
+diff --git a/src/core/BattleEngine.lua b/src/core/BattleEngine.lua
+index 86ce6f0..04dcb53 100644
+--- a/src/core/BattleEngine.lua
++++ b/src/core/BattleEngine.lua
+@@ -452,6 +452,8 @@ BattleEngine.EFFECT_OHKO = 38
+ BattleEngine.EFFECT_ENDEAVOR = 189
+ BattleEngine.EFFECT_PAIN_SPLIT = 91
+ BattleEngine.EFFECT_RESTORE_HP = 32
++BattleEngine.EFFECT_MAGNITUDE = 126
++BattleEngine.MOVE_MAGNITUDE = 222
+ 
+ -- Real Cmd_remaininghptopower: scale the attacker's remaining HP to 48,
+ -- promote a positive underflow to one, then choose Flail/Reversal's dynamic
+@@ -474,6 +476,20 @@ function BattleEngine.eruptionPowerFromHP(hp, maxHP, storedPower)
+   return math.max(1, math.floor(hp * storedPower / maxHP))
+ end
+ 
++-- Magnitude's source command selects a transient base power with exactly one
++-- Random() % 100 result. This leaf is deliberately Magnitude-specific: it is
++-- not a shared dynamic-power abstraction and never changes catalog data.
++function BattleEngine.magnitudeResultFromRoll(roll)
++  assert(roll >= 0 and roll < 100, "Magnitude roll must be a residue 0..99")
++  if roll <= 4 then return 4, 10 end
++  if roll <= 14 then return 5, 30 end
++  if roll <= 34 then return 6, 50 end
++  if roll <= 64 then return 7, 70 end
++  if roll <= 84 then return 8, 90 end
++  if roll <= 94 then return 9, 110 end
++  return 10, 150
++end
++
+ -- Real Cmd_psywavedamageeffect: discard 11..15 from Random() % 16, then
+ -- scale the attacker's level by the accepted 50..150% value. This is a
+ -- distinct post-typecalc damage command, not ordinary base/random damage.
+@@ -955,6 +971,21 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
+ 
+   local moveId = effectiveMoveId
+   events[#events + 1] = { type = "useMove", side = attackerSide, move = moveId }
++  local isMagnitude = moveId == BattleEngine.MOVE_MAGNITUDE
++    and move.effect == BattleEngine.EFFECT_MAGNITUDE
++  if isMagnitude then
++    -- BattleScript_EffectMagnitude performs ppreduce, then its one strength
++    -- roll/message, before it enters the ordinary single-defender hit path.
++    -- Keep the selected power local, just as Flail/Eruption do, so the ROM
++    -- record's nominal power 1 remains immutable.
++    slot.pp = slot.pp - 1
++    local level, power = BattleEngine.magnitudeResultFromRoll(self.rng:next16() % 100)
++    local magnitudeMove = {}
++    for k, v in pairs(move) do magnitudeMove[k] = v end
++    magnitudeMove.power = power
++    move = magnitudeMove
++    events[#events + 1] = { type = "magnitude", side = attackerSide, level = level }
++  end
+   local isExplosion = move.effect == BattleEngine.EFFECT_EXPLOSION
+   if isExplosion then
+     -- Real EffectExplosion reaches ppreduce before tryexplosion. Damp scans
+@@ -1069,7 +1100,7 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
+   -- runs ppreduce). Real HITMARKER_NO_PPDEDUCT means Struggle (no `slot`,
+   -- see above) skips this step entirely -- there is no move slot of its
+   -- own to decrement.
+-  if slot and not isEndeavor then
++  if slot and not isEndeavor and not isMagnitude then
+     slot.pp = slot.pp - 1
+   end
+ 
+diff --git a/src/core/BattleSceneController.lua b/src/core/BattleSceneController.lua
+index 5d20136..eb0083b 100644
+--- a/src/core/BattleSceneController.lua
++++ b/src/core/BattleSceneController.lua
+@@ -186,6 +186,11 @@ function BattleSceneController:_eventMessages(events)
+   for _, event in ipairs(events) do
+     if event.type == "useMove" then
+       add(name(event.side) .. " used " .. self.moveName(event.move) .. "!")
++    elseif event.type == "magnitude" then
++      -- The engine has already selected the level and completed its model
++      -- work. Presentation only announces that literal event; it neither
++      -- infers transient power/target nor touches RNG or engine state.
++      add(("Magnitude %d!"):format(event.level))
+     elseif event.type == "miss" then
+       add(possessive(name(event.side)) .. " attack missed!")
+     elseif event.type == "moveFailed" then
+diff --git a/tests/battle_engine_test.lua b/tests/battle_engine_test.lua
+index ec3658c..c1697bf 100644
+--- a/tests/battle_engine_test.lua
++++ b/tests/battle_engine_test.lua
+@@ -67,6 +67,69 @@ check("second Ember faints the player", events[3].type == "damage" and events[3]
+ check("faint ends the 1v1 battle as playerLost", battle.outcome == "playerLost")
+ check("fainted player does not get a second action", #events == 5, #events)
+ 
++-- Magnitude is the bounded effect-126 leaf: its nominal catalog power stays
++-- one, while exactly one pre-accuracy roll selects an ephemeral power/level.
++local magnitudeMoves = {}
++for k, v in pairs(Data.moves) do magnitudeMoves[k] = v end
++magnitudeMoves[222] = { effect=126, power=1, type=Data.TYPE_GROUND, accuracy=95,
++  pp=30, secondaryEffectChance=0, target=0, priority=0, flags=0x12 }
++local function magnitudeBattle(values, side)
++  local playerMoves = { {move=222,pp=30} }
++  local foeMoves = { {move=222,pp=30} }
++  local b = BattleEngine.new({
++    player=BattleEngine.makeBattler({species=1,level=5,stats=bulbaStats,types=Data.BULBASAUR.types,moves=playerMoves}),
++    foe=BattleEngine.makeBattler({species=4,level=5,stats=charStats,types=Data.CHARMANDER.types,moves=foeMoves}),
++    moves=magnitudeMoves,typeChart=Data.typeChart,rng=scriptedRng(values),
++  })
++  return b, side or BattleEngine.SIDE_PLAYER
++end
++local magnitudeTable = {
++  {0,4,10},{4,4,10},{5,5,30},{14,5,30},{15,6,50},{34,6,50},
++  {35,7,70},{64,7,70},{65,8,90},{84,8,90},{85,9,110},{94,9,110},{95,10,150},{99,10,150},
++}
++for _, row in ipairs(magnitudeTable) do
++  local level, power = BattleEngine.magnitudeResultFromRoll(row[1])
++  check(("Magnitude residue %d maps to literal level/power"):format(row[1]), level == row[2] and power == row[3])
++end
++local magnitudeBattleHit = magnitudeBattle({35,0,1,0})
++events = {}; magnitudeBattleHit:resolveMove(BattleEngine.SIDE_PLAYER,1,events)
++check("Magnitude hit deducts one PP, preserves nominal power, and orders use/level/result",
++  magnitudeBattleHit.player.moves[1].pp == 29 and magnitudeMoves[222].power == 1
++    and events[1].type == "useMove" and events[2].type == "magnitude" and events[2].level == 7
++    and events[3].type == "damage", events[3] and events[3].type)
++check("ordinary Magnitude hit consumes strength, accuracy, critical, and damage draws", magnitudeBattleHit.rng.draws == 4, magnitudeBattleHit.rng.draws)
++local magnitudeBattleMiss = magnitudeBattle({0,95})
++events = {}; magnitudeBattleMiss:resolveMove(BattleEngine.SIDE_PLAYER,1,events)
++check("Magnitude miss retains PP and level event before miss with two draws",
++  magnitudeBattleMiss.player.moves[1].pp == 29 and events[1].type == "useMove"
++    and events[2].type == "magnitude" and events[3].type == "miss" and magnitudeBattleMiss.rng.draws == 2,
++  magnitudeBattleMiss.rng.draws)
++local magnitudeFoe = magnitudeBattle({95,0,1,0})
++events = {}; magnitudeFoe:resolveMove(BattleEngine.SIDE_FOE,1,events)
++check("Magnitude foe side retains the same singleton event and four-draw contract",
++  events[1].side == "foe" and events[2].type == "magnitude" and events[2].side == "foe" and magnitudeFoe.rng.draws == 4,
++  magnitudeFoe.rng.draws)
++local magnitudeTutorial = magnitudeBattle({65,1,0})
++magnitudeTutorial.firstBattle = true
++events = {}; magnitudeTutorial:resolveMove(BattleEngine.SIDE_PLAYER,1,events)
++check("firstBattle player Magnitude bypasses accuracy but retains one strength/crit/damage draw each",
++  events[2].type == "magnitude" and events[3].type == "damage" and magnitudeTutorial.rng.draws == 3,
++  magnitudeTutorial.rng.draws)
++local magnitudeNoEffect = magnitudeBattle({0,0,1,0})
++magnitudeNoEffect.moves[222].type = Data.TYPE_ELECTRIC
++magnitudeNoEffect.foe.types = {Data.TYPE_GROUND,Data.TYPE_GROUND}
++events = {}; magnitudeNoEffect:resolveMove(BattleEngine.SIDE_PLAYER,1,events)
++check("Magnitude no-effect follows post-accuracy critical/damage draws after level event",
++  events[1].type == "useMove" and events[2].type == "magnitude" and events[3].type == "noEffect"
++    and magnitudeNoEffect.rng.draws == 4, magnitudeNoEffect.rng.draws)
++local ordinaryAfterMagnitude = magnitudeBattle({0,1,0})
++ordinaryAfterMagnitude.moves[222] = {effect=0,power=35,type=Data.TYPE_NORMAL,accuracy=95,pp=35,priority=0}
++ordinaryAfterMagnitude.player.moves[1].move = 222
++events = {}; ordinaryAfterMagnitude:resolveMove(BattleEngine.SIDE_PLAYER,1,events)
++check("non-126 path retains prior use/damage ordering and three draws",
++  events[1].type == "useMove" and events[2].type == "damage" and ordinaryAfterMagnitude.rng.draws == 3,
++  ordinaryAfterMagnitude.rng.draws)
++
+ -- Misses still consume PP, but neither crit nor random-damage RNG.
+ battle = makeBattle({ 95 }, { { move = Data.MOVE_TACKLE, pp = 1 } }, { { move = Data.MOVE_TACKLE, pp = 1 } })
+ events = battle:runTurn({ action = "move", moveSlot = 1 }, { action = "move", moveSlot = 1 })
+diff --git a/tests/battle_scene_controller_test.lua b/tests/battle_scene_controller_test.lua
+index c67bb8d..96970c9 100644
+--- a/tests/battle_scene_controller_test.lua
++++ b/tests/battle_scene_controller_test.lua
+@@ -172,6 +172,22 @@ do
+     messages[4].text == "CHARMANDER's EVASIVENESS\nwon't go lower!", messages[4].text)
+ end
+ 
++do
++  local c = controller()
++  local playerHP, foeHP, revision = c.engine.player.hp, c.engine.foe.hp, c.revision
++  local messages = c:_eventMessages({
++    { type = "useMove", side = "player", move = 222 },
++    { type = "magnitude", side = "player", level = 7 },
++    { type = "miss", side = "player" },
++  })
++  check("Magnitude announces its supplied level exactly once between use and result messages",
++    #messages == 3 and messages[1].text:find("used", 1, true)
++      and messages[2].text == "Magnitude 7!" and messages[3].text:find("missed", 1, true),
++    messages[2] and messages[2].text)
++  check("Magnitude presentation does not mutate engine state or controller revision",
++    c.engine.player.hp == playerHP and c.engine.foe.hp == foeHP and c.revision == revision)
++end
++
+ do
+   local c = controller()
+   local messages = c:_eventMessages({ { type = "recoil", side = "foe", amount = 5, hpRemaining = 10 } })
+diff --git a/tests/phase4_magnitude_effect_rom_test.lua b/tests/phase4_magnitude_effect_rom_test.lua
+new file mode 100644
+index 0000000..9584da5
+--- /dev/null
++++ b/tests/phase4_magnitude_effect_rom_test.lua
+@@ -0,0 +1,18 @@
++package.path = package.path .. ";./?.lua"
++local BattleMove = require("import.BattleMove")
++local RomAddresses = require("import.RomAddresses")
++local RomImporter = require("import.RomImporter")
++local path = os.getenv("POKEPORT_ROM")
++if not path then print("SKIP phase4_magnitude_effect_rom_test (set POKEPORT_ROM)"); os.exit(0) end
++local ok, info = RomImporter.verify(path)
++if not ok then print("FAIL: ROM verification -- " .. tostring(info)); os.exit(1) end
++local f = assert(io.open(path, "rb")); local rom = f:read("*a"); f:close()
++local a = assert(RomAddresses["41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc"])
++local moves = BattleMove.parseTable(rom, a.gBattleMoves, RomAddresses.COUNTS.MOVES_COUNT)
++local magnitude, count = moves[222], 0
++for i = 0, RomAddresses.COUNTS.MOVES_COUNT - 1 do if moves[i].effect == 126 then count = count + 1 end end
++if not (magnitude.effect == 126 and magnitude.power == 1 and magnitude.type == 4
++  and magnitude.accuracy == 100 and magnitude.pp == 30 and count == 1) then
++  print("FAIL: Magnitude ROM record changed"); os.exit(1)
++end
++print("phase4_magnitude_effect_rom_test: 1 passed, 0 failed")
+diff --git a/tests/phase4_move_effect_inventory_test.lua b/tests/phase4_move_effect_inventory_test.lua
+index 55bdccd..26e4073 100644
+--- a/tests/phase4_move_effect_inventory_test.lua
++++ b/tests/phase4_move_effect_inventory_test.lua
+@@ -135,7 +135,7 @@ local inventory = {
+   [123] = {"blocked_on_state", true, 1, {218}}, -- EFFECT_FRUSTRATION
+   [124] = {"blocked_on_state", false, 0, {219}}, -- EFFECT_SAFEGUARD
+   [125] = {"blocked_on_state", true, 1, {172,221}}, -- EFFECT_THAW_HIT
+-  [126] = {"candidate", true, 1, {222}}, -- EFFECT_MAGNITUDE
++  [126] = {"represented", true, 1, {222}}, -- EFFECT_MAGNITUDE (Magnitude only)
+   [127] = {"blocked_on_state", false, 0, {226}}, -- EFFECT_BATON_PASS
+   [128] = {"blocked_on_state", true, 1, {228}}, -- EFFECT_PURSUIT
+   [129] = {"blocked_on_state", true, 1, {229}}, -- EFFECT_RAPID_SPIN
+@@ -228,11 +228,11 @@ local inventory = {
+ local expectedTotals = {
+   moves = 354, defined = 214, used = 198, unused = 16,
+   positive = 216, zero = 138, admitted = 250, rejected = 104,
+-  admitted_uncovered_positive = 111,
++  admitted_uncovered_positive = 110,
+ }
+ local expectedClasses = {
+-  represented = {families = 51, moves = 139, positive = 104, zero = 35},
+-  candidate = {families = 19, moves = 23, positive = 10, zero = 13},
++  represented = {families = 52, moves = 140, positive = 105, zero = 35},
++  candidate = {families = 18, moves = 22, positive = 9, zero = 13},
+   blocked_on_state = {families = 127, moves = 191, positive = 101, zero = 90},
+   intentionally_rejected = {families = 1, moves = 1, positive = 1, zero = 0},
+   unused = {families = 16, moves = 0, positive = 0, zero = 0},
+diff --git a/work/reports/phase4-magnitude-implementation.md b/work/reports/phase4-magnitude-implementation.md
+new file mode 100644
+index 0000000..1dfa9da
+--- /dev/null
++++ b/work/reports/phase4-magnitude-implementation.md
+@@ -0,0 +1,33 @@
++# Bounded Magnitude implementation request
++
++- Task: `P4-F3-MAGNITUDE-IMPLEMENTATION`.
++- Scope: one route-allowlisted bridge input for Magnitude move 222/effect 126.
++- Status: pending guarded Local Worker Bridge result; not implementation or
++  capability acceptance evidence.
++
++## Requested bounded projection
++
++The request changes only the reviewed nine-path surface. In the existing
++one-attacker/one-defender engine path, it retains positive-power admission for
++the nominal-power-one Magnitude record, then after `useMove` deducts one PP,
++uses exactly one `% 100` draw to select the approved 4–10/10–150 table,
++emits `{ type = "magnitude", side = S, level = L }`, and passes a shallow
++local power copy through the existing accuracy, critical, damage, type,
++normal-random, no-effect, and post-hit path. The shared move/catalog record
++is not mutated.
++
++The controller expands only the supplied level event to one ordered message.
++Focused tests cover table boundaries, PP/event/RNG order, both sides,
++first-player `firstBattle`, no-effect behavior, non-126 preservation,
++controller non-mutation, inventory classification, and the SHA-verified
++Magnitude fixture. The replay runs those deterministic represented-state
++checks; it makes no retail text, animation, multi-target, or full-turn claim.
++
++## Exclusions and next evidence
++
++No route, runner, ROM/private data, importer/catalog/data model, admission
++rule, generic dynamic-power mechanism, targeting/doubles, Underground,
++abilities/items, cancellation expansion, UI timing/localization, links, or
++other effect family is part of this request. Only guarded `git apply`/diff,
++focused/no-ROM/SHA-ROM/replay evidence at the bridge's published revision,
++followed by a fresh independent outcome review, can establish this leaf.
+diff --git a/work/tasks/phase4-magnitude-implementation.md b/work/tasks/phase4-magnitude-implementation.md
+index ddd0bba..2acd2b1 100644
+--- a/work/tasks/phase4-magnitude-implementation.md
++++ b/work/tasks/phase4-magnitude-implementation.md
+@@ -131,3 +131,12 @@ one request after a fresh runner observation; it does not certify behavior or
+ Phase 4. The subsequent guarded result requires its own independent outcome
+ review before Orchestrator reconciliation. No runner or ROM action has occurred
+ while compiling this authority.
++
++## Guarded request content — 2026-10-10
++
++The sole authorized bridge input carries only the nine literal paths above.
++It implements the reviewed Magnitude 222/effect-126 singles projection and
++its focused evidence. Its existence is not guarded-result evidence: the Local
++Worker Bridge must independently apply, test, replay, and publish it before a
++fresh outcome reviewer may assess the result. A failed guard is terminal for
++this authority and does not permit a replacement request.

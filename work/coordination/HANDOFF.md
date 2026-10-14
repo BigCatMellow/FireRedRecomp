@@ -1,15 +1,513 @@
 # FireRedRecomp Coordination Handoff
 
-- Status: `BLOCKED — private runner toolchain lacks lua5.1; exact retries are exhausted`
-- Task ID: `P4-F3-RESTORE-HP-IMPLEMENTATION`; P5-04 route probe is separately blocked
+- Status: `READY_FOR_WORKER — bounded PR3 Party-design correction`
+- Task ID: `P6-02-PARTY-SELECTION-DESIGN`
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
 - Current plan: [`../roadmaps/RECALIBRATED_DELIVERY_PLAN.md`](../roadmaps/RECALIBRATED_DELIVERY_PLAN.md)
 
-## Current relay — 2026-10-02
+## Current relay — 2026-10-14
+
+### Latest acceptance — PR5 merged
+
+PR5 is CLOSED: independent recheck PASS for `5579782`, published review
+`f476d98`; final public CI `38645743679` / `38645738142` passed. Exact-head
+merge produced `52fbf69`. Local post-merge full178 no-ROM files and repository
+checker PASS. This closes only source386 tracker/count and normal START guard;
+no Pokédex screen, corrupt-mirror handling, ROM replay or phase completion.
+
+Exact next action: Worker finishes existing PR3 two-document corrections,
+then separate Reviewer rechecks source/allowlist/input/Egg qualifications.
+Only design PASS permits accepting its prerequisite; PR6 code still needs
+its own alignment/verification and independent review. No PR5 work remains.
+
+### Latest resume — 22:09 UTC
+
+PR5 correction is published at `5579782`, with integrated runtime `f50383e`.
+Source-bound Dex tests56/0, START21/0, full167 no-ROM files and checker PASS;
+old411 implementation fails17 new assertions. Exact-head public runs
+`38544944339` / `38544937873` passed. Independent re-review was interrupted
+before a final report; resumed in `/tmp/firered-start-dex-recheck-Ely6Vt`.
+Exact next action: finish/publish that verdict, then merge only on PASS.
+
+PR3 design review at `8a9ca76` returned NEEDS_FIX. Its report is preserved
+in `/tmp/firered-party-design-review-uRnvJN`; Worker restarted the authorized
+two-document correction (literal successor proposal, no-cycling/same-slot,
+Egg scope and repeated no-wrap input). No PR6 code acceptance is implied.
+
+New owner battle work throughPR33/main `a9e8868` was fast-forwarded without
+overwrites; it does not touch the four PR5 paths or AGENTS. Preserve its own
+review/evidence boundaries; this resume does not certify those changes.
+Earlier Worker-active descriptions below are historical, not redispatch.
+
+### Earlier checkpoint — 09:45 UTC
+
+Main recovered at `3adc7e8`; owner-merged status/ability work PR16–25 is
+preserved. Disjoint read-only audit is checking final review records for
+reconciliation, not repeating completed implementation. Active owner battle
+PR26 is outside this Worker scope. Root AGENTS is unchanged. Local main
+baseline166 no-ROM test files PASS.
+
+Audit complete: preserve bounded no-ROM PASS reviews and exact reviewed versus
+later disposition revisions (STATE records them). Current inventory85 families/
+203moves is not full battle parity. Nine new ROM fixtures remain pending.
+Status S1–S4 declare full relay, and their design requires guarded changed-RNG/
+turn-order replay evidence; merged records do not supply it. S3/S4 review
+language invoking fast-lane deferral cannot amend AGENTS. Guarded acceptance
+remains open; a separately scoped evidence package is needed, not an old retry.
+
+Independent PR5 review BLOCKED `118cd11`: pinned source counts National Dex
+1–386, while the proposed counter/tests count411. Trailing-only #387/#411
+flags incorrectly unlock the START selection. Orchestrator corrected the
+existing four-path contract and recorded the unchanged independent report at
+`4eb53da` in `/tmp/firered-start-dex-review-UA2MPZ`. This explicitly permits
+correcting the existing tracker range too; 52-byte storage/schema stays intact.
+
+Exact next action: Worker implements that correction and source-derived
+old-code-failing boundary/real StartMenu tests, merges fresh main normally,
+runs focused/full no-ROM/checker evidence, and fast-forward updates existing
+PR5. Then the separate Reviewer rechecks its exact head before merge.
+The previous Worker hit a usage limit before editing; this resume verified
+clean `4eb53da` and restarted it. No ROM/bridge/new menu feature authorized.
+
+Disjoint independent review of existing PR3 Party design is now assigned;
+its acceptance is required before PR6 implementation review. Memento AI feasibility found an existing
+`engine.hasReplacement` data path without new persistent state, but no code
+task was dispatched; newer battle changes must be checked before resuming it.
+
+## Previous checkpoint — 2026-10-13 (historical)
+
+Live main recovered at `a49e103`; public CI `38466928294` and local 161-file
+no-ROM suite PASS. Effect45 `cfdbb96` is CLOSED by independent outcome review
+`14b76dc`; its guarded request/probe allowances are consumed. Six fast-lane
+batches PR10–15 are also CLOSED within their final PASS scope, as indexed in
+TASK_REGISTER. Inventory: 70 represented families, six new ROM fixtures
+pending the next authorized guarded full suite. No phase status advances.
+
+Exact next action: assigned independent Reviewer checks existing owner-dispatched
+[PR5](https://github.com/BigCatMellow/FireRedRecomp/pull/5), its branch-local
+`work/tasks/phase6-start-dex-sanity.md`, pinned source, actual normal START
+wiring and exact-head no-ROM CI. If the source/count bound disagrees, record
+the stop and scope the smallest correction rather than accepting false parity.
+PR3/6 remain preserved; Party implementation requires prerequisite design review.
+
+Disjoint Worker inspection is read-only: determine whether Memento's missing
+trainer-AI reserve count can be derived through existing interfaces. No AI
+implementation, new state or main.lua edit is implicitly authorized. Retain
+accepted RNG and self-faint follow-ups. Owner fast-lane AGENTS supersedes the
+old per-effect setup chain only for its eligible P4 scope.
+
+PR8 fixes prospective private-path logging; historical log deletion is not
+evidenced or authorized. Preserve old isolated Worker worktree, two untracked
+handoffs and named quarantine stash. Independently merged Brick Break does
+not approve those drafts. Standing project goal remains active; goal service
+usage-limit lifecycle is controlled by user/system, not task closure.
+
+## Historical relay — superseded by current checkpoint above
+
+### Gameplay implementation published; guarded evidence passed
+
+Sole request `5fb8053` completed run `38434551595` / job `115425037342` and
+published exact ten-path implementation `cfdbb96`. Runtime, test and evidence
+hashes match the isolated Worker package. Fresh parent prerequisites passed:
+required runner online/idle, bridge queued/in-progress empty, unchanged route
+and applicable patch. Request allowance is consumed; no retry.
+
+Safe receipts: focused engine339/0, controller87/0, party29/0; both full
+suites155 files; non-skipped inventory and two-member ROM fixture3/0; required
+headless replay PASS. Every patch gate/publication passed and probe skipped.
+Only whitelisted numeric/fixed receipts were extracted; private ROM paths and
+environment-bearing summaries were not retained. Local no-ROM baseline154 and
+after155 also passed. Source package and public drafts are preserved.
+
+Exact next action: independent outcome review of `cfdbb96`, its actual
+assertions and guarded receipts against authority `96b10ce`. Then close only
+proven bounded effect45 and reassess the next playable checkpoint using the
+accepted P4/P5/P6 dependencies. No full Phase4, normal save/reload or retail
+presentation claim follows from this package. Older ready/next lines below
+are historical; do not repeat any request or probe.
+
+### Implementation authority accepted; actual patch construction dispatched
+
+Independent [authority PASS](../reviews/2026-10-13-recoil-if-miss-implementation-authority-review.md)
+accepts exact task `96b10ce`. Worker may now construct only the ten-path
+engine/controller/test/replay/evidence package in an isolated worktree and
+run no-ROM baseline/after checks. No local ROM access or direct canonical
+runtime publication is allowed.
+
+Exact next action: bounded Worker construction and local verification, then
+parent checks fresh runner/jobs/route/current-main applicability and publishes
+only `phase4-recoil-if-miss-effect-20261013.patch` as a sole-file bridge input.
+One request is available; no retry. Guarded focused/full/SHA-ROM/headless
+results and independent exact outcome review remain mandatory. Source/design/
+route/probe acceptance does not yet establish gameplay support.
+
+### Probe accepted; implementation authority awaiting exact review
+
+Independent [probe PASS](../reviews/2026-10-13-recoil-if-miss-route-probe-outcome-review.md)
+accepts `667fd16` and run `38385071588`. The one-probe allowance is consumed.
+Exact next action: independently review the compiled
+[ten-path one-request authority](../tasks/phase4-recoil-if-miss-implementation.md).
+No gameplay implementation or request is authorized before that PASS.
+
+After PASS, bounded Worker construction/local no-ROM checks occur in an
+isolated worktree; parent publishes only the single authorized bridge input
+after fresh runner/jobs/route/applicability checks. Guarded publication must
+pass focused/full/SHA-ROM/headless evidence and separate outcome review.
+Preserve explicit model-to-party persistence limits; do not imply normal
+save/reload or full battle parity. No runtime code has changed yet.
+
+### Probe completed successfully; independent outcome review assigned
+
+Sole-file probe `667fd16` completed run `38385071588` / job `115254712929`
+successfully. Immediately before dispatch the required runner was online/idle
+and bridge queued/in-progress lists were empty. Checkout, input identification,
+explicit route, Lua, private supported-ROM SHA and probe completion passed.
+All seven patch-only steps skipped. No gameplay tests/replay/patch ran and no
+private paths/data were retained in public receipts. One-probe allowance is
+consumed; no retry or second input is authorized.
+
+Exact next action: independent outcome review of `667fd16` and its guarded
+receipt. Only PASS permits compiling the separately reviewed implementation
+authority; no gameplay request is authorized yet.
+
+### Configuration accepted; substrate probe dispatched
+
+Independent [configuration PASS](../reviews/2026-10-13-recoil-if-miss-route-configuration-review.md)
+accepts `1d40f3c`; retained static receipts were verified against unchanged
+bytes after a usage-limit interruption. Live main recovered at `f2bcc8a`;
+CI `38310659431` passed and no queued/in-progress jobs were observed.
+
+Exact next action: Worker creates only the
+[authorized readiness probe](../tasks/local-worker-bridge-phase4-recoil-if-miss-route-probe.md).
+Parent freshly checks runner/jobs immediately before sole-file publication,
+monitors safe step receipts and routes the outcome to independent review.
+No retry or patch is authorized. All seven patch-only steps must skip.
+Gameplay implementation has not started; configuration is now accepted.
+
+### Configuration implemented; independent static review assigned
+
+Exact configuration `1d40f3c` adds the five reviewed route arms and ten-file
+preflight before any staging. Worker reports syntax checks on 12 shell blocks,
+safe-stub selector/target/command checks, ten missing-artifact failures, and
+docs/whitespace PASS (280 Lua / 275 Markdown / 892 targets). No real tests,
+replay, ROM/private runner, probe or request ran; gameplay remains unstarted.
+
+Exact next action: independent configuration review of `1d40f3c`. Only PASS
+permits compilation of the separately bounded one-file readiness probe. Exact
+four-artifact hashes are in STATE. Existing route/shared behavior is preserved
+by Worker claim and requires independent verification.
+
+### Route plan accepted; configuration dispatched
+
+Independent [PASS](../reviews/2026-10-12-recoil-if-miss-route-plan-review.md)
+accepts route plan `04636d1`. Exact next action: Worker implements only
+[bounded configuration](../tasks/local-worker-bridge-phase4-recoil-if-miss-route-configuration.md)
+and records safe-stub/static evidence; then separate exact configuration
+review. Ten target/staging paths and five focused commands remain literal.
+Missing required artifacts must fail this new route, not silently skip.
+
+No gameplay implementation, probe/request, ROM/private-runner or test-suite
+execution is authorized. Configuration PASS permits only the separately
+bounded substrate probe; all later authority/outcome gates remain intact.
+
+### Route plan complete; independent review assigned
+
+Exact pair `04636d1` specifies ten equal target/staging paths, five focused
+commands and required headless replay/probe gates. Its additional party-bridge
+test proves crash-produced HP/PP persistence, not normal lifecycle/save-reload.
+Docs checker passed 280 Lua / 272 Markdown / 874 targets; whitespace passed.
+Public CI at prior dispatch `044c672` passed run `38251225519`.
+
+Exact next action: independent route-plan review, then on PASS compile only
+bounded route configuration. No behavior/configuration/probe/request action
+has run. Source-worker session hit usage limit before edits; design-worker
+session completed this plan under the same bounded contract. Accepted design
+and original source evidence remain intact. Gameplay implementation remains
+unstarted; documentation approvals do not establish support.
+
+### Design accepted; route planning dispatched
+
+Independent [design PASS](../reviews/2026-10-12-recoil-if-miss-design-review.md)
+accepts exact pair `b3280f9`, including corrected immunity, crash/RNG,
+controller ordering, firstBattle, faint and persistence boundaries. The
+historical source stop is resolved; no gameplay support is claimed.
+
+Exact next action: execute [bounded route planning](../tasks/local-worker-bridge-phase4-recoil-if-miss-route-plan.md)
+and independently review the exact plan. Derive literal paths/commands from
+the design's evidence requirements, particularly fatal-crash continuation and
+HP/PP persistence; do not merely copy the prior route's path count. No
+configuration/probe/request/runtime/test/ROM action is authorized yet. Existing
+drafts, source artifacts and unrelated documents remain preserved.
+
+### Revised design preserved; independent review assigned
+
+Worker completed revised design task/report at `b3280f9`, based on accepted
+source supplement `ba69269`. Exact hashes are in STATE; documentation checks
+passed (280 Lua / 269 Markdown / 847 local targets), as did whitespace.
+No runtime/test/ROM/route action ran. Public CI at prior dispatch `4dd22e1`
+passed run `38250392356`; no queued/in-progress jobs were observed.
+
+Exact next action: separate Reviewer assesses `b3280f9` against the reactivated
+criteria. On PASS, compile only a separate bounded route-planning task; on
+NEEDS_FIX/BLOCK, route the specific correction or prerequisite. Design and
+behavior remain unaccepted until their respective independent gates pass.
+
+### Source supplement accepted; bounded design reactivated
+
+Independent [PASS](../reviews/2026-10-12-recoil-if-miss-entry-state-review.md)
+accepts source pair `ba69269`, resolving the historical design source stop.
+The [design task](../tasks/phase4-recoil-if-miss-design.md) now explicitly
+incorporates neutral 1/1 entry multipliers, ordinary immunity no-effect early
+exit, nonimmune miss/crash ordering, and conditional downstream HP semantics.
+Original source artifacts and unrelated mod-design documents are preserved.
+
+Exact next action: Worker revises the existing design report and appends fresh
+task evidence, then a separate Reviewer assesses the exact committed pair.
+The old design report remains a historical stop, not an accepted design.
+No code/test/ROM/route action or Phase 4 status advancement is authorized.
+The goal service still reports usageLimited; user-directed work continues
+under the standing instruction. Older relay entries below are historical.
+
+### Source supplement preserved; exact independent review next
+
+Live main was recovered at `73cf530`; its twelve disjoint mod-design
+documents were fast-forwarded and preserved. The Researcher task/report pair
+is committed unchanged at `ba69269` with matching final handoff hashes.
+Documentation checks passed: 280 Lua / 268 Markdown / 829 local targets;
+whitespace passed. These checks do not certify the source conclusions.
+
+The [source supplement](../reports/phase4-recoil-if-miss-entry-state-discovery.md)
+traces reset multipliers, result flags, ordinary miss-time immunity precheck,
+and downstream HP gates. It identifies specific corrections to prior guard
+wording; the earlier accepted artifacts remain preserved.
+
+Exact next action: independent Reviewer assesses `ba69269` against the source
+supplement task. Only a PASS permits explicit incorporation into the blocked
+effect-45 design and a new design review. No runtime/test/ROM/route action has
+been authorized. The goal service reported usageLimited at recovery; the user
+explicitly requested continuation and standing instructions remain in force.
+Older current-relay sections below are superseded by this checkpoint.
+
+### Design BLOCK confirmed; source supplement dispatched
+
+Independent [review](../reviews/2026-10-11-recoil-if-miss-design-review.md)
+confirms **BLOCK for design completion** at `f31ae69`, with an accurate
+source-certainty stop. The previous source-lock PASS remains valid within
+its scope. No route or implementation is unlocked.
+
+Active task: [P4-F1-RECOIL-IF-MISS-ENTRY-STATE](../tasks/phase4-recoil-if-miss-entry-state-discovery.md).
+Researcher may inspect only pinned public source/current project text and
+write the supplement/task evidence. Lock ordinary incoming multipliers and
+result flags, then downstream attacker HP/faint gates after type immunity.
+No ROM/runtime/private runner or behavior action is needed or authorized.
+
+Exact next action: execute this source supplement, obtain independent exact
+review, then reactivate the stopped design with explicit additional source
+authority only after PASS. The overall project goal remains active. Earlier
+relay sections below are historical; this source task owns current dispatch.
+
+### Effect-45 design stop — exact review next
+
+The Worker authored the task/report pair preserved at `f31ae69`, then its
+session hit the service usage limit before final handoff verification.
+Orchestrator archival checks passed: whitespace and repository checker
+(280 Lua / 253 Markdown / 793 local targets). These are documentation checks,
+not independent acceptance of the design or source claims.
+
+The [report](../reports/phase4-recoil-if-miss-design.md) records a source-
+certainty stop: incoming critical/damage multiplier values, pre-existing
+no-effect flags, and downstream attacker HP handling after newly computed
+immunity need an independently assessed supplement. No values were guessed.
+Design acceptance, routes, requests, runtime and tests remain unauthorized.
+
+Exact next action: independent Reviewer assesses `f31ae69` against the
+existing task and accepted source lock, then returns PASS / NEEDS_FIX / BLOCK.
+If the stop is confirmed, compile one read-only source supplement at the
+existing public-source pin before reopening design. Preserve the Worker
+draft even if agent availability delays review; do not self-review.
+
+The standing goal/routing reconciliation independently passed at `5c76003`
+and its review was published at `6b285d7`. Earlier READY_FOR_WORKER text below
+describes that previous checkpoint; this review checkpoint supersedes it.
+
+### Standing goal activation and routing repair
+
+The user explicitly adopted [PROJECT_GOAL.md](PROJECT_GOAL.md), authorizing
+the Orchestrator to continue the bounded Worker → independent Reviewer →
+reconciliation → next-task relay toward roadmap completion. An individual
+task closure or role handoff does not complete the goal. Existing task,
+privacy, publication, and human-decision boundaries remain in force.
+
+Live `main` was recovered at `a2d6779`; GitHub queued/in-progress queries
+returned no jobs. The prior eight listed jobs are terminal successes,
+including CI `38148899950` for `a2d6779`. This observation creates no runner
+or request authority. Recheck actual jobs before later execution dispatch.
+
+Current action: assign a Worker to the effect-45 design below and obtain a
+separate independent review of its exact report. The goal's activation
+reconciles stale Restore HP/inventory/P5 routing and duplicate P0 discovery
+state; their accepted reviews remain the evidence owners. P0 target
+preparation and P2 trusted-reference input remain blocked. The named local
+Brick Break stash remains preserved outside dispatch.
+
+### Effect-45 selection reconciliation and design dispatch — 2026-10-11
+
+Live GitHub `main` was recovered at `c218da6`. Its
+[`P4-F1-RECOIL-IF-MISS-DISCOVERY`](../tasks/phase4-recoil-if-miss-source-discovery.md)
+source lock and independent exact-report
+[PASS](../reviews/2026-10-10-recoil-if-miss-source-discovery-review.md) close
+only the read-only discovery of effect 45: Jump Kick #26 and Hi Jump Kick
+#136. The lock records the ordinary accuracy-miss crash branch, source
+formula/order, current project gaps, and hard exclusions. It does not claim
+current support or authorize a route, runner/ROM action, request, test, or
+implementation.
+
+An unreviewed local Brick Break rerank that contradicted this accepted source
+lock was isolated in the recoverable named Git stash
+`quarantine-unreviewed-brick-break-rerank-2026-10-11`; it is not published,
+reviewed, or project authority.
+
+[`P4-F2-RECOIL-IF-MISS-DESIGN`](../tasks/phase4-recoil-if-miss-design.md) is
+now **READY_FOR_WORKER**. It may author only a read-only represented-singles
+design report for the exact effect-45 miss branch. It must retain separation
+from ordinary actual-hit recoil and generic misses, specify no code/tests/API,
+and preserve every source-lock exclusion. Independent exact-report review is
+required. A design PASS still authorizes neither implementation nor a route.
+
+## Historical relay entries — superseded by current checkpoint above
+
+Historical READY/queued/next-action language below describes its dated
+checkpoint only. Consult current state and accepted reviews before action.
+
+### Magnitude implementation-authority preparation — 2026-10-10
+
+The independently accepted route plan (`1347e5e`), route configuration
+(`57d6b05`), and readiness-probe outcome (`92cbba8`, run `38068726115` / job
+`114261585566`) establish only a fail-closed, ready bridge. The probe passed
+checkout, Magnitude selector, Lua, supported private-ROM SHA, and completion;
+all seven patch-only branches skipped. It neither exercised the nine-path
+allowlist nor authorized behavior.
+
+[`P4-F3-MAGNITUDE-IMPLEMENTATION`](../tasks/phase4-magnitude-implementation.md)
+is now **READY_FOR_REVIEWER**. It is a documentation-only authority for the
+accepted Magnitude 222/effect-126 singleton design: exact local table/draw/PP/
+event/presentation behavior, four focused commands, no-ROM and SHA-ROM suites,
+required replay, and the existing nine literal route paths. It permits no
+request, runner, ROM, test, replay, or behavior action now. Only an independent
+authorization PASS may unlock one fresh-runner-observation-gated future
+`phase4-magnitude-effect` request; its guarded result then needs a separate
+independent outcome review.
 
 ### Queue update — 2026-10-03
 
 ### Retry outcome — 2026-10-07
+
+### ROM-configuration recovery preparation — 2026-10-09
+
+The operator reports a private service-environment configuration and local
+verification of a supported FireRed US v1.0 file. GitHub freshly reports
+`MediaCenter` runner `24` online, idle, and labeled `firered-local`; Lua 5.1.5
+is locally available. This does not prove a GitHub job inherits the private
+environment and it does not revive any exhausted run.
+
+[`RUNNER-ROM-CONFIG-RECOVERY`](../tasks/local-worker-bridge-rom-config-recovery.md)
+is **READY_FOR_REVIEWER**. After independent PASS, it may push exactly one new
+metadata-only `runner-readiness` probe to prove checkout, route selection, Lua,
+private-ROM discovery, and the existing SHA guard. It must not record a private
+path or alter P4/P5 artifacts, scope, status, or retry limits.
+
+The independent [review](../reviews/2026-10-09-rom-configuration-recovery-review.md)
+is **PASS** at `196dfdc`. Fresh online/idle observation immediately before the
+one literal probe remains required.
+
+### ROM-configuration recovery result — 2026-10-10
+
+The sole authorized probe (`8c59ab6`, GitHub run `38007994084`, job
+`114081150936`) passed checkout, explicit route selection, Lua 5.1.5, private
+ROM discovery/SHA verification, and `Probe complete`. Patch validation,
+application, focused/full tests, replay, and publication all skipped in probe
+mode. The [result report](../reports/local-worker-bridge-rom-config-recovery.md)
+contains no private path or ROM data. It does not authorize P4/P5 recovery or
+another probe.
+
+The independent [outcome review](../reviews/2026-10-09-rom-configuration-recovery-outcome-review.md)
+is **PASS**. `RUNNER-ROM-CONFIG-RECOVERY` is closed: the private runner
+substrate is now proven. Its completion does not revive any exhausted P4/P5
+artifact. The next action is to compile and independently review separate,
+one-artifact recovery authority for Restore HP and P5.
+
+### Separate recovery authority preparation — 2026-10-09
+
+Two deliberately independent contracts now await authorization review:
+
+- [`P4-F3-RESTORE-HP-RECOVERY`](../tasks/phase4-restore-hp-recovery.md) permits
+  review of exactly one new `phase4-restore-hp-effect` artifact only if it is
+  byte-identical to the pinned canonical patch. It does not authorize artifact
+  creation yet, alter the nine-path route, or claim implementation success.
+- [`P5-04-ROUTE-PROBE-RECOVERY`](../tasks/phase5-viridian-old-man-route-probe-recovery.md)
+  permits review of exactly one new P5 readiness probe only if it is
+  byte-identical to the pinned canonical probe. It does not authorize any P5
+  behavior patch or implementation preparation.
+
+Each contract requires a fresh online/idle `firered-local` observation just
+before its sole dispatch and a separate independent review of its resulting
+job. A PASS on either contract does not grant authority for the other.
+
+Both corrected contracts are now independently **PASS** at `fae1fae`:
+[Restore HP](../reviews/2026-10-09-restore-hp-recovery-authorization-correction-review.md)
+and [P5 route probe](../reviews/2026-10-09-viridian-old-man-route-probe-recovery-authorization-correction-review.md).
+Dispatch remains one at a time. The active next action is only the P4
+byte-identical recovery artifact after a fresh runner observation; hold P5
+until the P4 guarded outcome has been recorded and independently reviewed.
+
+### Restore HP recovery outcome — 2026-10-09
+
+The sole P4 recovery artifact `dad1274` executed successfully as GitHub run
+`38008842308` / job `114083864362` and published `dc8ad06`. The job passed
+checkout, P4 route selection, Lua, private-ROM validation, bounded target
+validation/application, focused/no-ROM/SHA-ROM checks, deterministic replay,
+and publication. The independent [exact outcome review](../reviews/2026-10-09-restore-hp-implementation-outcome-review.md)
+is **PASS**. Restore HP is closed only as its accepted ordinary leaf; Phase 4
+and all excluded behavior remain open.
+
+P5 has not been dispatched. Its independently accepted recovery probe is now
+the active next action and still needs a fresh online/idle `firered-local`
+observation immediately before its one literal dispatch, followed by a
+separate outcome review before any P5 patch authority is compiled.
+
+### P5 route-probe recovery outcome — 2026-10-09
+
+The sole P5 recovery probe `b8dc901` completed successfully as GitHub run
+`38009195083` / job `114084995737`. Checkout, the explicit P5 selector, Lua,
+private-ROM SHA verification, and `Probe complete` all passed; every
+patch/test/replay/publication branch skipped in probe mode. The independent
+[outcome review](../reviews/2026-10-09-viridian-old-man-route-probe-recovery-outcome-review.md)
+is **PASS**. This closes P5 readiness only. The active next action is to
+compile and independently review a new bounded P5 implementation authority;
+do not create a P5 patch yet.
+
+### P5 implementation authority preparation — 2026-10-09
+
+[`P5-04-OLD-MAN-PROJECTION-RECOVERY`](../tasks/phase5-viridian-old-man-projection-recovery.md)
+is **READY_FOR_REVIEWER**. It names only the existing route's five literal
+paths and the accepted local-ID-4, scene-variable projection. It does not
+authorize code, a bridge artifact, or any generic callback/traversal work until
+an independent authorization review passes.
+
+The independent [authorization review](../reviews/2026-10-09-viridian-old-man-projection-recovery-authorization-review.md)
+is now **PASS** at `0a6df85`. The contract is ready for one bounded Worker
+patch after a fresh online/idle runner observation; guarded evidence and a
+separate exact outcome review remain mandatory.
+
+### P5 implementation outcome — 2026-10-10
+
+The sole five-path P5 request `5a7fbc3` published `d280751` after GitHub run
+`38037052963` / job `114169565555` passed focused/no-ROM/SHA-ROM evidence and
+the route's explicit no-replay branch. Independent
+[outcome review](../reviews/2026-10-10-viridian-old-man-projection-outcome-review.md)
+is **PASS**. This closes only the pre-spawn Viridian Old Man projection. The
+active next action is roadmap recalibration: select the smallest unblocked
+capability gate rather than expanding P5 behavior.
 
 `MediaCenter` (GitHub runner `24`) was freshly observed **online**, **idle**,
 and labeled `firered-local`. The independent retry authority at `98540c5` was

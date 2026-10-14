@@ -162,5 +162,37 @@ else
   print("SKIP: set POKEPORT_ROM=... to ground capture catch-rate fixtures in the retail ROM")
 end
 
+-- Status multipliers (Cmd_handleballthrow :9553-9556), from the status1
+-- word: sleep/freeze x2, poison/burn/paralysis/toxic x15/10, healthy 1/1.
+do
+  local function mult(status) local n, d = CaptureRules.statusMultiplier(status); return n .. "/" .. d end
+  check("healthy status multiplier is 1/1", mult(0) == "1/1" and mult(nil) == "1/1")
+  check("sleep (any turns) doubles", mult(1) == "2/1" and mult(5) == "2/1")
+  check("freeze doubles", mult(32) == "2/1")
+  check("poison, burn, paralysis multiply by 15/10",
+    mult(8) == "15/10" and mult(16) == "15/10" and mult(64) == "15/10")
+  check("toxic multiplies by 15/10 whatever its counter", mult(128) == "15/10" and mult(128 + 9 * 256) == "15/10")
+  local rngNone = scriptedRng({ 65535 })
+  local healthy = CaptureRules.tryPokeBall({ catchRate = 45, maxHP = 30, hp = 30 }, rngNone)
+  local burned = CaptureRules.tryPokeBall({ catchRate = 45, maxHP = 30, hp = 30, status = 16 }, scriptedRng({ 65535 }))
+  local asleep = CaptureRules.tryPokeBall({ catchRate = 45, maxHP = 30, hp = 30, status = 3 }, scriptedRng({ 65535 }))
+  check("Poke Ball catch value: healthy 15, burned floor(15*15/10)=22, asleep 30",
+    healthy.catchValue == 15 and burned.catchValue == 22 and asleep.catchValue == 30,
+    healthy.catchValue .. "/" .. burned.catchValue .. "/" .. asleep.catchValue)
+  check("status changes the shake threshold",
+    burned.shakeThreshold == CaptureRules.calculateShakeThreshold(22)
+      and burned.shakeThreshold > healthy.shakeThreshold)
+  local lowBurned = CaptureRules.tryPokeBall({ catchRate = 45, maxHP = 30, hp = 1, status = 16 }, scriptedRng({ 65535 }))
+  check("status factor applies after the HP term (45/30/1 burned = 66, not 65)", lowBurned.catchValue == 66,
+    lowBurned.catchValue)
+  local low = { catchRate = 255, maxHP = 30, hp = 1 }
+  local plain = CaptureRules.tryPokeBall(low, scriptedRng({ 0, 0, 0, 0 }))
+  low.status = 32
+  local frozen = CaptureRules.tryPokeBall(low, scriptedRng({}))
+  check("1-HP catch rate 255: 249 needs four draws, frozen 498 auto-catches with none",
+    plain.catchValue == 249 and plain.rngDraws == 4 and frozen.catchValue == 498
+      and frozen.automatic and frozen.rngDraws == 0, plain.catchValue .. "/" .. frozen.catchValue)
+end
+
 print(("%d passed, %d failed"):format(passed, failed))
 os.exit(failed == 0 and 0 or 1)

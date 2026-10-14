@@ -1,25 +1,25 @@
 {
   "schema_version": 1,
-  "updated_utc": "2026-10-07T00:48:00Z",
+  "updated_utc": "2026-10-14T22:12:00Z",
   "execution_paused": false,
   "role": "ORCHESTRATOR",
-  "status": "BLOCKED_ON_PRIVATE_RUNNER_ROM_CONFIGURATION",
-  "task_id": "RUNNER-LUA5-RECOVERY",
-  "current_phase": "Phase 0, Phase 4, and Phase 5 remain IN PROGRESS; clean-target preparation needs a decision, and the recovered private runner rejected both exact retries before ROM access because lua5.1 is absent",
+  "status": "READY_FOR_WORKER",
+  "task_id": "P6-02-PARTY-SELECTION-DESIGN",
+  "current_phase": "Canonical phase statuses unchanged. Main3adc7e8 inventory85 represented families/203moves; bounded no-ROM review evidence retained. Full-relay status guarded/replay evidence remains pending despite merged task closure labels.",
   "canonical_status_owner": "work/roadmaps/CAPABILITY_CHECKLIST.md",
-  "active_task": "work/tasks/local-worker-bridge-lua5-toolchain-recovery.md",
-  "objective": "Await operator-side private-ROM availability to the service, then compile a separate recovery decision; retain exhausted P4/P5 retry limits and all implementation gates.",
-  "next_role": "USER",
-  "acceptance": "Restore HP: focused/no-ROM/SHA-ROM/replay evidence plus independent exact review. P5: route-probe readiness evidence plus independent review before one request. No generic healing or map/script expansion.",
-  "boundaries": "P0 clean target remains evidence-blocked pending preparation decision. P4-F3's sole request and P5's sole readiness probe were canceled without execution; no route widening, unreviewed retry, or P5 behavior patch.",
-  "dependencies": "MediaCenter runner 24 is online, idle, carries firered-local, and now has Lua 5.1.5. The one authorized runner-readiness probe 992c071/run37554725384 passed checkout/route/Lua and failed before hashing/access because no private ROM was configured or found. No retry is authorized; independent evidence review and a separate recovery decision are required. P0 reverify93c4654 independently BLOCK.",
+  "active_task": "work/tasks/phase6-party-selection-design.md on PR3 branch work/p6-party-selection-design-20261009 (not yet on main)",
+  "objective": "Correct existing PR3 two-document design per independent NEEDS_FIX: literal successor proposal, source-qualified same-slot/no-cycling and Egg projection, source repeat/no-wrap input. Re-review before PR6 acceptance.",
+  "next_role": "WORKER",
+  "acceptance": "Existing PR3 task/review F1-F3: exact source/allowlist and test/evidence boundaries, no implementation, docs checks/public CI and independent exact recheck.",
+  "boundaries": "Only two design docs plus unchanged independent report publication. No runtime/test/save/ROM/runner changes; successor proposal is not implementation authority. PR6 remains separately unaccepted.",
+  "dependencies": "P6 inventory ee7535d accepted. PR5 independently PASS and merged52fbf69; no repetition needed. PR3 design required before PR6 implementation acceptance.",
   "runner_blocker": {
     "task_id": "P4-F3-ROUTE",
     "status": "CLOSED — REVIEWED PASS",
     "configuration_revision": "4350aa16edf6e1c7064a5d566f1da63342183ecd",
     "configuration_review": "PASS — work/reviews/2026-10-02-restore-hp-route-configuration-review.md",
     "observed": "Probe3c03876/run36981539166 independently PASS: trusted checkout/selector/Lua5.1.5/SHA; patch branches skipped.",
-    "unblock": "Closed; unlocks exactly one P4-F3 route-allowlisted request"
+    "unblock": "Historical closed prerequisite; Restore HP request/recovery completed at dc8ad06. No unused request or retry allowance."
   },
   "parallel_preparation": {
     "task_id": "P4-02",
@@ -29,8 +29,8 @@
     "prepared_branch": "work/move-effect-inventory (published to origin)",
     "preflight_review": "PASS — work/reviews/2026-09-20-move-effect-inventory-preflight-review.md",
     "worktree": "/home/home/FireRedRecomp-inventory",
-    "boundary": "P4-02 and P4-F1 source lock are reviewed PASS. Only ordinary-path P4-F2 design may proceed; no behavior change.",
-    "publication_gate": "Closed; P4-F1 PASS unlocks P4-F2-RESTORE-HP-DESIGN only"
+    "boundary": "Historical inventory preparation closed by final PASS at c10bfa7; current effect-45 continuation is owned by the top-level active task.",
+    "publication_gate": "Closed; no unsubmitted inventory request. See final independent review work/reviews/2026-09-27-move-effect-inventory-review.md."
   },
   "parallel_checks": {
     "task_id": "P0-03-CHECKS",
@@ -42,11 +42,11 @@
     "boundary": "Four implementation paths plus own task, disjoint from save contract; read-only Lua syntax/local-doc checks with exact public CI and independent-review gates"
   },
   "parallel_research": {
-    "task_id": "P5-04-ROUTE",
-    "task": "work/tasks/local-worker-bridge-phase5-viridian-old-man-projection-configuration.md",
-    "status": "BLOCKED_ON_PRIVATE_RUNNER_ROM_CONFIGURATION",
-    "source_revision": "route configuration 7a45118 independently PASS; original probe f6b9148 / run37125167854 exhausted at Lua guard; recovery probe 992c071/run37554725384 passes Lua but fails before ROM hash",
-    "boundary": "No P5 probe has ROM evidence. No implementation request or behavior change before operator-side private-ROM configuration, a separately authorized recovery, and independently reviewed probe PASS"
+    "task_id": "P5-04-OLD-MAN-PROJECTION-RECOVERY",
+    "task": "work/tasks/phase5-viridian-old-man-projection-recovery.md",
+    "status": "CLOSED — REVIEWED PASS",
+    "source_revision": "d280751; guarded run38037052963/job114169565555; work/reviews/2026-10-10-viridian-old-man-projection-outcome-review.md",
+    "boundary": "Only bounded pre-spawn projection accepted. No traversal/tutorial/replay claim, live P5 request, or unused retry."
   },
   "reconciliation": {
     "camera_task_status": "CLOSED — REVIEWED PASS at 4c5456f3; guarded run 34753297372",
@@ -56,11 +56,77 @@
     "phase4_foe_multimon_status": "CLOSED — REVIEWED PASS at 8533cf6a; guarded run 34777072801",
     "phase4_player_forced_replacement_status": "CLOSED — REVIEWED PASS at 8fd9a397; guarded run 34783304717",
     "phase4_fixed_damage_status": "CLOSED — REVIEWED PASS at c65cf838; guarded run 34798961274",
-    "phase4_move_admission_matrix_status": "CLOSED — REVIEWED PASS at 784a5188; historical positive-power inventory, now being refreshed by P4-02",
-    "phase4_pain_split_status": "CLOSED — REVIEWED PASS at a739ddc; guarded run 35493728001; exact review work/reviews/2026-09-20-pain-split-implementation-review.md"
+    "phase4_move_admission_matrix_status": "Historical admission matrix at 784a5188; full inventory independently accepted at c10bfa7. Generic positive-power admission is not effect coverage.",
+    "phase4_pain_split_status": "CLOSED — REVIEWED PASS at a739ddc; guarded run 35493728001; exact review work/reviews/2026-09-20-pain-split-implementation-review.md",
+    "phase4_restore_hp_status": "CLOSED — REVIEWED PASS at dc8ad06; work/reviews/2026-10-09-restore-hp-implementation-outcome-review.md",
+    "phase4_magnitude_status": "CLOSED — REVIEWED PASS at 7b47c73; work/reviews/2026-10-10-magnitude-implementation-outcome-review.md",
+    "phase4_recoil_if_miss_source_status": "CLOSED — REVIEWED PASS at c218da6; work/reviews/2026-10-10-recoil-if-miss-source-discovery-review.md",
+    "phase4_recoil_if_miss_entry_state_status": "CLOSED — REVIEWED PASS at ba69269; work/reviews/2026-10-12-recoil-if-miss-entry-state-review.md",
+    "phase4_recoil_if_miss_design_status": "CLOSED — REVIEWED PASS at b3280f9; work/reviews/2026-10-12-recoil-if-miss-design-review.md",
+    "phase4_recoil_if_miss_route_plan_status": "CLOSED — REVIEWED PASS at04636d1; work/reviews/2026-10-12-recoil-if-miss-route-plan-review.md",
+    "phase4_recoil_if_miss_route_config_status": "CLOSED — REVIEWED PASS at1d40f3c; work/reviews/2026-10-13-recoil-if-miss-route-configuration-review.md",
+    "phase4_recoil_if_miss_route_probe_status": "CLOSED — REVIEWED PASS at667fd16; run38385071588/job115254712929; work/reviews/2026-10-13-recoil-if-miss-route-probe-outcome-review.md"
   },
   "phase2_external_blocker": "Trusted, user-owned retail-reference captures with provenance/timing/crop/filter details for Oak and Pallet anchors have not been supplied.",
-  "next_after_success": "After a separately reviewed runner-toolchain repair: obtain fresh route/retry authority before any guarded rerun, then recover Restore HP implementation evidence for independent review and separately recover/review P5 readiness before one bounded P5 request. Retain P0 preparation decision and Phase 2 retail-reference intake as external blocked.",
+  "next_after_success": "Independent exact PR5 recheck, then reconcile only proven scope. Review existing PR3 design before accepting PR6 Party SUMMARY. Memento AI feasibility found existing hasReplacement callback sufficient in bounded singles; no implementation yet, recheck against newer battle work before separate task.",
   "legal_content_boundary": "Never commit ROMs, BIOS dumps, generated caches, ROM-derived reference screenshots, extracted game assets, or other prohibited content.",
-  "phase_completion_rule": "Phase 2 remains IN PROGRESS until the Oak/reference screenshot discrepancy gate is evidenced and independently reviewed."
+  "phase_completion_rule": "Phase 2 remains IN PROGRESS until the Oak/reference screenshot discrepancy gate is evidenced and independently reviewed.",
+  "project_goal": "work/coordination/PROJECT_GOAL.md — ACTIVE; explicitly adopted 2026-10-11; no user-specified token budget",
+  "phase0_external_blocker": "P0-04-REVERIFY at 93c4654: missing prerequisites on the verified target and no desktop proof; separate supported-target preparation decision and fresh evidence required. Historical result is not current host readiness.",
+  "checkpoint": {
+    "inspection_revision": "52fbf697d4d5148ddd5409114ee543a5d6c501a5",
+    "pending_jobs": "PR5 merged52fbf69 after final reviewhead public CI38645743679/38645738142 passed. No bridge request or overlapping battle implementation. PR3 correction in progress; PR6 pending prerequisite.",
+    "preserved_drafts": "Unreviewed Brick Break package isolated in named local stash quarantine-unreviewed-brick-break-rerank-2026-10-11; outside active dispatch.",
+    "next_action": "Worker finishes two-doc PR3 correction in /tmp/firered-party-design-review-uRnvJN, publishes existing branch; independent Reviewer rechecks F1-F3 before merge. Then inspect/align existing PR6 against accepted design and its own bounded task.",
+    "remaining_acceptance": "PR3 corrected design/recheck, then PR6 exact implementation acceptance. Main52fbf69 full178 no-ROM files and checker305Lua/336Markdown/1107targets PASS. P4 guarded changed-RNG/turn-order replay evidence remains separate and unproved here; newer battle tasks retain own gates.",
+    "coordination_note": "Historical nested records above are evidence receipts, not pending jobs or permission to repeat completed actions.",
+    "worker_session": "PR5 implementation complete5579782: integratedf50383e, full167noROMfiles, Dex56/0 START21/0 andcheckerPASS; old411fails17assertions. Worktree /tmp/firered-start-dex-review-UA2MPZ preserved. PR3 docs correction resumed; no implementation active there.",
+    "implementation_authority": {
+      "revision": "96b10ceebc96dfc4d40cabae43faecf27abe0ce3",
+      "task_sha256": "cbba3ad180b5ce98c1d5a4bb113ab71e608be845af933eae411b32b0ef80042c",
+      "review": "work/reviews/2026-10-13-recoil-if-miss-implementation-authority-review.md",
+      "request": "work/local-runner/requests/phase4-recoil-if-miss-effect-20261013.patch",
+      "allowance": "Consumed by5fb8053; no retry or second request"
+    },
+    "implementation_receipt": {
+      "request_revision": "5fb8053426b52af2867657026d09636e9453d80a",
+      "request_sha256": "acd322a6d2cf86820d4413a12b63723d09c10d3165205f6123e44f554907a81a",
+      "published_revision": "cfdbb96def3a161e2d70653f83256742054c58c2",
+      "run": 38434551595,
+      "job": 115425037342,
+      "result": "SUCCESS all patch gates/publication; probe step skipped",
+      "safe_test_receipts": "Focused engine339/0 controller87/0 party29/0; inventory non-skipped PASS; ROM fixture3/0 exacttwofamily; noROM155files and SHA-ROM155files; required headless replayPASS with non-skipped inventory/fixture",
+      "task_sha256": "2db4eb3f5ad22566074d4865c37cbc1c9800ca7919a5fa52ada4fc01cd50face",
+      "report_sha256": "2ce9ddbb94f3461afa14a577c951aa9f56718b8f28bcfbd231d34e913d424fb1"
+    },
+    "probe_receipt": {
+      "revision": "667fd163b772075f49f8dbf5f0b1f6bb11b3ca1c",
+      "run": 38385071588,
+      "job": 115254712929,
+      "result": "SUCCESS; checkout/input/selector/Lua/private SHA/probe completion passed; all seven patch-only steps skipped",
+      "artifact_sha256": "c1eb1a0bf462d3f5719d632736ababc5bc07946e658623fb7f50f618406d7f7f",
+      "allowance": "Consumed; no retry or second probe authorized"
+    },
+    "configuration_artifact_hashes": {
+      "workflow": "010e973f815ee447a799c0d40dbdbe58edd8afa96cebf2370abdaa37875571ee",
+      "procedure": "9fe74842bcdbdc6a526cfe3797b58703210f8f30a0dbebb7878bb1efdaf086d7",
+      "task": "23193460afef525cab5a575af81b32d9f724c64f781db7be31eb48ee0a354ff6",
+      "report": "9c24b09d45c9b64c72347e1a4a6e8510d63fa596c5107642f48f491687cc366c"
+    },
+    "route_plan_artifact_hashes": {
+      "task": "1145075eb849adec3916aa624c0e7acc468179da01d5b77155bec8c2be15cd12",
+      "report": "95ec46b381642cc89c8f14fde71744e0bc4f4e16f40979f7236b720d747ae13f"
+    },
+    "design_artifact_hashes": {
+      "task": "255bc925c8f8572558012da56f9cd47c0803608c8c7ed9f8753dd902369e3ed1",
+      "report": "9e5c9b4cdea14565b3a3f4a04ab5fe4d2c2008caacb4ef6debb5a4afc96a6fb0"
+    },
+    "accepted_source_artifact_hashes": {
+      "task": "99a045f0c8a4079dbf822b9e2a778519c77fa42c462c984333a6abb3aa92d587",
+      "report": "92b990bf18b91729a468eab599fdced128238a6712c76a5f29ea730db56e4484"
+    },
+    "last_review": "PR5 exact5579782 PASS in independent reviewf476d98, merged52fbf69. Historical BLOCK preserved. PR3 NEEDS_FIX8a9ca76 awaits2doccorrection; no PR6 acceptance.",
+    "goal_service_state": "usageLimited observed 2026-10-12; user explicitly requested continuation. Standing instructions persist; user/system owns lifecycle resumption.",
+    "remote_recovery": "Main3adc7e8 owner work preserved. Audit: heal text reviewedcb3cea2/disposition7fff050; status design44fd139 correctedee682f9; module corrected tree published651dcd4; S1 reviewedca39623/disposition3407aa5; S2 reviewed19e15f0/dispositionae05dab; S3 reviewedfa9556a/disposition1848697; ability terms reviewedf73ccf4/closuref300085; S4 reviewed6f3168f/disposition16e4501. Do not claim separate re-review of later disposition commits. PR26 preserved. No policy amendment; full-relay ROM/replay gates remain."
+  }
 }

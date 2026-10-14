@@ -77,12 +77,16 @@
 -- port agree with certainty anyway (Cmd_get_ability's single-ability branch,
 -- line 1180, has no randomness at all).
 --
--- CONFIRMED NO-OP CLASS: this engine (see BattleEngine.lua's header, "No
--- status conditions, abilities, held items, weather... or double battles")
--- has no code path that ever sets status1/status2/status3, weather, or any
+-- STATUS1 (primary status) is real battler state since status slices
+-- S1-S3, so every if_status/if_not_status branch below reads it.
+--
+-- CONFIRMED NO-OP CLASS: this engine (see BattleEngine.lua's header: no
+-- abilities beyond the listed guards, held items, weather... or double
+-- battles) has no code path that ever sets status2 (beyond confusion and
+-- flinch), status3, weather, or any
 -- sideStatus beyond reflect/lightScreen, and no held-item or stockpile-
 -- counter state at all. Several real AI_CBM_* branches test exactly those
--- fields (if_status/if_status2/if_status3/get_weather/if_side_affecting for
+-- fields (if_status2/if_status3/get_weather/if_side_affecting for
 -- Mist/Spikes/Safeguard/FutureAttack/get_used_held_item/
 -- get_stockpile_count). Because this engine structurally can never produce
 -- the "true" case for any of those conditions, the real branch's "false"
@@ -90,8 +94,8 @@
 -- state space, exactly analogous to the real dispatch chain's own
 -- confirmed no-penalty fallback for a listed-but-absent effect. Each such
 -- branch below is ported as `alwaysNoPenalty` (or, where the real check is
--- the NEGATION of an always-false condition -- e.g. "if user is NOT
--- asleep" -- as an always-applied fixed penalty) with its own citation, not
+-- the NEGATION of an always-false condition -- e.g. "not a double
+-- battle" -- as an always-applied fixed penalty) with its own citation, not
 -- silently folded into the generic unhandled-effect fallback.
 --
 -- REAL GAPS deliberately left unported (fail loudly -- see
@@ -115,6 +119,7 @@
 
 local BattleFormulas = require("src.core.BattleFormulas")
 local BattleEngine = require("src.core.BattleEngine")
+local StatusConditions = require("src.core.StatusConditions")
 
 local AICheckBadMove = {}
 
@@ -260,58 +265,61 @@ local function statDown(statKey, specificAbility)
   end
 end
 
--- AI_CBM_Sleep (data/battle_ai_scripts.s:216-222). Real `if_status AI_TARGET
--- STATUS1_ANY` (target already has ANY status) is a confirmed no-op here --
--- see module header's "CONFIRMED NO-OP CLASS".
+-- STATUS1 tests (status slice S3): primary status is real battler state
+-- now, so the real `if_status`/`if_not_status` branches read it. Real
+-- if_status tests `status1 & flags` (STATUS1_ANY excludes the toxic
+-- counter, matching StatusConditions.hasAny).
+
+-- AI_CBM_Sleep (data/battle_ai_scripts.s:216-222).
 local function sleep(user, target, move, typeChart)
   if target.ability == ABILITY_INSOMNIA or target.ability == ABILITY_VITAL_SPIRIT then
     return -10
   end
+  if StatusConditions.hasAny(target.status) then return -10 end
   return 0
 end
 
--- AI_CBM_DreamEater (data/battle_ai_scripts.s:242-245): real first branch
--- `if_not_status AI_TARGET STATUS1_SLEEP, Score_Minus8` ends the script
--- immediately on a match. Target status1 can never contain STATUS1_SLEEP in
--- this engine (see module header), so "target is NOT asleep" is always
--- true -- this is ALWAYS -8, and the real second line (type-x0 check) is
--- real dead code in that case, so it is never reached here either.
+-- AI_CBM_DreamEater (data/battle_ai_scripts.s:242-245): `if_not_status
+-- AI_TARGET STATUS1_SLEEP, Score_Minus8`, then the type-x0 check.
 local function dreamEater(user, target, move, typeChart)
-  return -8
+  if not StatusConditions.isAsleep(target.status) then return -8 end
+  local eff = classifyEffectiveness(move.type, target.types, typeChart)
+  if eff == X0 then return -10 end
+  return 0
 end
 
--- AI_CBM_Nightmare (data/battle_ai_scripts.s:237-240): real first branch
--- (status2 nightmare already set) is a confirmed no-op; real second branch
--- `if_not_status AI_TARGET STATUS1_SLEEP, Score_Minus8` is -- same as
--- DreamEater above -- always true in this engine, so this is ALWAYS -8.
+-- AI_CBM_Nightmare (data/battle_ai_scripts.s:237-240): the first branch
+-- (status2 nightmare already set) is a confirmed no-op (status2 is not
+-- modeled); then `if_not_status AI_TARGET STATUS1_SLEEP, Score_Minus8`.
 local function nightmare(user, target, move, typeChart)
-  return -8
+  if not StatusConditions.isAsleep(target.status) then return -8 end
+  return 0
 end
 
--- AI_CBM_Poison/Toxic (data/battle_ai_scripts.s:344-355). Real
--- `if_status AI_TARGET STATUS1_ANY` tail is a confirmed no-op.
+-- AI_CBM_Poison/Toxic (data/battle_ai_scripts.s:344-355).
 local function poison(user, target, move, typeChart)
   if target.types[1] == TYPE_STEEL or target.types[1] == TYPE_POISON
       or target.types[2] == TYPE_STEEL or target.types[2] == TYPE_POISON then
     return -10
   end
   if target.ability == ABILITY_IMMUNITY then return -10 end
+  if StatusConditions.hasAny(target.status) then return -10 end
   return 0
 end
 
--- AI_CBM_Paralyze (data/battle_ai_scripts.s:401-407). Real `if_status
--- AI_TARGET STATUS1_ANY` tail is a confirmed no-op.
+-- AI_CBM_Paralyze (data/battle_ai_scripts.s:401-407).
 local function paralyze(user, target, move, typeChart)
   local eff = classifyEffectiveness(move.type, target.types, typeChart)
   if eff == X0 then return -10 end
   if target.ability == ABILITY_LIMBER then return -10 end
+  if StatusConditions.hasAny(target.status) then return -10 end
   return 0
 end
 
--- AI_CBM_Confuse (data/battle_ai_scripts.s:390-395). Real
--- `if_status2 AI_TARGET STATUS2_CONFUSION` (already confused) is a
--- confirmed no-op.
+-- AI_CBM_Confuse (data/battle_ai_scripts.s:390-395): `if_status2 AI_TARGET,
+-- STATUS2_CONFUSION, Score_Minus5` reads the battler's confusion turns.
 local function confuse(user, target, move, typeChart)
+  if (target.confusionTurns or 0) > 0 then return -5 end
   if target.ability == ABILITY_OWN_TEMPO then return -10 end
   return 0
 end
@@ -358,14 +366,10 @@ local function leechSeed(user, target, move, typeChart)
 end
 
 -- AI_CBM_DamageDuringSleep (Snore/Sleep Talk, data/battle_ai_scripts.s
--- :430-432): real `if_not_status AI_USER STATUS1_SLEEP, Score_Minus8`. The
--- user's own status1 can never contain STATUS1_SLEEP in this engine, so
--- "user is NOT asleep" is always true -- this is ALWAYS -8 (using
--- Snore/Sleep Talk while never actually asleep really is a bad move, and
--- this engine can never make the user asleep, so that real branch always
--- fires here).
+-- :430-432): `if_not_status AI_USER STATUS1_SLEEP, Score_Minus8`.
 local function damageDuringSleep(user, target, move, typeChart)
-  return -8
+  if not StatusConditions.isAsleep(user.status) then return -8 end
+  return 0
 end
 
 -- AI_CBM_Curse/CosmicPower/BulkUp/CalmMind/DragonDance/Tickle
@@ -413,10 +417,10 @@ local function haze(user, target, move, typeChart)
   return -10
 end
 
--- AI_CBM_WillOWisp (data/battle_ai_scripts.s:535-543). Real `if_status
--- AI_TARGET STATUS1_ANY` tail is a confirmed no-op.
+-- AI_CBM_WillOWisp (data/battle_ai_scripts.s:535-543).
 local function willOWisp(user, target, move, typeChart)
   if target.ability == ABILITY_WATER_VEIL then return -10 end
+  if StatusConditions.hasAny(target.status) then return -10 end
   local eff = classifyEffectiveness(move.type, target.types, typeChart)
   if eff == X0 or eff == X0_5 or eff == X0_25 then return -10 end
   return 0
@@ -470,12 +474,23 @@ local function recycle(user, target, move, typeChart)
   return -10
 end
 
--- AI_CBM_Refresh (data/battle_ai_scripts.s:567-569): real `if_not_status
--- AI_USER (POISON|BURN|PARALYSIS|TOXIC), Score_Minus10`. The user's status1
--- can never contain any of those in this engine, so "user has none of
--- them" is always true -- this is ALWAYS -10.
+-- AI_CBM_Refresh (data/battle_ai_scripts.s:567-569): `if_not_status
+-- AI_USER (POISON|BURN|PARALYSIS|TOXIC), Score_Minus10`.
 local function refresh(user, target, move, typeChart)
-  return -10
+  local st = user.status
+  if not (StatusConditions.isPoisoned(st) or StatusConditions.isBurned(st)
+      or StatusConditions.isParalyzed(st) or StatusConditions.isBadlyPoisoned(st)) then
+    return -10
+  end
+  return 0
+end
+
+-- AI_CBM_FocusEnergy (data/battle_ai_scripts.s:386-388): `if_status2
+-- AI_USER, STATUS2_FOCUS_ENERGY, Score_Minus10` reads the battler's
+-- focusEnergy volatile (status-leftovers slice L2).
+local function focusEnergy(user, target, move, typeChart)
+  if user.focusEnergy then return -10 end
+  return 0
 end
 
 -- AI_CBM_Teleport (data/battle_ai_scripts.s:185): real dispatch entry jumps
@@ -522,7 +537,7 @@ local EFFECT_HANDLERS = {
   [39] = highRiskForDamage,                        -- EFFECT_RAZOR_WIND
   [40] = highRiskForDamage,                        -- EFFECT_SUPER_FANG
   [46] = alwaysNoPenalty,                          -- EFFECT_MIST: SIDE_STATUS_MIST unmodeled
-  [47] = alwaysNoPenalty,                          -- EFFECT_FOCUS_ENERGY: status2 unmodeled
+  [47] = focusEnergy,                              -- EFFECT_FOCUS_ENERGY -> AI_CBM_FocusEnergy
   [49] = confuse,                                  -- EFFECT_CONFUSE -> AI_CBM_Confuse
   [50] = statUp("attack"),                         -- EFFECT_ATTACK_UP_2
   [51] = statUp("defense"),                        -- EFFECT_DEFENSE_UP_2

@@ -55,7 +55,8 @@ several surprises (padded record sizes, byte-offset quirks, the
 symbols with no linker-map entry) only showed up that way. See
 `tests/species_integration_test.lua` and `tests/full_sweep_validation_test.lua`
 (both opt-in via `POKEPORT_ROM=...`, skip cleanly with no ROM present) and
-the full test suite (118 test files with a verified ROM present).
+the full test suite (`scripts/test_all.sh` runs every `tests/*_test.lua`; 161
+files as of 2026-10-14).
 
 ## Supported ROM
 
@@ -196,7 +197,7 @@ and does not require LÖVE or a display.
 
 ```
 firered-recomp/
-  src/      native runtime (empty until Phase 2+)
+  src/      native runtime (src/core: battle, field, menus, audio, save)
   import/   verified-ROM importer and cache writer
   data/     schemas, defaults, generated-data readers
   assets/   engine-owned art only (no game assets)

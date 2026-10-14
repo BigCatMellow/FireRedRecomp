@@ -106,7 +106,8 @@ check("Growl executes through the controller and spends PP",
 
 -- Other power-zero effects still fail visibly instead of fabricating rules.
 c = controller(); c:advanceMessage(); c:advanceMessage()
-Data.moves[999] = { effect=1, power=0, type=0, accuracy=100, pp=10,
+-- (EFFECT_ROAR=28; Sleep and Confuse became supported in later slices.)
+Data.moves[999] = { effect=28, power=0, type=0, accuracy=100, pp=10,
   secondaryEffectChance=0, target=0, priority=0, flags=0 }
 c.engine.player.moves = { {move=999,pp=10}, {move=Data.MOVE_TACKLE,pp=35} }
 c:processInput(input(InputState.A_BUTTON)); c:processInput(input(InputState.A_BUTTON))
@@ -174,6 +175,22 @@ end
 
 do
   local c = controller()
+  local playerHP, foeHP, revision = c.engine.player.hp, c.engine.foe.hp, c.revision
+  local messages = c:_eventMessages({
+    { type = "useMove", side = "player", move = 222 },
+    { type = "magnitude", side = "player", level = 7 },
+    { type = "miss", side = "player" },
+  })
+  check("Magnitude announces its supplied level exactly once between use and result messages",
+    #messages == 3 and messages[1].text:find("used", 1, true)
+      and messages[2].text == "Magnitude 7!" and messages[3].text:find("missed", 1, true),
+    messages[2] and messages[2].text)
+  check("Magnitude presentation does not mutate engine state or controller revision",
+    c.engine.player.hp == playerHP and c.engine.foe.hp == foeHP and c.revision == revision)
+end
+
+do
+  local c = controller()
   local messages = c:_eventMessages({ { type = "recoil", side = "foe", amount = 5, hpRemaining = 10 } })
   check("recoil names the attacker, matching real sText_PkmnHitWithRecoil",
     messages[1].text == "CHARMANDER is hit\nwith recoil!", messages[1].text)
@@ -197,6 +214,18 @@ do
   check("Pain Split preserves attacker then target invisible HP order before shared-pain text",
     messages[1].hpSide == "player" and messages[1].hp == 12 and messages[2].hpSide == "foe"
     and messages[2].hp == 11 and messages[3].text == "The battlers\nshared their pain!", messages[3] and messages[3].text)
+end
+
+do
+  local c = controller()
+  local messages = c:_eventMessages({ { type="useMove", side="player", move=105 },
+    { type="restoreHP", side="player", beforeHP=10, hpRemaining=19, amount=9 } })
+  check("Restore HP keeps the move announcement before an invisible own-HP snapshot and feedback",
+    messages[1].text:find("used", 1, true) and messages[2].hpSide == "player" and messages[2].hp == 19
+      and messages[3].text == "BULBASAUR regained\nhealth!", messages[3] and messages[3].text)
+  messages = c:_eventMessages({ { type="restoreHPFull", side="foe" } })
+  check("Restore HP full result has feedback without an HP snapshot",
+    #messages == 1 and messages[1].hpSide == nil and messages[1].text == "CHARMANDER's\nHP is full!", messages[1] and messages[1].text)
 end
 
 do
@@ -231,6 +260,476 @@ do
     messages[4].text == "Your team's REFLECT\nwore off!", messages[4].text)
   check("screenExpired on the foe side uses \"The foe's\"",
     messages[5].text == "The foe's LIGHT SCREEN\nwore off!", messages[5].text)
+end
+
+-- Actual effect-45 engine events through the controller's turn/message path.
+do
+  local moves={
+    [26]={effect=45,power=70,type=1,accuracy=95,pp=25,priority=0,target=0},
+    [105]={effect=32,power=0,type=0,accuracy=0,pp=20,priority=0,target=16},
+  }
+  local chart={[0]={attackingType=1,defendingType=7,multiplier=0}}
+  local stats={hp=100,attack=40,defense=40,speed=20,spAttack=40,spDefense=40}
+  for _,side in ipairs({"player","foe"}) do
+    for _,mode in ipairs({"nonfatal","fatal","replacement","immune"}) do
+      local draw=0
+      local engine=BattleEngine.new({
+        player=BattleEngine.makeBattler({species=1,level=20,stats=stats,types={10,10},moves={{move=105,pp=20}}}),
+        foe=BattleEngine.makeBattler({species=4,level=20,stats=stats,types={10,10},moves={{move=105,pp=20}}}),
+        moves=moves,typeChart=chart,rng={next16=function() draw=draw+1; return draw==1 and 99 or 0 end},
+        hasReplacement=function(s) return mode=="replacement" and s==side end,
+      })
+      local attacker=engine:battler(side)
+      local targetSide=side=="player" and "foe" or "player"
+      local target=engine:battler(targetSide)
+      attacker.moves={{move=26,pp=25}}; attacker.types={1,1}; attacker.speed=30
+      if mode=="fatal" or mode=="replacement" then attacker.hp=1 end
+      if mode=="immune" then target.types={7,7} end
+      local beforeHP=attacker.hp
+      local ctrl=BattleSceneController.new({engine=engine,playerName="PLAYER",foeName="FOE",
+        moveName=function(id) return id==26 and "JUMP KICK" or "RECOVER" end,
+        forcedSwitchChoices=function() return {{slot=2,name="BENCH"}} end})
+      ctrl:advanceMessage(); ctrl:advanceMessage()
+      ctrl:_runTurn({action="move",moveSlot=1})
+      local label=side..":"..mode
+      check("crash controller starts actual use with old HP "..label,
+        ctrl:message():find("JUMP KICK",1,true)~=nil and ctrl.displayedHP[side]==beforeHP)
+      ctrl:advanceMessage()
+      if mode=="immune" then
+        check("immune controller shows no effect and no HP mutation "..label,
+          ctrl:message():find("doesn't affect",1,true)~=nil and attacker.hp==beforeHP
+          and ctrl.displayedHP[side]==beforeHP and draw==1)
+        local crashSeen=false
+        for _,entry in ipairs(ctrl.messages) do
+          crashSeen=crashSeen or (entry.text and entry.text:find("crashed",1,true)~=nil) or entry.hpSide~=nil
+        end
+        check("immune actual stream has no crash or HP entry "..label,not crashSeen)
+      else
+        check("crash controller miss keeps old display "..label,
+          ctrl:message():find("missed",1,true)~=nil and ctrl.displayedHP[side]==beforeHP)
+        ctrl:advanceMessage()
+        check("crash text precedes invisible HP "..label,
+          ctrl:message()==(side=="player" and "PLAYER" or "FOE").." kept going\nand crashed!"
+          and ctrl.displayedHP[side]==beforeHP and attacker.hp<beforeHP)
+        ctrl:advanceMessage()
+        check("crash invisible HP applies before faint or continuation "..label,
+          ctrl.displayedHP[side]==attacker.hp and ctrl.displayedHP[targetSide]==100
+          and target.hp==100 and draw==2)
+        if mode~="nonfatal" then
+          check("actual fatal crash presents faint after zero HP "..label,
+            ctrl:message():find("fainted",1,true)~=nil and ctrl.displayedHP[side]==0
+            and ctrl.state==BattleSceneController.MESSAGES)
+        end
+      end
+      local remaining=20
+      while ctrl.state==BattleSceneController.MESSAGES and remaining>0 do ctrl:advanceMessage(); remaining=remaining-1 end
+      local expected=mode=="fatal" and BattleSceneController.COMPLETE
+        or (mode=="replacement" and side=="player" and BattleSceneController.PARTY)
+        or BattleSceneController.ACTION
+      check("crash messages drain before completion "..label,remaining>0 and ctrl.state==expected)
+      if mode=="replacement" then
+        check("crash pending replacement survives message drain "..label,
+          engine.awaitingForcedSwitch==side and not engine:isOver())
+      end
+    end
+  end
+end
+
+-- Two-stat self UP family through the real engine and message path.
+-- Expected text: sText_AttackersStatRose / sText_StatsWontIncrease2.
+do
+  local moves={
+    [349]={effect=212,power=0,type=16,accuracy=0,pp=20,priority=0,target=0x10},
+    [105]={effect=32,power=0,type=0,accuracy=0,pp=20,priority=0,target=16},
+  }
+  local stats={hp=100,attack=40,defense=40,speed=20,spAttack=40,spDefense=40}
+  for _,maxed in ipairs({false,true}) do
+    local engine=BattleEngine.new({
+      player=BattleEngine.makeBattler({species=1,level=20,stats=stats,types={0,0},moves={{move=349,pp=20}}}),
+      foe=BattleEngine.makeBattler({species=4,level=20,stats=stats,types={0,0},moves={{move=105,pp=20}}}),
+      moves=moves,typeChart={},rng={next16=function() return 0 end},
+    })
+    engine.player.speed=30
+    if maxed then engine.player.statStages.attack=12; engine.player.statStages.speed=12 end
+    local ctrl=BattleSceneController.new({engine=engine,playerName="PLAYER",foeName="FOE",
+      moveName=function(id) return id==349 and "DRAGON DANCE" or "RECOVER" end})
+    ctrl:advanceMessage(); ctrl:advanceMessage()
+    ctrl:_runTurn({action="move",moveSlot=1})
+    local texts={}
+    for _,entry in ipairs(ctrl.messages) do if entry.text then texts[#texts+1]=entry.text end end
+    local all=table.concat(texts,"|")
+    if maxed then
+      check("dual stat both maxed message",all:find("PLAYER's stats won't\ngo any higher!",1,true)~=nil
+        and not all:find("rose!",1,true))
+    else
+      local a=all:find("PLAYER's ATTACK\nrose!",1,true)
+      local s=all:find("PLAYER's SPEED\nrose!",1,true)
+      check("dual stat messages in source order",a~=nil and s~=nil and a<s)
+    end
+  end
+end
+
+-- Tickle / Overheat through the real engine. Expected text:
+-- sText_DefendersStatFell, sText_StatsWontDecrease2, sText_AttackersStatFell
+-- with sText_StatHarshly.
+do
+  local moves={
+    [321]={effect=205,power=0,type=0,accuracy=100,pp=20,priority=0,target=0},
+    [315]={effect=204,power=140,type=10,accuracy=90,pp=5,secondaryEffectChance=100,priority=0,target=0},
+    [105]={effect=32,power=0,type=0,accuracy=0,pp=20,priority=0,target=16},
+  }
+  local stats={hp=300,attack=40,defense=40,speed=20,spAttack=40,spDefense=40}
+  local function run(moveId, setupFoe)
+    local engine=BattleEngine.new({
+      player=BattleEngine.makeBattler({species=1,level=20,stats=stats,types={0,0},moves={{move=moveId,pp=20}}}),
+      foe=BattleEngine.makeBattler({species=4,level=20,stats=stats,types={0,0},moves={{move=105,pp=20}}}),
+      moves=moves,typeChart={},rng={next16=function() return 0 end},
+    })
+    engine.player.speed=30
+    if setupFoe then setupFoe(engine.foe) end
+    local ctrl=BattleSceneController.new({engine=engine,playerName="PLAYER",foeName="FOE",
+      moveName=function(id) return ({[321]="TICKLE",[315]="OVERHEAT"})[id] or "RECOVER" end})
+    ctrl:advanceMessage(); ctrl:advanceMessage()
+    ctrl:_runTurn({action="move",moveSlot=1})
+    local texts={}
+    for _,entry in ipairs(ctrl.messages) do if entry.text then texts[#texts+1]=entry.text end end
+    return table.concat(texts,"|")
+  end
+  local all=run(321)
+  local a=all:find("FOE's ATTACK\nfell!",1,true)
+  local d=all:find("FOE's DEFENSE\nfell!",1,true)
+  check("tickle messages in source order",a~=nil and d~=nil and a<d)
+  all=run(321,function(foe) foe.statStages.attack=0; foe.statStages.defense=0 end)
+  check("tickle both-minimum message",all:find("FOE's stats won't\ngo any lower!",1,true)~=nil
+    and not all:find("fell!",1,true))
+  all=run(315)
+  check("overheat self harsh drop message",all:find("PLAYER's SP. ATK\nharshly fell!",1,true)~=nil)
+end
+
+-- Batch 3 messages through the real engine (src/battle_message.c texts).
+do
+  local moves={
+    [150]={effect=85,power=0,type=0,accuracy=0,pp=40,priority=0,target=0x10},
+    [114]={effect=25,power=0,type=15,accuracy=0,pp=30,priority=0,target=0x10},
+    [244]={effect=143,power=0,type=0,accuracy=0,pp=10,priority=0,target=0},
+    [187]={effect=142,power=0,type=0,accuracy=0,pp=10,priority=0,target=0x10},
+    [105]={effect=32,power=0,type=0,accuracy=0,pp=20,priority=0,target=16},
+  }
+  local stats={hp=100,attack=40,defense=40,speed=20,spAttack=40,spDefense=40}
+  local function run(moveId)
+    local engine=BattleEngine.new({
+      player=BattleEngine.makeBattler({species=1,level=20,stats=stats,types={0,0},moves={{move=moveId,pp=10}}}),
+      foe=BattleEngine.makeBattler({species=4,level=20,stats=stats,types={0,0},moves={{move=105,pp=20}}}),
+      moves=moves,typeChart={},rng={next16=function() return 0 end},
+    })
+    engine.player.speed=30
+    local ctrl=BattleSceneController.new({engine=engine,playerName="PLAYER",foeName="FOE",
+      moveName=function() return "MOVE" end})
+    ctrl:advanceMessage(); ctrl:advanceMessage()
+    ctrl:_runTurn({action="move",moveSlot=1})
+    return ctrl, engine
+  end
+  local function texts(ctrl)
+    local out={}
+    for _,entry in ipairs(ctrl.messages) do if entry.text then out[#out+1]=entry.text end end
+    return table.concat(out,"|")
+  end
+  check("splash message",texts(run(150)):find("But nothing happened!",1,true)~=nil)
+  check("haze message",texts(run(114)):find("All stat changes were\neliminated!",1,true)~=nil)
+  check("psych up message",texts(run(244)):find("PLAYER copied\nFOE's stat changes!",1,true)~=nil)
+  local ctrl,engine=run(187)
+  ctrl:advanceMessage()
+  check("belly drum HP updates before its message",
+    ctrl:message()=="PLAYER cut its own HP\nand maximized ATTACK!"
+    and ctrl.displayedHP.player==50 and engine.player.hp==50)
+end
+
+-- Batch 4 messages through the real engine (sText_TheWallShattered,
+-- sText_AttackersStatRose / sText_StatsWontIncrease).
+do
+  local moves={
+    [280]={effect=186,power=75,type=1,accuracy=100,pp=15,secondaryEffectChance=0,priority=0,target=0},
+    [246]={effect=140,power=60,type=5,accuracy=100,pp=5,secondaryEffectChance=10,priority=0,target=0},
+    [105]={effect=32,power=0,type=0,accuracy=0,pp=20,priority=0,target=16},
+  }
+  local stats={hp=300,attack=40,defense=40,speed=20,spAttack=40,spDefense=40}
+  local function run(moveId, prep)
+    local engine=BattleEngine.new({
+      player=BattleEngine.makeBattler({species=1,level=20,stats=stats,types={0,0},moves={{move=moveId,pp=5}}}),
+      foe=BattleEngine.makeBattler({species=4,level=20,stats=stats,types={0,0},moves={{move=105,pp=20}}}),
+      moves=moves,typeChart={},rng={next16=function() return 0 end},
+    })
+    engine.player.speed=30
+    if prep then prep(engine) end
+    local ctrl=BattleSceneController.new({engine=engine,playerName="PLAYER",foeName="FOE",
+      moveName=function() return "MOVE" end})
+    ctrl:advanceMessage(); ctrl:advanceMessage()
+    ctrl:_runTurn({action="move",moveSlot=1})
+    local out={}
+    for _,entry in ipairs(ctrl.messages) do if entry.text then out[#out+1]=entry.text end end
+    return table.concat(out,"|")
+  end
+  local all=run(280,function(e) e.sideStatus.foe.reflect=true; e.sideStatus.foe.reflectTimer=5 end)
+  local wall=all:find("The wall shattered!",1,true)
+  local used=all:find("PLAYER used MOVE!",1,true)
+  local foeUsed=all:find("FOE used",1,true)
+  check("brick break wall shattered message after use, before foe acts",wall~=nil and used<wall and wall<foeUsed)
+  all=run(246,function(e) e.player.statStages.speed=12 end)
+  local atk=all:find("PLAYER's ATTACK\nrose!",1,true)
+  local spd=all:find("PLAYER's SPEED\nwon't go higher!",1,true)
+  local spdef=all:find("PLAYER's SP. DEF\nrose!",1,true)
+  check("ancient power all-stats messages in order",atk and spd and spdef and atk<spd and spd<spdef)
+end
+
+-- Triple Kick through the real engine: a later miss shows only the hit count
+-- (sText_HitXTimes), a first-kick miss shows the miss text.
+do
+  local moves={
+    [167]={effect=104,power=10,type=1,accuracy=90,pp=10,secondaryEffectChance=0,priority=0,target=0},
+    [105]={effect=32,power=0,type=0,accuracy=0,pp=20,priority=0,target=16},
+  }
+  local stats={hp=300,attack=40,defense=40,speed=20,spAttack=40,spDefense=40}
+  local function run(values)
+    local i=0
+    local engine=BattleEngine.new({
+      player=BattleEngine.makeBattler({species=1,level=20,stats=stats,types={0,0},moves={{move=167,pp=10}}}),
+      foe=BattleEngine.makeBattler({species=4,level=20,stats=stats,types={0,0},moves={{move=105,pp=20}}}),
+      moves=moves,typeChart={},rng={next16=function() i=i+1; return values[i] or 0 end},
+    })
+    engine.player.speed=30
+    local ctrl=BattleSceneController.new({engine=engine,playerName="PLAYER",foeName="FOE",
+      moveName=function() return "MOVE" end})
+    ctrl:advanceMessage(); ctrl:advanceMessage()
+    ctrl:_runTurn({action="move",moveSlot=1})
+    local out={}
+    for _,entry in ipairs(ctrl.messages) do if entry.text then out[#out+1]=entry.text end end
+    return table.concat(out,"|")
+  end
+  local all=run({0,1,0,0,1,0,99})
+  check("triple kick later miss shows only hit count",all:find("Hit 2 time(s)!",1,true)~=nil
+    and not all:find("missed",1,true))
+  all=run({99})
+  check("triple kick first miss shows miss text",all:find("missed",1,true)~=nil and not all:find("Hit ",1,true))
+end
+
+-- Batch 6 through the real engine: sText_PkmnChangedType with gTypeNames;
+-- Memento's HP bar drops before the stat messages.
+do
+  local moves={
+    [160]={effect=30,power=0,type=0,accuracy=0,pp=30,priority=0,target=0x10},
+    [262]={effect=168,power=0,type=17,accuracy=100,pp=10,priority=0,target=0},
+    [52]={effect=4,power=40,type=10,accuracy=100,pp=25,priority=0,target=0},
+    [105]={effect=32,power=0,type=0,accuracy=0,pp=20,priority=0,target=16},
+  }
+  local stats={hp=100,attack=40,defense=40,speed=20,spAttack=40,spDefense=40}
+  local function run(list, values)
+    local i=0
+    local playerMoves={}
+    for k,id in ipairs(list) do playerMoves[k]={move=id,pp=10} end
+    local engine=BattleEngine.new({
+      player=BattleEngine.makeBattler({species=1,level=20,stats=stats,types={0,0},moves=playerMoves}),
+      foe=BattleEngine.makeBattler({species=4,level=20,stats=stats,types={0,0},moves={{move=105,pp=20}}}),
+      moves=moves,typeChart={},rng={next16=function() i=i+1; return values[i] or 0 end},
+      hasReplacement=function() return false end,
+    })
+    engine.player.speed=30
+    local ctrl=BattleSceneController.new({engine=engine,playerName="PLAYER",foeName="FOE",
+      moveName=function() return "MOVE" end})
+    ctrl:advanceMessage(); ctrl:advanceMessage()
+    ctrl:_runTurn({action="move",moveSlot=1})
+    return ctrl
+  end
+  local ctrl=run({160,52},{1})
+  local out={}
+  for _,entry in ipairs(ctrl.messages) do if entry.text then out[#out+1]=entry.text end end
+  local names={[0]="NORMAL","FIGHT","FLYING","POISON","GROUND","ROCK","BUG","GHOST",
+    "STEEL","???","FIRE","WATER","GRASS","ELECTR","PSYCHC","ICE","DRAGON","DARK"}
+  local allNames=true
+  for id=0,17 do allNames=allNames and BattleSceneController.TYPE_DISPLAY_NAMES[id]==names[id] end
+  check("all 18 gTypeNames match source (battle_main.c:430-447)",allNames)
+  check("conversion message uses source type name",
+    table.concat(out,"|"):find("PLAYER transformed\ninto the FIRE type!",1,true)~=nil)
+  ctrl=run({262},{})
+  ctrl:advanceMessage()
+  check("memento HP drops before the first stat message",
+    ctrl:message()=="FOE's ATTACK\nharshly fell!" and ctrl.displayedHP.player==0)
+end
+
+-- Soft-Boiled through the real engine uses the same source heal texts.
+do
+  local moves={
+    [135]={effect=157,power=0,type=0,accuracy=100,pp=10,priority=0,target=0x10},
+    [105]={effect=32,power=0,type=0,accuracy=0,pp=20,priority=0,target=16},
+  }
+  local stats={hp=100,attack=40,defense=40,speed=20,spAttack=40,spDefense=40}
+  local function run(playerHP)
+    local engine=BattleEngine.new({
+      player=BattleEngine.makeBattler({species=1,level=20,stats=stats,types={0,0},moves={{move=135,pp=10}}}),
+      foe=BattleEngine.makeBattler({species=4,level=20,stats=stats,types={0,0},moves={{move=105,pp=20}}}),
+      moves=moves,typeChart={},rng={next16=function() return 0 end},
+    })
+    engine.player.speed=30; engine.player.hp=playerHP
+    local ctrl=BattleSceneController.new({engine=engine,playerName="PLAYER",foeName="FOE",
+      moveName=function() return "MOVE" end})
+    ctrl:advanceMessage(); ctrl:advanceMessage()
+    ctrl:_runTurn({action="move",moveSlot=1})
+    local out={}
+    for _,entry in ipairs(ctrl.messages) do if entry.text then out[#out+1]=entry.text end end
+    return table.concat(out,"|")
+  end
+  local all=run(40)
+  check("soft-boiled heal uses sText_PkmnRegainedHealth",all:find("PLAYER regained\nhealth!",1,true)~=nil)
+  all=run(100)
+  local p=all:find("PLAYER's\nHP is full!",1,true)
+  local f=all:find("FOE's\nHP is full!",1,true)
+  check("soft-boiled full HP uses sText_PkmnHPFull",p~=nil and f~=nil and p<f)
+end
+
+-- Status slice S1 source texts (c75f352 src/battle_message.c lines).
+do
+  local c = controller()
+  local m = c:_eventMessages({
+    { type = "fastAsleep", side = "player" },
+    { type = "wokeUp", side = "foe" },
+    { type = "frozenSolid", side = "player" },
+    { type = "thawed", side = "foe" },
+    { type = "defrostedByMove", side = "player", move = Data.MOVE_TACKLE },
+    { type = "fullyParalyzed", side = "foe" },
+    { type = "defrostedByFire", side = "foe" },
+  })
+  check("fast asleep text (:162)", m[1].text == "BULBASAUR is fast\nasleep.", m[1].text)
+  check("woke up text (:163)", m[2].text == "CHARMANDER woke up!", m[2].text)
+  check("is frozen solid text (:100)", m[3].text == "BULBASAUR is\nfrozen solid!", m[3].text)
+  check("canceller thaw text (:102)", m[4].text == "CHARMANDER was\ndefrosted!", m[4].text)
+  check("thaw-hit text names the move (:103)", m[5].text == "BULBASAUR was\ndefrosted by TACKLE!", m[5].text)
+  check("full paralysis text (:106)", m[6].text == "CHARMANDER is paralyzed!\nIt can't move!", m[6].text)
+  check("Fire defrost text names the target (:101)", m[7].text == "CHARMANDER was\ndefrosted!", m[7].text)
+  check("canceller texts carry no HP entry", m[1].hpSide == nil and m[6].hpSide == nil)
+
+  m = c:_eventMessages({
+    { type = "statusDamage", side = "player", kind = "poison", amount = 2, hpRemaining = 17 },
+    { type = "statusDamage", side = "foe", kind = "toxic", amount = 1, hpRemaining = 16 },
+    { type = "statusDamage", side = "foe", kind = "burn", amount = 2, hpRemaining = 14 },
+  })
+  check("poison tick text then HP (:90)", m[1].text == "BULBASAUR is hurt\nby poison!"
+    and m[2].text == nil and m[2].hpSide == "player" and m[2].hp == 17, m[1].text)
+  check("toxic tick uses the poison text", m[3].text == "CHARMANDER is hurt\nby poison!" and m[4].hp == 16)
+  check("burn tick text (:96)", m[5].text == "CHARMANDER is hurt\nby its burn!" and m[6].hpSide == "foe")
+end
+
+do
+  -- Through the real engine: a poisoned Bulbasaur's end-of-turn tick.
+  local c = controller()
+  c.engine.player.status = 8
+  local events = c.engine:runTurn({ action = "move", moveSlot = 1 }, { action = "move", moveSlot = 1 })
+  local m = c:_eventMessages(events)
+  local tick
+  for i, e in ipairs(m) do if e.text == "BULBASAUR is hurt\nby poison!" then tick = i end end
+  check("real engine poison tick reaches the poison text", tick ~= nil)
+  check("real engine poison tick is followed by the player's HP entry",
+    tick and m[tick + 1].hpSide == "player" and m[tick + 1].hp == c.engine.player.hp)
+end
+
+do
+  -- S1 review F2: a move KO (foe queued) then an end-of-turn poison KO
+  -- (player queued) must hand control to the player's party selector.
+  local engine = BattleEngine.new({
+    player = BattleEngine.makeBattler({ species=1,level=5,stats=bs,types=Data.BULBASAUR.types,moves={{move=Data.MOVE_TACKLE,pp=35}} }),
+    foe = BattleEngine.makeBattler({ species=4,level=5,stats=cs,types=Data.CHARMANDER.types,moves={{move=Data.MOVE_TACKLE,pp=35}} }),
+    moves=Data.moves,typeChart=Data.typeChart,rng=rng,
+    hasReplacement=function() return true end,
+  })
+  engine.player.speed, engine.player.hp, engine.player.status = 50, 1, 8
+  engine.foe.hp = 1
+  local ctrl = BattleSceneController.new({ engine=engine,playerName="BULBASAUR",foeName="CHARMANDER",
+    moveName=function() return "TACKLE" end })
+  ctrl:_runTurn({action="move",moveSlot=1})
+  check("move KO then poison KO hands control to the player's party selector",
+    ctrl.afterMessages == BattleSceneController.PARTY and engine.awaitingForcedSwitch == "player",
+    tostring(ctrl.afterMessages))
+end
+
+-- Status slice S2 texts (battle_message.c lines).
+do
+  local c = controller()
+  local m = c:_eventMessages({
+    { type = "statusApplied", side = "foe", kind = "poison" },
+    { type = "statusApplied", side = "foe", kind = "toxic" },
+    { type = "statusApplied", side = "player", kind = "burn" },
+    { type = "statusApplied", side = "player", kind = "freeze" },
+    { type = "statusApplied", side = "foe", kind = "paralysis" },
+    { type = "statusPrevented", side = "foe", kind = "paralysis", ability = 7 },
+    { type = "statusPrevented", side = "player", kind = "poison", ability = 17 },
+    { type = "statusPrevented", side = "foe", kind = "burn", ability = 41 },
+  })
+  check("was poisoned (:88)", m[1].text == "CHARMANDER\nwas poisoned!", m[1].text)
+  check("badly poisoned (:92)", m[2].text == "CHARMANDER is badly\npoisoned!", m[2].text)
+  check("was burned (:94)", m[3].text == "BULBASAUR was burned!", m[3].text)
+  check("was frozen solid (:98)", m[4].text == "BULBASAUR was\nfrozen solid!", m[4].text)
+  check("may be unable to move (:104)", m[5].text == "CHARMANDER is paralyzed!\nIt may be unable to move!", m[5].text)
+  check("Limber prevents paralysis (:270)", m[6].text == "CHARMANDER's LIMBER\nprevents paralysis!", m[6].text)
+  check("Immunity prevents poisoning (:272)", m[7].text == "BULBASAUR's IMMUNITY\nprevents poisoning!", m[7].text)
+  check("Water Veil prevents burns (:280)", m[8].text == "CHARMANDER's WATER VEIL\nprevents burns!", m[8].text)
+end
+
+-- Status slice S3 texts (battle_message.c lines).
+do
+  local c = controller()
+  local m = c:_eventMessages({
+    { type = "statusAlready", side = "foe", kind = "sleep" },
+    { type = "statusAlready", side = "foe", kind = "poison" },
+    { type = "statusAlready", side = "foe", kind = "toxic" },
+    { type = "statusAlready", side = "player", kind = "paralysis" },
+    { type = "statusAlready", side = "player", kind = "burn" },
+    { type = "stayedAwake", side = "foe", ability = 15 },
+    { type = "stayedAwake", side = "foe", ability = 72 },
+    { type = "statusApplied", side = "foe", kind = "sleep" },
+  })
+  check("already asleep (:85)", m[1].text == "CHARMANDER is\nalready asleep!", m[1].text)
+  check("already poisoned (:91)", m[2].text == "CHARMANDER is already\npoisoned.", m[2].text)
+  check("Toxic on a poisoned target uses the same text", m[3].text == m[2].text)
+  check("already paralyzed (:107)", m[4].text == "BULBASAUR is\nalready paralyzed!", m[4].text)
+  check("already has a burn (:97)", m[5].text == "BULBASAUR already\nhas a burn.", m[5].text)
+  check("stayed awake using Insomnia (:174)", m[6].text == "CHARMANDER stayed awake\nusing its INSOMNIA!", m[6].text)
+  check("stayed awake using Vital Spirit", m[7].text == "CHARMANDER stayed awake\nusing its VITAL SPIRIT!", m[7].text)
+  check("fell asleep (:83)", m[8].text == "CHARMANDER\nfell asleep!", m[8].text)
+end
+
+do
+  local c = controller()
+  local m = c:_eventMessages({
+    { type = "statusCured", side = "player" },
+    { type = "paralysisHealed", side = "foe" },
+  })
+  check("Refresh text (:222)", m[1].text == "BULBASAUR's status\nreturned to normal!", m[1].text)
+  check("Smelling Salt heal text (:108)", m[2].text == "CHARMANDER was\nhealed of paralysis!", m[2].text)
+end
+
+do
+  local c = controller()
+  local m = c:_eventMessages({
+    { type = "flinched", side = "foe" },
+    { type = "confusedTurn", side = "player" },
+    { type = "confusionSelfHit", side = "player", amount = 3, hpRemaining = 16 },
+    { type = "confusionEnded", side = "foe" },
+  })
+  check("flinched (:123)", m[1].text == "CHARMANDER flinched!", m[1].text)
+  check("is confused (:114)", m[2].text == "BULBASAUR is\nconfused!", m[2].text)
+  check("hurt itself then HP (:337)", m[3].text == "It hurt itself in its\nconfusion!"
+    and m[4].hpSide == "player" and m[4].hp == 16 and m[4].text == nil, m[3].text)
+  check("snapped out (:115)", m[5].text == "CHARMANDER snapped\nout of confusion!", m[5].text)
+end
+
+do
+  local c = controller()
+  local m = c:_eventMessages({
+    { type = "confusionApplied", side = "foe" },
+    { type = "alreadyConfused", side = "player" },
+    { type = "confusionPrevented", side = "foe" },
+  })
+  check("became confused (:116)", m[1].text == "CHARMANDER became\nconfused!", m[1].text)
+  check("already confused (:117)", m[2].text == "BULBASAUR is\nalready confused!", m[2].text)
+  check("Own Tempo prevents confusion (:273)", m[3].text == "CHARMANDER's OWN TEMPO\nprevents confusion!", m[3].text)
 end
 
 print(("%d passed, %d failed"):format(passed, failed))

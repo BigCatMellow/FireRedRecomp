@@ -47,10 +47,11 @@ check("real Lv5 Bulbasaur fixture stats are HP19/Atk9/Speed9", bulbaStats.hp == 
 check("real Lv5 Charmander fixture stats are HP18/SpA11/Speed11", charStats.hp == 18 and charStats.spAttack == 11 and charStats.speed == 11)
 
 -- Charmander is faster. Each successful attack takes accuracy/crit/random
--- draws. `0,1,0` means hit, no crit, 100% damage. Ember's real direct
+-- draws. `0,1,0` means hit, no crit, 100% damage. Ember (EFFECT_BURN_HIT)
+-- then takes its seteffectwithchance roll: 99 > 10 means no burn. Ember's real direct
 -- damage is 14, Tackle's is 4 (Bulbasaur is not Normal-type).
 local battle = makeBattle(
-  { 0, 1, 0, 0, 1, 0, 0, 1, 0 },
+  { 0, 1, 0, 99, 0, 1, 0, 0, 1, 0 },
   { { move = Data.MOVE_TACKLE, pp = 35 } },
   { { move = Data.MOVE_EMBER, pp = 25 } }
 )
@@ -59,13 +60,76 @@ check("faster foe uses Ember first", events[2].type == "useMove" and events[2].s
 check("Ember event reports real 14 damage", events[3].type == "damage" and events[3].amount == 14 and events[3].hpRemaining == 5, events[3] and events[3].amount)
 check("player still gets its turn while alive", events[4].type == "useMove" and events[4].side == "player")
 check("Tackle event reports real 4 damage", events[5].type == "damage" and events[5].amount == 4 and events[5].hpRemaining == 14, events[5] and events[5].amount)
-check("both attacks used exactly six RNG draws", battle.rng.draws == 6, battle.rng.draws)
+check("both attacks used exactly seven RNG draws (Ember's burn roll)", battle.rng.draws == 7, battle.rng.draws)
 check("PP is deducted from both successful moves", battle.player.moves[1].pp == 34 and battle.foe.moves[1].pp == 24)
 
 events = battle:runTurn({ action = "move", moveSlot = 1 }, { action = "move", moveSlot = 1 })
 check("second Ember faints the player", events[3].type == "damage" and events[3].hpRemaining == 0 and events[4].type == "faint" and events[5].type == "battleEnd")
 check("faint ends the 1v1 battle as playerLost", battle.outcome == "playerLost")
 check("fainted player does not get a second action", #events == 5, #events)
+
+-- Magnitude is the bounded effect-126 leaf: its nominal catalog power stays
+-- one, while exactly one pre-accuracy roll selects an ephemeral power/level.
+local magnitudeMoves = {}
+for k, v in pairs(Data.moves) do magnitudeMoves[k] = v end
+magnitudeMoves[222] = { effect=126, power=1, type=Data.TYPE_GROUND, accuracy=95,
+  pp=30, secondaryEffectChance=0, target=0, priority=0, flags=0x12 }
+local function magnitudeBattle(values, side)
+  local playerMoves = { {move=222,pp=30} }
+  local foeMoves = { {move=222,pp=30} }
+  local b = BattleEngine.new({
+    player=BattleEngine.makeBattler({species=1,level=5,stats=bulbaStats,types=Data.BULBASAUR.types,moves=playerMoves}),
+    foe=BattleEngine.makeBattler({species=4,level=5,stats=charStats,types=Data.CHARMANDER.types,moves=foeMoves}),
+    moves=magnitudeMoves,typeChart=Data.typeChart,rng=scriptedRng(values),
+  })
+  return b, side or BattleEngine.SIDE_PLAYER
+end
+local magnitudeTable = {
+  {0,4,10},{4,4,10},{5,5,30},{14,5,30},{15,6,50},{34,6,50},
+  {35,7,70},{64,7,70},{65,8,90},{84,8,90},{85,9,110},{94,9,110},{95,10,150},{99,10,150},
+}
+for _, row in ipairs(magnitudeTable) do
+  local level, power = BattleEngine.magnitudeResultFromRoll(row[1])
+  check(("Magnitude residue %d maps to literal level/power"):format(row[1]), level == row[2] and power == row[3])
+end
+local magnitudeBattleHit = magnitudeBattle({35,0,1,0})
+events = {}; magnitudeBattleHit:resolveMove(BattleEngine.SIDE_PLAYER,1,events)
+check("Magnitude hit deducts one PP, preserves nominal power, and orders use/level/result",
+  magnitudeBattleHit.player.moves[1].pp == 29 and magnitudeMoves[222].power == 1
+    and events[1].type == "useMove" and events[2].type == "magnitude" and events[2].level == 7
+    and events[3].type == "damage", events[3] and events[3].type)
+check("ordinary Magnitude hit consumes strength, accuracy, critical, and damage draws", magnitudeBattleHit.rng.draws == 4, magnitudeBattleHit.rng.draws)
+local magnitudeBattleMiss = magnitudeBattle({0,95})
+events = {}; magnitudeBattleMiss:resolveMove(BattleEngine.SIDE_PLAYER,1,events)
+check("Magnitude miss retains PP and level event before miss with two draws",
+  magnitudeBattleMiss.player.moves[1].pp == 29 and events[1].type == "useMove"
+    and events[2].type == "magnitude" and events[3].type == "miss" and magnitudeBattleMiss.rng.draws == 2,
+  magnitudeBattleMiss.rng.draws)
+local magnitudeFoe = magnitudeBattle({95,0,1,0})
+events = {}; magnitudeFoe:resolveMove(BattleEngine.SIDE_FOE,1,events)
+check("Magnitude foe side retains the same singleton event and four-draw contract",
+  events[1].side == "foe" and events[2].type == "magnitude" and events[2].side == "foe" and magnitudeFoe.rng.draws == 4,
+  magnitudeFoe.rng.draws)
+local magnitudeTutorial = magnitudeBattle({65,1,0})
+magnitudeTutorial.firstBattle = true
+events = {}; magnitudeTutorial:resolveMove(BattleEngine.SIDE_PLAYER,1,events)
+check("firstBattle player Magnitude bypasses accuracy but retains one strength/crit/damage draw each",
+  events[2].type == "magnitude" and events[3].type == "damage" and magnitudeTutorial.rng.draws == 3,
+  magnitudeTutorial.rng.draws)
+local magnitudeNoEffect = magnitudeBattle({0,0,1,0})
+magnitudeNoEffect.moves[222].type = Data.TYPE_ELECTRIC
+magnitudeNoEffect.foe.types = {Data.TYPE_GROUND,Data.TYPE_GROUND}
+events = {}; magnitudeNoEffect:resolveMove(BattleEngine.SIDE_PLAYER,1,events)
+check("Magnitude no-effect follows post-accuracy critical/damage draws after level event",
+  events[1].type == "useMove" and events[2].type == "magnitude" and events[3].type == "noEffect"
+    and magnitudeNoEffect.rng.draws == 4, magnitudeNoEffect.rng.draws)
+local ordinaryAfterMagnitude = magnitudeBattle({0,1,0})
+ordinaryAfterMagnitude.moves[222] = {effect=0,power=35,type=Data.TYPE_NORMAL,accuracy=95,pp=35,priority=0}
+ordinaryAfterMagnitude.player.moves[1].move = 222
+events = {}; ordinaryAfterMagnitude:resolveMove(BattleEngine.SIDE_PLAYER,1,events)
+check("non-126 path retains prior use/damage ordering and three draws",
+  events[1].type == "useMove" and events[2].type == "damage" and ordinaryAfterMagnitude.rng.draws == 3,
+  ordinaryAfterMagnitude.rng.draws)
 
 -- Misses still consume PP, but neither crit nor random-damage RNG.
 battle = makeBattle({ 95 }, { { move = Data.MOVE_TACKLE, pp = 1 } }, { { move = Data.MOVE_TACKLE, pp = 1 } })
@@ -311,9 +375,9 @@ check("successful fast run consumes no RNG and no foe PP", battle.rng.draws == 0
 -- shake draws from the same global RNG stream as the ensuing foe attack.
 -- At full HP and catch rate 45, catch value=15 and threshold=32767: draw 0
 -- passes (one shake), draw 65535 fails, then the foe's hit consumes its real
--- accuracy/crit/damage draws 0,1,0.
+-- accuracy/crit/damage draws 0,1,0 and Ember's burn roll 99.
 battle = makeBattle(
-  { 0, 65535, 0, 1, 0 },
+  { 0, 65535, 0, 1, 0, 99 },
   { { move = Data.MOVE_TACKLE, pp = 1 } },
   { { move = Data.MOVE_EMBER, pp = 1 } },
   45
@@ -322,7 +386,7 @@ events = battle:runTurn({ action = "capture" }, { action = "move", moveSlot = 1 
 check("Poke Ball resolves before the foe move", events[2].type == "throwBall" and events[3].type == "capture")
 check("failed capture exposes one source shake", events[3].success == false and events[3].shakes == 1, events[3].shakes)
 check("foe attacks after failed capture", events[4].type == "useMove" and events[4].side == "foe")
-check("capture failure and foe attack share exact RNG stream", battle.rng.draws == 5, battle.rng.draws)
+check("capture failure and foe attack share exact RNG stream", battle.rng.draws == 6, battle.rng.draws)
 check("failed capture does not end battle", battle.outcome == nil)
 
 -- Four passing shake draws catch and end the battle before the foe can act.
@@ -738,7 +802,7 @@ check("unsupported zero-power move fails loudly", not ok)
 -- old documented no-PP stub. `0,1,0` is Struggle's own accuracy/crit/
 -- damage roll (hit, no crit, 100% multiplier); Struggle's real EFFECT_
 -- RECOIL=48 damage/recoil math is exercised again below in more detail.
-battle = makeBattle({ 0, 1, 0, 0, 1, 0 }, { { move = Data.MOVE_TACKLE, pp = 0 } }, { { move = Data.MOVE_EMBER, pp = 1 } })
+battle = makeBattle({ 0, 1, 0, 99, 0, 1, 0 }, { { move = Data.MOVE_TACKLE, pp = 0 } }, { { move = Data.MOVE_EMBER, pp = 1 } })
 events = battle:runTurn({ action = "move", moveSlot = 1 }, { action = "move", moveSlot = 1 })
 local struggleUse
 for _, e in ipairs(events) do
@@ -757,7 +821,7 @@ check("Struggle's own slot PP is never touched by the auto-trigger",
 -- (AreAllMovesUnusable only fires when EVERY slot is unusable) that this
 -- specific case is NOT an auto-Struggle trigger; the pre-existing no-op
 -- {type="noPP"} path is correct here and is preserved unchanged.
-battle = makeBattle({ 0, 1, 0 },
+battle = makeBattle({ 0, 1, 0, 99 },
   { { move = Data.MOVE_TACKLE, pp = 0 }, { move = Data.MOVE_EMBER, pp = 25 } },
   { { move = Data.MOVE_EMBER, pp = 1 } })
 events = battle:runTurn({ action = "move", moveSlot = 1 }, { action = "move", moveSlot = 1 })
@@ -771,7 +835,7 @@ check("selecting one empty slot while another still has PP still no-ops with noP
 -- the requested slot is even looked at. Passing moveSlot=2 (itself a real,
 -- empty, 0-PP slot) must still resolve Struggle's own real data
 -- (self.moves[165]), not slot 2's move.
-battle = makeBattle({ 0, 1, 0, 0, 1, 0 },
+battle = makeBattle({ 0, 1, 0, 99, 0, 1, 0 },
   { { move = Data.MOVE_TACKLE, pp = 0 }, { move = Data.MOVE_EMBER, pp = 0 } },
   { { move = Data.MOVE_EMBER, pp = 1 } })
 events = battle:runTurn({ action = "move", moveSlot = 2 }, { action = "move", moveSlot = 1 })
@@ -794,9 +858,9 @@ check("neither real move slot's PP changes when Struggle is auto-selected",
 -- reachable via an ordinary roll -- confirming Struggle really runs
 -- BattleFormulas.accuracyCheck with no special-casing, not a hidden
 -- always-hit shortcut. Foe (faster) uses Ember first as a normal hit
--- (draws 1-3), then the boosted-evasion foe causes the player's Struggle
--- accuracy roll (draw 4) to miss.
-battle = makeBattle({ 0, 1, 0, 50 }, { { move = Data.MOVE_TACKLE, pp = 0 } }, { { move = Data.MOVE_EMBER, pp = 1 } })
+-- (draws 1-3, burn roll draw 4), then the boosted-evasion foe causes the
+-- player's Struggle accuracy roll (draw 5) to miss.
+battle = makeBattle({ 0, 1, 0, 99, 50 }, { { move = Data.MOVE_TACKLE, pp = 0 } }, { { move = Data.MOVE_EMBER, pp = 1 } })
 battle.foe.statStages.evasion = 12
 events = battle:runTurn({ action = "move", moveSlot = 1 }, { action = "move", moveSlot = 1 })
 local playerMiss
@@ -813,7 +877,7 @@ check("a missed Struggle still consumes no PP from any real slot",
 -- this reuses the exact same recoil pipeline Take Down/Submission already
 -- exercise above, so a passing assertion here is also a regression check
 -- that recoil is still wired correctly for Struggle specifically.
-battle = makeBattle({ 0, 1, 0, 0, 1, 0 }, { { move = Data.MOVE_TACKLE, pp = 0 } }, { { move = Data.MOVE_EMBER, pp = 1 } })
+battle = makeBattle({ 0, 1, 0, 99, 0, 1, 0 }, { { move = Data.MOVE_TACKLE, pp = 0 } }, { { move = Data.MOVE_EMBER, pp = 1 } })
 events = battle:runTurn({ action = "move", moveSlot = 1 }, { action = "move", moveSlot = 1 })
 local dmgEvent, recoilEvent
 for _, e in ipairs(events) do
@@ -850,12 +914,17 @@ check("Struggle bypasses a real Ghost-type immunity to Normal",
 -- and damage roll, no repeat accuracy. Isolated with resolveMove directly
 -- so each RNG-draw-count assertion below is exact. Per-hit RNG shape is
 -- `crit, damageMultiplier` (values `1, 0` = no crit, 100% damage, same
--- convention as the rest of this file).
+-- convention as the rest of this file). Every landed or no-effect sequence
+-- then draws ONE trailing `% 100` (multi-hit tail follow-up): the
+-- seteffectwithchance at BattleScript_MultiHitEnd (data/battle_scripts_1.s
+-- :652) evaluates `Random() % 100` first (src/battle_script_commands.c
+-- :2789) even though 29/44 carry effect byte 0 and chance 0. The draw
+-- counts below were each raised by 1 on purpose for that roll.
 
 -- EFFECT_DOUBLE_HIT (Double Kick): always exactly 2 hits, ZERO hit-count
 -- RNG (real fixed `setmultihitcounter 2` arg) -- total draws = 1 accuracy +
--- 2*(crit+damage) = 5.
-battle = makeBattle({ 0, 1, 0, 1, 0 }, { { move = Data.MOVE_DOUBLE_KICK, pp = 30 } }, { { move = Data.MOVE_TACKLE, pp = 1 } })
+-- 2*(crit+damage) + 1 trailing `% 100` = 6.
+battle = makeBattle({ 0, 1, 0, 1, 0, 99 }, { { move = Data.MOVE_DOUBLE_KICK, pp = 30 } }, { { move = Data.MOVE_TACKLE, pp = 1 } })
 statEvents = {}
 battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, statEvents)
 local dmgEvents = {}
@@ -865,8 +934,10 @@ end
 check("Double Kick (EFFECT_DOUBLE_HIT) lands exactly 2 hits", #dmgEvents == 2, #dmgEvents)
 check("Double Kick's trailing multiHit event reports 2 hits",
   statEvents[#statEvents].type == "multiHit" and statEvents[#statEvents].hits == 2, statEvents[#statEvents])
-check("Double Kick consumes exactly 5 RNG draws (1 accuracy + 2*(crit+damage), zero hit-count RNG)",
-  battle.rng.draws == 5, battle.rng.draws)
+-- Was 5 before the multi-hit tail follow-up; +1 for MultiHitEnd's
+-- seteffectwithchance roll (bs1.s:652, bsc.c:2789).
+check("Double Kick consumes exactly 6 RNG draws (1 accuracy + 2*(crit+damage) + 1 trailing % 100, zero hit-count RNG)",
+  battle.rng.draws == 6, battle.rng.draws)
 
 -- Bonemerang: the other real EFFECT_DOUBLE_HIT move, confirming no
 -- per-move special-casing -- same fixed-2 behavior.
@@ -893,8 +964,9 @@ for _, e in ipairs(statEvents) do
   if e.type == "damage" then dmgEvents[#dmgEvents + 1] = e end
 end
 check("Double Slap's single-roll branch (first roll 1) lands exactly 3 hits", #dmgEvents == 3, #dmgEvents)
-check("single-roll branch consumes exactly 8 draws (1 acc + 1 hitcount + 3*(crit+damage))",
-  battle.rng.draws == 8, battle.rng.draws)
+-- Was 8; +1 for MultiHitEnd's seteffectwithchance roll (bs1.s:652).
+check("single-roll branch consumes exactly 9 draws (1 acc + 1 hitcount + 3*(crit+damage) + 1 % 100)",
+  battle.rng.draws == 9, battle.rng.draws)
 
 -- EFFECT_MULTI_HIT, "2 extra rolls" branch: first roll is 2 or 3, so a
 -- second roll picks the final count. First=3 (3&3=3>1), second=3
@@ -910,8 +982,9 @@ for _, e in ipairs(statEvents) do
   if e.type == "damage" then dmgEvents[#dmgEvents + 1] = e end
 end
 check("Fury Attack's two-roll branch (first=3, second=3) lands exactly 5 hits", #dmgEvents == 5, #dmgEvents)
-check("two-roll branch consumes exactly 13 draws (1 acc + 2 hitcount + 5*(crit+damage))",
-  battle.rng.draws == 13, battle.rng.draws)
+-- Was 13; +1 for MultiHitEnd's seteffectwithchance roll (bs1.s:652).
+check("two-roll branch consumes exactly 14 draws (1 acc + 2 hitcount + 5*(crit+damage) + 1 % 100)",
+  battle.rng.draws == 14, battle.rng.draws)
 
 -- Same two-roll branch, other end: first=2, second=0 -> (0&3)+2 = 2 hits.
 battle = makeBattle(
@@ -925,14 +998,23 @@ for _, e in ipairs(statEvents) do
   if e.type == "damage" then dmgEvents[#dmgEvents + 1] = e end
 end
 check("Fury Attack's two-roll branch (first=2, second=0) lands exactly 2 hits", #dmgEvents == 2, #dmgEvents)
-check("that two-roll branch consumes exactly 7 draws (1 acc + 2 hitcount + 2*(crit+damage))",
-  battle.rng.draws == 7, battle.rng.draws)
+-- Was 7 (design review F1 named this assertion); +1 for MultiHitEnd's
+-- seteffectwithchance roll (bs1.s:652).
+check("that two-roll branch consumes exactly 8 draws (1 acc + 2 hitcount + 2*(crit+damage) + 1 % 100)",
+  battle.rng.draws == 8, battle.rng.draws)
 
 -- Defender faints mid-sequence: the sequence stops the instant HP hits 0,
 -- landing fewer hits than the rolled count. Fury Attack rolled for 3 hits
 -- (single-roll branch, first=1), foe HP set to survive exactly one hit.
+-- Multi-hit tail follow-up (intentional change): source breaks the loop at
+-- `jumpifhasnohp BS_TARGET` -> BattleScript_MultiHitPrintStrings, prints
+-- "Hit 1 time(s)!" (data/battle_scripts_1.s:615, :646-649), draws
+-- MultiHitEnd's `% 100` (:652) and only then runs `tryfaintmon BS_TARGET`
+-- (:653), which is the CALLER's faint check here. So resolveMove itself no
+-- longer emits the faint; this test previously asserted the old in-loop
+-- faint and "no trailing multiHit" shape.
 battle = makeBattle(
-  { 0, 1, 1, 0, 1, 0, 1, 0 },
+  { 0, 1, 1, 0, 99 },
   { { move = Data.MOVE_FURY_ATTACK, pp = 20 } }, { { move = Data.MOVE_TACKLE, pp = 1 } }
 )
 battle.foe.hp = 1
@@ -944,12 +1026,19 @@ for _, e in ipairs(statEvents) do
 end
 check("a defender that faints mid-sequence lands only 1 hit, not the full rolled 3",
   #dmgEvents == 1 and dmgEvents[1].hpRemaining == 0, #dmgEvents)
-check("the sequence ends with the defender's faint, no further hits attempted",
+check("a KO-terminated sequence still ends with multiHit hits=1 (bs1.s:646-649), not a faint",
+  statEvents[#statEvents].type == "multiHit" and statEvents[#statEvents].hits == 1, statEvents[#statEvents])
+local inMoveFaint = false
+for _, e in ipairs(statEvents) do
+  if e.type == "faint" then inMoveFaint = true end
+end
+check("resolveMultiHit emits no in-loop faint (tryfaintmon is after MultiHitEnd, bs1.s:653)", not inMoveFaint)
+check("a KO-terminated Fury Attack draws acc + hitcount + (crit, random) + the trailing % 100 = 5",
+  battle.rng.draws == 5, battle.rng.draws)
+battle:checkFaint(BattleEngine.SIDE_FOE, statEvents)
+check("the caller's faint check then emits the faint and ends the battle as playerWon",
   statEvents[#statEvents - 1].type == "faint" and statEvents[#statEvents - 1].side == BattleEngine.SIDE_FOE
-    and statEvents[#statEvents].type == "battleEnd", statEvents)
-check("a faint-terminated sequence emits no trailing multiHit summary event",
-  statEvents[#statEvents].type ~= "multiHit" and statEvents[#statEvents - 1].type ~= "multiHit")
-check("the mid-sequence faint also ends the battle as playerWon", battle.outcome == "playerWon")
+    and statEvents[#statEvents].type == "battleEnd" and battle.outcome == "playerWon", statEvents)
 
 -- Type-immune target: the entire sequence stops at zero hits, not "immune
 -- hits skipped, others land." Confirmed only reachable on the first hit
@@ -960,13 +1049,16 @@ local groundFoeMulti = BattleEngine.makeBattler({ species = 0, level = 5, stats 
 local electricPlayerMulti = BattleEngine.makeBattler({ species = 0, level = 5, stats = bulbaStats, types = { Data.TYPE_ELECTRIC, Data.TYPE_ELECTRIC }, moves = { { move = 996, pp = 1 } } })
 multiHitMoves[996] = { effect = 29, power = 40, type = Data.TYPE_ELECTRIC, accuracy = 100, pp = 1,
                        secondaryEffectChance = 0, target = 0, priority = 0, flags = 0 }
-battle = BattleEngine.new({ player = electricPlayerMulti, foe = groundFoeMulti, moves = multiHitMoves, typeChart = Data.typeChart, rng = scriptedRng({ 0, 1, 1 }) })
+battle = BattleEngine.new({ player = electricPlayerMulti, foe = groundFoeMulti, moves = multiHitMoves, typeChart = Data.typeChart, rng = scriptedRng({ 0, 1, 1, 0 }) })
 statEvents = {}
 battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, statEvents)
 check("a type-immune multi-hit move emits a single noEffect and zero damage events",
   statEvents[2].type == "noEffect" and #statEvents == 2, statEvents)
-check("no-effect stops before adjustnormaldamage's Random() call -- only accuracy+hitcount+crit consumed",
-  battle.rng.draws == 3, battle.rng.draws)
+-- Was 3 (accuracy+hitcount+crit); multi-hit tail follow-up adds the
+-- trailing `% 100`: MultiHitNoMoreHits -> PrintStrings -> jumpifmovehadnoeffect
+-- MultiHitEnd -> seteffectwithchance (bs1.s:624, :642-647, :652; bsc.c:2789).
+check("no-effect stops before adjustnormaldamage's Random() call -- accuracy+hitcount+crit, then the trailing % 100",
+  battle.rng.draws == 4, battle.rng.draws)
 
 -- A miss never reaches setmultihitcounter at all (real script:
 -- accuracycheck -> attackstring -> ppreduce -> setmultihitcounter -- the
@@ -1600,6 +1692,724 @@ check("an immunity still lets Explosion faint its user after normal RNG", battle
   and battle.foe.hp == battle.foe.maxHP and battle.rng.draws == 3 and battle.outcome == "playerLost")
 Data.moves[explosionId] = nil
 Data.moves[ordinaryId] = nil
+
+-- EFFECT_RESTORE_HP (32) admits only the two source-locked zero-power USER
+-- moves. It spends PP before full-HP viability and never consumes action RNG.
+local recoverId, slackOffId = 105, 303
+Data.moves[recoverId] = { effect=32,power=0,type=Data.TYPE_NORMAL,accuracy=0,pp=20,secondaryEffectChance=0,target=16,priority=0,flags=8 }
+Data.moves[slackOffId] = { effect=32,power=0,type=Data.TYPE_NORMAL,accuracy=100,pp=10,secondaryEffectChance=0,target=16,priority=0,flags=8 }
+battle = makeBattle({123}, {{move=recoverId,pp=20}}, {{move=Data.MOVE_TACKLE,pp=1}})
+battle.player.maxHP=101; battle.player.hp=100; events={}; battle:resolveMove(BattleEngine.SIDE_PLAYER,1,events)
+check("Recover clamps a near-full odd-max self heal and reports actual gain", battle.player.hp == 101
+  and battle.player.moves[1].pp == 19 and battle.rng.draws == 0 and events[2].type == "restoreHP"
+  and events[2].side == "player" and events[2].beforeHP == 100 and events[2].hpRemaining == 101 and events[2].amount == 1)
+battle = makeBattle({123}, {{move=Data.MOVE_TACKLE,pp=1}}, {{move=slackOffId,pp=10}})
+battle.foe.maxHP=100; battle.foe.hp=1; events={}; battle:resolveMove(BattleEngine.SIDE_FOE,1,events)
+check("Slack Off heals its own foe-side HP by floor half max without RNG", battle.foe.hp == 51
+  and battle.foe.moves[1].pp == 9 and battle.player.hp == battle.player.maxHP and battle.rng.draws == 0
+  and events[2].type == "restoreHP" and events[2].side == "foe" and events[2].amount == 50)
+battle = makeBattle({123}, {{move=recoverId,pp=20}}, {{move=Data.MOVE_TACKLE,pp=1}})
+events={}; battle:resolveMove(BattleEngine.SIDE_PLAYER,1,events)
+check("full HP spends one PP and emits restoreHPFull without a success event", battle.player.moves[1].pp == 19
+  and battle.rng.draws == 0 and #events == 2 and events[1].type == "useMove" and events[2].type == "restoreHPFull")
+battle = makeBattle({123}, {{move=recoverId,pp=0},{move=Data.MOVE_TACKLE,pp=1}}, {{move=Data.MOVE_TACKLE,pp=1}})
+events={}; battle:resolveMove(BattleEngine.SIDE_PLAYER,1,events)
+check("chosen zero-PP Recover preserves noPP behavior before healing", #events == 1 and events[1].type == "noPP"
+  and battle.player.moves[1].pp == 0 and battle.player.hp == battle.player.maxHP and battle.rng.draws == 0)
+check("Restore HP admission refuses absent or wrong IDs and malformed shapes", not battle:supportsMove(Data.moves[recoverId])
+  and not battle:supportsMove(Data.moves[recoverId], 999) and not battle:supportsMove({effect=32,power=1,target=16}, recoverId)
+  and not battle:supportsMove({effect=32,power=0,target=0}, recoverId) and battle:supportsMove(Data.moves[recoverId], recoverId)
+  and battle:supportsMove(Data.moves[slackOffId], slackOffId))
+Data.moves[recoverId] = nil
+Data.moves[slackOffId] = nil
+
+-- Effect 45 source-derived ordinary singles cases. Local fixtures leave the
+-- shared test catalog untouched. Numeric oracles below are not obtained from
+-- the implementation's damage helper.
+do
+  local moves = {
+    [26]={effect=45,power=70,type=1,accuracy=95,pp=25,priority=0,target=0},
+    [136]={effect=45,power=85,type=1,accuracy=90,pp=20,priority=0,target=0},
+    [33]={effect=0,power=35,type=0,accuracy=95,pp=35,priority=0,target=0},
+    [165]=Data.moves[165],
+  }
+  local chart = {
+    [0]={attackingType=1,defendingType=0,multiplier=20},
+    [1]={attackingType=1,defendingType=7,multiplier=0},
+    [2]={attackingType=1,defendingType=6,multiplier=5},
+  }
+  local stats={hp=100,attack=40,defense=40,speed=20,spAttack=40,spDefense=40}
+  local function setup(id, side, values)
+    local b=BattleEngine.new({
+      player=BattleEngine.makeBattler({species=1,level=20,stats=stats,types={10,10},moves={{move=33,pp=35}}}),
+      foe=BattleEngine.makeBattler({species=4,level=20,stats=stats,types={10,10},moves={{move=33,pp=35}}}),
+      moves=moves,typeChart=chart,rng=scriptedRng(values or {99,0,4321}),
+    })
+    local a=b:battler(side)
+    local d=side=="player" and b.foe or b.player
+    a.moves={{move=id,pp=moves[id].pp}}; a.types={1,1}; a.speed=30
+    return b,a,d
+  end
+  local function resolve(b,side)
+    local ev={}; b:resolveMove(side,1,ev); return ev
+  end
+  local function kinds(ev)
+    local out={}; for _,e in ipairs(ev) do out[#out+1]=e.type end
+    return table.concat(out,",")
+  end
+  for _,id in ipairs({26,136}) do
+    for _,side in ipairs({"player","foe"}) do
+      local b,a,d=setup(id,side)
+      local ev=resolve(b,side)
+      -- Lv20: (10*70/50)+2=16; STAB=24; half=12.
+      -- Hi Jump Kick: 17+2=19; STAB floors to28; half=14.
+      local amount=id==26 and 12 or 14
+      check("effect45 literal crash "..id..side,kinds(ev)=="useMove,miss,crash"
+        and ev[3].side==side and ev[3].amount==amount and ev[3].hpRemaining==100-amount
+        and a.hp==100-amount and d.hp==100 and a.moves[1].pp==moves[id].pp-1)
+      check("effect45 two draws then sentinel "..id..side,b.rng.draws==2 and b.rng:next16()==4321)
+      for _,types in ipairs({{7,7},{7,0},{0,7}}) do
+        b,a,d=setup(id,side,{99,4321}); d.types=types
+        ev=resolve(b,side)
+        check("effect45 immune result "..id..side..types[1],kinds(ev)=="useMove,noEffect"
+          and a.hp==100 and d.hp==100 and a.moves[1].pp==moves[id].pp-1
+          and b.rng.draws==1 and b.rng:next16()==4321)
+      end
+      b,a,d=setup(id,side,{0,1,0,4321}); ev=resolve(b,side)
+      check("effect45 successful hit retained "..id..side,kinds(ev)=="useMove,damage"
+        and a.hp==100 and d.hp==100-amount*2 and a.moves[1].pp==moves[id].pp-1
+        and b.rng.draws==3 and b.rng:next16()==4321)
+      b,a,d=setup(id,side,{0,1,0,4321}); d.types={7,7}; ev=resolve(b,side)
+      check("effect45 successful-accuracy immunity retains hit draws "..id..side,
+        kinds(ev)=="useMove,noEffect" and a.hp==100 and d.hp==100
+        and b.rng.draws==3 and b.rng:next16()==4321)
+      for _,replacement in ipairs({false,true}) do
+        b,a,d=setup(id,side,{99,0,4321}); a.hp=1
+        b.hasReplacement=function(s) return replacement and s==side end
+        ev=b:runTurn({action="move",moveSlot=1},{action="move",moveSlot=1})
+        check("effect45 fatal order "..id..side..tostring(replacement),
+          kinds(ev)=="turnStart,useMove,miss,crash,faint,"..(replacement and "forcedSwitchNeeded" or "battleEnd")
+          and a.hp==0 and ev[4].amount==1 and ev[5].side==side and d.hp==100
+          and d.moves[1].pp==35 and a.moves[1].pp==moves[id].pp-1 and b.rng.draws==2)
+        if replacement then
+          check("effect45 pending refusal "..side, b.awaitingForcedSwitch==side and not b:isOver()
+            and not pcall(function() b:runTurn({action="move",moveSlot=1},{action="move",moveSlot=1}) end))
+          local incoming=BattleEngine.makeBattler({species=1,level=20,stats=stats,types={10,10},moves={{move=33,pp=35}}})
+          incoming.speed=35
+          local switched=b:resolveForcedSwitch(side,incoming)
+          b.rng=scriptedRng({0,1,0,0,1,0})
+          local later=b:runTurn({action="move",moveSlot=1},{action="move",moveSlot=1})
+          check("effect45 replacement permits later turn "..side,
+            switched[1].type=="forcedSwitchResolved" and b.awaitingForcedSwitch==nil
+            and incoming.moves[1].pp==34 and #later>1)
+        else
+          check("effect45 fatal outcome "..side,b.outcome==(side=="player" and "playerLost" or "playerWon"))
+        end
+      end
+    end
+  end
+  for _,row in ipairs({{7,100,3},{0,100,1},{1,100,1},{100,9,4},{10,10,5},{12,10,5},{8,10,4},{9,1,0}}) do
+    check("effect45 arithmetic half/min/cap "..row[1]..":"..row[2],
+      BattleEngine.recoilIfMissDamage(row[1],row[2])==row[3])
+  end
+  local b,a,d=setup(26,"player",{99,15,4321})
+  a.statStages.attack=5; d.statStages.defense=7; d.types={0,0}; b.sideStatus.foe.reflect=true
+  local ev=resolve(b,"player")
+  -- atk26/def60: floor(floor(26*70*10/60)/50)=6; Reflect3,+2=5;
+  -- STAB7, super14,85%=11,half5. This catches crit stage/screen bypass.
+  check("effect45 source-order stages Reflect STAB type random",ev[3].amount==5 and b.rng.draws==2)
+  b,a,d=setup(26,"player"); d.hp=2; a.maxHP=20; a.hp=20
+  ev=resolve(b,"player")
+  check("effect45 uses neither target current HP nor attacker max cap",ev[3].amount==12 and d.hp==2)
+  b,a,d=setup(26,"player"); d.maxHP=9; ev=resolve(b,"player")
+  check("effect45 odd target max cap",ev[3].amount==4)
+  b,a,d=setup(26,"player",{0,0,0,99,0,4321})
+  ev=resolve(b,"player"); local firstCrit=ev[2].type=="critical"
+  ev=resolve(b,"player")
+  check("effect45 previous critical cannot leak",firstCrit and ev[3].amount==12 and b.rng.draws==5 and b.rng:next16()==4321)
+  for _,side in ipairs({"player","foe"}) do
+    b,a,d=setup(26,side); b.firstBattle=true
+    if side=="player" then b.tutorialPlayerDamageDone=true end
+    ev=resolve(b,side)
+    check("effect45 crash does not introduce tutorial state "..side,
+      kinds(ev)=="useMove,miss,crash" and b.tutorialPlayerDamageDone==(side=="player") and b.rng.draws==2)
+  end
+  b,a,d=setup(26,"player",{1,0,4321}); b.firstBattle=true; ev=resolve(b,"player")
+  check("effect45 firstBattle accuracy bypass and hit tip retained",kinds(ev)=="useMove,damage,tutorialTip"
+    and b.tutorialPlayerDamageDone and b.rng.draws==2 and b.rng:next16()==4321)
+  for _,row in ipairs({{999,45},{26,0},{26,48},{136,198}}) do
+    local id,effect=row[1],row[2]; local original=moves[id]
+    moves[id]={effect=effect,power=70,type=1,accuracy=95,pp=25,priority=0,target=0}
+    b,a,d=setup(id,"player",{99,4321}); ev=resolve(b,"player")
+    check("effect45 literal gate "..id..":"..effect,kinds(ev)=="useMove,miss" and a.hp==100 and b.rng.draws==1 and b.rng:next16()==4321)
+    moves[id]=original
+  end
+  b,a,d=setup(26,"player",{4321}); a.moves={{move=26,pp=0},{move=33,pp=1}}; ev=resolve(b,"player")
+  check("effect45 selected zero PP retained",kinds(ev)=="noPP" and a.hp==100 and b.rng.draws==0)
+  b,a,d=setup(26,"player",{0,1,0}); a.moves[1].pp=0; ev=resolve(b,"player")
+  check("effect45 empty PP still auto-Struggle",ev[1].move==165 and ev[3].type=="recoil" and a.moves[1].pp==0)
+end
+
+-- Two-stat self UP family. Stat pairs are literal from the c75f352 battle
+-- scripts (setstatchanger order), not read from BattleEngine's table.
+do
+  local families = {
+    {effect=206, move=322, stats={"defense","spDefense"}}, -- Cosmic Power
+    {effect=208, move=339, stats={"attack","defense"}},    -- Bulk Up
+    {effect=211, move=347, stats={"spAttack","spDefense"}}, -- Calm Mind
+    {effect=212, move=349, stats={"attack","speed"}},      -- Dragon Dance
+  }
+  local stats={hp=100,attack=40,defense=40,speed=20,spAttack=40,spDefense=40}
+  for _,f in ipairs(families) do
+    local moves = {
+      [f.move]={effect=f.effect,power=0,type=0,accuracy=0,pp=20,priority=0,target=0x10},
+      [33]={effect=0,power=35,type=0,accuracy=95,pp=35,priority=0,target=0},
+    }
+    local function setup(side, values)
+      local b=BattleEngine.new({
+        player=BattleEngine.makeBattler({species=1,level=20,stats=stats,types={0,0},moves={{move=33,pp=35}}}),
+        foe=BattleEngine.makeBattler({species=4,level=20,stats=stats,types={0,0},moves={{move=33,pp=35}}}),
+        moves=moves,typeChart={},rng=scriptedRng(values or {4321}),
+      })
+      local a=b:battler(side)
+      a.moves={{move=f.move,pp=20}}
+      return b,a,(side=="player" and b.foe or b.player)
+    end
+    local s1,s2=f.stats[1],f.stats[2]
+    for _,side in ipairs({"player","foe"}) do
+      local tag=f.effect..side
+      local b,a,d=setup(side)
+      check("dualStat admitted "..tag,b:supportsMove(moves[f.move],f.move))
+      local ev={}; b:resolveMove(side,1,ev)
+      check("dualStat raises both in order "..tag,#ev==3 and ev[1].type=="useMove"
+        and ev[2].type=="statChange" and ev[2].stat==s1 and ev[2].stages==1 and ev[2].stage==7 and ev[2].side==side
+        and ev[3].type=="statChange" and ev[3].stat==s2 and ev[3].stages==1 and ev[3].stage==7
+        and a.statStages[s1]==7 and a.statStages[s2]==7 and a.moves[1].pp==19)
+      check("dualStat no RNG, defender untouched "..tag,b.rng.draws==0 and b.rng:next16()==4321
+        and d.statStages[s1]==6 and d.statStages[s2]==6 and d.hp==100)
+      b,a=setup(side); a.statStages[s1]=12
+      ev={}; b:resolveMove(side,1,ev)
+      check("dualStat first maxed skipped silently "..tag,#ev==2 and ev[2].type=="statChange" and ev[2].stat==s2 and ev[2].stage==7
+        and a.statStages[s1]==12 and a.statStages[s2]==7)
+      b,a=setup(side); a.statStages[s2]=12; a.statStages[s1]=11
+      ev={}; b:resolveMove(side,1,ev)
+      check("dualStat second maxed skipped silently "..tag,#ev==2 and ev[2].stat==s1 and ev[2].stage==12
+        and a.statStages[s2]==12)
+      b,a=setup(side); a.statStages[s1]=12; a.statStages[s2]=12
+      ev={}; b:resolveMove(side,1,ev)
+      check("dualStat both maxed fails, PP spent "..tag,#ev==2 and ev[2].type=="statsWontRise"
+        and ev[2].side==side and a.moves[1].pp==19 and b.rng.draws==0)
+    end
+    local b=setup("player")
+    local bad={effect=f.effect,power=0,type=0,accuracy=0,pp=20,priority=0,target=0}
+    check("dualStat requires user target "..f.effect,not b:supportsMove(bad,f.move))
+    bad={effect=f.effect,power=40,type=0,accuracy=100,pp=20,priority=0,target=0x10}
+    check("dualStat requires zero power "..f.effect,not b:supportsMove(bad,f.move))
+  end
+end
+
+-- Certain self-drop after a hit (Superpower ATK-1 then DEF-1; Overheat and
+-- Psycho Boost SP.ATK-2), literal from c75f352 BattleScript_AtkDefDown /
+-- BattleScript_SAtkDown2. RNG oracle: accuracy, crit, damage random only;
+-- an immune hit additionally spends one seteffectwithchance Random().
+do
+  local families = {
+    {move=276, rec={effect=182,power=120,type=1,accuracy=100,pp=5,secondaryEffectChance=0},
+     drops={{"attack",-1},{"defense",-1}}},
+    {move=315, rec={effect=204,power=140,type=10,accuracy=90,pp=5,secondaryEffectChance=100},
+     drops={{"spAttack",-2}}},
+    {move=354, rec={effect=204,power=140,type=14,accuracy=90,pp=5,secondaryEffectChance=100},
+     drops={{"spAttack",-2}}},
+  }
+  local stats={hp=200,attack=40,defense=40,speed=20,spAttack=40,spDefense=40}
+  for _,f in ipairs(families) do
+    local r=f.rec
+    local moves={
+      [f.move]={effect=r.effect,power=r.power,type=r.type,accuracy=r.accuracy,pp=r.pp,
+        secondaryEffectChance=r.secondaryEffectChance,priority=0,target=0},
+      [33]={effect=0,power=35,type=0,accuracy=95,pp=35,priority=0,target=0},
+    }
+    -- Defender type 7 is immune to the move's type in this local chart.
+    local chart={[0]={attackingType=r.type,defendingType=7,multiplier=0}}
+    local function setup(side, values)
+      local b=BattleEngine.new({
+        player=BattleEngine.makeBattler({species=1,level=20,stats=stats,types={0,0},moves={{move=33,pp=35}}}),
+        foe=BattleEngine.makeBattler({species=4,level=20,stats=stats,types={0,0},moves={{move=33,pp=35}}}),
+        moves=moves,typeChart=chart,rng=scriptedRng(values or {0,1,0,4321}),
+      })
+      local a=b:battler(side)
+      a.moves={{move=f.move,pp=r.pp}}; a.speed=30
+      return b,a,(side=="player" and b.foe or b.player)
+    end
+    local function kinds(ev)
+      local out={}; for _,e in ipairs(ev) do out[#out+1]=e.type end
+      return table.concat(out,",")
+    end
+    local nd=#f.drops
+    for _,side in ipairs({"player","foe"}) do
+      local tag=f.move..side
+      local b,a,d=setup(side)
+      local ev={}; b:resolveMove(side,1,ev)
+      local ok=kinds(ev)==("useMove,damage"..string.rep(",statChange",nd)) and d.hp<200
+        and a.moves[1].pp==r.pp-1 and b.rng.draws==3 and b.rng:next16()==4321
+      for i,drop in ipairs(f.drops) do
+        local e=ev[2+i]
+        ok=ok and e.side==side and e.stat==drop[1] and e.stages==drop[2] and e.stage==6+drop[2]
+          and a.statStages[drop[1]]==6+drop[2]
+      end
+      check("selfDrop after hit, no RNG "..tag,ok and d.statStages.attack==6 and d.statStages.defense==6)
+      b,a,d=setup(side); for _,drop in ipairs(f.drops) do a.statStages[drop[1]]=0 end
+      ev={}; b:resolveMove(side,1,ev)
+      check("selfDrop at -6 skipped silently "..tag,kinds(ev)=="useMove,damage" and b.rng.draws==3)
+      if nd==1 then
+        b,a=setup(side); a.statStages.spAttack=1
+        ev={}; b:resolveMove(side,1,ev)
+        check("selfDrop -2 clamps at -6 "..tag,ev[3].stages==-2 and ev[3].stage==0 and a.statStages.spAttack==0)
+      else
+        b,a=setup(side); a.statStages.attack=0
+        ev={}; b:resolveMove(side,1,ev)
+        check("selfDrop first at -6, second applies "..tag,kinds(ev)=="useMove,damage,statChange"
+          and ev[3].stat=="defense" and a.statStages.defense==5)
+      end
+      b,a,d=setup(side,{0,1,0,0,4321}); d.types={7,7}
+      ev={}; b:resolveMove(side,1,ev)
+      check("selfDrop immune spends effect roll, no drop "..tag,kinds(ev)=="useMove,noEffect"
+        and b.rng.draws==4 and b.rng:next16()==4321 and a.statStages.attack==6 and a.statStages.spAttack==6)
+      b,a,d=setup(side,{99,4321}); d.statStages.evasion=12
+      ev={}; b:resolveMove(side,1,ev)
+      check("selfDrop miss, no drop "..tag,kinds(ev)=="useMove,miss" and b.rng.draws==1
+        and a.statStages.attack==6 and a.statStages.spAttack==6 and a.moves[1].pp==r.pp-1)
+      b,a,d=setup(side,{0,1,0,0,0,0,0,0}); d.hp=1
+      b.hasReplacement=function() return false end
+      ev=b:runTurn({action="move",moveSlot=1},{action="move",moveSlot=1})
+      check("selfDrop applies before defender faint "..tag,
+        kinds(ev)==("turnStart,useMove,damage"..string.rep(",statChange",nd)..",faint,battleEnd"))
+    end
+  end
+end
+
+-- Tickle: target ATK-1 then DEF-1 after accuracycheck; both at -6 fails
+-- before accuracycheck (no RNG); a miss lowers nothing; one at -6 skipped.
+do
+  local moves={
+    [321]={effect=205,power=0,type=0,accuracy=100,pp=20,priority=0,target=0},
+    [33]={effect=0,power=35,type=0,accuracy=95,pp=35,priority=0,target=0},
+  }
+  local stats={hp=100,attack=40,defense=40,speed=20,spAttack=40,spDefense=40}
+  local function setup(side, values)
+    local b=BattleEngine.new({
+      player=BattleEngine.makeBattler({species=1,level=20,stats=stats,types={0,0},moves={{move=33,pp=35}}}),
+      foe=BattleEngine.makeBattler({species=4,level=20,stats=stats,types={7,7},moves={{move=33,pp=35}}}),
+      moves=moves,typeChart={[0]={attackingType=0,defendingType=7,multiplier=0}},
+      rng=scriptedRng(values or {0,4321}),
+    })
+    local a=b:battler(side)
+    a.moves={{move=321,pp=20}}
+    return b,a,(side=="player" and b.foe or b.player)
+  end
+  for _,side in ipairs({"player","foe"}) do
+    local dside=side=="player" and "foe" or "player"
+    local b,a,d=setup(side)
+    check("tickle admitted "..side,b:supportsMove(moves[321],321))
+    local ev={}; b:resolveMove(side,1,ev)
+    check("tickle lowers target ATK then DEF, one RNG "..side,#ev==3
+      and ev[2].type=="statChange" and ev[2].side==dside and ev[2].stat=="attack" and ev[2].stages==-1 and ev[2].stage==5
+      and ev[3].stat=="defense" and ev[3].stage==5 and a.statStages.attack==6 and a.moves[1].pp==19
+      and b.rng.draws==1 and b.rng:next16()==4321)
+    b,a,d=setup(side); d.statStages.attack=0
+    ev={}; b:resolveMove(side,1,ev)
+    check("tickle ATK at -6 skipped, DEF lowered "..side,#ev==2 and ev[2].stat=="defense" and d.statStages.defense==5)
+    b,a,d=setup(side); d.statStages.defense=0
+    ev={}; b:resolveMove(side,1,ev)
+    check("tickle DEF at -6 skipped, ATK lowered "..side,#ev==2 and ev[2].stat=="attack" and d.statStages.attack==5)
+    b,a,d=setup(side,{4321}); d.statStages.attack=0; d.statStages.defense=0
+    ev={}; b:resolveMove(side,1,ev)
+    check("tickle both at -6 fails before accuracy "..side,#ev==2 and ev[2].type=="statsWontFall"
+      and ev[2].side==dside and a.moves[1].pp==19 and b.rng.draws==0)
+    b,a,d=setup(side,{99,4321}); d.statStages.evasion=12
+    ev={}; b:resolveMove(side,1,ev)
+    check("tickle miss lowers nothing "..side,#ev==2 and ev[2].type=="miss" and d.statStages.attack==6
+      and d.statStages.defense==6 and a.moves[1].pp==19 and b.rng.draws==1)
+  end
+  local b,a,d=setup("player",{99,4321}); b.firstBattle=true
+  local ev={}; b:resolveMove("player",1,ev)
+  check("tickle first battle: accuracy bypassed, tip after first fall",#ev==4
+    and ev[2].stat=="attack" and ev[3].type=="tutorialTip" and ev[3].kind=="stat"
+    and ev[4].stat=="defense" and b.tutorialPlayerStatDone and b.rng.draws==0)
+  ev={}; b:resolveMove("player",1,ev)
+  check("tickle first battle: later use rolls accuracy, no tip",#ev==3 and ev[2].type=="statChange"
+    and ev[3].type=="statChange" and b.rng.draws==1 and b.rng:next16()==4321)
+  b=setup("player")
+  check("tickle requires zero power",not b:supportsMove({effect=205,power=20,type=0,accuracy=100,pp=20,target=0},321))
+  check("tickle requires selected target",not b:supportsMove({effect=205,power=0,type=0,accuracy=100,pp=20,target=0x10},321))
+end
+
+-- Batch 3 (c75f352): Splash, Haze, Belly Drum, Psych Up, Soft-Boiled/Milk
+-- Drink. None has accuracycheck or Random(); oracles are literal from the
+-- scripts and Cmd_normalisebuffs / Cmd_maxattackhalvehp / Cmd_copyfoestats /
+-- Cmd_tryhealhalfhealth.
+do
+  local USER, SELECTED = 0x10, 0
+  local moves={
+    [150]={effect=85,power=0,type=0,accuracy=0,pp=40,priority=0,target=USER},  -- Splash
+    [114]={effect=25,power=0,type=15,accuracy=0,pp=30,priority=0,target=USER}, -- Haze
+    [187]={effect=142,power=0,type=0,accuracy=0,pp=10,priority=0,target=USER}, -- Belly Drum
+    [244]={effect=143,power=0,type=0,accuracy=0,pp=10,priority=0,target=SELECTED}, -- Psych Up
+    [135]={effect=157,power=0,type=0,accuracy=100,pp=10,priority=0,target=USER}, -- Soft-Boiled
+    [208]={effect=157,power=0,type=0,accuracy=0,pp=10,priority=0,target=USER},   -- Milk Drink
+    [33]={effect=0,power=35,type=0,accuracy=95,pp=35,priority=0,target=0},
+  }
+  local stats={hp=101,attack=40,defense=40,speed=20,spAttack=40,spDefense=40}
+  local STATS={"attack","defense","speed","spAttack","spDefense","accuracy","evasion"}
+  local function setup(side, id)
+    local b=BattleEngine.new({
+      player=BattleEngine.makeBattler({species=1,level=20,stats=stats,types={0,0},moves={{move=33,pp=35}}}),
+      foe=BattleEngine.makeBattler({species=4,level=20,stats=stats,types={0,0},moves={{move=33,pp=35}}}),
+      moves=moves,typeChart={},rng=scriptedRng({4321}),
+    })
+    local a=b:battler(side)
+    a.moves={{move=id,pp=moves[id].pp}}
+    return b,a,(side=="player" and b.foe or b.player)
+  end
+  local function resolve(b,side) local ev={}; b:resolveMove(side,1,ev); return ev end
+  for _,side in ipairs({"player","foe"}) do
+    local dside=side=="player" and "foe" or "player"
+    for _,id in ipairs({150,114,187,244,135,208}) do
+      local b=setup(side,id)
+      check("batch3 admitted "..id..side,b:supportsMove(moves[id],id))
+    end
+    -- Splash
+    local b,a,d=setup(side,150)
+    local ev=resolve(b,side)
+    check("splash nothing happens "..side,#ev==2 and ev[2].type=="splash" and a.moves[1].pp==39
+      and a.hp==101 and b.rng.draws==0)
+    -- Haze resets both battlers' seven stages
+    b,a,d=setup(side,114)
+    for i,stat in ipairs(STATS) do a.statStages[stat]=i; d.statStages[stat]=12-i end
+    ev=resolve(b,side)
+    local neutral=true
+    for _,stat in ipairs(STATS) do neutral=neutral and a.statStages[stat]==6 and d.statStages[stat]==6 end
+    check("haze resets all stages both sides "..side,#ev==2 and ev[2].type=="haze" and neutral
+      and a.moves[1].pp==29 and b.rng.draws==0)
+    -- Psych Up copies all seven target stages
+    b,a,d=setup(side,244)
+    for i,stat in ipairs(STATS) do d.statStages[stat]=i+2; a.statStages[stat]=12 end
+    ev=resolve(b,side)
+    local copied=true
+    for i,stat in ipairs(STATS) do copied=copied and a.statStages[stat]==i+2 and d.statStages[stat]==i+2 end
+    check("psych up copies target stages "..side,#ev==2 and ev[2].type=="psychUp" and ev[2].side==side
+      and ev[2].target==dside and copied and a.moves[1].pp==9 and b.rng.draws==0)
+    -- Belly Drum: maxHP 101 -> half 50; needs hp > 50 and ATK < +6
+    b,a=setup(side,187)
+    ev=resolve(b,side)
+    check("belly drum maxes ATK, costs half max HP "..side,#ev==2 and ev[2].type=="bellyDrum"
+      and ev[2].amount==50 and ev[2].hpRemaining==51 and a.hp==51 and a.statStages.attack==12
+      and a.moves[1].pp==9 and b.rng.draws==0)
+    b,a=setup(side,187); a.hp=51; a.statStages.attack=3
+    ev=resolve(b,side)
+    check("belly drum at hp just above half succeeds "..side,ev[2].type=="bellyDrum" and a.hp==1 and a.statStages.attack==12)
+    b,a=setup(side,187); a.hp=50
+    ev=resolve(b,side)
+    check("belly drum fails at half HP "..side,#ev==2 and ev[2].type=="moveFailed" and a.hp==50
+      and a.statStages.attack==6 and a.moves[1].pp==9)
+    b,a=setup(side,187); a.statStages.attack=12
+    ev=resolve(b,side)
+    check("belly drum fails at ATK +6 "..side,ev[2].type=="moveFailed" and a.hp==101)
+    b,a=setup(side,187); a.maxHP=1; a.hp=1
+    ev=resolve(b,side)
+    check("belly drum maxHP 1 uses 1 and fails "..side,ev[2].type=="moveFailed" and a.hp==1)
+    -- Soft-Boiled / Milk Drink heal max(1, maxHP/2), clamped, fail at full
+    for _,id in ipairs({135,208}) do
+      b,a=setup(side,id); a.hp=20
+      ev=resolve(b,side)
+      check("softboiled heals half "..id..side,#ev==2 and ev[2].type=="restoreHP" and ev[2].amount==50
+        and a.hp==70 and a.moves[1].pp==9 and b.rng.draws==0)
+      b,a=setup(side,id); a.hp=90
+      ev=resolve(b,side)
+      check("softboiled clamps at max "..id..side,ev[2].amount==11 and a.hp==101)
+      b,a=setup(side,id)
+      ev=resolve(b,side)
+      check("softboiled fails at full HP "..id..side,ev[2].type=="restoreHPFull" and a.hp==101 and a.moves[1].pp==9)
+    end
+  end
+  local b=setup("player",150)
+  check("softboiled literal ids only",not b:supportsMove(moves[135],136))
+  check("psych up requires selected target",not b:supportsMove({effect=143,power=0,target=USER},244))
+  check("softboiled requires user target",not b:supportsMove({effect=157,power=0,target=SELECTED},135))
+  check("batch3 admission requires zero power",
+    not b:supportsMove({effect=85,power=40,target=USER},150) and not b:supportsMove({effect=25,power=40,target=USER},114)
+    and not b:supportsMove({effect=142,power=40,target=USER},187) and not b:supportsMove({effect=143,power=40,target=SELECTED},244)
+    and not b:supportsMove({effect=157,power=40,target=USER},135))
+  check("batch3 user-target moves reject selected target",
+    not b:supportsMove({effect=85,power=0,target=SELECTED},150) and not b:supportsMove({effect=25,power=0,target=SELECTED},114)
+    and not b:supportsMove({effect=142,power=0,target=SELECTED},187))
+end
+
+-- Batch 4 (c75f352): Brick Break removes both target screens before
+-- critcalc/damagecalc; Ancient Power/Silver Wind 10% all-five +1 with a
+-- "won't go higher" entry for any stat already at +6.
+do
+  local moves={
+    [280]={effect=186,power=75,type=1,accuracy=100,pp=15,secondaryEffectChance=0,priority=0,target=0},
+    [246]={effect=140,power=60,type=5,accuracy=100,pp=5,secondaryEffectChance=10,priority=0,target=0},
+    [318]={effect=140,power=60,type=6,accuracy=100,pp=5,secondaryEffectChance=10,priority=0,target=0},
+    [33]={effect=0,power=35,type=0,accuracy=95,pp=35,priority=0,target=0},
+  }
+  local chart={[0]={attackingType=1,defendingType=7,multiplier=0},
+    [1]={attackingType=5,defendingType=7,multiplier=0},[2]={attackingType=6,defendingType=7,multiplier=0}}
+  local stats={hp=200,attack=40,defense=40,speed=20,spAttack=40,spDefense=40}
+  local function setup(side,id,values)
+    local b=BattleEngine.new({
+      player=BattleEngine.makeBattler({species=1,level=20,stats=stats,types={0,0},moves={{move=33,pp=35}}}),
+      foe=BattleEngine.makeBattler({species=4,level=20,stats=stats,types={0,0},moves={{move=33,pp=35}}}),
+      moves=moves,typeChart=chart,rng=scriptedRng(values),
+    })
+    local a=b:battler(side)
+    a.moves={{move=id,pp=moves[id].pp}}
+    return b,a,(side=="player" and b.foe or b.player)
+  end
+  local function kinds(ev)
+    local out={}; for _,e in ipairs(ev) do out[#out+1]=e.type end
+    return table.concat(out,",")
+  end
+  local function resolve(b,side) local ev={}; b:resolveMove(side,1,ev); return ev end
+  for _,side in ipairs({"player","foe"}) do
+    local dside=side=="player" and "foe" or "player"
+    -- Lv20 40/40 power 75, no STAB: floor(40*75*10/40/50)+2 = 17;
+    -- with Reflect kept it would be floor(15/2)+2 = 9.
+    local b,a,d=setup(side,280,{0,1,0,4321})
+    b.sideStatus[dside].reflect=true; b.sideStatus[dside].reflectTimer=3
+    b.sideStatus[dside].lightScreen=true; b.sideStatus[dside].lightScreenTimer=2
+    local ev=resolve(b,side)
+    local st=b.sideStatus[dside]
+    -- 3 draws matches the tracked plain-hit seteffectwithchance gap (source spends 4).
+    check("brick break shatters screens before damage "..side,kinds(ev)=="useMove,wallShattered,damage"
+      and ev[2].side==dside and ev[3].amount==17 and d.hp==183 and not st.reflect and st.reflectTimer==0
+      and not st.lightScreen and st.lightScreenTimer==0 and b.rng.draws==3 and b.rng:next16()==4321)
+    b,a,d=setup(side,280,{0,1,0,4321}); b.sideStatus[side].reflect=true; b.sideStatus[side].reflectTimer=4
+    ev=resolve(b,side)
+    check("brick break no target wall, own wall kept "..side,kinds(ev)=="useMove,damage" and ev[2].amount==17
+      and b.sideStatus[side].reflect and b.sideStatus[side].reflectTimer==4)
+    b,a,d=setup(side,280,{0,1,0,4321}); d.types={7,7}; b.sideStatus[dside].lightScreen=true; b.sideStatus[dside].lightScreenTimer=5
+    ev=resolve(b,side)
+    -- 3 draws: same tracked plain-hit seteffectwithchance gap (source spends 4).
+    check("brick break immune target still shatters "..side,kinds(ev)=="useMove,wallShattered,noEffect"
+      and not b.sideStatus[dside].lightScreen and d.hp==200 and b.rng.draws==3)
+    b,a,d=setup(side,280,{99,4321}); d.statStages.evasion=12; b.sideStatus[dside].reflect=true; b.sideStatus[dside].reflectTimer=5
+    ev=resolve(b,side)
+    check("brick break miss keeps wall "..side,kinds(ev)=="useMove,miss" and b.sideStatus[dside].reflect
+      and a.moves[1].pp==14)
+    for _,id in ipairs({246,318}) do
+      local tag=id..side
+      local order={"attack","defense","speed","spAttack","spDefense"}
+      b,a,d=setup(side,id,{0,1,0,10,4321})
+      ev=resolve(b,side)
+      local ok=kinds(ev)=="useMove,damage,statChange,statChange,statChange,statChange,statChange"
+      for i,stat in ipairs(order) do
+        ok=ok and ev[2+i].stat==stat and ev[2+i].side==side and ev[2+i].stages==1 and ev[2+i].stage==7 and a.statStages[stat]==7
+      end
+      check("all stats up on roll <= 10 "..tag,ok and b.rng.draws==4 and b.rng:next16()==4321)
+      b,a=setup(side,id,{0,1,0,11,4321})
+      ev=resolve(b,side)
+      check("all stats up roll 11 fails "..tag,kinds(ev)=="useMove,damage" and a.statStages.attack==6
+        and b.rng.draws==4 and b.rng:next16()==4321)
+      b,a=setup(side,id,{0,1,0,0,4321}); a.statStages.speed=12
+      ev=resolve(b,side)
+      check("all stats up maxed stat prints won't-go-higher "..tag,#ev==7 and ev[5].stat=="speed"
+        and ev[5].prevented==true and ev[6].stat=="spAttack" and ev[6].stage==7 and a.statStages.speed==12)
+      b,a=setup(side,id,{0,1,0,0,4321}); for _,stat in ipairs(order) do a.statStages[stat]=12 end
+      ev=resolve(b,side)
+      check("all stats up all maxed silent "..tag,kinds(ev)=="useMove,damage" and b.rng.draws==4)
+      -- bs1.s:3410: first four maxed but SP.DEF below +6 still runs all five.
+      b,a=setup(side,id,{0,1,0,0,4321})
+      for i=1,4 do a.statStages[order[i]]=12 end
+      ev=resolve(b,side)
+      local gateOk=#ev==7 and b.rng.draws==4
+      for i=1,4 do gateOk=gateOk and ev[2+i].stat==order[i] and ev[2+i].prevented==true end
+      check("all stats up gate checks SP.DEF clause "..tag,gateOk and ev[7].stat=="spDefense"
+        and ev[7].stage==7 and a.statStages.spDefense==7)
+      -- Boost precedes tryfaintmon BS_TARGET; SetMoveEffect guards the attacker's HP.
+      b,a,d=setup(side,id,{0,1,0,0,0,0,0,0}); d.hp=1
+      b.hasReplacement=function() return false end
+      a.speed=30
+      ev=b:runTurn({action="move",moveSlot=1},{action="move",moveSlot=1})
+      check("all stats up applies on KO before faint "..tag,
+        kinds(ev)=="turnStart,useMove,damage,statChange,statChange,statChange,statChange,statChange,faint,battleEnd"
+        and a.statStages.attack==7)
+      b,a,d=setup(side,id,{0,1,0,0,4321}); d.types={7,7}
+      ev=resolve(b,side)
+      check("all stats up immune spends roll, no raise "..tag,kinds(ev)=="useMove,noEffect"
+        and b.rng.draws==4 and b.rng:next16()==4321 and a.statStages.attack==6)
+    end
+  end
+end
+
+-- Triple Kick (c75f352 EffectTripleKick): per-kick accuracy, power 10/20/30,
+-- random roll before the no-effect stop. Lv20 40/40 no STAB: 4, 6, 8.
+do
+  local moves={
+    [167]={effect=104,power=10,type=1,accuracy=90,pp=10,secondaryEffectChance=0,priority=0,target=0},
+    [33]={effect=0,power=35,type=0,accuracy=95,pp=35,priority=0,target=0},
+  }
+  local chart={[0]={attackingType=1,defendingType=7,multiplier=0}}
+  local stats={hp=200,attack=40,defense=40,speed=20,spAttack=40,spDefense=40}
+  local function setup(side,values)
+    local b=BattleEngine.new({
+      player=BattleEngine.makeBattler({species=1,level=20,stats=stats,types={0,0},moves={{move=33,pp=35}}}),
+      foe=BattleEngine.makeBattler({species=4,level=20,stats=stats,types={0,0},moves={{move=33,pp=35}}}),
+      moves=moves,typeChart=chart,rng=scriptedRng(values),
+    })
+    local a=b:battler(side)
+    a.moves={{move=167,pp=10}}; a.speed=30
+    return b,a,(side=="player" and b.foe or b.player)
+  end
+  local function kinds(ev)
+    local out={}; for _,e in ipairs(ev) do out[#out+1]=e.type end
+    return table.concat(out,",")
+  end
+  local function resolve(b,side) local ev={}; b:resolveMove(side,1,ev); return ev end
+  for _,side in ipairs({"player","foe"}) do
+    -- Draw counts in this block match the tracked seteffectwithchance gap
+    -- (source spends one more on every path, including a first-kick miss).
+    local b,a,d=setup(side,{0,1,0,0,1,0,0,1,0,4321})
+    local ev=resolve(b,side)
+    check("triple kick three kicks 4/6/8 "..side,kinds(ev)=="useMove,damage,damage,damage,multiHit"
+      and ev[2].amount==4 and ev[3].amount==6 and ev[4].amount==8 and ev[5].hits==3 and d.hp==182
+      and a.moves[1].pp==9 and b.rng.draws==9 and b.rng:next16()==4321)
+    b,a,d=setup(side,{0,1,0,99,4321})
+    ev=resolve(b,side)
+    check("triple kick second kick misses: count only, no miss text "..side,kinds(ev)=="useMove,damage,multiHit"
+      and ev[3].hits==1 and b.rng.draws==4 and b.rng:next16()==4321)
+    b,a,d=setup(side,{99,4321})
+    ev=resolve(b,side)
+    check("triple kick first kick misses "..side,kinds(ev)=="useMove,miss" and a.moves[1].pp==9
+      and b.rng.draws==1 and d.hp==200)
+    b,a,d=setup(side,{0,1,0,4321}); d.types={7,7}
+    ev=resolve(b,side)
+    check("triple kick immune spends damage roll then stops "..side,kinds(ev)=="useMove,noEffect"
+      and b.rng.draws==3 and b.rng:next16()==4321)
+    b,a,d=setup(side,{0,1,0,0,0,0,0,1,0,4321})
+    ev=resolve(b,side)
+    check("triple kick per-kick crit "..side,kinds(ev)=="useMove,damage,critical,damage,damage,multiHit"
+      and ev[4].amount==12 and ev[5].amount==8)
+    b,a,d=setup(side,{0,1,0,0,1,0,0,0,0,0,0,0}); d.hp=10
+    b.hasReplacement=function() return false end
+    ev=b:runTurn({action="move",moveSlot=1},{action="move",moveSlot=1})
+    check("triple kick KO stops loop, count before faint "..side,
+      kinds(ev)=="turnStart,useMove,damage,damage,multiHit,faint,battleEnd" and ev[5].hits==2 and d.hp==0)
+    b,a,d=setup(side,{0,1,0,0,1,0,0,0,0,0,0,0}); d.hp=10
+    b.hasReplacement=function(s2) return s2~=side end
+    ev=b:runTurn({action="move",moveSlot=1},{action="move",moveSlot=1})
+    check("triple kick KO with replacement pending "..side,
+      kinds(ev)=="turnStart,useMove,damage,damage,multiHit,faint,forcedSwitchNeeded")
+    -- Per-kick accuracy uses stages: 90 * 75/100 = 67 at evasion +1
+    -- (bsc.c:1046-1061), so draw 66 hits and draw 67 misses on kick 2.
+    b,a,d=setup(side,{66,1,0,67,4321}); d.statStages.evasion=7
+    ev=resolve(b,side)
+    check("triple kick per-kick evasion stage "..side,kinds(ev)=="useMove,damage,multiHit" and ev[3].hits==1
+      and b.rng.draws==4 and b.rng:next16()==4321)
+    b,a,d=setup(side,{66,1,0,67,4321}); a.statStages.accuracy=5
+    ev=resolve(b,side)
+    check("triple kick per-kick accuracy stage "..side,kinds(ev)=="useMove,damage,multiHit" and ev[3].hits==1)
+    -- Reflect halves before +2 (pokemon.c): 1+2, 2+2, 3+2.
+    b,a,d=setup(side,{0,1,0,0,1,0,0,1,0,4321})
+    local dside=side=="player" and "foe" or "player"
+    b.sideStatus[dside].reflect=true; b.sideStatus[dside].reflectTimer=5
+    ev=resolve(b,side)
+    check("triple kick Reflect per kick "..side,ev[2].amount==3 and ev[3].amount==4 and ev[4].amount==5)
+  end
+end
+
+-- Batch 6 (c75f352): Conversion (Cmd_tryconversiontypechange) and Memento
+-- (Cmd_trymemento / setatkhptozero / BattleScript_EffectMemento).
+do
+  local moves={
+    [160]={effect=30,power=0,type=0,accuracy=0,pp=30,priority=0,target=0x10},  -- Conversion
+    [262]={effect=168,power=0,type=17,accuracy=100,pp=10,priority=0,target=0}, -- Memento
+    [52]={effect=4,power=40,type=10,accuracy=100,pp=25,priority=0,target=0},   -- Ember (fire)
+    [33]={effect=0,power=35,type=0,accuracy=95,pp=35,priority=0,target=0},     -- Tackle
+    [174]={effect=109,power=0,type=9,accuracy=0,pp=10,priority=0,target=0x10}, -- Curse (???)
+    [44]={effect=31,power=60,type=17,accuracy=100,pp=25,priority=0,target=0},  -- Bite (dark)
+  }
+  local stats={hp=100,attack=40,defense=40,speed=20,spAttack=40,spDefense=40}
+  local function setup(side,list,values)
+    local b=BattleEngine.new({
+      player=BattleEngine.makeBattler({species=1,level=20,stats=stats,types={0,0},moves={{move=33,pp=35}}}),
+      foe=BattleEngine.makeBattler({species=4,level=20,stats=stats,types={0,0},moves={{move=33,pp=35}}}),
+      moves=moves,typeChart={},rng=scriptedRng(values or {4321}),
+    })
+    local a=b:battler(side)
+    a.moves={}
+    for i,id in ipairs(list) do a.moves[i]={move=id,pp=moves[id].pp} end
+    return b,a,(side=="player" and b.foe or b.player)
+  end
+  local function kinds(ev)
+    local out={}; for _,e in ipairs(ev) do out[#out+1]=e.type end
+    return table.concat(out,",")
+  end
+  local function resolve(b,side) local ev={}; b:resolveMove(side,1,ev); return ev end
+  for _,side in ipairs({"player","foe"}) do
+    local dside=side=="player" and "foe" or "player"
+    -- Draws: 0 -> slot 0 (own NORMAL, redraw), 3 -> slot >= 2 (redraw), 1 -> FIRE.
+    local b,a,d=setup(side,{160,52},{0,3,1,4321})
+    check("conversion admitted "..side,b:supportsMove(moves[160],160))
+    local ev=resolve(b,side)
+    check("conversion rejection loop picks fire "..side,kinds(ev)=="useMove,conversion" and ev[2].newType==10
+      and ev[2].side==side and a.types[1]==10 and a.types[2]==10 and a.moves[1].pp==29
+      and b.rng.draws==3 and b.rng:next16()==4321)
+    b,a=setup(side,{160,33})
+    ev=resolve(b,side)
+    check("conversion fails when all types own "..side,kinds(ev)=="useMove,moveFailed" and a.types[1]==0
+      and a.moves[1].pp==29 and b.rng.draws==0)
+    b,a=setup(side,{160,174},{1,0,4321}); a.types={7,7}
+    ev=resolve(b,side)
+    check("conversion curse reads ghost for ghost user "..side,ev[2].newType==0 and b.rng.draws==2)
+    b,a=setup(side,{160,174})
+    ev=resolve(b,side)
+    check("conversion curse reads normal for non-ghost "..side,ev[2].type=="moveFailed" and b.rng.draws==0)
+    -- Memento
+    b,a,d=setup(side,{262})
+    b.hasReplacement=function() return false end
+    ev=resolve(b,side)
+    check("memento admitted "..side,b:supportsMove(moves[262],262))
+    check("memento faints user then drops target ATK/SPATK -2 "..side,
+      kinds(ev):find("^useMove,mementoHP,statChange,statChange,faint")~=nil
+      and ev[3].side==dside and ev[3].stat=="attack" and ev[3].stages==-2 and ev[3].stage==4
+      and ev[4].stat=="spAttack" and ev[4].stage==4 and ev[5].side==side and a.hp==0 and d.hp==100
+      and a.moves[1].pp==9 and b.rng.draws==0)
+    -- Dual types: bsc.c:7023,7029-7030,7046,7052 check type2 too.
+    b,a=setup(side,{160,174},{1,0,4321}); a.types={17,7}
+    ev=resolve(b,side)
+    check("conversion curse reads ghost via type2 "..side,ev[2].newType==0 and b.rng.draws==2)
+    b,a=setup(side,{160,44}); a.types={0,17}
+    ev=resolve(b,side)
+    check("conversion own-type check uses type2 "..side,ev[2].type=="moveFailed" and b.rng.draws==0)
+    b,a=setup(side,{160,44,52},{1,0,2,4321}); a.types={0,17}
+    ev=resolve(b,side)
+    check("conversion redraw rejects type2 "..side,ev[2].newType==10 and b.rng.draws==3)
+    b,a,d=setup(side,{262}); d.statStages.attack=0; d.statStages.spAttack=0
+    ev=resolve(b,side)
+    check("memento fails at both minimum, user survives "..side,kinds(ev)=="useMove,moveFailed" and a.hp==100
+      and a.moves[1].pp==9)
+    b,a,d=setup(side,{262}); d.statStages.attack=0; d.statStages.spAttack=1
+    b.hasReplacement=function() return false end
+    ev=resolve(b,side)
+    check("memento ATK at minimum skipped, SPATK clamps "..side,ev[3].stat=="spAttack" and ev[3].stages==-2
+      and ev[3].stage==0 and ev[4].type=="faint" and a.hp==0)
+  end
+  -- Oak first battle: tip after the first defender stat fall, player only.
+  local b,a,d=setup("player",{262}); b.firstBattle=true; b.hasReplacement=function() return false end
+  local ev=resolve(b,"player")
+  check("memento first-battle tip after first fall",ev[3].stat=="attack" and ev[4].type=="tutorialTip"
+    and ev[4].kind=="stat" and ev[5].stat=="spAttack" and b.tutorialPlayerStatDone)
+  b,a,d=setup("foe",{262}); b.firstBattle=true; b.hasReplacement=function() return false end
+  ev=resolve(b,"foe")
+  check("memento first-battle foe emits no tip",ev[4].type=="statChange" and not b.tutorialPlayerStatDone)
+  b=setup("player",{160})
+  check("conversion/memento admission gates",
+    not b:supportsMove({effect=30,power=0,target=0},160) and not b:supportsMove({effect=30,power=40,target=0x10},160)
+    and not b:supportsMove({effect=168,power=0,target=0x10},262) and not b:supportsMove({effect=168,power=40,target=0},262))
+end
 
 if romPath then
   local RomImporter = require("import.RomImporter")

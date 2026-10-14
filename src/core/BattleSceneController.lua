@@ -45,6 +45,13 @@ local function otherSide(side)
   return "player"
 end
 
+-- gTypeNames (c75f352 src/battle_main.c:428).
+local TYPE_DISPLAY_NAMES = {
+  [0] = "NORMAL", "FIGHT", "FLYING", "POISON", "GROUND", "ROCK", "BUG", "GHOST",
+  "STEEL", "???", "FIRE", "WATER", "GRASS", "ELECTR", "PSYCHC", "ICE", "DRAGON", "DARK",
+}
+BattleSceneController.TYPE_DISPLAY_NAMES = TYPE_DISPLAY_NAMES
+
 -- Real gStatNamesTable (src/battle_message.c), for the stat keys
 -- BattleEngine.lua's statStages table already uses.
 local STAT_DISPLAY_NAMES = {
@@ -108,6 +115,18 @@ function BattleSceneController:_applyInvisibleEntries()
   end
 end
 
+-- A locked player (charging/recharging/rampaging) gets no action menu: the turn runs
+-- with the locked move as soon as the controller would enter ACTION.
+function BattleSceneController:_enterAction()
+  local engine = self.engine
+  if engine and engine.isLocked and engine.isOver and not engine:isOver()
+      and not engine.awaitingForcedSwitch and engine:isLocked("player") then
+    self:_runTurn({ action = "move", moveSlot = self.engine.player.lockedSlot })
+    return true
+  end
+  return false
+end
+
 function BattleSceneController:_setMessages(entries, afterState)
   self.messages = {}
   for _, entry in ipairs(entries or {}) do
@@ -121,6 +140,7 @@ function BattleSceneController:_setMessages(entries, afterState)
   if not self.messages[self.messageIndex] then
     self.state = afterState
     if afterState ~= BattleSceneController.PARTY then self.partyMode = nil end
+    if afterState == BattleSceneController.ACTION and self:_enterAction() then return end
   end
   self:_touch()
 end
@@ -146,6 +166,7 @@ function BattleSceneController:advanceMessage()
     end
     self.state = self.afterMessages
     if self.state == BattleSceneController.PARTY then self:_refreshPartyChoices() else self.partyMode = nil end
+    if self.state == BattleSceneController.ACTION and self:_enterAction() then return end
   end
   self:_touch()
 end
@@ -174,6 +195,10 @@ local function move2x2(cursor, input, count)
   return nextCursor
 end
 
+local STATUS_ABILITY_NAMES = {
+  [7] = "LIMBER", [15] = "INSOMNIA", [17] = "IMMUNITY", [41] = "WATER VEIL", [72] = "VITAL SPIRIT",
+}
+
 function BattleSceneController:_eventMessages(events)
   local entries = {}
   local function add(text, extra)
@@ -186,8 +211,18 @@ function BattleSceneController:_eventMessages(events)
   for _, event in ipairs(events) do
     if event.type == "useMove" then
       add(name(event.side) .. " used " .. self.moveName(event.move) .. "!")
+    elseif event.type == "magnitude" then
+      -- The engine has already selected the level and completed its model
+      -- work. Presentation only announces that literal event; it neither
+      -- infers transient power/target nor touches RNG or engine state.
+      add(("Magnitude %d!"):format(event.level))
     elseif event.type == "miss" then
       add(possessive(name(event.side)) .. " attack missed!")
+    elseif event.type == "crash" then
+      add(name(event.side) .. " kept going\nand crashed!")
+      -- Source announces crash before attacker HP. Only an invisible entry
+      -- advances displayedHP after acknowledgement; model HP is engine-owned.
+      entries[#entries + 1] = { hpSide = event.side, hp = event.hpRemaining }
     elseif event.type == "moveFailed" then
       add("But it failed!")
     elseif event.type == "critical" then
@@ -203,6 +238,14 @@ function BattleSceneController:_eventMessages(events)
       entries[#entries + 1] = { hpSide = event.side, hp = event.hpRemaining }
     elseif event.type == "painSplit" then
       add("The battlers\nshared their pain!")
+    elseif event.type == "restoreHP" then
+      entries[#entries + 1] = { hpSide = event.side, hp = event.hpRemaining }
+      -- sText_PkmnRegainedHealth (c75f352 battle_message.c:124); the heal
+      -- target is the user, so B_DEF_NAME names this side.
+      add(name(event.side) .. " regained\nhealth!")
+    elseif event.type == "restoreHPFull" then
+      -- sText_PkmnHPFull (battle_message.c:125), via BattleScript_AlreadyAtFullHp.
+      add(possessive(name(event.side)) .. "\nHP is full!")
     elseif event.type == "noEffect" then
       add("It doesn't affect " .. name(event.target) .. "...")
     elseif event.type == "faint" then
@@ -241,6 +284,31 @@ function BattleSceneController:_eventMessages(events)
         end
         add(possessive(name(event.side)) .. " " .. statName .. "\n" .. verb)
       end
+    elseif event.type == "statsWontRise" then
+      -- sText_StatsWontIncrease2 (src/battle_message.c).
+      add(possessive(name(event.side)) .. " stats won't\ngo any higher!")
+    elseif event.type == "conversion" then
+      -- sText_PkmnChangedType
+      add(name(event.side) .. " transformed\ninto the " .. (TYPE_DISPLAY_NAMES[event.newType] or "???") .. " type!")
+    elseif event.type == "mementoHP" then
+      -- trymemento drops the user's HP bar before the stat messages.
+      entries[#entries + 1] = { hpSide = event.side, hp = 0 }
+    elseif event.type == "wallShattered" then
+      add("The wall shattered!") -- sText_TheWallShattered
+    elseif event.type == "splash" then
+      add("But nothing happened!") -- sText_ButNothingHappened
+    elseif event.type == "haze" then
+      add("All stat changes were\neliminated!") -- sText_StatChangesGone
+    elseif event.type == "psychUp" then
+      -- sText_PkmnCopiedStatChanges
+      add(name(event.side) .. " copied\n" .. possessive(name(event.target)) .. " stat changes!")
+    elseif event.type == "bellyDrum" then
+      -- Source updates attacker HP before sText_PkmnCutHPMaxedAttack.
+      entries[#entries + 1] = { hpSide = event.side, hp = event.hpRemaining }
+      add(name(event.side) .. " cut its own HP\nand maximized ATTACK!")
+    elseif event.type == "statsWontFall" then
+      -- sText_StatsWontDecrease2 (src/battle_message.c).
+      add(possessive(name(event.side)) .. " stats won't\ngo any lower!")
     elseif event.type == "switch" then
       -- Bounded, single-message result: this event doesn't carry the
       -- outgoing/incoming species names (BattleEngine stays fully
@@ -265,12 +333,17 @@ function BattleSceneController:_eventMessages(events)
       -- event.side (the attacker) despite the message naming the other side.
       add(name(otherSide(event.side)) .. " had its\nenergy drained!", { hpSide = event.side, hp = event.hpRemaining })
     elseif event.type == "multiHit" then
-      -- Real sText_HitXTimes: "Hit N time(s)!" -- only emitted when the
-      -- sequence completes without an early stop (matching real
-      -- BattleScript_MultiHitPrintStrings, which this event's own
-      -- BattleEngine.lua doc already notes is skipped on a no-effect
-      -- stop; a mid-sequence faint also skips it there since the
-      -- faint/battleEnd events already say enough).
+      -- Real sText_HitXTimes: "Hit N time(s)!" (battle_message.c:82),
+      -- `hits` = hits landed. Never emitted on a no-effect stop (real
+      -- BattleScript_MultiHitPrintStrings skips it). The 2-5 family,
+      -- Double Kick, Twineedle and Triple Kick emit it after a KO too,
+      -- before the caller's faint, as in source. For the resolveMultiHit
+      -- families the effectiveness flags ride on this event, not on each
+      -- damage event: source prints them once via MultiHitPrintStrings'
+      -- resultmessage, just before the count (data/battle_scripts_1.s
+      -- :645-649). Triple Kick's damage events still carry their own.
+      if event.superEffective then add("It's super effective!") end
+      if event.notVeryEffective then add("It's not very effective...") end
       add(("Hit %d time(s)!"):format(event.hits))
     elseif event.type == "tutorialTip" then
       if event.kind == "damage" then
@@ -305,6 +378,108 @@ function BattleSceneController:_eventMessages(events)
       local screenName = event.screen == "reflect" and "REFLECT" or "LIGHT SCREEN"
       local prefix = event.side == "player" and "Your team's" or "The foe's"
       add(prefix .. " " .. screenName .. "\nwore off!")
+    elseif event.type == "fastAsleep" then
+      -- Status canceller/end-of-turn texts: c75f352 src/battle_message.c
+      -- line numbers in comments; scripts data/battle_scripts_1.s:3657-3718.
+      add(name(event.side) .. " is fast\nasleep.") -- :162
+    elseif event.type == "wokeUp" then
+      add(name(event.side) .. " woke up!") -- :163
+    elseif event.type == "frozenSolid" then
+      add(name(event.side) .. " is\nfrozen solid!") -- :100
+    elseif event.type == "thawed" then
+      add(name(event.side) .. " was\ndefrosted!") -- :102 PKMNWASDEFROSTED2
+    elseif event.type == "defrostedByMove" then
+      add(name(event.side) .. " was\ndefrosted by " .. self.moveName(event.move) .. "!") -- :103
+    elseif event.type == "fullyParalyzed" then
+      add(name(event.side) .. " is paralyzed!\nIt can't move!") -- :106
+    elseif event.type == "defrostedByFire" then
+      add(name(event.side) .. " was\ndefrosted!") -- :101 PKMNWASDEFROSTED
+    elseif event.type == "statusApplied" then
+      -- sMoveEffectBS_Ptrs scripts (data/battle_scripts_1.s:3848-3881):
+      -- text names the effect battler.
+      local n = name(event.side)
+      if event.kind == "poison" then add(n .. "\nwas poisoned!") -- :88
+      elseif event.kind == "toxic" then add(n .. " is badly\npoisoned!") -- :92
+      elseif event.kind == "burn" then add(n .. " was burned!") -- :94
+      elseif event.kind == "freeze" then add(n .. " was\nfrozen solid!") -- :98
+      elseif event.kind == "paralysis" then add(n .. " is paralyzed!\nIt may be unable to move!") -- :104
+      elseif event.kind == "sleep" then add(n .. "\nfell asleep!") -- :83
+      end
+    elseif event.type == "statusPrevented" then
+      -- B_MSG_ABILITY_PREVENTS_MOVE_STATUS texts (battle_message.c:270,272,
+      -- 280) with gAbilityNames (src/data/text/abilities.h) for the three
+      -- abilities that can reach them.
+      local ability = STATUS_ABILITY_NAMES[event.ability] or "ABILITY"
+      local who = possessive(name(event.side)) .. " " .. ability
+      if event.kind == "burn" then add(who .. "\nprevents burns!")
+      elseif event.kind == "paralysis" then add(who .. "\nprevents paralysis!")
+      else add(who .. "\nprevents poisoning!")
+      end
+    elseif event.type == "statusAlready" then
+      -- Primary status scripts' "already" branches (battle_message.c).
+      local n = name(event.side)
+      if event.kind == "sleep" then add(n .. " is\nalready asleep!") -- :85
+      elseif event.kind == "paralysis" then add(n .. " is\nalready paralyzed!") -- :107
+      elseif event.kind == "burn" then add(n .. " already\nhas a burn.") -- :97
+      else add(n .. " is already\npoisoned.") -- :91 (poison and toxic)
+      end
+    elseif event.type == "stayedAwake" then
+      -- sText_PkmnStayedAwakeUsing (:174) via jumpifcantmakeasleep.
+      add(name(event.side) .. " stayed awake\nusing its " .. (STATUS_ABILITY_NAMES[event.ability] or "ABILITY") .. "!")
+    elseif event.type == "statusCured" then
+      add(possessive(name(event.side)) .. " status\nreturned to normal!") -- :222
+    elseif event.type == "restSlept" then
+      -- gRestUsedStringIds (battle_message.c:973-977): B_MSG_REST_STATUSED
+      -- when trysetrest saw any of status1 bits 3-7.
+      if event.statused then
+        add(name(event.side) .. " slept and\nbecame healthy!") -- :134
+      else
+        add(name(event.side) .. " went\nto sleep!") -- :133
+      end
+    elseif event.type == "focusEnergy" then
+      add(name(event.side) .. " is getting\npumped!") -- gBattleText_GetPumped :153
+    elseif event.type == "paralysisHealed" then
+      add(name(event.side) .. " was\nhealed of paralysis!") -- :108
+    elseif event.type == "confusionApplied" then
+      add(name(event.side) .. " became\nconfused!") -- battle_message.c:116
+    elseif event.type == "fatigueConfusion" then
+      add(name(event.side) .. " became\nconfused due to fatigue!") -- :177
+    elseif event.type == "alreadyConfused" then
+      add(name(event.side) .. " is\nalready confused!") -- :117
+    elseif event.type == "confusionPrevented" then
+      add(possessive(name(event.side)) .. " OWN TEMPO\nprevents confusion!") -- :273
+    elseif event.type == "chargeTurn" then
+      -- gFirstTurnOfTwoStringIds (battle_message.c:135-138).
+      local n = name(event.side)
+      if event.kind == "razorWind" then add(n .. " whipped\nup a whirlwind!")
+      elseif event.kind == "solarBeam" then add(n .. " took\nin sunlight!")
+      elseif event.kind == "skullBash" then add(n .. " lowered\nits head!")
+      elseif event.kind == "fly" then add(n .. " flew\nup high!") -- :139
+      elseif event.kind == "dig" then add(n .. " dug a hole!") -- :140
+      elseif event.kind == "dive" then add(n .. " hid\nunderwater!") -- :141
+      elseif event.kind == "bounce" then add(n .. " sprang up!") -- :142
+      else add(n .. " is glowing!")
+      end
+    elseif event.type == "mustRecharge" then
+      add(name(event.side) .. " must\nrecharge!") -- :185
+    elseif event.type == "flinched" then
+      add(name(event.side) .. " flinched!") -- battle_message.c:123
+    elseif event.type == "confusedTurn" then
+      add(name(event.side) .. " is\nconfused!") -- :114
+    elseif event.type == "confusionSelfHit" then
+      -- Text before the HP update (data/battle_scripts_1.s:3744-3751).
+      add("It hurt itself in its\nconfusion!") -- :337
+      entries[#entries + 1] = { hpSide = event.side, hp = event.hpRemaining }
+    elseif event.type == "confusionEnded" then
+      add(name(event.side) .. " snapped\nout of confusion!") -- :115
+    elseif event.type == "statusDamage" then
+      -- Message before the HP update (printstring, then datahpupdate).
+      if event.kind == "burn" then
+        add(name(event.side) .. " is hurt\nby its burn!") -- :96
+      else
+        add(name(event.side) .. " is hurt\nby poison!") -- :90 (toxic too)
+      end
+      entries[#entries + 1] = { hpSide = event.side, hp = event.hpRemaining }
     elseif event.type == "capture" then
       if event.success then
         add("Gotcha! " .. self.foeName .. " was caught!")
@@ -331,13 +506,20 @@ function BattleSceneController:_runTurn(playerAction)
     local move = slot and self.engine.moves[slot.move]
     -- Keep effects beyond the engine's explicit bounded subset visible,
     -- rather than routing an unknown power-zero move into fabricated rules.
-    if move and not self.engine:supportsMove(move) then
+    if move and not self.engine:supportsMove(move, slot.move) then
       self:_setMessages({ { text = "That move's effect is not available yet." } },
         BattleSceneController.MOVE)
       return
     end
   end
-  local foeMoveSlot = self.chooseFoeMove and self.chooseFoeMove(self.engine) or self.foeMoveSlot
+  -- A locked foe (charging/recharging/rampaging) chooses nothing: no AI script, so no
+  -- AI RNG (src/battle_main.c:3125-3130); the engine uses its locked move.
+  local foeMoveSlot
+  if self.engine.isLocked and self.engine:isLocked("foe") then
+    foeMoveSlot = self.engine.foe.lockedSlot
+  else
+    foeMoveSlot = self.chooseFoeMove and self.chooseFoeMove(self.engine) or self.foeMoveSlot
+  end
   local events = self.engine:runTurn(playerAction, { action = "move", moveSlot = foeMoveSlot })
   -- The engine has made the team-wide eligibility decision before it emits
   -- forcedSwitchNeeded.  Do not fall through to ACTION while that pending

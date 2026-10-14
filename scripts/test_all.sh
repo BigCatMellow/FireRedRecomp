@@ -17,7 +17,7 @@ for test_file in tests/*_test.lua; do
 done
 
 if [[ -n "${POKEPORT_ROM:-}" ]]; then
-  echo "PASS: ${count} test files (ROM mode: ${POKEPORT_ROM})"
+  echo "PASS: ${count} test files (ROM mode: verified ROM supplied)"
 else
   echo "PASS: ${count} test files (no-ROM mode; ROM-dependent checks skip cleanly)"
 fi

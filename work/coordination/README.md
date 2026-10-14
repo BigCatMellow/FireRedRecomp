@@ -45,6 +45,8 @@ ORCHESTRATOR
 
 ## State files
 
+- [PROJECT_GOAL.md](PROJECT_GOAL.md) — user-adopted standing outcome and
+  continuation/delegation instruction; individual task authority stays bounded.
 - `STATE.json` — machine-readable current relay.
 - `HANDOFF.md` — fresh-agent-readable current state and exact next action.
 - `TASK_REGISTER.md` — forward-only task lifecycle, ownership, exact revision,

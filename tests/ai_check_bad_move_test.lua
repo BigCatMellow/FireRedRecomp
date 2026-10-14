@@ -221,5 +221,67 @@ do
     score(user, target, helpingHand, 9009) == -10)
 end
 
+------------------------------------------------------------------------
+-- STATUS1 branches (status slice S3): real if_status/if_not_status now read
+-- battler status (data/battle_ai_scripts.s).
+------------------------------------------------------------------------
+do
+  local function statusMove(effect, type_) return { effect = effect, power = 0, type = type_,
+    accuracy = 100, pp = 10, secondaryEffectChance = 0, target = 0, priority = 0, flags = 0 } end
+  local user = mon({})
+  local healthy, burned, toxic = mon({}), mon({}), mon({})
+  burned.status = 16
+  toxic.status = 128 + 3 * 256
+  local onlyCounter = mon({}); onlyCounter.status = 5 * 256
+  local sleepMove, poisonMove = statusMove(1, TYPE_GRASS), statusMove(66, TYPE_POISON)
+  local paraMove, wispMove = statusMove(67, TYPE_ELECTRIC), statusMove(167, 10)
+  check("AI_CBM_Sleep: healthy target no penalty", score(user, healthy, sleepMove, 9101) == 0)
+  check("AI_CBM_Sleep: statused target -10", score(user, burned, sleepMove, 9101) == -10)
+  check("AI_CBM_Poison: badly poisoned target -10", score(user, toxic, poisonMove, 9102) == -10)
+  check("AI_CBM_Poison: a stray toxic counter alone is not STATUS1_ANY", score(user, onlyCounter, poisonMove, 9102) == 0)
+  check("AI_CBM_Paralyze: statused target -10", score(user, burned, paraMove, 9103) == -10)
+  check("AI_CBM_Paralyze: healthy target no penalty", score(user, healthy, paraMove, 9103) == 0)
+  check("AI_CBM_WillOWisp: statused target -10", score(user, toxic, wispMove, 9104) == -10)
+  check("AI_CBM_Toxic shares AI_CBM_Poison", score(user, burned, statusMove(33, TYPE_POISON), 92) == -10
+    and score(user, healthy, statusMove(33, TYPE_POISON), 92) == 0)
+
+  local asleep = mon({}); asleep.status = 3
+  local dream = { effect = 8, power = 100, type = 14, accuracy = 100, pp = 15,
+    secondaryEffectChance = 0, target = 0, priority = 0, flags = 0 }
+  check("AI_CBM_DreamEater: awake target -8", score(user, healthy, dream, 138) == -8)
+  check("AI_CBM_DreamEater: sleeping target no penalty", score(user, asleep, dream, 138) == 0)
+  local darkAsleep = mon({ types = { 17, 17 } }); darkAsleep.status = 3
+  check("AI_CBM_DreamEater: sleeping but immune target -10", score(user, darkAsleep, dream, 138) == -10)
+  local nightmareMove = statusMove(107, 7)
+  check("AI_CBM_Nightmare: awake -8, asleep 0", score(user, healthy, nightmareMove, 171) == -8
+    and score(user, asleep, nightmareMove, 171) == 0)
+  local snore = { effect = 92, power = 40, type = 0, accuracy = 100, pp = 15,
+    secondaryEffectChance = 30, target = 0, priority = 0, flags = 0 }
+  check("AI_CBM_DamageDuringSleep: awake user -8, sleeping user 0",
+    score(healthy, healthy, snore, 173) == -8 and score(asleep, healthy, snore, 173) == 0)
+  local refreshMove = statusMove(193, 0)
+  local sleepingUser = mon({}); sleepingUser.status = 2
+  check("AI_CBM_Refresh: healthy or sleeping user -10, burned user 0",
+    score(healthy, healthy, refreshMove, 287) == -10 and score(sleepingUser, healthy, refreshMove, 287) == -10
+      and score(burned, healthy, refreshMove, 287) == 0)
+  check("AI_CBM_Refresh: badly poisoned user 0", score(toxic, healthy, refreshMove, 287) == 0)
+end
+
+do
+  -- AI_CBM_Confuse (data/battle_ai_scripts.s:390-395): already confused -5
+  -- (checked before Own Tempo's -10); Swagger/Flatter share it.
+  local function statusMove(effect) return { effect = effect, power = 0, type = 0,
+    accuracy = 100, pp = 10, secondaryEffectChance = 0, target = 0, priority = 0, flags = 0 } end
+  local user, target = mon({}), mon({})
+  check("AI_CBM_Confuse: healthy target 0", score(user, target, statusMove(49), 48) == 0)
+  target.confusionTurns = 2
+  check("AI_CBM_Confuse: confused target -5", score(user, target, statusMove(49), 48) == -5)
+  local ownTempo = mon({ ability = 20 }); ownTempo.confusionTurns = 2
+  check("AI_CBM_Confuse: confusion branch precedes Own Tempo", score(user, ownTempo, statusMove(49), 48) == -5)
+  ownTempo.confusionTurns = 0
+  check("AI_CBM_Confuse: Own Tempo -10", score(user, ownTempo, statusMove(49), 48) == -10)
+  check("Swagger shares AI_CBM_Confuse", score(user, target, statusMove(118), 207) == -5)
+end
+
 print(("%d passed, %d failed"):format(passed, failed))
 os.exit(failed == 0 and 0 or 1)

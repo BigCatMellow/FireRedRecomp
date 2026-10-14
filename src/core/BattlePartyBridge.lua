@@ -21,6 +21,7 @@
 -- reset step is needed here.
 
 local BattleEngine = require("src.core.BattleEngine")
+local StatusConditions = require("src.core.StatusConditions")
 local BoxPokemonCodec = require("src.core.BoxPokemonCodec")
 
 local BattlePartyBridge = {}
@@ -172,8 +173,8 @@ function BattlePartyBridge.battlerFromGenerated(instance)
   return battler
 end
 
--- Synchronizes the only state the current direct-damage battle mutates:
--- current HP and move PP. Re-encoding updates the real BoxPokemon checksum
+-- Synchronizes the state the current battle mutates: current HP, move PP
+-- and the status1 word (toxic counter masked). Re-encoding updates the real BoxPokemon checksum
 -- and encryption; SaveFileCodec can then serialize the same record as-is.
 function BattlePartyBridge.persistPartyBattler(record, battler)
   local decoded, reason = decodeRecord(record)
@@ -185,7 +186,11 @@ function BattlePartyBridge.persistPartyBattler(record, battler)
     attacks.pp[i] = math.max(0, math.floor(slot.pp or 0))
   end
   record.hp = math.max(0, math.min(record.maxHP, math.floor(battler.hp or 0)))
-  record.status = battler.status or record.status or 0
+  -- The toxic counter is battle-local: real ENDTURN_BAD_POISON never writes
+  -- status1 back, so the party copy keeps counter 0 from when Toxic was
+  -- applied (src/battle_util.c:817-830, src/battle_script_commands.c
+  -- :2351-2364). Sleep turns and every flag persist as-is.
+  record.status = StatusConditions.withToxicCounter(battler.status or record.status or 0, 0)
   record.box = BoxPokemonCodec.encode(decoded)
   record.boxData = decoded
   record.moves = moveSlotsFromBox(decoded)

@@ -1,0 +1,3 @@
+task=runner-readiness
+reason=verify-private-rom-service-configuration
+scope=checkout-route-lua-rom-hash-only

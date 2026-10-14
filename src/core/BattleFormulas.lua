@@ -74,9 +74,9 @@
 -- 5. Cmd_critcalc (src/battle_script_commands.c:1170) -- crit roll:
 --      sCriticalHitChance[] = {16, 8, 4, 3, 2}; crit if
 --      (Random() % sCriticalHitChance[critChance]) == 0, i.e. 1/16 at the
---      base stage. critChance stage sources (Focus Energy, high-crit
---      moves, Scope Lens/Lucky Punch/Stick) are out of this slice's scope;
---      the stage index is a parameter here so they can be added later.
+--      base stage. The stage is a parameter: BattleEngine:critStageFor
+--      supplies Focus Energy (+2) and the high-crit moves (+1); Scope
+--      Lens/Lucky Punch/Stick are not represented.
 --
 -- 6. GetWhoStrikesFirst (src/battle_main.c:3400) -- turn order:
 --      speed = speed * gStatStageRatios[stage][0] / gStatStageRatios[stage][1]
@@ -97,12 +97,22 @@
 --
 -- Real modifiers NOT ported here (all no-ops in this slice, each because
 -- the system it depends on doesn't exist yet): held items and their hold
--- effects, abilities, badge stat boosts, burn's attack halving, weather,
--- Explosion's defense halving, double-battle spread-damage halving,
+-- effects, abilities other than those listed in 7b/7c, badge stat boosts, weather,
+-- double-battle spread-damage halving,
 -- Helping Hand, Charge, Flash Fire, Levitate and Wonder Guard. Each is a
 -- documented gap, not an approximation: the ported code paths above are
 -- byte-for-byte the real ones for a plain single-battle direct-damage move
 -- with no items/abilities/status.
+--
+-- 7b. Burn's physical halving (Guts exempt) and paralysis's turn-order
+--    speed `/4` ARE supported, reading the battler's status1 word through
+--    StatusConditions (see calculateBaseDamage and effectiveSpeed).
+--
+-- 7c. Ability terms ARE supported where source applies them to raw stats
+--    or accuracy: Huge Power/Pure Power, Thick Fat, Hustle, Guts, Marvel
+--    Scale (abilityAdjustedStats), Overgrow/Blaze/Torrent/Swarm power,
+--    Explosion's defense halving after them, and Compound Eyes/Hustle
+--    accuracy (accuracyCheck).
 --
 -- 8. Reflect / Light Screen halving IS supported, inside
 --    calculateBaseDamage -- see that function's own comment for the exact
@@ -113,8 +123,10 @@
 --    (ENDTURN_REFLECT/ENDTURN_LIGHT_SCREEN, src/battle_util.c) live in
 --    BattleEngine.lua, not here -- this file only ever applies the
 --    already-decided halving to a damage number. Real double-battle
---    2*(damage/3) variant and Brick Break's screen-removal are both out of
---    scope (see BattleEngine.lua's header).
+--    2*(damage/3) variant is out of scope; Brick Break's screen removal
+--    happens in BattleEngine before this halving is consulted.
+
+local StatusConditions = require("src.core.StatusConditions")
 
 local BattleFormulas = {}
 
@@ -153,6 +165,7 @@ end
 -- the real tables index directly.
 BattleFormulas.MIN_STAT_STAGE = 0
 BattleFormulas.DEFAULT_STAT_STAGE = 6
+BattleFormulas.ABILITY_GUTS = 62 -- include/constants/abilities.h:66
 BattleFormulas.MAX_STAT_STAGE = 12
 
 -- gStatStageRatios, src/pokemon.c:1442. Indexed by real stage 0..12.
@@ -222,19 +235,69 @@ end
 --   function signature/call site). BattleEngine passes its
 --   self.sideStatus[defenderSide] table straight through, since that
 --   table already has exactly these two boolean fields.
+-- Real CalculateBaseDamage raw-stat ability terms (src/pokemon.c:2437-2491),
+-- applied before stat stages, in source order: Huge Power/Pure Power x2;
+-- Thick Fat halves spAttack against Fire/Ice; Hustle attack x150/100; Guts
+-- attack x150/100 with any status1; Marvel Scale defense x150/100 with any
+-- status1. Badge boosts, hold items and Plus/Minus (doubles) are not
+-- represented. Returns attack, defense, spAttack, spDefense.
+BattleFormulas.EFFECT_EXPLOSION = 7
+BattleFormulas.TYPE_FIRE = 10
+BattleFormulas.TYPE_ICE = 15
+-- Overgrow 65 (Grass 12), Blaze 66 (Fire 10), Torrent 67 (Water 11),
+-- Swarm 68 (Bug 6): include/constants/abilities.h, pokemon.h.
+BattleFormulas.PINCH_ABILITY_TYPES = { [65] = 12, [66] = 10, [67] = 11, [68] = 6 }
+BattleFormulas.ABILITY_HUGE_POWER = 37
+BattleFormulas.ABILITY_THICK_FAT = 47
+BattleFormulas.ABILITY_MARVEL_SCALE = 63
+BattleFormulas.ABILITY_PURE_POWER = 74
+function BattleFormulas.abilityAdjustedStats(attacker, defender, moveType)
+  local attack, defense = attacker.attack, defender.defense
+  local spAttack, spDefense = attacker.spAttack, defender.spDefense
+  local atkAbility, defAbility = attacker.ability, defender.ability
+  if atkAbility == BattleFormulas.ABILITY_HUGE_POWER or atkAbility == BattleFormulas.ABILITY_PURE_POWER then
+    attack = attack * 2
+  end
+  if defAbility == BattleFormulas.ABILITY_THICK_FAT and (moveType == BattleFormulas.TYPE_FIRE or moveType == BattleFormulas.TYPE_ICE) then
+    spAttack = idiv(spAttack, 2)
+  end
+  if atkAbility == BattleFormulas.ABILITY_HUSTLE then attack = idiv(150 * attack, 100) end
+  if atkAbility == BattleFormulas.ABILITY_GUTS and (attacker.status or 0) ~= 0 then
+    attack = idiv(150 * attack, 100)
+  end
+  if defAbility == BattleFormulas.ABILITY_MARVEL_SCALE and (defender.status or 0) ~= 0 then
+    defense = idiv(150 * defense, 100)
+  end
+  return attack, defense, spAttack, spDefense
+end
+
 function BattleFormulas.calculateBaseDamage(attacker, defender, move, isCrit, defenderScreens)
   local moveType = move.type
   local power = move.power
   local damage = 0
+  local attack, defense, spAttack, spDefense =
+    BattleFormulas.abilityAdjustedStats(attacker, defender, moveType)
+  -- Pinch abilities (src/pokemon.c:2496-2503): a matching-type move's power
+  -- x150/100 at hp <= maxHP/3.
+  local pinchType = BattleFormulas.PINCH_ABILITY_TYPES[attacker.ability]
+  if pinchType and pinchType == moveType and attacker.hp <= idiv(attacker.maxHP, 3) then
+    power = idiv(150 * power, 100)
+  end
+  -- Self-Destruct/Explosion halve defense after the ability terms
+  -- (src/pokemon.c:2505-2507). The max(1) keeps the engine's existing guard
+  -- against a 0 divisor (source would divide by zero at defense 1).
+  if move.effect == BattleFormulas.EFFECT_EXPLOSION then
+    defense = math.max(1, idiv(defense, 2))
+  end
 
   if BattleFormulas.isPhysicalType(moveType) then
     -- Real: on a crit, a LOWERED attack stage is ignored (raw stat used),
     -- a raised one is still applied.
     local atkStage = stageOf(attacker, "attack")
     if isCrit and atkStage <= BattleFormulas.DEFAULT_STAT_STAGE then
-      damage = attacker.attack
+      damage = attack
     else
-      damage = BattleFormulas.applyStatMod(attacker.attack, atkStage)
+      damage = BattleFormulas.applyStatMod(attack, atkStage)
     end
 
     damage = damage * power
@@ -245,13 +308,20 @@ function BattleFormulas.calculateBaseDamage(attacker, defender, move, isCrit, de
     local defStage = stageOf(defender, "defense")
     local damageHelper
     if isCrit and defStage >= BattleFormulas.DEFAULT_STAT_STAGE then
-      damageHelper = defender.defense
+      damageHelper = defense
     else
-      damageHelper = BattleFormulas.applyStatMod(defender.defense, defStage)
+      damageHelper = BattleFormulas.applyStatMod(defense, defStage)
     end
 
     damage = idiv(damage, damageHelper)
     damage = idiv(damage, 50)
+
+    -- Real burn halving (src/pokemon.c:2539-2541): after /50, before
+    -- Reflect, with no crit gate; Guts (ability 62) is exempt.
+    if StatusConditions.isBurned(attacker.status)
+        and attacker.ability ~= BattleFormulas.ABILITY_GUTS then
+      damage = idiv(damage, 2)
+    end
 
     -- Real Reflect halving (src/pokemon.c ~2542): `if ((sideStatus &
     -- SIDE_STATUS_REFLECT) && gCritMultiplier == 1) damage /= 2;` -- gated
@@ -264,7 +334,7 @@ function BattleFormulas.calculateBaseDamage(attacker, defender, move, isCrit, de
 
     -- Real physical-only minimum-1 clamp (see header). This must run AFTER
     -- the Reflect halving above, not before -- real source order is
-    -- `.../50 -> (burn halving, not modeled) -> Reflect halving ->
+    -- `.../50 -> burn halving -> Reflect halving ->
     -- (double-battle halving, not modeled) -> if (damage == 0) damage = 1`.
     -- A 1-damage hit halved by Reflect truncates to 0 and is then clamped
     -- back up to 1 by this same real clamp (not a special "Reflect can't
@@ -282,9 +352,9 @@ function BattleFormulas.calculateBaseDamage(attacker, defender, move, isCrit, de
   if BattleFormulas.isSpecialType(moveType) then
     local spAtkStage = stageOf(attacker, "spAttack")
     if isCrit and spAtkStage <= BattleFormulas.DEFAULT_STAT_STAGE then
-      damage = attacker.spAttack
+      damage = spAttack
     else
-      damage = BattleFormulas.applyStatMod(attacker.spAttack, spAtkStage)
+      damage = BattleFormulas.applyStatMod(spAttack, spAtkStage)
     end
 
     damage = damage * power
@@ -293,9 +363,9 @@ function BattleFormulas.calculateBaseDamage(attacker, defender, move, isCrit, de
     local spDefStage = stageOf(defender, "spDefense")
     local damageHelper
     if isCrit and spDefStage >= BattleFormulas.DEFAULT_STAT_STAGE then
-      damageHelper = defender.spDefense
+      damageHelper = spDefense
     else
-      damageHelper = BattleFormulas.applyStatMod(defender.spDefense, spDefStage)
+      damageHelper = BattleFormulas.applyStatMod(spDefense, spDefStage)
     end
 
     damage = idiv(damage, damageHelper)
@@ -428,7 +498,13 @@ end
 -- Real accuracy check from Cmd_accuracycheck (src/battle_script_commands.c
 -- :1003). Consumes exactly one Random() call. Returns true on a hit.
 -- accStage/evasionStage are real 0..12 stages (default 6).
-function BattleFormulas.accuracyCheck(moveAccuracy, accStage, evasionStage, rng)
+-- attackerAbility/moveType (optional) apply Cmd_accuracycheck's ability
+-- terms (src/battle_script_commands.c:1069-1074) after the stage ratio:
+-- Compound Eyes `calc * 130 / 100`; Hustle `calc * 80 / 100` for a
+-- physical-type move. Sand Veil needs weather and is not represented.
+BattleFormulas.ABILITY_COMPOUND_EYES = 14
+BattleFormulas.ABILITY_HUSTLE = 55
+function BattleFormulas.accuracyCheck(moveAccuracy, accStage, evasionStage, rng, attackerAbility, moveType)
   accStage = accStage or BattleFormulas.DEFAULT_STAT_STAGE
   evasionStage = evasionStage or BattleFormulas.DEFAULT_STAT_STAGE
 
@@ -438,15 +514,22 @@ function BattleFormulas.accuracyCheck(moveAccuracy, accStage, evasionStage, rng)
 
   local ratio = BattleFormulas.ACCURACY_STAGE_RATIOS[buff]
   local calc = idiv(ratio[1] * moveAccuracy, ratio[2])
+  if attackerAbility == BattleFormulas.ABILITY_COMPOUND_EYES then
+    calc = idiv(calc * 130, 100)
+  end
+  if attackerAbility == BattleFormulas.ABILITY_HUSTLE and moveType ~= nil
+      and BattleFormulas.isPhysicalType(moveType) then
+    calc = idiv(calc * 80, 100)
+  end
 
   return not ((rng:next16() % 100 + 1) > calc)
 end
 
 -- Real crit roll from Cmd_critcalc (src/battle_script_commands.c:1170).
 -- Consumes exactly one Random() call. critStage defaults to 0 (the base
--- 1/16); the real stage sources (Focus Energy, high-crit-ratio moves,
--- Scope Lens/Lucky Punch/Stick) are out of this slice's scope, but the
--- real clamp to the last table entry is kept so they drop straight in.
+-- 1/16); BattleEngine:critStageFor supplies Focus Energy and the
+-- high-crit-ratio moves. The real clamp to the last table entry is kept
+-- (unreachable until held crit items exist).
 function BattleFormulas.critRoll(rng, critStage)
   critStage = critStage or 0
   if critStage > 4 then critStage = 4 end
@@ -495,9 +578,15 @@ function BattleFormulas.rollMultiHitCount(rng)
 end
 
 -- Real speed used for turn order (GetWhoStrikesFirst, src/battle_main.c
--- :3428). Paralysis/items/abilities/badges deliberately not modeled.
+-- :3428-3452): stat stage, then (badge boost and Macho Brace, not modeled)
+-- then paralysis `/= 4`, then (Quick Claw, not modeled). Run odds use the
+-- raw stat instead (TryRunFromBattle), so only turn order calls this.
 function BattleFormulas.effectiveSpeed(battler)
-  return BattleFormulas.applyStatMod(battler.speed, stageOf(battler, "speed"))
+  local speed = BattleFormulas.applyStatMod(battler.speed, stageOf(battler, "speed"))
+  if StatusConditions.isParalyzed(battler.status) then
+    speed = idiv(speed, 4)
+  end
+  return speed
 end
 
 -- Real GetWhoStrikesFirst (src/battle_main.c:3400), reduced to the
