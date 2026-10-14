@@ -1,7 +1,8 @@
 # Task: status leftovers, slice L1 (Tri Attack, Twineedle, Blaze Kick, H1)
 
 - Task ID: `P4-STATUS-LEFTOVERS-L1`
-- Status: `IMPLEMENTED — awaiting independent review`; ROM fixture pending
+- Status: `DONE — independently reviewed PASS WITH CORRECTIONS (applied)`; ROM fixture pending
+- Review: [implementation](../reviews/2026-10-14-status-leftovers-l1-implementation-review.md)
 - Design: [proposal](../reports/phase4-status-leftovers-design-proposal.md)
   (L1 parts), independently reviewed
   [PASS WITH CORRECTIONS](../reviews/2026-10-14-status-leftovers-design-review.md);
@@ -72,7 +73,9 @@ Focus Energy (L2), Battle Armor/Shell Armor before the crit draw, Scope
 Lens/Lucky Punch/Stick, Serene Grace, Synchronize, Safeguard, Substitute,
 sun blocking Tri Attack's freeze, Wonder Guard on Twineedle, contact
 abilities and Flash Fire on Blaze Kick. The 29/44 multi-hit KO tail and
-trailing draw (separate follow-up, see the proposal).
+trailing draw (separate follow-up, see the proposal). Twineedle prints the
+effectiveness text after each hit rather than once after the loop (text
+only; same follow-up).
 
 ## Evidence (Worker, 2026-10-14)
 

@@ -493,10 +493,19 @@ Recorded from review F1 as a separate fast-lane correction. It must cover:
 - the trailing `% 100` draw for 29/44 on landed and no-effect paths;
 - intentional updates to `tests/battle_engine_test.lua:993-994` and
   `:1014-1015`, and any controller text test that depends on the old
-  shape.
+  shape;
+- the effectiveness text ("It's super effective!" / "not very
+  effective...") printed once after the loop, just before "Hit N
+  time(s)!" (`data/battle_scripts_1.s:644-649`), not after every hit; this
+  also applies to Twineedle (L1 implementation review F1);
+- a dedicated source-order flag for the multi-hit tail instead of keying it
+  on `statusKind` (review F2).
 
 ## Known limits
 
+- Multi-hit effectiveness text: Twineedle (like Double Kick) prints the
+  effectiveness line after each hit instead of once before "Hit N
+  time(s)!" (text only; see the follow-up above).
 - Not represented:
   - Battle Armor / Shell Armor skipping the crit draw (an existing gap,
     S2 F5);
