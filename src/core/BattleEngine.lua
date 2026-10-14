@@ -250,7 +250,10 @@
 --     (PRIMARY_STATUS_MOVES, slice S3, resolvePrimaryStatusMove).
 --   * Confusion and flinch (status2) cancellers, the confusion self-hit and
 --     flinch clearing are supported (resolveStatusCancellers,
---     resolveConfusionSelfHit); battle-only, never persisted.
+--     resolveConfusionSelfHit); battle-only, never persisted. Moves apply
+--     them through STATUS2_HIT_MOVES (applySecondaryStatus2) and the
+--     Confuse/Teeter Dance/Swagger/Flatter handlers (applyConfusion).
+--     Soundproof is not represented (Supersonic, Snore, Growl, Sing).
 --   * Abilities only where named (Damp, Guts, the status guards above);
 --     no held items, weather,
 --     multi-turn/charging moves, trapping, forced switching, OHKO moves,
@@ -1173,7 +1176,7 @@ function BattleEngine:resolveStatusCancellers(attackerSide, attacker, moveId, mo
       -- Snore/Sleep Talk pass the canceller; Snore's own script prints
       -- "fast asleep" after attackcanceler, i.e. after every remaining
       -- canceller (data/battle_scripts_1.s:1253-1266), so it is emitted at
-      -- the end below. Its awake-failure branch is not modeled yet.
+      -- the end below. Its awake failure is handled in resolveMoveCore.
       if moveId ~= BattleEngine.MOVE_SNORE and moveId ~= BattleEngine.MOVE_SLEEP_TALK then
         events[#events + 1] = { type = "fastAsleep", side = attackerSide }
         return true

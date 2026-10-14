@@ -182,7 +182,7 @@ local function move2x2(cursor, input, count)
 end
 
 local STATUS_ABILITY_NAMES = {
-  [20] = "OWN TEMPO", [7] = "LIMBER", [15] = "INSOMNIA", [17] = "IMMUNITY", [41] = "WATER VEIL", [72] = "VITAL SPIRIT",
+  [7] = "LIMBER", [15] = "INSOMNIA", [17] = "IMMUNITY", [41] = "WATER VEIL", [72] = "VITAL SPIRIT",
 }
 
 function BattleSceneController:_eventMessages(events)

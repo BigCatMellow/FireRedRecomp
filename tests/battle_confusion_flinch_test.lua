@@ -447,8 +447,17 @@ do
   -- Second mover: the target already acted, so no flinch (roll still drawn).
   b = battle({ MISS, 0, 1, 0, 0 }, { playerMove = BITE, playerSpeed = 5, foeHP = 400 })
   events = b:runTurn(MOVE, MOVE)
-  check("second mover's Bite cannot flinch", not find(events, "flinched") and b.foe.flinched == false
-    and b.rng.draws == 5, types(events))
+  check("second mover's Bite cannot flinch", not find(events, "flinched") and b.rng.draws == 5, types(events))
+  -- Direct check right after the move (before any end-of-turn clearing).
+  b = battle({ 0, 1, 0, 0 }, { playerMove = BITE, foeHP = 400 })
+  local direct = {}
+  b.flinchTargetPending = false
+  b:resolveMove("player", 1, direct)
+  check("with the target already past its turn, the flag is not set", b.foe.flinched == false)
+  b = battle({ 0, 1, 0, 0 }, { playerMove = BITE, foeHP = 400 })
+  b.flinchTargetPending = true
+  b:resolveMove("player", 1, direct)
+  check("with the target still to act, the flag is set", b.foe.flinched == true)
   -- Inner Focus and Shield Dust block silently.
   b = battle({ 0, 1, 0, 0, MISS }, { playerMove = BITE, foeHP = 400 })
   b.foe.ability = BattleEngine.ABILITY_INNER_FOCUS
@@ -531,7 +540,12 @@ do
     find(ev, "statChange") and not find(ev, "confusionApplied") and b.rng.draws == 1, types(ev))
   local maxed = { attack = 12, defense = 6, speed = 6, spAttack = 6, spDefense = 6, accuracy = 6, evasion = 6 }
   b, ev = use(SWAGGER, { 0 }, { confusionTurns = 2, statStages = maxed })
-  check("Swagger: confused and ATK +6 -> But it failed", find(ev, "moveFailed") and not find(ev, "statChange"))
+  check("Swagger: confused and ATK +6 -> But it failed (after accuracy and PP)", find(ev, "moveFailed")
+    and not find(ev, "statChange") and b.rng.draws == 1 and b.player.moves[1].pp == 9, types(ev))
+  local maxed3 = { attack = 12, defense = 6, speed = 6, spAttack = 6, spDefense = 6, accuracy = 6, evasion = 6 }
+  b, ev = use(SWAGGER, { 95 }, { confusionTurns = 2, statStages = maxed3 })
+  check("Swagger miss on a confused +6 target: missed, not failed", find(ev, "miss")
+    and not find(ev, "moveFailed"), types(ev))
   local maxed2 = { attack = 12, defense = 6, speed = 6, spAttack = 6, spDefense = 6, accuracy = 6, evasion = 6 }
   b, ev = use(SWAGGER, { 0, 0 }, { statStages = maxed2 })
   check("Swagger: ATK +6 and not confused -> no stat text, still confuses", not find(ev, "statChange")

@@ -1,7 +1,7 @@
 # Task: confusion and flinch, slice C2 (moves)
 
 - Task ID: `P4-STATUS2-C2`
-- Status: `IMPLEMENTED — awaiting independent review`; ROM fixture pending
+- Status: `CLOSED — REVIEWED PASS` ([review](../reviews/2026-10-14-confusion-flinch-c2-review.md)); ROM fixture pending
 - Lane: full relay. Owner delegation 2026-10-14 ("Keep going"); battle files.
 - Builds on: [C1](phase4-confusion-flinch-c1.md); design
   [proposal](../reports/phase4-confusion-flinch-design-proposal.md) (reviewed,
@@ -44,10 +44,10 @@ suite and checker pass.
 
 ## Known limits
 
-Substitute, Safeguard, Serene Grace, King's Rock, Fake Out, Rampage and the
+Substitute, Safeguard, Soundproof (engine-wide), Serene Grace, King's Rock, Fake Out, Rampage and the
 Stomp/Twister doubles (Minimize and semi-invulnerability unmodeled).
 
 ## Evidence (Worker, 2026-10-14)
 
-Confusion/flinch 72/0; controller 144/0; full suite and repository checker
+Confusion/flinch 75/0; controller 144/0; full suite and repository checker
 in the PR.
