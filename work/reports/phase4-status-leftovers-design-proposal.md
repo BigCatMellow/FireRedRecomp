@@ -1,6 +1,8 @@
 # Phase 4 proposal: status leftovers (Tri Attack, Twineedle, Blaze Kick, Rest, Focus Energy)
 
-- Status: `PROPOSAL — awaiting design review`
+- Status: `PROPOSAL — independently reviewed PASS WITH CORRECTIONS (applied)`
+- Review: [2026-10-14 design review](../reviews/2026-10-14-status-leftovers-design-review.md)
+  (F1-F8 applied below; see "Review corrections applied").
 - Date: 2026-10-14
 - Source pin: pret/pokefirered `c75f352304d529f6ba92d4f74b9cf8b5c3810788`
 - Builds on: the primary status slices S1-S4 (status1, `StatusConditions`),
@@ -164,7 +166,7 @@ critChance = 2 * (status2 & STATUS2_FOCUS_ENERGY != 0)
   (`:364-366`: `setmoveeffect MOVE_EFFECT_BURN`, then EffectHit). This is
   the same script as Ember and the other burn-hit moves.
 - The only difference is in `Cmd_critcalc`: `+1` stage for
-  `EFFECT_BLAZE_KICK` (`bsc.c:1186`).
+  `EFFECT_BLAZE_KICK` (`bsc.c:1187`).
 - The burn guards are the burn rules above. Fire types and Water Veil
   resist silently; Shield Dust blocks.
 - Blaze Kick is a Fire move, so `MOVEEND_DEFROST` (`bsc.c:4103-4116`)
@@ -174,7 +176,8 @@ critChance = 2 * (status2 & STATUS2_FOCUS_ENERGY != 0)
 - Blaze Kick makes contact. Static, Flame Body and the other contact
   abilities are not represented; this is an existing S2 limit.
 - RNG for a landed hit: accuracy, crit (stage 1), random, `% 100`. Same
-  for a no-effect hit.
+  for a no-effect hit. This assumes the target has no Flash Fire (see
+  Known limits, review F4).
 
 ### 37 Rest
 
@@ -221,7 +224,9 @@ critChance = 2 * (status2 & STATUS2_FOCUS_ENERGY != 0)
     user is cancelled by `CANCELLER_ASLEEP` before the script runs, unless
     the move is Snore or Sleep Talk. Sleep Talk calling Rest is not
     represented (effect 97 is blocked).
-  - The Uproar branch is unreachable: Uproar (159) is blocked.
+  - The Uproar branch is unreachable: Uproar state is not represented
+    (effect 159 runs as a plain hit, so `UproarWakeUpCheck` never fires;
+    review F7).
 
 ### 47 Focus Energy
 
@@ -282,6 +287,11 @@ critChance = 2 * (status2 & STATUS2_FOCUS_ENERGY != 0)
   1. Draw `secondaryEffectRoll(rng, 20)`.
   2. If it passes, run the outer guards: Shield Dust, then target HP > 0,
      then status1 == 0. Any failure is silent and draws nothing more.
+     The status1 guard tests the whole word, `(defender.status or 0) ~= 0`
+     skips, mirroring `if (status1)` (`bsc.c:2467`) and
+     `StatusConditions.canApply`. It must not use `StatusConditions.hasAny`,
+     which masks the toxic counter, so a counter-only word also skips the
+     `% 3` (review F2).
   3. Otherwise `kind = ({"burn","freeze","paralysis"})[rng % 3 + 1]`.
   4. Then call `applySecondaryStatus(defenderSide, kind, false, events)`.
      It repeats the Shield Dust and HP checks, as the source recursion
@@ -319,7 +329,7 @@ critChance = 2 * (status2 & STATUS2_FOCUS_ENERGY != 0)
 
 - `supportsMove`: admit effect 37 with power 0 and target `MOVE_TARGET_USER`
   (move 156 only, matching the RESTORE_HP admission style).
-- Add an early branch in `resolveMoveCore` beside Refresh (`:1798`). It runs
+- Add an early branch in `resolveMoveCore` beside Refresh (`:1797`). It runs
   after `useMove`, has no accuracy check and spends one PP. In order:
   1. If `StatusConditions.isAsleep(attacker.status)`, emit
      `statusAlready{side=attacker, kind="sleep"}` and stop. This is
@@ -374,6 +384,24 @@ critChance = 2 * (status2 & STATUS2_FOCUS_ENERGY != 0)
 | L1 | H1 crit-stage helper (no Focus Energy term yet); Tri Attack secondary with the `% 3` choice; Twineedle 2 hits plus the single trailing poison roll and the KO tail; Blaze Kick in `STATUS_HIT_MOVES`; no-effect roll list; inventory rows 36, 77, 200 → R | 3 moves (already admitted) |
 | L2 | `focusEnergy` volatile with its faint clear; the H1 Focus Energy term at all four crit sites; Focus Energy and Rest scripts; `supportsMove`; AI_CBM_FocusEnergy; the two new events and texts; inventory rows 37, 47 → R | 2 moves (newly admitted) |
 
+Comment touch lists (review F5). These comments go stale and are updated
+with the behaviour:
+
+- L1:
+  - the `BattleEngine.lua` header family notes for the status-hit
+    families (`:252`) and the multi-hit family (`:363`, `:389`);
+  - `resolveMultiHit`'s doc comment (`:2668-2708`): Twineedle has no
+    in-loop `checkFaint`, a trailing roll, and `hits` = hits landed;
+  - the `MULTI_HIT_MOVES` comment (`:875-888`), which documents only
+    29/44;
+  - `BattleSceneController.lua:335-341`, whose `multiHit` comment says the
+    event is emitted only on completion (false for Twineedle and Triple
+    Kick).
+- L2:
+  - the `BattleEngine.lua` header event list (`:60-80`): `restSlept` and
+    `focusEnergy`;
+  - the `AICheckBadMove.lua:532` comment "status2 unmodeled".
+
 Expected inventory movement (relative to the current 283/71; the inventory
 test is authoritative):
 
@@ -391,7 +419,10 @@ test is authoritative):
     Ghost target (`% 100` drawn).
   - Twineedle: two hits plus the roll; a KO on hit 1 gives count 1, the
     roll, then the faint, in that order; Shield Dust, Immunity and a
-    Poison-type target each fail silently.
+    Poison-type target each fail silently. The KO oracle must drive
+    `runTurn` (or call `checkFaint` explicitly), because the faint is
+    emitted by the caller, not inside `resolveMultiHit`; a direct
+    `resolveMove` call sees no `faint` at all (review F6).
   - Blaze Kick: the crit at stage 1 (`% 8`); with Focus Energy, stage 3
     (`% 3`).
 - Rest branch matrix:
@@ -423,25 +454,58 @@ test is authoritative):
 - **Twineedle behaviour change.** Today it resolves as a single 25-power
   hit, and L1 makes it two hits. Damage totals in any existing fixture
   that uses it will change.
-- **Pre-existing multi-hit divergence.**
-  - `resolveMultiHit` calls `checkFaint` inside the loop. On a mid-sequence
-    KO it therefore emits `faint` and omits the hit-count event, and
-    `tests/battle_engine_test.lua:1014-1015` asserts this.
-  - Source prints "Hit N time(s)!" before the faint (`bs1.s:613-655`).
-    Double Kick and Fury Attack etc. also omit their trailing
-    `seteffectwithchance` draw (byte 0, but still drawn), which is the
-    tracked plain-hit gap.
+- **Pre-existing multi-hit divergence (review F1).**
+  - `resolveMultiHit` calls `checkFaint` after every landed hit. On **any
+    KO during the sequence (including the final hit)** it therefore emits
+    `faint` and omits the hit-count event, and
+    `tests/battle_engine_test.lua:1014-1015` asserts this. A Double Kick
+    whose second hit KOs, or a Fury Attack whose rolled final hit KOs, also
+    loses "Hit N time(s)!".
+  - Source prints "Hit N time(s)!" before the faint (`bs1.s:613-655`): the
+    loop exits through `decrementmultihit`, then `goto
+    BattleScript_MultiHitPrintStrings` (`:640-641`), which prints the count
+    (`:649`) before `tryfaintmon` (`:653`).
+  - The old comments (`BattleEngine.lua:2696-2707`,
+    `BattleSceneController.lua:335-341`) justified the omission because the
+    faint "already ends the battle". That is false when `hasReplacement`
+    returns true: the faint leaves a forced switch pending instead.
+  - Families 29/44 also skip the trailing `seteffectwithchance` `% 100`
+    draw (byte 0, but still drawn) on both the landed-hit and the
+    no-effect paths (`bs1.s:624` to `:651-652`). The 7-draw assertion at
+    `tests/battle_engine_test.lua:993-994` locks in the landed-hit
+    omission. This is the tracked plain-hit gap.
   - L1 fixes the order for Twineedle only, so Twineedle and Double Kick
-    will differ in event order until a separate correction changes that
-    test on purpose. This should be scheduled as a fast-lane follow-up.
-    It should not ride along in L1.
+    differ in event order until the follow-up below changes those tests
+    on purpose. It does not ride along in L1.
 - **Crit probability changes.** Blaze Kick crits about twice as often, and
   Focus Energy changes every later crit for that battler.
 - **The admission change** lets AI and wild foes select Rest and Focus
   Energy. Today `resolveMoveCore` would raise on them.
 
+## Follow-up: multi-hit KO tail for 29/44 (separate, not L1)
+
+Recorded from review F1 as a separate fast-lane correction. It must cover:
+
+- a KO on the last hit (Double Kick's second hit, a 2-5 move's rolled
+  final hit) as well as an earlier KO: "Hit N time(s)!" before the faint;
+- a KO with a replacement available (`hasReplacement` true): count, then
+  faint, then `forcedSwitchNeeded`;
+- the trailing `% 100` draw for 29/44 on landed and no-effect paths;
+- intentional updates to `tests/battle_engine_test.lua:993-994` and
+  `:1014-1015`, and any controller text test that depends on the old
+  shape;
+- the effectiveness text ("It's super effective!" / "not very
+  effective...") printed once after the loop, just before "Hit N
+  time(s)!" (`data/battle_scripts_1.s:644-649`), not after every hit; this
+  also applies to Twineedle (L1 implementation review F1);
+- a dedicated source-order flag for the multi-hit tail instead of keying it
+  on `statusKind` (review F2).
+
 ## Known limits
 
+- Multi-hit effectiveness text: Twineedle (like Double Kick) prints the
+  effectiveness line after each hit instead of once before "Hit N
+  time(s)!" (text only; see the follow-up above).
 - Not represented:
   - Battle Armor / Shell Armor skipping the crit draw (an existing gap,
     S2 F5);
@@ -449,6 +513,10 @@ test is authoritative):
   - Serene Grace doubling;
   - Synchronize;
   - contact abilities on Blaze Kick;
+  - Flash Fire absorbing Blaze Kick (and every Fire move) in
+    `attackcanceler` (`bsc.c:925`; `battle_util.c:1918-1924`) before
+    accuracy, so source draws none of accuracy, crit, random, `% 100`
+    against it (an existing gap, review F4);
   - Safeguard and Substitute;
   - sun blocking Tri Attack's freeze;
   - Wonder Guard on Twineedle.
@@ -458,6 +526,10 @@ test is authoritative):
   - Early Bird is not represented, so a Rest user sleeps two turns instead
     of one.
 - Focus Energy is not passed by Baton Pass, which is not represented.
+- Focus Energy's other setters are not represented (review F3): the Lansat
+  Berry (`HOLD_EFFECT_CRITICAL_UP`, `battle_util.c:2681-2688`) and the Dire
+  Hit battle item (`pokemon.c:4090-4092`, `:4611`). A future held-item or
+  in-battle bag slice must set `focusEnergy`.
 - AI_CheckViability (`AI_CV_Rest`, `AI_CV_HighCrit`) and AI_HPAware are out
   of scope.
 
@@ -474,3 +546,36 @@ None. Each family's state already exists or is one bool:
 
 A family would have been dropped if it needed Uproar, Baton Pass or
 held-item state. None of these five does in its reachable paths.
+
+## Review corrections applied
+
+[2026-10-14 design review](../reviews/2026-10-14-status-leftovers-design-review.md),
+PASS WITH CORRECTIONS:
+
+- F1 (Medium): the Risks bullet now reads "any KO during the sequence
+  (including the final hit)", corrects the "ends the battle" rationale and
+  names the 29/44 trailing draw; the fix is recorded as the separate
+  follow-up above. L1 changes only Twineedle's order.
+- F2 (Low): the Tri Attack status1 guard is the whole word,
+  `(defender.status or 0) ~= 0`, not `hasAny`.
+- F3, F4 (Low): Lansat Berry / Dire Hit and Flash Fire added to Known
+  limits.
+- F5 (Low): comment touch lists added under Slices.
+- F6 (Info): the Twineedle KO oracle drives `runTurn`.
+- F7, F8 (Info): Uproar wording; `bsc.c:1187` and `BattleEngine.lua:1797`.
+
+## L1 implementation notes
+
+Implemented by [task L1](../tasks/phase4-status-leftovers-l1.md).
+
+- H1 is `BattleEngine:critStageFor(attacker, move)`, backed by the table
+  `BattleEngine.CRIT_STAGE_EFFECTS` (43, 75, 200, 209 → 1). `attacker` is
+  unused until L2 adds the Focus Energy term.
+- Twineedle is `MULTI_HIT_MOVES[77] = { fixed = 2, statusKind = "poison" }`.
+  `resolveMultiHit` selects the source tail on `statusKind`; `multiHit`
+  carries hits landed. On the (unreachable for Bug) no-effect exit the
+  trailing roll is drawn, as designed.
+- Tri Attack's block sits directly after the `STATUS_HIT_MOVES` block, and
+  effect 36 is in the no-effect roll list.
+- No committed replay uses moves 41, 161 or 299 (the runtime replays are
+  the house exit and Route 1 wild battles).

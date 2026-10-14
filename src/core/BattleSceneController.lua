@@ -333,12 +333,12 @@ function BattleSceneController:_eventMessages(events)
       -- event.side (the attacker) despite the message naming the other side.
       add(name(otherSide(event.side)) .. " had its\nenergy drained!", { hpSide = event.side, hp = event.hpRemaining })
     elseif event.type == "multiHit" then
-      -- Real sText_HitXTimes: "Hit N time(s)!" -- only emitted when the
-      -- sequence completes without an early stop (matching real
-      -- BattleScript_MultiHitPrintStrings, which this event's own
-      -- BattleEngine.lua doc already notes is skipped on a no-effect
-      -- stop; a mid-sequence faint also skips it there since the
-      -- faint/battleEnd events already say enough).
+      -- Real sText_HitXTimes: "Hit N time(s)!" (battle_message.c:82),
+      -- `hits` = hits landed. Never emitted on a no-effect stop (real
+      -- BattleScript_MultiHitPrintStrings skips it). Twineedle and Triple
+      -- Kick emit it after a KO too, before the caller's faint, as in
+      -- source; Double Kick and the 2-5 family still omit it on any KO
+      -- (a tracked engine divergence, see BattleEngine:resolveMultiHit).
       add(("Hit %d time(s)!"):format(event.hits))
     elseif event.type == "tutorialTip" then
       if event.kind == "damage" then
