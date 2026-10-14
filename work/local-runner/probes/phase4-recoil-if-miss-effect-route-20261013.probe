@@ -1,0 +1,16 @@
+Task: P4-F3-RECOIL-IF-MISS-ROUTE-PROBE
+Route: phase4-recoil-if-miss-effect
+Mode: readiness probe only
+Configuration: 1d40f3cfe14ea776eb6e652650515ee23fb9a51f, independently reviewed PASS.
+
+Verify only trusted main checkout, one-input identification, explicit route
+recognition, Lua toolchain, and the existing supported FireRed US v1.0 SHA-1
+readiness gate: 41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc.
+
+Target validation, patch application, focused tests, no-ROM suite,
+verified-ROM suite, replay, and implementation publication must all skip.
+This probe contains no patch and proves neither gameplay behavior nor the
+ten-path patch allowlist. It authorizes no implementation request or retry.
+Independent exact probe-outcome review is required before any separately
+reviewed implementation authority. Retain only safe commit/run/job IDs and
+step statuses; no private paths, ROM content, or environment-bearing logs.

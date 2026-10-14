@@ -27,6 +27,7 @@
 --   {type="damage", side=<attacker>, target=<defender side>, amount=,
 --    hpRemaining=, superEffective=, notVeryEffective=}
 --   {type="recoil", side=<attacker>, amount=, hpRemaining=}
+--   {type="crash", side=<attacker>, amount=, hpRemaining=} -- literal effect 45 miss
 --   {type="drain", side=<attacker>, amount=, hpRemaining=}
 --   {type="faint", side=}
 --   {type="forcedSwitchNeeded", side=}             -- fainted side has a real
@@ -39,6 +40,14 @@
 --   {type="noPP", side=, move=}                   -- see the Struggle stub
 --   {type="moveFailed", side=}                    -- generic But it failed; distinct from screenFailed
 --   {type="statChange", side=<target>, stat=, stages=-1, prevented=}
+--   {type="statsWontRise", side=<attacker>}  -- two-stat UP move, both at +6
+--   {type="statsWontFall", side=<defender>}  -- Tickle, target ATK/DEF both at -6
+--   {type="splash"} / {type="haze"}
+--   {type="wallShattered", side=<defender>}  -- Brick Break removed screens
+--   {type="conversion", side=<attacker>, newType=}
+--   {type="mementoHP", side=<attacker>}       -- attacker HP set to 0 before drops
+--   {type="psychUp", side=<attacker>, target=<defender side>}
+--   {type="bellyDrum", side=<attacker>, amount=, hpRemaining=}
 --   {type="screenSet", side=, screen="reflect"|"lightScreen", turns=5}
 --   {type="screenFailed", side=, screen="reflect"|"lightScreen"} -- already active
 --   {type="screenExpired", side=, screen="reflect"|"lightScreen"} -- real 5-turn timer hit 0
@@ -48,6 +57,24 @@
 --   {type="throwBall", side=, target=, ball=}     -- rules-only item use
 --   {type="capture", side=, target=, ball=, shakes=, success=,
 --    automatic=}                                   -- CaptureRules result
+--   {type="fastAsleep", side=}        -- sleep canceller: move not used, no PP
+--   {type="wokeUp", side=}            -- sleep counter reached 0; move proceeds
+--   {type="frozenSolid", side=}       -- freeze canceller: move not used, no PP
+--   {type="thawed", side=}            -- canceller thaw (20%); move proceeds
+--   {type="defrostedByMove", side=, move=} -- EFFECT_THAW_HIT user thawed
+--   {type="fullyParalyzed", side=}    -- paralysis canceller: move not used, no PP
+--   {type="defrostedByFire", side=<defender>} -- MOVEEND_DEFROST
+--   {type="statusDamage", side=, kind="poison"|"toxic"|"burn", amount=,
+--    hpRemaining=}                    -- end-of-turn status damage
+--   {type="statusApplied", side=<target>, kind="poison"|"toxic"|"burn"|
+--    "freeze"|"paralysis"|"sleep"}    -- status newly set
+--   {type="statusPrevented", side=<target>, kind=, ability=} -- certain
+--    effect blocked by Immunity/Water Veil/Limber
+--   {type="statusAlready", side=<target>, kind=} -- primary status move on
+--    a target that already has that status
+--   {type="stayedAwake", side=<target>, ability=} -- Insomnia/Vital Spirit
+--   {type="statusCured", side=<attacker>}   -- Refresh
+--   {type="paralysisHealed", side=<target>} -- Smelling Salt
 --   {type="battleEnd", outcome="playerWon"|"playerLost"|"ran"|"caught"}
 --
 -- Real turn structure ported, in real execution order:
@@ -204,7 +231,18 @@
 --     the right real thing without needing their own edit; only the
 --     "stop processing more actions" guards needed the extra
 --     awaitingForcedSwitch check described above.
---   * No status conditions, abilities, held items, weather,
+--   * Primary status (status1) EFFECTS are supported for a battler that
+--     already carries one (loaded from the party record or set by a later
+--     slice): sleep/freeze/paralysis move cancellers with their RNG,
+--     burn's physical halving and paralysis's turn-order speed (in
+--     BattleFormulas), Fire defrost at move end, end-of-turn poison/toxic/
+--     burn damage, and faint clearing status (resolveStatusCancellers,
+--     resolveMove, resolveStatusEndTurn, recordFaint). Moves apply a
+--     status through the status-on-hit families (STATUS_HIT_MOVES, slice S2,
+--     applySecondaryStatus) and the primary status moves
+--     (PRIMARY_STATUS_MOVES, slice S3, resolvePrimaryStatusMove).
+--   * Abilities only where named (Damp, Guts, the status guards above);
+--     no held items, weather,
 --     multi-turn/charging moves, trapping, forced switching, OHKO moves,
 --     double battles, trainer AI, or EXP/level-up on victory.
 --   * Pure single-stat stage-change moves (Growl/Tail Whip's full real
@@ -230,8 +268,9 @@
 --     ported: MOVE_EFFECT_CERTAIN (always-trigger; no move wired here uses
 --     it) and Serene Grace's chance-doubling (no ability system exists yet).
 --     Still explicitly not ported: non-pure-single-stat effects
---     (EFFECT_HAZE, EFFECT_FOCUS_ENERGY, EFFECT_TRANSFORM, EFFECT_REST,
---     etc). supportsMove() correctly rejects those.
+--     (EFFECT_FOCUS_ENERGY, EFFECT_TRANSFORM, EFFECT_REST, etc).
+--     supportsMove() correctly rejects those. (EFFECT_HAZE is now handled
+--     by the fast-lane batch-3 path.)
 --   * Recoil and drain ARE supported -- see BattleEngine.RECOIL_MOVES /
 --     BattleEngine.DRAIN_MOVES and resolveMove's step 8a. EFFECT_RECOIL=48
 --     (Take Down, Submission, and Struggle -- all three real gBattleMoves
@@ -282,9 +321,11 @@
 --     The "no valid moves -> auto-Struggle" trigger IS ported -- see the
 --     Struggle paragraph above and resolveMove's real AreAllMovesUnusable
 --     check at the top of the function.
---     Not ported: EFFECT_RECOIL_IF_MISS=45 (Jump
---     Kick/Hi Jump Kick's crash-on-miss damage -- a different real effect
---     id and mechanic), and EFFECT_DREAM_EATER=8 (heals like Absorb but
+--     EFFECT_RECOIL_IF_MISS=45 is a separate literal Jump Kick/Hi Jump Kick
+--     ordinary-miss leaf: immunity exits before crash, otherwise noncritical
+--     damage is halved/capped to target max HP and applied to attacker only.
+--     Cancellation, abilities/items/status and nonordinary provenance remain
+--     excluded. Not ported: EFFECT_DREAM_EATER=8 (heals like Absorb but
 --     real BattleScript_EffectDreamEater only works against a sleeping
 --     target -- a status-condition precondition this project doesn't model;
 --     supportsMove() explicitly rejects it rather than silently running it
@@ -411,9 +452,9 @@
 --
 --     Not ported: Safeguard/Mist (separate real effect ids with different
 --     real mechanics -- status-condition blocking and stat-lowering
---     blocking respectively, neither of which this task covers) and Brick
---     Break's real screen-removal special case
---     (src/battle_script_commands.c ~9445) -- a different move entirely.
+--     blocking respectively, neither of which this task covers). Brick
+--     Break's screen removal is handled by EFFECT_BRICK_BREAK (fast-lane
+--     batch 4).
 --   * Capture is intentionally the first normal Poke Ball/no-status slice.
 --     CaptureRules owns the exact formula/shake RNG. This engine neither
 --     removes inventory nor copies a caught mon to party/PC or updates the
@@ -424,6 +465,7 @@
 
 local BattleFormulas = require("src.core.BattleFormulas")
 local CaptureRules = require("src.core.CaptureRules")
+local StatusConditions = require("src.core.StatusConditions")
 
 local BattleEngine = {}
 BattleEngine.__index = BattleEngine
@@ -451,6 +493,19 @@ BattleEngine.EFFECT_PSYWAVE = 88
 BattleEngine.EFFECT_OHKO = 38
 BattleEngine.EFFECT_ENDEAVOR = 189
 BattleEngine.EFFECT_PAIN_SPLIT = 91
+BattleEngine.EFFECT_RESTORE_HP = 32
+-- Fast-lane batch 3 (c75f352 data/battle_scripts_1.s): none of these
+-- scripts has an accuracycheck or Random().
+BattleEngine.EFFECT_HAZE = 25        -- EffectHaze :564, normalisebuffs
+BattleEngine.EFFECT_SPLASH = 85      -- EffectSplash :1168
+BattleEngine.EFFECT_BELLY_DRUM = 142 -- EffectBellyDrum :1772, maxattackhalvehp
+BattleEngine.EFFECT_PSYCH_UP = 143   -- EffectPsychUp :1786, copyfoestats
+BattleEngine.EFFECT_SOFTBOILED = 157 -- EffectSoftboiled :2023, tryhealhalfhealth
+-- Fast-lane batch 6 (c75f352): neither script has accuracycheck.
+BattleEngine.EFFECT_CONVERSION = 30  -- EffectConversion :658, tryconversiontypechange
+BattleEngine.EFFECT_MEMENTO = 168    -- EffectMemento :2199, trymemento/setatkhptozero
+BattleEngine.EFFECT_MAGNITUDE = 126
+BattleEngine.MOVE_MAGNITUDE = 222
 
 -- Real Cmd_remaininghptopower: scale the attacker's remaining HP to 48,
 -- promote a positive underflow to one, then choose Flail/Reversal's dynamic
@@ -471,6 +526,20 @@ end
 -- this helper derives the effect-190 transient power without mutating move data.
 function BattleEngine.eruptionPowerFromHP(hp, maxHP, storedPower)
   return math.max(1, math.floor(hp * storedPower / maxHP))
+end
+
+-- Magnitude's source command selects a transient base power with exactly one
+-- Random() % 100 result. This leaf is deliberately Magnitude-specific: it is
+-- not a shared dynamic-power abstraction and never changes catalog data.
+function BattleEngine.magnitudeResultFromRoll(roll)
+  assert(roll >= 0 and roll < 100, "Magnitude roll must be a residue 0..99")
+  if roll <= 4 then return 4, 10 end
+  if roll <= 14 then return 5, 30 end
+  if roll <= 34 then return 6, 50 end
+  if roll <= 64 then return 7, 70 end
+  if roll <= 84 then return 8, 90 end
+  if roll <= 94 then return 9, 110 end
+  return 10, 150
 end
 
 -- Real Cmd_psywavedamageeffect: discard 11..15 from Random() % 16, then
@@ -533,6 +602,56 @@ BattleEngine.STAT_STAGE_MOVES = {
   [62] = { stat = "spDefense", delta = -2 }, -- EFFECT_SPECIAL_DEFENSE_DOWN_2
 }
 
+-- Self-target two-stat +1 family (data/battle_scripts_1.s at c75f352:
+-- BattleScript_EffectCosmicPower/BulkUp/CalmMind/DragonDance). No accuracy
+-- check, no RNG. Fails only when BOTH stats are at +6 (the jumpifstat pair ->
+-- BattleScript_CantRaiseMultipleStats); otherwise each stat below +6 rises
+-- by one, and a stat already at +6 is skipped silently (its statbuffchange
+-- sets B_MSG_STAT_WONT_INCREASE and the script jumps past the message).
+BattleEngine.DUAL_STAT_UP_MOVES = {
+  [206] = { "defense",  "spDefense" }, -- EFFECT_COSMIC_POWER
+  [208] = { "attack",   "defense" },   -- EFFECT_BULK_UP
+  [211] = { "spAttack", "spDefense" }, -- EFFECT_CALM_MIND
+  [212] = { "attack",   "speed" },     -- EFFECT_DRAGON_DANCE
+}
+
+-- Certain self-drop after a damaging hit (c75f352: EffectSuperpower/
+-- EffectOverheat set MOVE_EFFECT_ATK_DEF_DOWN / SP_ATK_TWO_DOWN with
+-- AFFECTS_USER|CERTAIN, then EffectHit). Cmd_seteffectwithchance's CERTAIN
+-- branch applies it with no Random() on a hit that affected the target; on
+-- a no-effect hit its else-if still evaluates Random() first. Applied via
+-- BattleScript_AtkDefDown/SAtkDown2: a stat already at -6 is skipped
+-- silently (cMULTISTRING_CHOOSER == B_MSG_STAT_WONT_DECREASE jumps past).
+BattleEngine.SELF_DROP_HIT_MOVES = {
+  [182] = { { stat = "attack", delta = -1 }, { stat = "defense", delta = -1 } }, -- EFFECT_SUPERPOWER
+  [204] = { { stat = "spAttack", delta = -2 } },                               -- EFFECT_OVERHEAT
+}
+
+-- EFFECT_TICKLE (c75f352 BattleScript_EffectTickle): ppreduce, then fail
+-- before accuracycheck only when target ATK and DEF are both at -6
+-- (BattleScript_CantLowerMultipleStats); a miss goes to ButItFailed; then
+-- target ATK -1 and DEF -1, each skipped silently at -6.
+BattleEngine.EFFECT_TICKLE = 205
+
+-- EFFECT_ALL_STATS_UP_HIT (c75f352 EffectAllStatsUpHit :1768): EffectHit with
+-- chance MOVE_EFFECT_ALL_STATS_UP|AFFECTS_USER -> BattleScript_AllStatsUp
+-- (:3405). Skipped entirely when all five are at +6; otherwise ATK, DEF,
+-- SPEED, SP.ATK, SP.DEF each statbuffchange then printfromtable with no
+-- message skip, so a stat already at +6 prints its "won't go higher!".
+BattleEngine.EFFECT_ALL_STATS_UP_HIT = 140
+-- EFFECT_BRICK_BREAK (c75f352 EffectBrickBreak :2413): after accuracy and
+-- ppreduce, removelightscreenreflect clears both of the target side's
+-- screens before critcalc/damagecalc; "The wall shattered!" follows the
+-- attack animation whenever one was removed, even on an immune target.
+BattleEngine.EFFECT_BRICK_BREAK = 186
+-- EFFECT_TRIPLE_KICK (c75f352 EffectTripleKick :1380): ppreduce with no
+-- outer accuracycheck, then up to three iterations of accuracycheck ->
+-- movevaluescleanup -> power += 10 -> critcalc/damagecalc/typecalc/
+-- adjustnormaldamage -> jumpifmovehadnoeffect. A miss or no-effect ends the
+-- loop; with no landed hit the result message shows, otherwise MISSED is
+-- cleared and "Hit N time(s)!" prints before tryfaintmon BS_TARGET.
+BattleEngine.EFFECT_TRIPLE_KICK = 104
+
 -- The real "_HIT" secondary-effect family: an ordinary damaging move
 -- (accuracycheck -> ... -> datahpupdate, same pipeline as every other
 -- direct-damage move) that, after damage resolves, has a chance
@@ -592,6 +711,54 @@ BattleEngine.RECOIL_MOVES = {
 BattleEngine.MOVE_STRUGGLE = 165
 BattleEngine.EFFECT_EXPLOSION = 7
 BattleEngine.ABILITY_DAMP = 6
+-- Primary status (status1) cancellers and end-of-turn damage; see
+-- resolveStatusCancellers / resolveStatusEndTurn.
+BattleEngine.MOVE_SNORE = 173
+BattleEngine.MOVE_SLEEP_TALK = 214
+BattleEngine.EFFECT_THAW_HIT = 125
+BattleEngine.TYPE_FIRE = 10
+
+-- Status-on-hit families (slice S2): the stock hit script with a
+-- setmoveeffect status byte applied by seteffectwithchance
+-- (data/battle_scripts_1.s:321-374, :2632; Poison Tail shares the Poison
+-- Hit script at :233). Poison Tail also adds one crit stage (Cmd_critcalc,
+-- src/battle_script_commands.c:1184-1188).
+BattleEngine.EFFECT_POISON_TAIL = 209
+BattleEngine.STATUS_HIT_MOVES = {
+  [2] = "poison",      -- EFFECT_POISON_HIT
+  [4] = "burn",        -- EFFECT_BURN_HIT
+  [5] = "freeze",      -- EFFECT_FREEZE_HIT
+  [6] = "paralysis",   -- EFFECT_PARALYZE_HIT
+  [202] = "toxic",     -- EFFECT_POISON_FANG
+  [209] = "poison",    -- EFFECT_POISON_TAIL
+  [125] = "burn",      -- EFFECT_THAW_HIT (data/battle_scripts_1.s:1675-1677)
+}
+-- Status slice S4 (data/battle_scripts_1.s:2247-2270, :2515-2525).
+BattleEngine.EFFECT_FACADE = 169
+BattleEngine.EFFECT_SMELLINGSALT = 171
+BattleEngine.EFFECT_REFRESH = 193
+-- SetMoveEffect ability guards (include/constants/abilities.h ids).
+BattleEngine.ABILITY_LIMBER = 7
+BattleEngine.ABILITY_IMMUNITY = 17
+BattleEngine.ABILITY_SHIELD_DUST = 19
+BattleEngine.ABILITY_MAGMA_ARMOR = 40
+BattleEngine.ABILITY_WATER_VEIL = 41
+BattleEngine.ABILITY_INSOMNIA = 15
+BattleEngine.ABILITY_VITAL_SPIRIT = 72
+-- Primary status moves (slice S3): zero-power scripts with their own gate
+-- order before accuracycheck (data/battle_scripts_1.s:287-301 Sleep,
+-- :984-1003 Poison, :1005-1024 Paralyze, :687-706 Toxic, :2170-2185
+-- Will-O-Wisp), then seteffectprimary.
+BattleEngine.PRIMARY_STATUS_MOVES = {
+  [1] = "sleep",       -- EFFECT_SLEEP
+  [66] = "poison",     -- EFFECT_POISON
+  [67] = "paralysis",  -- EFFECT_PARALYZE
+  [33] = "toxic",      -- EFFECT_TOXIC
+  [167] = "burn",      -- EFFECT_WILL_O_WISP
+}
+local STATUS_BLOCKING_ABILITY = {
+  poison = 17, toxic = 17, burn = 41, paralysis = 7, freeze = 40,
+}
 
 -- The real drain family: EFFECT_ABSORB (Absorb, Mega Drain, Giga Drain,
 -- Leech Life -- confirmed against src/data/battle_moves.h) heals the
@@ -706,6 +873,8 @@ function BattleEngine.makeBattler(opts)
     speed = stats.speed,
     spAttack = stats.spAttack,
     spDefense = stats.spDefense,
+    -- Real gBattleMons[].status1 word (StatusConditions bit layout).
+    status = opts.status or 0,
     moves = {},
     statStages = {
       attack = BattleFormulas.DEFAULT_STAT_STAGE,
@@ -814,6 +983,9 @@ function BattleEngine:recordFaint(side, events)
   if battler.hp > 0 then return false end
   assert(self.faintSequence, "recordFaint needs beginFaintSequence")
   battler.hp = 0
+  -- Real Cmd_cleareffectsonfaint (src/battle_script_commands.c:2930-2938)
+  -- zeroes status1 and writes it to the party copy.
+  battler.status = 0
   for _, recorded in ipairs(self.faintSequence) do
     if recorded == side then return false end
   end
@@ -841,32 +1013,256 @@ function BattleEngine:finalizeFaintSequence(events)
     self.outcome = "playerWon"
   end
   if self.outcome then
+    -- A decided battle sends no replacement (checkteamslost ends it before
+    -- HandleFaintedMonActions), including a switch queued by an earlier
+    -- faint sequence this turn (e.g. an end-of-turn status faint).
+    self.pendingForcedSwitches = {}
+    self:_syncForcedSwitchHead()
     events[#events + 1] = { type = "battleEnd", outcome = self.outcome }
     return true
   end
+  local queued = {}
+  for _, side in ipairs(self.pendingForcedSwitches) do queued[side] = true end
   for _, side in ipairs({ BattleEngine.SIDE_PLAYER, BattleEngine.SIDE_FOE }) do
     for _, recorded in ipairs(fainted) do
-      if recorded == side then
-        self.pendingForcedSwitches[#self.pendingForcedSwitches + 1] = side
+      if recorded == side and not queued[side] then
+        queued[side] = true
         events[#events + 1] = { type = "forcedSwitchNeeded", side = side }
       end
+    end
+  end
+  -- Real HandleFaintedMonActions walks battlers in id order, so the
+  -- player's replacement always comes first, even when separate faint
+  -- sequences in one turn (move, then end-of-turn status) queued the foe
+  -- first.
+  self.pendingForcedSwitches = {}
+  for _, side in ipairs({ BattleEngine.SIDE_PLAYER, BattleEngine.SIDE_FOE }) do
+    if queued[side] then
+      self.pendingForcedSwitches[#self.pendingForcedSwitches + 1] = side
     end
   end
   self:_syncForcedSwitchHead()
   return self.awaitingForcedSwitch ~= nil
 end
 
-function BattleEngine:supportsMove(move)
+function BattleEngine:supportsMove(move, moveId)
   if not move then return false end
   if move.effect == BattleEngine.EFFECT_DREAM_EATER then return false end
+  if move.effect == BattleEngine.EFFECT_RESTORE_HP then
+    return (moveId == 105 or moveId == 303)
+      and move.power == 0 and move.target == MOVE_TARGET_USER
+  end
+  if BattleEngine.DUAL_STAT_UP_MOVES[move.effect] then
+    return move.power == 0 and move.target == MOVE_TARGET_USER
+  end
+  if move.effect == BattleEngine.EFFECT_SOFTBOILED then
+    return (moveId == 135 or moveId == 208)
+      and move.power == 0 and move.target == MOVE_TARGET_USER
+  end
+  if move.effect == BattleEngine.EFFECT_SPLASH or move.effect == BattleEngine.EFFECT_HAZE
+      or move.effect == BattleEngine.EFFECT_BELLY_DRUM then
+    return move.power == 0 and move.target == MOVE_TARGET_USER
+  end
+  if move.effect == BattleEngine.EFFECT_PSYCH_UP or move.effect == BattleEngine.EFFECT_MEMENTO then
+    return move.power == 0 and move.target == 0 -- MOVE_TARGET_SELECTED
+  end
+  if move.effect == BattleEngine.EFFECT_CONVERSION then
+    return move.power == 0 and move.target == MOVE_TARGET_USER
+  end
+  if move.effect == BattleEngine.EFFECT_TICKLE then
+    return move.power == 0 and move.target == 0 -- MOVE_TARGET_SELECTED
+  end
+  if BattleEngine.PRIMARY_STATUS_MOVES[move.effect] then
+    return move.power == 0 and move.target == 0 -- MOVE_TARGET_SELECTED
+  end
+  if move.effect == BattleEngine.EFFECT_REFRESH then
+    return move.power == 0 and move.target == MOVE_TARGET_USER
+  end
   return move.power > 0 or BattleEngine.STAT_STAGE_MOVES[move.effect] ~= nil
     or BattleEngine.SCREEN_MOVES[move.effect] ~= nil
     or move.effect == BattleEngine.EFFECT_PAIN_SPLIT
 end
 
+-- DMG_RECOIL_FROM_MISS at the accepted c75f352 source pin: halve, promote
+-- zero, then cap by TARGET max HP. The arithmetic maxHP=1 edge stays zero.
+function BattleEngine.recoilIfMissDamage(damage, targetMaxHP)
+  local half = math.floor(damage / 2)
+  if half == 0 then half = 1 end
+  return math.min(half, math.floor(targetMaxHP / 2))
+end
+
 -- Resolves one attack, appending its events. Returns nothing; the caller
 -- checks for a faint. Mirrors BattleScript_HitFromAccCheck's real order.
+-- One move action: the core resolution below, then the move-end defrost
+-- check (real MOVEEND_DEFROST, src/battle_script_commands.c:4103-4116): a
+-- Fire move that dealt damage to a frozen target still above 0 HP thaws it.
 function BattleEngine:resolveMove(attackerSide, moveSlot, events)
+  self.currentMove = nil
+  self.moveDamageDealt = 0
+  self:resolveMoveCore(attackerSide, moveSlot, events)
+  local defenderSide = otherSide(attackerSide)
+  local defender = self:battler(defenderSide)
+  if self.currentMove and self.currentMove.type == BattleEngine.TYPE_FIRE
+      and self.moveDamageDealt > 0 and defender.hp > 0
+      and StatusConditions.isFrozen(defender.status)
+      and not self:isOver() then
+    defender.status = defender.status - StatusConditions.FREEZE
+    events[#events + 1] = { type = "defrostedByFire", side = defenderSide }
+  end
+  self.currentMove = nil
+end
+
+-- Real AtkCanceller_UnableToUseMove status cases (src/battle_util.c
+-- :1266-1333, :1439-1449, :1513-1525), in source order. Returns true when
+-- the move is cancelled: none of these failures prints "used" or deducts
+-- PP (they jump to BattleScript_MoveEnd before attackstring/ppreduce).
+-- Draws: freeze `Random() % 5` on every frozen attempt (thaw-hit moves
+-- included), paralysis `Random() % 4` on every paralyzed attempt.
+function BattleEngine:resolveStatusCancellers(attackerSide, attacker, moveId, move, events)
+  local S = StatusConditions
+  local status = attacker.status or 0
+  if S.isAsleep(status) then
+    -- CANCELLER_ASLEEP: decrement first (Early Bird not represented).
+    local turns = S.sleepTurns(status) - 1
+    attacker.status = S.withSleepTurns(status, turns)
+    if turns > 0 then
+      events[#events + 1] = { type = "fastAsleep", side = attackerSide }
+      -- Snore/Sleep Talk pass the canceller; Snore's own script then prints
+      -- "fast asleep" before attackstring (data/battle_scripts_1.s
+      -- :1253-1266), so the same event precedes its use. Its awake-failure
+      -- branch is not modeled (pre-existing family 92 gap).
+      if moveId ~= BattleEngine.MOVE_SNORE and moveId ~= BattleEngine.MOVE_SLEEP_TALK then
+        return true
+      end
+    else
+      events[#events + 1] = { type = "wokeUp", side = attackerSide }
+    end
+  end
+  if S.isFrozen(attacker.status) then
+    -- CANCELLER_FROZEN
+    if self.rng:next16() % 5 ~= 0 then
+      if move.effect ~= BattleEngine.EFFECT_THAW_HIT then
+        events[#events + 1] = { type = "frozenSolid", side = attackerSide }
+        return true
+      end
+    else
+      attacker.status = attacker.status - S.FREEZE
+      events[#events + 1] = { type = "thawed", side = attackerSide }
+    end
+  end
+  if S.isParalyzed(attacker.status) and self.rng:next16() % 4 == 0 then
+    -- CANCELLER_PARALYSED
+    events[#events + 1] = { type = "fullyParalyzed", side = attackerSide }
+    return true
+  end
+  if S.isFrozen(attacker.status) and move.effect == BattleEngine.EFFECT_THAW_HIT then
+    -- CANCELLER_THAW
+    attacker.status = attacker.status - S.FREEZE
+    events[#events + 1] = { type = "defrostedByMove", side = attackerSide, move = moveId }
+  end
+  return false
+end
+
+-- Real SetMoveEffect for a secondary (non-primary) status byte on the
+-- target (src/battle_script_commands.c:2110-2370). Represented guards in
+-- source order: Shield Dust blocks every secondary status (:2132-2134);
+-- target at 0 HP (:2140); the per-status ability (Immunity, Water Veil,
+-- Limber print their prevention text only when `certain`, else fail
+-- silently; Magma Armor is always silent); then type immunity and an
+-- existing status (StatusConditions.canApply), which fail silently for a
+-- secondary effect. Safeguard and Substitute are not represented.
+function BattleEngine:applySecondaryStatus(targetSide, kind, certain, events)
+  local target = self:battler(targetSide)
+  if target.ability == BattleEngine.ABILITY_SHIELD_DUST then return false end
+  if target.hp <= 0 then return false end
+  local blocking = STATUS_BLOCKING_ABILITY[kind]
+  if target.ability == blocking and kind ~= "freeze" then
+    if certain then
+      events[#events + 1] = {
+        type = "statusPrevented", side = targetSide, kind = kind, ability = blocking,
+      }
+    end
+    return false
+  end
+  local ok = StatusConditions.canApply(target, kind)
+  if not ok then return false end
+  if kind == "freeze" and target.ability == BattleEngine.ABILITY_MAGMA_ARMOR then
+    return false
+  end
+  StatusConditions.apply(target, kind, self.rng)
+  events[#events + 1] = { type = "statusApplied", side = targetSide, kind = kind }
+  return true
+end
+
+-- The primary status scripts' gates, in each script's own order (Substitute
+-- and Safeguard are not represented). Every gate is RNG-free; the one
+-- accuracycheck draw follows them, then seteffectprimary applies the
+-- status (sleep draws its 2-5 turns there). Failure events:
+--   statusAlready   "already asleep/poisoned/paralyzed/has a burn"
+--   statusPrevented Immunity / Limber / Water Veil text (primary always prints)
+--   stayedAwake     Insomnia / Vital Spirit (jumpifcantmakeasleep)
+--   noEffect        "It doesn't affect" (Poison/Steel, Fire, typecalc x0)
+--   moveFailed      any other existing status
+function BattleEngine:resolvePrimaryStatusMove(attackerSide, attacker, defenderSide, defender, move, kind, events)
+  local S = StatusConditions
+  local status = defender.status or 0
+  local function isType(t) return defender.types[1] == t or defender.types[2] == t end
+  local function already()
+    events[#events + 1] = { type = "statusAlready", side = defenderSide, kind = kind }
+  end
+  local function prevented(ability)
+    events[#events + 1] = { type = "statusPrevented", side = defenderSide, kind = kind, ability = ability }
+  end
+  local function notAffected()
+    events[#events + 1] = { type = "noEffect", side = attackerSide, target = defenderSide }
+  end
+  local function failed()
+    events[#events + 1] = { type = "moveFailed", side = attackerSide }
+  end
+  local poisonOrSteel = isType(S.TYPE_POISON) or isType(S.TYPE_STEEL)
+  local anyStatus = S.hasAny(status)
+
+  if kind == "sleep" then
+    if S.isAsleep(status) then return already() end
+    if defender.ability == BattleEngine.ABILITY_INSOMNIA
+        or defender.ability == BattleEngine.ABILITY_VITAL_SPIRIT then
+      events[#events + 1] = { type = "stayedAwake", side = defenderSide, ability = defender.ability }
+      return
+    end
+    if anyStatus then return failed() end
+  elseif kind == "poison" then
+    if defender.ability == BattleEngine.ABILITY_IMMUNITY then return prevented(defender.ability) end
+    if S.isPoisoned(status) or S.isBadlyPoisoned(status) then return already() end
+    if poisonOrSteel then return notAffected() end
+    if anyStatus then return failed() end
+  elseif kind == "paralysis" then
+    if defender.ability == BattleEngine.ABILITY_LIMBER then return prevented(defender.ability) end
+    local _, flags = BattleFormulas.typeCalc(1, move.type, attacker.types, defender.types, self.typeChart)
+    if flags.noEffect then return notAffected() end
+    if S.isParalyzed(status) then return already() end
+    if anyStatus then return failed() end
+  elseif kind == "toxic" then
+    if defender.ability == BattleEngine.ABILITY_IMMUNITY then return prevented(defender.ability) end
+    if S.isPoisoned(status) or S.isBadlyPoisoned(status) then return already() end
+    if anyStatus then return failed() end
+    if poisonOrSteel then return notAffected() end
+  elseif kind == "burn" then
+    if S.isBurned(status) then return already() end
+    if isType(S.TYPE_FIRE) then return notAffected() end
+    if defender.ability == BattleEngine.ABILITY_WATER_VEIL then return prevented(defender.ability) end
+    if anyStatus then return failed() end
+  end
+
+  if not BattleFormulas.accuracyCheck(move.accuracy, attacker.statStages.accuracy,
+      defender.statStages.evasion, self.rng, attacker.ability, move.type) then
+    events[#events + 1] = { type = "miss", side = attackerSide }
+    return
+  end
+  S.apply(defender, kind, self.rng)
+  events[#events + 1] = { type = "statusApplied", side = defenderSide, kind = kind }
+end
+
+function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
   local attacker = self:battler(attackerSide)
   local defenderSide = otherSide(attackerSide)
   local defender = self:battler(defenderSide)
@@ -914,7 +1310,8 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
     end
   end
 
-  if not self:supportsMove(move) then
+  local effectiveMoveId = slot and slot.move or BattleEngine.MOVE_STRUGGLE
+  if not self:supportsMove(move, effectiveMoveId) then
     error(("unsupported move effect %d for non-damaging move %d")
       :format(move.effect or -1, slot and slot.move or BattleEngine.MOVE_STRUGGLE))
   end
@@ -947,8 +1344,27 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
     return
   end
 
-  local moveId = slot and slot.move or BattleEngine.MOVE_STRUGGLE
+  local moveId = effectiveMoveId
+  if self:resolveStatusCancellers(attackerSide, attacker, moveId, move, events) then
+    return
+  end
+  self.currentMove = move
   events[#events + 1] = { type = "useMove", side = attackerSide, move = moveId }
+  local isMagnitude = moveId == BattleEngine.MOVE_MAGNITUDE
+    and move.effect == BattleEngine.EFFECT_MAGNITUDE
+  if isMagnitude then
+    -- BattleScript_EffectMagnitude performs ppreduce, then its one strength
+    -- roll/message, before it enters the ordinary single-defender hit path.
+    -- Keep the selected power local, just as Flail/Eruption do, so the ROM
+    -- record's nominal power 1 remains immutable.
+    slot.pp = slot.pp - 1
+    local level, power = BattleEngine.magnitudeResultFromRoll(self.rng:next16() % 100)
+    local magnitudeMove = {}
+    for k, v in pairs(move) do magnitudeMove[k] = v end
+    magnitudeMove.power = power
+    move = magnitudeMove
+    events[#events + 1] = { type = "magnitude", side = attackerSide, level = level }
+  end
   local isExplosion = move.effect == BattleEngine.EFFECT_EXPLOSION
   if isExplosion then
     -- Real EffectExplosion reaches ppreduce before tryexplosion. Damp scans
@@ -977,11 +1393,10 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
     -- on the miss path.
     local rolledCrit = BattleFormulas.critRoll(self.rng, 0)
     local isCrit = rolledCrit and not (self.firstBattle and not self.tutorialPlayerDamageDone)
-    local explosionDefender = {}
-    for k, v in pairs(defender) do explosionDefender[k] = v end
-    explosionDefender.defense = math.max(1, math.floor(defender.defense / 2))
+    -- calculateBaseDamage halves defense for EFFECT_EXPLOSION after the
+    -- ability terms (source order, src/pokemon.c:2505-2507).
     local damage = BattleFormulas.calculateBaseDamage(
-      attacker, explosionDefender, move, isCrit, self.sideStatus[defenderSide])
+      attacker, defender, move, isCrit, self.sideStatus[defenderSide])
     if isCrit then damage = damage * BattleFormulas.CRIT_MULTIPLIER end
     local flags
     damage, flags = BattleFormulas.typeCalc(
@@ -989,7 +1404,7 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
     damage = BattleFormulas.applyRandomDamageMultiplier(damage, self.rng)
     local hit = BattleFormulas.accuracyCheck(
       move.accuracy, attacker.statStages.accuracy,
-      defender.statStages.evasion, self.rng)
+      defender.statStages.evasion, self.rng, attacker.ability, move.type)
     if not hit then
       events[#events + 1] = { type = "miss", side = attackerSide }
       settleExplosion(false)
@@ -1018,6 +1433,32 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
     end
   end
 
+  if move.effect == BattleEngine.EFFECT_REFRESH then
+    -- attackcanceler/attackstring/ppreduce, then
+    -- Cmd_cureifburnedparalysedorpoisoned (src/battle_script_commands.c
+    -- :8728-8742): any PSN/BRN/PAR/TOX on the user sets status1 to 0;
+    -- otherwise "But it failed!". No accuracycheck, no RNG.
+    if slot then slot.pp = slot.pp - 1 end
+    local st = attacker.status or 0
+    if StatusConditions.isPoisoned(st) or StatusConditions.isBurned(st)
+        or StatusConditions.isParalyzed(st) or StatusConditions.isBadlyPoisoned(st) then
+      attacker.status = 0
+      events[#events + 1] = { type = "statusCured", side = attackerSide }
+    else
+      events[#events + 1] = { type = "moveFailed", side = attackerSide }
+    end
+    return
+  end
+
+  local primaryStatus = BattleEngine.PRIMARY_STATUS_MOVES[move.effect]
+  if primaryStatus then
+    -- attackstring/ppreduce precede every gate in these scripts.
+    if slot then slot.pp = slot.pp - 1 end
+    self:resolvePrimaryStatusMove(attackerSide, attacker, defenderSide, defender,
+      move, primaryStatus, events)
+    return
+  end
+
   -- Real BattleScript_EffectStatUp (every self-target UP/UP_2 effect) has
   -- NO accuracycheck step at all: attackcanceler -> attackstring ->
   -- ppreduce -> statbuffchange. It cannot miss and consumes zero Random()
@@ -1033,11 +1474,27 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
   -- shape: a self-target move (real MOVE_TARGET_USER) whose battle script
   -- has no accuracycheck step at all -- see SCREEN_MOVES' own comment.
   local screenStatusKey = BattleEngine.SCREEN_MOVES[move.effect]
+  local dualStatUp = BattleEngine.DUAL_STAT_UP_MOVES[move.effect]
+  -- Tickle's both-at-minimum gate precedes its accuracycheck (no RNG).
+  local isTickle = move.effect == BattleEngine.EFFECT_TICKLE
+  local tickleGateFails = isTickle
+    and defender.statStages.attack == BattleFormulas.MIN_STAT_STAGE
+    and defender.statStages.defense == BattleFormulas.MIN_STAT_STAGE
   local needsAccuracyCheck = not isSelfTargetStat and not screenStatusKey
+    and not dualStatUp and not tickleGateFails
     and move.effect ~= BattleEngine.EFFECT_ALWAYS_HIT
     and move.effect ~= BattleEngine.EFFECT_VITAL_THROW
     and move.effect ~= BattleEngine.EFFECT_OHKO
     and move.effect ~= BattleEngine.EFFECT_PAIN_SPLIT
+    and move.effect ~= BattleEngine.EFFECT_RESTORE_HP
+    and move.effect ~= BattleEngine.EFFECT_SOFTBOILED
+    and move.effect ~= BattleEngine.EFFECT_SPLASH
+    and move.effect ~= BattleEngine.EFFECT_HAZE
+    and move.effect ~= BattleEngine.EFFECT_BELLY_DRUM
+    and move.effect ~= BattleEngine.EFFECT_PSYCH_UP
+    and move.effect ~= BattleEngine.EFFECT_TRIPLE_KICK
+    and move.effect ~= BattleEngine.EFFECT_CONVERSION
+    and move.effect ~= BattleEngine.EFFECT_MEMENTO
 
   -- The FIRST_BATTLE controller deliberately skips the first player
   -- accuracy RNG independently for a damaging move and for a (DOWN-family)
@@ -1051,7 +1508,7 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
   if needsAccuracyCheck then
     hit = tutorialAccuracy or BattleFormulas.accuracyCheck(
       move.accuracy, attacker.statStages.accuracy,
-      defender.statStages.evasion, self.rng)
+      defender.statStages.evasion, self.rng, attacker.ability, move.type)
   else
     hit = true
   end
@@ -1062,16 +1519,157 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
   -- runs ppreduce). Real HITMARKER_NO_PPDEDUCT means Struggle (no `slot`,
   -- see above) skips this step entirely -- there is no move slot of its
   -- own to decrement.
-  if slot and not isEndeavor then
+  if slot and not isEndeavor and not isMagnitude then
     slot.pp = slot.pp - 1
   end
 
   if not hit then
+    if move.effect == 45 and (moveId == 26 or moveId == 136) then
+      -- Ordinary accuracy failure already scans type immunity in source,
+      -- before resultmessage/the crash guard. This pure query spends no RNG.
+      local _, immunity = BattleFormulas.typeCalc(
+        1, move.type, attacker.types, defender.types, self.typeChart)
+      if immunity.noEffect then
+        events[#events + 1] = { type = "noEffect", side = attackerSide, target = defenderSide }
+        return
+      end
+      events[#events + 1] = { type = "miss", side = attackerSide }
+      -- HandleAction_UseMove resets both multipliers to 1; no critcalc on
+      -- this leaf. Preserve base -> STAB/type -> random -> half/min/cap.
+      local damage = BattleFormulas.calculateBaseDamage(
+        attacker, defender, move, false, self.sideStatus[defenderSide])
+      damage = BattleFormulas.typeCalc(damage, move.type, attacker.types, defender.types, self.typeChart)
+      damage = BattleFormulas.applyRandomDamageMultiplier(damage, self.rng)
+      local loss = math.min(attacker.hp, BattleEngine.recoilIfMissDamage(damage, defender.maxHP))
+      attacker.hp = attacker.hp - loss
+      events[#events + 1] = { type = "crash", side = attackerSide, amount = loss, hpRemaining = attacker.hp }
+      -- Do not use applyDamage: it targets the defender and advances Oak's
+      -- damage tutorial. No hit/effectiveness or ordinary recoil result here.
+      self:checkFaint(attackerSide, events)
+      return
+    end
     events[#events + 1] = { type = "miss", side = attackerSide }
     return
   end
 
   if move.power == 0 then
+    if move.effect == BattleEngine.EFFECT_SPLASH then
+      events[#events + 1] = { type = "splash" }
+      return
+    end
+    if move.effect == BattleEngine.EFFECT_CONVERSION then
+      -- Cmd_tryconversiontypechange (bsc.c:7003): count leading move slots;
+      -- ??? (Curse) reads as GHOST for a Ghost user, else NORMAL; fail if
+      -- every slot's type is already one of the user's; otherwise draw
+      -- Random() & 3 until it names a valid slot whose type differs.
+      local function slotType(i)
+        local t = self.moves[attacker.moves[i].move].type
+        if t == BattleFormulas.TYPE_MYSTERY then
+          local ghost = attacker.types[1] == 7 or attacker.types[2] == 7
+          t = ghost and 7 or 0
+        end
+        return t
+      end
+      local function isOwn(t) return t == attacker.types[1] or t == attacker.types[2] end
+      local valid = 0
+      while valid < 4 and attacker.moves[valid + 1] and attacker.moves[valid + 1].move ~= 0 do
+        valid = valid + 1
+      end
+      local any = false
+      for i = 1, valid do
+        if not isOwn(slotType(i)) then any = true; break end
+      end
+      if not any then
+        events[#events + 1] = { type = "moveFailed", side = attackerSide }
+        return
+      end
+      local newType
+      repeat
+        local slot
+        repeat slot = self.rng:next16() % 4 until slot < valid
+        newType = slotType(slot + 1)
+      until not isOwn(newType)
+      attacker.types = { newType, newType }
+      events[#events + 1] = { type = "conversion", side = attackerSide, newType = newType }
+      return
+    end
+    if move.effect == BattleEngine.EFFECT_MEMENTO then
+      -- Cmd_trymemento (bsc.c:8681): fail only if target ATK and SP.ATK are
+      -- both at -6 (Protect not modeled). Otherwise attacker HP -> 0 first,
+      -- then target ATK -2 and SP.ATK -2 (each silently skipped at -6), then
+      -- tryfaintmon BS_ATTACKER.
+      local stages = defender.statStages
+      if stages.attack == BattleFormulas.MIN_STAT_STAGE
+          and stages.spAttack == BattleFormulas.MIN_STAT_STAGE then
+        events[#events + 1] = { type = "moveFailed", side = attackerSide }
+        return
+      end
+      attacker.hp = 0
+      events[#events + 1] = { type = "mementoHP", side = attackerSide }
+      for _, stat in ipairs({ "attack", "spAttack" }) do
+        if stages[stat] > BattleFormulas.MIN_STAT_STAGE then
+          stages[stat] = math.max(BattleFormulas.MIN_STAT_STAGE, stages[stat] - 2)
+          events[#events + 1] = {
+            type = "statChange", side = defenderSide, stat = stat, stages = -2, stage = stages[stat],
+          }
+          if self.firstBattle and attackerSide == BattleEngine.SIDE_PLAYER
+              and not self.tutorialPlayerStatDone then
+            self.tutorialPlayerStatDone = true
+            events[#events + 1] = { type = "tutorialTip", kind = "stat" }
+          end
+        end
+      end
+      self:checkFaint(attackerSide, events)
+      return
+    end
+    if move.effect == BattleEngine.EFFECT_HAZE then
+      -- Cmd_normalisebuffs: every battler's stages back to neutral.
+      for _, battler in ipairs({ self.player, self.foe }) do
+        for stat in pairs(battler.statStages) do
+          battler.statStages[stat] = BattleFormulas.DEFAULT_STAT_STAGE
+        end
+      end
+      events[#events + 1] = { type = "haze" }
+      return
+    end
+    if move.effect == BattleEngine.EFFECT_PSYCH_UP then
+      -- Cmd_copyfoestats copies every stage and never fails.
+      for stat, stage in pairs(defender.statStages) do
+        attacker.statStages[stat] = stage
+      end
+      events[#events + 1] = { type = "psychUp", side = attackerSide, target = defenderSide }
+      return
+    end
+    if move.effect == BattleEngine.EFFECT_BELLY_DRUM then
+      -- Cmd_maxattackhalvehp: fail unless ATK < +6 and HP > max(1, maxHP/2).
+      local halfHP = math.max(1, math.floor(attacker.maxHP / 2))
+      if attacker.statStages.attack >= BattleFormulas.MAX_STAT_STAGE
+          or attacker.hp <= halfHP then
+        events[#events + 1] = { type = "moveFailed", side = attackerSide }
+        return
+      end
+      attacker.statStages.attack = BattleFormulas.MAX_STAT_STAGE
+      attacker.hp = attacker.hp - halfHP
+      events[#events + 1] = {
+        type = "bellyDrum", side = attackerSide, amount = halfHP, hpRemaining = attacker.hp,
+      }
+      return
+    end
+    if move.effect == BattleEngine.EFFECT_RESTORE_HP
+        or move.effect == BattleEngine.EFFECT_SOFTBOILED then
+      if attacker.hp == attacker.maxHP then
+        events[#events + 1] = { type = "restoreHPFull", side = attackerSide }
+        return
+      end
+      local beforeHP = attacker.hp
+      local requested = math.max(1, math.floor(attacker.maxHP / 2))
+      attacker.hp = math.min(attacker.maxHP, attacker.hp + requested)
+      events[#events + 1] = {
+        type = "restoreHP", side = attackerSide, beforeHP = beforeHP,
+        hpRemaining = attacker.hp, amount = attacker.hp - beforeHP,
+      }
+      return
+    end
     if move.effect == BattleEngine.EFFECT_PAIN_SPLIT then
       -- Cmd_painsplitdmgcalc stores both signed deltas from the same
       -- pre-mutation average; the script then updates attacker before target.
@@ -1088,6 +1686,48 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
       applyPainSplitHP(attackerSide, attacker)
       applyPainSplitHP(defenderSide, defender)
       events[#events + 1] = { type = "painSplit" }
+      return
+    end
+    if isTickle then
+      if tickleGateFails then
+        events[#events + 1] = { type = "statsWontFall", side = defenderSide }
+        return
+      end
+      local stages = defender.statStages
+      for _, stat in ipairs({ "attack", "defense" }) do
+        if stages[stat] > BattleFormulas.MIN_STAT_STAGE then
+          stages[stat] = stages[stat] - 1
+          events[#events + 1] = {
+            type = "statChange", side = defenderSide, stat = stat, stages = -1,
+            stage = stages[stat],
+          }
+          -- Oak first battle: the first defender-stat-fell message sets the
+          -- stat tutorial flag and tip (battle_controller_oak_old_man.c:1766).
+          if self.firstBattle and attackerSide == BattleEngine.SIDE_PLAYER
+              and not self.tutorialPlayerStatDone then
+            self.tutorialPlayerStatDone = true
+            events[#events + 1] = { type = "tutorialTip", kind = "stat" }
+          end
+        end
+      end
+      return
+    end
+    if dualStatUp then
+      local maxStage = BattleFormulas.MAX_STAT_STAGE
+      local stages = attacker.statStages
+      if stages[dualStatUp[1]] == maxStage and stages[dualStatUp[2]] == maxStage then
+        events[#events + 1] = { type = "statsWontRise", side = attackerSide }
+        return
+      end
+      for _, stat in ipairs(dualStatUp) do
+        if stages[stat] < maxStage then
+          stages[stat] = stages[stat] + 1
+          events[#events + 1] = {
+            type = "statChange", side = attackerSide, stat = stat, stages = 1,
+            stage = stages[stat],
+          }
+        end
+      end
       return
     end
     if screenStatusKey then
@@ -1221,11 +1861,28 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
     return
   end
 
+  if move.effect == BattleEngine.EFFECT_TRIPLE_KICK then
+    self:resolveTripleKick(attackerSide, attacker, defenderSide, defender, move, events)
+    return
+  end
+
+  if move.effect == BattleEngine.EFFECT_BRICK_BREAK then
+    -- Source tests the timers (bsc.c:9444); flags and timers stay in sync
+    -- via resolveScreenMove/decaySideTimers, so the flags are equivalent.
+    local status = self.sideStatus[defenderSide]
+    if status.reflect or status.lightScreen then
+      status.reflect, status.reflectTimer = false, 0
+      status.lightScreen, status.lightScreenTimer = false, 0
+      events[#events + 1] = { type = "wallShattered", side = defenderSide }
+    end
+  end
+
   -- 3. critcalc (one Random()). Cmd_critcalc evaluates Random before its
   -- FIRST_BATTLE flag check, so the roll is still consumed while criticals
   -- are suppressed. Suppression is global until the first player damage
   -- message flips Oak's state flag, including a foe that attacks first.
-  local critStage = move.effect == BattleEngine.EFFECT_HIGH_CRITICAL and 1 or 0
+  local critStage = (move.effect == BattleEngine.EFFECT_HIGH_CRITICAL
+    or move.effect == BattleEngine.EFFECT_POISON_TAIL) and 1 or 0
   local rolledCrit = BattleFormulas.critRoll(self.rng, critStage)
   local isCrit = rolledCrit and not (self.firstBattle and not self.tutorialPlayerDamageDone)
 
@@ -1238,6 +1895,19 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
     attacker, defender, move, isCrit, self.sideStatus[defenderSide])
   if isCrit then
     damage = damage * BattleFormulas.CRIT_MULTIPLIER
+  end
+  -- Cmd_damagecalc's dmgMultiplier (src/battle_script_commands.c:1215):
+  -- Facade doubles when the user has PSN/BRN/PAR/TOX (burn halving still
+  -- applies inside the base damage); Smelling Salt doubles against a
+  -- paralyzed target (Substitute not represented).
+  local st = attacker.status or 0
+  if move.effect == BattleEngine.EFFECT_FACADE
+      and (StatusConditions.isPoisoned(st) or StatusConditions.isBurned(st)
+        or StatusConditions.isParalyzed(st) or StatusConditions.isBadlyPoisoned(st)) then
+    damage = damage * 2
+  elseif move.effect == BattleEngine.EFFECT_SMELLINGSALT
+      and StatusConditions.isParalyzed(defender.status) then
+    damage = damage * 2
   end
 
   -- 5. typecalc: STAB then per-row type effectiveness. Real Cmd_typecalc
@@ -1271,7 +1941,13 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
     -- the later `&&` term that checks MOVE_RESULT_NO_EFFECT and blocks the
     -- actual effect. The roll must still be consumed here; its result is
     -- simply discarded. See BattleFormulas.secondaryEffectRoll's comment.
-    if BattleEngine.HIT_VARIANT_STAT_MOVES[move.effect] then
+    if BattleEngine.HIT_VARIANT_STAT_MOVES[move.effect]
+        or BattleEngine.SELF_DROP_HIT_MOVES[move.effect]
+        or move.effect == BattleEngine.EFFECT_ALL_STATS_UP_HIT
+        or BattleEngine.STATUS_HIT_MOVES[move.effect]
+        or move.effect == BattleEngine.EFFECT_SMELLINGSALT then
+      -- Smelling Salt's byte is CERTAIN, which skips the roll only when the
+      -- move had an effect; a no-effect hit falls to the rolling branch.
       BattleFormulas.secondaryEffectRoll(self.rng, move.secondaryEffectChance)
     end
     return
@@ -1344,6 +2020,63 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
   -- this hit landed and had an effect (the noEffect branch above already
   -- handled -- and returned out of -- the no-effect case, which still
   -- consumes this same roll but never applies it).
+  local selfDrop = BattleEngine.SELF_DROP_HIT_MOVES[move.effect]
+  if selfDrop then
+    -- CERTAIN branch: no Random(); the attacker is alive here (a recoil
+    -- faint would have returned above and these moves have no recoil).
+    for _, change in ipairs(selfDrop) do
+      local current = attacker.statStages[change.stat]
+      if current > BattleFormulas.MIN_STAT_STAGE then
+        local newStage = math.max(BattleFormulas.MIN_STAT_STAGE, current + change.delta)
+        attacker.statStages[change.stat] = newStage
+        events[#events + 1] = {
+          type = "statChange", side = attackerSide, stat = change.stat,
+          stages = change.delta, stage = newStage,
+        }
+      end
+    end
+  end
+
+  if move.effect == BattleEngine.EFFECT_ALL_STATS_UP_HIT
+      and BattleFormulas.secondaryEffectRoll(self.rng, move.secondaryEffectChance) then
+    local stages = attacker.statStages
+    local order = { "attack", "defense", "speed", "spAttack", "spDefense" }
+    local anyBelow = false
+    for _, stat in ipairs(order) do
+      if stages[stat] < BattleFormulas.MAX_STAT_STAGE then anyBelow = true end
+    end
+    if anyBelow then
+      for _, stat in ipairs(order) do
+        if stages[stat] < BattleFormulas.MAX_STAT_STAGE then
+          stages[stat] = stages[stat] + 1
+          events[#events + 1] = {
+            type = "statChange", side = attackerSide, stat = stat, stages = 1, stage = stages[stat],
+          }
+        else
+          events[#events + 1] = {
+            type = "statChange", side = attackerSide, stat = stat, stages = 1, prevented = true,
+          }
+        end
+      end
+    end
+  end
+
+  local statusKind = BattleEngine.STATUS_HIT_MOVES[move.effect]
+  if statusKind
+      and BattleFormulas.secondaryEffectRoll(self.rng, move.secondaryEffectChance) then
+    -- Cmd_seteffectwithchance (:2789-2796): a chance of 100 or more calls
+    -- SetMoveEffect with MOVE_EFFECT_CERTAIN.
+    self:applySecondaryStatus(defenderSide, statusKind,
+      move.secondaryEffectChance >= 100, events)
+  end
+
+  if move.effect == BattleEngine.EFFECT_SMELLINGSALT and defender.hp > 0
+      and StatusConditions.isParalyzed(defender.status) then
+    -- MOVE_EFFECT_REMOVE_PARALYSIS | CERTAIN (no roll; :2690-2705).
+    defender.status = defender.status - StatusConditions.PARALYSIS
+    events[#events + 1] = { type = "paralysisHealed", side = defenderSide }
+  end
+
   local hitVariant = BattleEngine.HIT_VARIANT_STAT_MOVES[move.effect]
   if hitVariant then
     local succeeded = BattleFormulas.secondaryEffectRoll(self.rng, move.secondaryEffectChance)
@@ -1452,6 +2185,9 @@ function BattleEngine:applyDamage(attackerSide, defenderSide, defender, damage, 
     damage = defender.hp
   end
   defender.hp = defender.hp - damage
+  if defenderSide ~= attackerSide then
+    self.moveDamageDealt = (self.moveDamageDealt or 0) + damage
+  end
   events[#events + 1] = {
     type = "damage",
     side = attackerSide,
@@ -1565,6 +2301,53 @@ function BattleEngine:resolveMultiHit(attackerSide, attacker, defenderSide, defe
   events[#events + 1] = { type = "multiHit", side = attackerSide, hits = hitCount }
 end
 
+-- EFFECT_TRIPLE_KICK loop (see the constant's comment). Per-hit power is
+-- 10/20/30 via gDynamicBasePower; unlike the multi-hit loop, the damage
+-- random roll comes before jumpifmovehadnoeffect. A defender fainted by an
+-- earlier kick stops the loop (jumpifhasnohp) but still prints the hit
+-- count; its faint is then handled by the caller's ordinary faint check.
+-- The trailing seteffectwithchance Random() is not spent, matching the
+-- tracked plain-hit gap; note the source spends it on every path here,
+-- including a first-kick miss (bs1.s:1431).
+function BattleEngine:resolveTripleKick(attackerSide, attacker, defenderSide, defender, move, events)
+  local hits, power = 0, 0
+  local stopped
+  for _ = 1, 3 do
+    if defender.hp <= 0 then break end
+    if not BattleFormulas.accuracyCheck(move.accuracy, attacker.statStages.accuracy,
+        defender.statStages.evasion, self.rng, attacker.ability, move.type) then
+      stopped = "miss"
+      break
+    end
+    power = power + 10
+    local kick = setmetatable({ power = power }, { __index = move })
+    local rolledCrit = BattleFormulas.critRoll(self.rng, 0)
+    local isCrit = rolledCrit and not (self.firstBattle and not self.tutorialPlayerDamageDone)
+    local damage = BattleFormulas.calculateBaseDamage(
+      attacker, defender, kick, isCrit, self.sideStatus[defenderSide])
+    if isCrit then damage = damage * BattleFormulas.CRIT_MULTIPLIER end
+    local flags
+    damage, flags = BattleFormulas.typeCalc(damage, move.type, attacker.types, defender.types, self.typeChart)
+    damage = BattleFormulas.applyRandomDamageMultiplier(damage, self.rng)
+    if flags.noEffect then
+      stopped = "noEffect"
+      break
+    end
+    if isCrit then events[#events + 1] = { type = "critical", side = attackerSide } end
+    self:applyDamage(attackerSide, defenderSide, defender, damage, flags, events)
+    hits = hits + 1
+  end
+  if hits == 0 then
+    if stopped == "noEffect" then
+      events[#events + 1] = { type = "noEffect", side = attackerSide, target = defenderSide }
+    else
+      events[#events + 1] = { type = "miss", side = attackerSide }
+    end
+    return
+  end
+  events[#events + 1] = { type = "multiHit", side = attackerSide, hits = hits }
+end
+
 -- Checks for a faint on `side`, appending events and setting the outcome.
 -- Returns true if the battle should stop resolving further actions this
 -- turn -- either because the battle truly ended, OR because a forced
@@ -1604,6 +2387,66 @@ function BattleEngine:resolveForcedSwitch(side, newBattler)
   table.remove(self.pendingForcedSwitches, 1)
   self:_syncForcedSwitchHead()
   return { { type = "forcedSwitchResolved", side = side } }
+end
+
+-- Real BattleTurnPassed end-of-turn work (src/battle_main.c:2958-2964):
+-- field effects (screen timers) first, then per-battler effects. Callers
+-- only reach this when the battle is not over (the real gBattleOutcome == 0
+-- gate). `sides` is the turn's action order: hoisted switch/item/run
+-- actions first, otherwise the getWhoStrikesFirst order.
+local HOISTED_ORDER = { BattleEngine.SIDE_PLAYER, BattleEngine.SIDE_FOE }
+local function sidesOf(order)
+  return { order[1][1], order[2][1] }
+end
+
+function BattleEngine:resolveEndTurn(events, sides)
+  self:decaySideTimers(events)
+  self:resolveStatusEndTurn(events, sides)
+end
+
+-- Real DoBattlerEndTurnEffects status cases (src/battle_util.c:805-841),
+-- per battler in turn order: poison max(1, maxHP/8); toxic counter
+-- incremented first (capped at 15) then max(1, maxHP/16) * counter; burn
+-- max(1, maxHP/8). Battlers at 0 HP are skipped. Each tick runs
+-- tryfaintmon/checkteamslost (data/battle_scripts_1.s:3685-3686): a faint
+-- that decides the battle stops the phase (BattleTurnPassed re-tests
+-- gBattleOutcome); one that only queues a forced switch lets the remaining
+-- battlers tick. The toxic counter is battle-local: BattlePartyBridge masks
+-- it on persist.
+function BattleEngine:resolveStatusEndTurn(events, sides)
+  local S = StatusConditions
+  for _, side in ipairs(sides) do
+    if self:isOver() then return end
+    local battler = self:battler(side)
+    local status = battler.status or 0
+    if battler.hp > 0 then
+      local kind, amount
+      if S.isPoisoned(status) then
+        kind = "poison"
+        amount = math.max(1, math.floor(battler.maxHP / 8))
+      elseif S.isBadlyPoisoned(status) then
+        local counter = S.toxicCounter(status)
+        if counter ~= S.TOXIC_COUNTER_MAX then counter = counter + 1 end
+        battler.status = S.withToxicCounter(status, counter)
+        kind = "toxic"
+        amount = math.max(1, math.floor(battler.maxHP / 16)) * counter
+      elseif S.isBurned(status) then
+        kind = "burn"
+        amount = math.max(1, math.floor(battler.maxHP / 8))
+      end
+      if kind then
+        if amount > battler.hp then amount = battler.hp end
+        battler.hp = battler.hp - amount
+        events[#events + 1] = {
+          type = "statusDamage", side = side, kind = kind,
+          amount = amount, hpRemaining = battler.hp,
+        }
+        if battler.hp == 0 then
+          self:checkFaint(side, events)
+        end
+      end
+    end
+  end
 end
 
 -- Runs one full turn. Each action is a table:
@@ -1656,7 +2499,7 @@ function BattleEngine:runTurn(playerAction, foeAction)
     -- Reflect/Light Screen timers down, as long as the battle didn't just
     -- end.
     if not self:isOver() then
-      self:decaySideTimers(events)
+      self:resolveEndTurn(events, HOISTED_ORDER)
     end
     return events
   end
@@ -1701,7 +2544,7 @@ function BattleEngine:runTurn(playerAction, foeAction)
     -- is only set by a SUCCESSFUL catch, handled by the early return
     -- above) -- so the timers still tick down here too.
     if not self:isOver() then
-      self:decaySideTimers(events)
+      self:resolveEndTurn(events, HOISTED_ORDER)
     end
     return events
   end
@@ -1731,7 +2574,7 @@ function BattleEngine:runTurn(playerAction, foeAction)
     -- sets gBattleOutcome and returns above, before this point) -- the
     -- timers still tick down.
     if not self:isOver() then
-      self:decaySideTimers(events)
+      self:resolveEndTurn(events, HOISTED_ORDER)
     end
     return events
   end
@@ -1775,13 +2618,13 @@ function BattleEngine:runTurn(playerAction, foeAction)
         -- still decays Reflect/Light Screen timers -- only a turn that
         -- truly ends the whole battle skips it.
         if not self:isOver() then
-          self:decaySideTimers(events)
+          self:resolveEndTurn(events, sidesOf(order))
         end
         return events
       end
       if self:checkFaint(otherSide(side), events) then
         if not self:isOver() then
-          self:decaySideTimers(events)
+          self:resolveEndTurn(events, sidesOf(order))
         end
         return events
       end
@@ -1791,7 +2634,7 @@ function BattleEngine:runTurn(playerAction, foeAction)
   -- Both actions for this ordinary move-exchange turn resolved without
   -- deciding the battle outcome -- the real gBattleOutcome == 0 case that
   -- reaches BattleTurnPassed and runs DoFieldEndTurnEffects.
-  self:decaySideTimers(events)
+  self:resolveEndTurn(events, sidesOf(order))
 
   return events
 end

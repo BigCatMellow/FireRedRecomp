@@ -1,0 +1,7 @@
+P4-F3-MAGNITUDE-ROUTE-PROBE readiness-only probe.
+
+Authorized by the independently reviewed `phase4-magnitude-effect` route
+configuration. This file must be its commit's sole bridge input. It proves
+trusted checkout, selector recognition, Lua, and private supported-ROM SHA
+readiness only. Patch validation/application, focused/full suites, replay,
+staging, commit, publication, and Magnitude behavior must be skipped.

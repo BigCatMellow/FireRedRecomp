@@ -1,0 +1,592 @@
+diff --git a/scripts/runtime_phase4_recoil_if_miss_replay.sh b/scripts/runtime_phase4_recoil_if_miss_replay.sh
+new file mode 100644
+index 0000000000000000000000000000000000000000..fbd893370916b8f081682f844f5825b349936c83
+--- /dev/null
++++ b/scripts/runtime_phase4_recoil_if_miss_replay.sh
+@@ -0,0 +1,11 @@
++#!/usr/bin/env bash
++set -euo pipefail
++ROOT=$(cd "$(dirname "$0")/.." && pwd)
++cd "$ROOT"
++: "${POKEPORT_ROM:?set POKEPORT_ROM to verified FireRed US v1.0}"
++lua5.1 tests/battle_engine_test.lua
++lua5.1 tests/battle_scene_controller_test.lua
++lua5.1 tests/battle_party_bridge_test.lua
++lua5.1 tests/phase4_move_effect_inventory_test.lua
++lua5.1 tests/phase4_recoil_if_miss_effect_rom_test.lua
++echo "RUNTIME_REPLAY phase4_recoil_if_miss PASS effect=45 moves=26,136 represented-singles=true explicit-party-persistence=true"
+diff --git a/src/core/BattleEngine.lua b/src/core/BattleEngine.lua
+index 04dcb53431692d562f0c650bdfd1fb6ed65c9cb5..1ac383e53fb17ee5a3a3b2ac4b23f3c85bf735ec 100644
+--- a/src/core/BattleEngine.lua
++++ b/src/core/BattleEngine.lua
+@@ -27,6 +27,7 @@
+ --   {type="damage", side=<attacker>, target=<defender side>, amount=,
+ --    hpRemaining=, superEffective=, notVeryEffective=}
+ --   {type="recoil", side=<attacker>, amount=, hpRemaining=}
++--   {type="crash", side=<attacker>, amount=, hpRemaining=} -- literal effect 45 miss
+ --   {type="drain", side=<attacker>, amount=, hpRemaining=}
+ --   {type="faint", side=}
+ --   {type="forcedSwitchNeeded", side=}             -- fainted side has a real
+@@ -282,9 +283,11 @@
+ --     The "no valid moves -> auto-Struggle" trigger IS ported -- see the
+ --     Struggle paragraph above and resolveMove's real AreAllMovesUnusable
+ --     check at the top of the function.
+---     Not ported: EFFECT_RECOIL_IF_MISS=45 (Jump
+---     Kick/Hi Jump Kick's crash-on-miss damage -- a different real effect
+---     id and mechanic), and EFFECT_DREAM_EATER=8 (heals like Absorb but
++--     EFFECT_RECOIL_IF_MISS=45 is a separate literal Jump Kick/Hi Jump Kick
++--     ordinary-miss leaf: immunity exits before crash, otherwise noncritical
++--     damage is halved/capped to target max HP and applied to attacker only.
++--     Cancellation, abilities/items/status and nonordinary provenance remain
++--     excluded. Not ported: EFFECT_DREAM_EATER=8 (heals like Absorb but
+ --     real BattleScript_EffectDreamEater only works against a sleeping
+ --     target -- a status-condition precondition this project doesn't model;
+ --     supportsMove() explicitly rejects it rather than silently running it
+@@ -885,6 +888,14 @@ function BattleEngine:supportsMove(move, moveId)
+     or move.effect == BattleEngine.EFFECT_PAIN_SPLIT
+ end
+
++-- DMG_RECOIL_FROM_MISS at the accepted c75f352 source pin: halve, promote
++-- zero, then cap by TARGET max HP. The arithmetic maxHP=1 edge stays zero.
++function BattleEngine.recoilIfMissDamage(damage, targetMaxHP)
++  local half = math.floor(damage / 2)
++  if half == 0 then half = 1 end
++  return math.min(half, math.floor(targetMaxHP / 2))
++end
++
+ -- Resolves one attack, appending its events. Returns nothing; the caller
+ -- checks for a faint. Mirrors BattleScript_HitFromAccCheck's real order.
+ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
+@@ -1105,6 +1116,30 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
+   end
+
+   if not hit then
++    if move.effect == 45 and (moveId == 26 or moveId == 136) then
++      -- Ordinary accuracy failure already scans type immunity in source,
++      -- before resultmessage/the crash guard. This pure query spends no RNG.
++      local _, immunity = BattleFormulas.typeCalc(
++        1, move.type, attacker.types, defender.types, self.typeChart)
++      if immunity.noEffect then
++        events[#events + 1] = { type = "noEffect", side = attackerSide, target = defenderSide }
++        return
++      end
++      events[#events + 1] = { type = "miss", side = attackerSide }
++      -- HandleAction_UseMove resets both multipliers to 1; no critcalc on
++      -- this leaf. Preserve base -> STAB/type -> random -> half/min/cap.
++      local damage = BattleFormulas.calculateBaseDamage(
++        attacker, defender, move, false, self.sideStatus[defenderSide])
++      damage = BattleFormulas.typeCalc(damage, move.type, attacker.types, defender.types, self.typeChart)
++      damage = BattleFormulas.applyRandomDamageMultiplier(damage, self.rng)
++      local loss = math.min(attacker.hp, BattleEngine.recoilIfMissDamage(damage, defender.maxHP))
++      attacker.hp = attacker.hp - loss
++      events[#events + 1] = { type = "crash", side = attackerSide, amount = loss, hpRemaining = attacker.hp }
++      -- Do not use applyDamage: it targets the defender and advances Oak's
++      -- damage tutorial. No hit/effectiveness or ordinary recoil result here.
++      self:checkFaint(attackerSide, events)
++      return
++    end
+     events[#events + 1] = { type = "miss", side = attackerSide }
+     return
+   end
+diff --git a/src/core/BattleSceneController.lua b/src/core/BattleSceneController.lua
+index eb0083bcc2ff1612e3286f52a4ed60f43ba41c5b..65fda6afd01ef336ec036697268bafa2d34740e7 100644
+--- a/src/core/BattleSceneController.lua
++++ b/src/core/BattleSceneController.lua
+@@ -193,6 +193,11 @@ function BattleSceneController:_eventMessages(events)
+       add(("Magnitude %d!"):format(event.level))
+     elseif event.type == "miss" then
+       add(possessive(name(event.side)) .. " attack missed!")
++    elseif event.type == "crash" then
++      add(name(event.side) .. " kept going\nand crashed!")
++      -- Source announces crash before attacker HP. Only an invisible entry
++      -- advances displayedHP after acknowledgement; model HP is engine-owned.
++      entries[#entries + 1] = { hpSide = event.side, hp = event.hpRemaining }
+     elseif event.type == "moveFailed" then
+       add("But it failed!")
+     elseif event.type == "critical" then
+diff --git a/tests/battle_engine_test.lua b/tests/battle_engine_test.lua
+index c1697bfc3be593e2c33578aa9998dec2c0bdabf8..1e617a3cb3c6d94fac10ce5538cd04975c8bab05 100644
+--- a/tests/battle_engine_test.lua
++++ b/tests/battle_engine_test.lua
+@@ -1694,6 +1694,133 @@ check("Restore HP admission refuses absent or wrong IDs and malformed shapes", n
+ Data.moves[recoverId] = nil
+ Data.moves[slackOffId] = nil
+
++-- Effect 45 source-derived ordinary singles cases. Local fixtures leave the
++-- shared test catalog untouched. Numeric oracles below are not obtained from
++-- the implementation's damage helper.
++do
++  local moves = {
++    [26]={effect=45,power=70,type=1,accuracy=95,pp=25,priority=0,target=0},
++    [136]={effect=45,power=85,type=1,accuracy=90,pp=20,priority=0,target=0},
++    [33]={effect=0,power=35,type=0,accuracy=95,pp=35,priority=0,target=0},
++    [165]=Data.moves[165],
++  }
++  local chart = {
++    [0]={attackingType=1,defendingType=0,multiplier=20},
++    [1]={attackingType=1,defendingType=7,multiplier=0},
++    [2]={attackingType=1,defendingType=6,multiplier=5},
++  }
++  local stats={hp=100,attack=40,defense=40,speed=20,spAttack=40,spDefense=40}
++  local function setup(id, side, values)
++    local b=BattleEngine.new({
++      player=BattleEngine.makeBattler({species=1,level=20,stats=stats,types={10,10},moves={{move=33,pp=35}}}),
++      foe=BattleEngine.makeBattler({species=4,level=20,stats=stats,types={10,10},moves={{move=33,pp=35}}}),
++      moves=moves,typeChart=chart,rng=scriptedRng(values or {99,0,4321}),
++    })
++    local a=b:battler(side)
++    local d=side=="player" and b.foe or b.player
++    a.moves={{move=id,pp=moves[id].pp}}; a.types={1,1}; a.speed=30
++    return b,a,d
++  end
++  local function resolve(b,side)
++    local ev={}; b:resolveMove(side,1,ev); return ev
++  end
++  local function kinds(ev)
++    local out={}; for _,e in ipairs(ev) do out[#out+1]=e.type end
++    return table.concat(out,",")
++  end
++  for _,id in ipairs({26,136}) do
++    for _,side in ipairs({"player","foe"}) do
++      local b,a,d=setup(id,side)
++      local ev=resolve(b,side)
++      -- Lv20: (10*70/50)+2=16; STAB=24; half=12.
++      -- Hi Jump Kick: 17+2=19; STAB floors to28; half=14.
++      local amount=id==26 and 12 or 14
++      check("effect45 literal crash "..id..side,kinds(ev)=="useMove,miss,crash"
++        and ev[3].side==side and ev[3].amount==amount and ev[3].hpRemaining==100-amount
++        and a.hp==100-amount and d.hp==100 and a.moves[1].pp==moves[id].pp-1)
++      check("effect45 two draws then sentinel "..id..side,b.rng.draws==2 and b.rng:next16()==4321)
++      for _,types in ipairs({{7,7},{7,0},{0,7}}) do
++        b,a,d=setup(id,side,{99,4321}); d.types=types
++        ev=resolve(b,side)
++        check("effect45 immune result "..id..side..types[1],kinds(ev)=="useMove,noEffect"
++          and a.hp==100 and d.hp==100 and a.moves[1].pp==moves[id].pp-1
++          and b.rng.draws==1 and b.rng:next16()==4321)
++      end
++      b,a,d=setup(id,side,{0,1,0,4321}); ev=resolve(b,side)
++      check("effect45 successful hit retained "..id..side,kinds(ev)=="useMove,damage"
++        and a.hp==100 and d.hp==100-amount*2 and a.moves[1].pp==moves[id].pp-1
++        and b.rng.draws==3 and b.rng:next16()==4321)
++      b,a,d=setup(id,side,{0,1,0,4321}); d.types={7,7}; ev=resolve(b,side)
++      check("effect45 successful-accuracy immunity retains hit draws "..id..side,
++        kinds(ev)=="useMove,noEffect" and a.hp==100 and d.hp==100
++        and b.rng.draws==3 and b.rng:next16()==4321)
++      for _,replacement in ipairs({false,true}) do
++        b,a,d=setup(id,side,{99,0,4321}); a.hp=1
++        b.hasReplacement=function(s) return replacement and s==side end
++        ev=b:runTurn({action="move",moveSlot=1},{action="move",moveSlot=1})
++        check("effect45 fatal order "..id..side..tostring(replacement),
++          kinds(ev)=="turnStart,useMove,miss,crash,faint,"..(replacement and "forcedSwitchNeeded" or "battleEnd")
++          and a.hp==0 and ev[4].amount==1 and ev[5].side==side and d.hp==100
++          and d.moves[1].pp==35 and a.moves[1].pp==moves[id].pp-1 and b.rng.draws==2)
++        if replacement then
++          check("effect45 pending refusal "..side, b.awaitingForcedSwitch==side and not b:isOver()
++            and not pcall(function() b:runTurn({action="move",moveSlot=1},{action="move",moveSlot=1}) end))
++          local incoming=BattleEngine.makeBattler({species=1,level=20,stats=stats,types={10,10},moves={{move=33,pp=35}}})
++          incoming.speed=35
++          local switched=b:resolveForcedSwitch(side,incoming)
++          b.rng=scriptedRng({0,1,0,0,1,0})
++          local later=b:runTurn({action="move",moveSlot=1},{action="move",moveSlot=1})
++          check("effect45 replacement permits later turn "..side,
++            switched[1].type=="forcedSwitchResolved" and b.awaitingForcedSwitch==nil
++            and incoming.moves[1].pp==34 and #later>1)
++        else
++          check("effect45 fatal outcome "..side,b.outcome==(side=="player" and "playerLost" or "playerWon"))
++        end
++      end
++    end
++  end
++  for _,row in ipairs({{7,100,3},{0,100,1},{1,100,1},{100,9,4},{10,10,5},{12,10,5},{8,10,4},{9,1,0}}) do
++    check("effect45 arithmetic half/min/cap "..row[1]..":"..row[2],
++      BattleEngine.recoilIfMissDamage(row[1],row[2])==row[3])
++  end
++  local b,a,d=setup(26,"player",{99,15,4321})
++  a.statStages.attack=5; d.statStages.defense=7; d.types={0,0}; b.sideStatus.foe.reflect=true
++  local ev=resolve(b,"player")
++  -- atk26/def60: floor(floor(26*70*10/60)/50)=6; Reflect3,+2=5;
++  -- STAB7, super14,85%=11,half5. This catches crit stage/screen bypass.
++  check("effect45 source-order stages Reflect STAB type random",ev[3].amount==5 and b.rng.draws==2)
++  b,a,d=setup(26,"player"); d.hp=2; a.maxHP=20; a.hp=20
++  ev=resolve(b,"player")
++  check("effect45 uses neither target current HP nor attacker max cap",ev[3].amount==12 and d.hp==2)
++  b,a,d=setup(26,"player"); d.maxHP=9; ev=resolve(b,"player")
++  check("effect45 odd target max cap",ev[3].amount==4)
++  b,a,d=setup(26,"player",{0,0,0,99,0,4321})
++  ev=resolve(b,"player"); local firstCrit=ev[2].type=="critical"
++  ev=resolve(b,"player")
++  check("effect45 previous critical cannot leak",firstCrit and ev[3].amount==12 and b.rng.draws==5 and b.rng:next16()==4321)
++  for _,side in ipairs({"player","foe"}) do
++    b,a,d=setup(26,side); b.firstBattle=true
++    if side=="player" then b.tutorialPlayerDamageDone=true end
++    ev=resolve(b,side)
++    check("effect45 crash does not introduce tutorial state "..side,
++      kinds(ev)=="useMove,miss,crash" and b.tutorialPlayerDamageDone==(side=="player") and b.rng.draws==2)
++  end
++  b,a,d=setup(26,"player",{1,0,4321}); b.firstBattle=true; ev=resolve(b,"player")
++  check("effect45 firstBattle accuracy bypass and hit tip retained",kinds(ev)=="useMove,damage,tutorialTip"
++    and b.tutorialPlayerDamageDone and b.rng.draws==2 and b.rng:next16()==4321)
++  for _,row in ipairs({{999,45},{26,0},{26,48},{136,198}}) do
++    local id,effect=row[1],row[2]; local original=moves[id]
++    moves[id]={effect=effect,power=70,type=1,accuracy=95,pp=25,priority=0,target=0}
++    b,a,d=setup(id,"player",{99,4321}); ev=resolve(b,"player")
++    check("effect45 literal gate "..id..":"..effect,kinds(ev)=="useMove,miss" and a.hp==100 and b.rng.draws==1 and b.rng:next16()==4321)
++    moves[id]=original
++  end
++  b,a,d=setup(26,"player",{4321}); a.moves={{move=26,pp=0},{move=33,pp=1}}; ev=resolve(b,"player")
++  check("effect45 selected zero PP retained",kinds(ev)=="noPP" and a.hp==100 and b.rng.draws==0)
++  b,a,d=setup(26,"player",{0,1,0}); a.moves[1].pp=0; ev=resolve(b,"player")
++  check("effect45 empty PP still auto-Struggle",ev[1].move==165 and ev[3].type=="recoil" and a.moves[1].pp==0)
++end
++
+ if romPath then
+   local RomImporter = require("import.RomImporter")
+   local RomAddresses = require("import.RomAddresses")
+diff --git a/tests/battle_party_bridge_test.lua b/tests/battle_party_bridge_test.lua
+index 6bc46b099b8d3ff0f047eb0d6ebeee90ea554d4a..29d3fc26f730015f60f21d95354fe940a6ec26f3 100644
+--- a/tests/battle_party_bridge_test.lua
++++ b/tests/battle_party_bridge_test.lua
+@@ -118,5 +118,50 @@ check("a solo party has no switch targets", #noOthers == 0)
+ local emptyState = BattlePartyBridge.findSwitchTargets({}, 1)
+ check("missing party state returns an empty list, not a crash", type(emptyState) == "table" and #emptyState == 0)
+
++-- Invoked model-to-party persistence of actual crash results, not normal
++-- gameplay lifecycle or disk save/reload proof.
++do
++  local Engine=require("src.core.BattleEngine")
++  local kickMoves={
++    [26]={effect=45,power=70,type=1,accuracy=95,pp=25,target=0,priority=0},
++    [136]={effect=45,power=85,type=1,accuracy=90,pp=20,target=0,priority=0},
++  }
++  for _,id in ipairs({26,136}) do
++    for _,mode in ipairs({"nonfatal","fatal","immune"}) do
++      local instance=WildPokemonFactory.generate({species=19,level=20,speciesInfo=species,
++        learnset={{level=1,move=id}},battleMoves=kickMoves,natures=natures,rng=Rng.new(201),
++        speciesName=rawName,trainer={id=0x12345678,name=trainerName,gender=0},metLocation=88})
++      local record=WildPokemonFactory.capture(instance,{ball=4})
++      local active=BattlePartyBridge.battlerFromParty(record,speciesTable)
++      if mode=="fatal" then active.hp=1; record.hp=1 end
++      local beforeHP=active.hp
++      local beforeBox=BoxPokemonCodec.decode(record.box)
++      local target=Engine.makeBattler({species=4,level=20,
++        stats={hp=100,attack=40,defense=100,speed=20,spAttack=40,spDefense=40},
++        types=mode=="immune" and {7,7} or {10,10},moves={{move=26,pp=25}}})
++      local draws=0
++      local engine=Engine.new({player=active,foe=target,moves=kickMoves,
++        typeChart={[0]={attackingType=1,defendingType=7,multiplier=0}},
++        rng={next16=function() draws=draws+1; return draws==1 and 99 or 0 end}})
++      local ev={}; engine:resolveMove("player",1,ev)
++      local label=id..":"..mode
++      check("party crash obtains real engine outcome "..label,
++        (mode=="immune" and ev[2].type=="noEffect" and active.hp==beforeHP)
++        or (mode~="immune" and ev[3].type=="crash" and active.hp==beforeHP-ev[3].amount
++          and (mode~="fatal" or (active.hp==0 and ev[4].type=="faint"))))
++      BattlePartyBridge.persistPartyBattler(record,active)
++      local decoded=BoxPokemonCodec.decode(record.box)
++      check("party crash HP PP checksum identity persist "..label,
++        record.hp==active.hp and decoded.substructs[1].moves[1]==id
++        and decoded.substructs[1].pp[1]==kickMoves[id].pp-1 and decoded.checksumValid
++        and decoded.personality==beforeBox.personality and target.hp==100)
++      local encoded=SaveFileCodec.encodeSaveBlock1({playerPartyCount=1,playerParty={record}},0)
++      local roundtrip=SaveFileCodec.decodeSaveBlock1(encoded,0).playerParty[1]
++      check("party crash in-memory codec compatibility "..label,
++        roundtrip.hp==active.hp and BoxPokemonCodec.decode(roundtrip.box).substructs[1].pp[1]==kickMoves[id].pp-1)
++    end
++  end
++end
++
+ print(("battle_party_bridge_test: %d passed, %d failed"):format(passed, failed))
+ os.exit(failed == 0 and 0 or 1)
+diff --git a/tests/battle_scene_controller_test.lua b/tests/battle_scene_controller_test.lua
+index 96970c9870d9c68866ff623dd0b4972f1f0875a3..26baf8913508294b3e6604a4648ca9d5cf96b690 100644
+--- a/tests/battle_scene_controller_test.lua
++++ b/tests/battle_scene_controller_test.lua
+@@ -261,5 +261,78 @@ do
+     messages[5].text == "The foe's LIGHT SCREEN\nwore off!", messages[5].text)
+ end
+
++-- Actual effect-45 engine events through the controller's turn/message path.
++do
++  local moves={
++    [26]={effect=45,power=70,type=1,accuracy=95,pp=25,priority=0,target=0},
++    [105]={effect=32,power=0,type=0,accuracy=0,pp=20,priority=0,target=16},
++  }
++  local chart={[0]={attackingType=1,defendingType=7,multiplier=0}}
++  local stats={hp=100,attack=40,defense=40,speed=20,spAttack=40,spDefense=40}
++  for _,side in ipairs({"player","foe"}) do
++    for _,mode in ipairs({"nonfatal","fatal","replacement","immune"}) do
++      local draw=0
++      local engine=BattleEngine.new({
++        player=BattleEngine.makeBattler({species=1,level=20,stats=stats,types={10,10},moves={{move=105,pp=20}}}),
++        foe=BattleEngine.makeBattler({species=4,level=20,stats=stats,types={10,10},moves={{move=105,pp=20}}}),
++        moves=moves,typeChart=chart,rng={next16=function() draw=draw+1; return draw==1 and 99 or 0 end},
++        hasReplacement=function(s) return mode=="replacement" and s==side end,
++      })
++      local attacker=engine:battler(side)
++      local targetSide=side=="player" and "foe" or "player"
++      local target=engine:battler(targetSide)
++      attacker.moves={{move=26,pp=25}}; attacker.types={1,1}; attacker.speed=30
++      if mode=="fatal" or mode=="replacement" then attacker.hp=1 end
++      if mode=="immune" then target.types={7,7} end
++      local beforeHP=attacker.hp
++      local ctrl=BattleSceneController.new({engine=engine,playerName="PLAYER",foeName="FOE",
++        moveName=function(id) return id==26 and "JUMP KICK" or "RECOVER" end,
++        forcedSwitchChoices=function() return {{slot=2,name="BENCH"}} end})
++      ctrl:advanceMessage(); ctrl:advanceMessage()
++      ctrl:_runTurn({action="move",moveSlot=1})
++      local label=side..":"..mode
++      check("crash controller starts actual use with old HP "..label,
++        ctrl:message():find("JUMP KICK",1,true)~=nil and ctrl.displayedHP[side]==beforeHP)
++      ctrl:advanceMessage()
++      if mode=="immune" then
++        check("immune controller shows no effect and no HP mutation "..label,
++          ctrl:message():find("doesn't affect",1,true)~=nil and attacker.hp==beforeHP
++          and ctrl.displayedHP[side]==beforeHP and draw==1)
++        local crashSeen=false
++        for _,entry in ipairs(ctrl.messages) do
++          crashSeen=crashSeen or (entry.text and entry.text:find("crashed",1,true)~=nil) or entry.hpSide~=nil
++        end
++        check("immune actual stream has no crash or HP entry "..label,not crashSeen)
++      else
++        check("crash controller miss keeps old display "..label,
++          ctrl:message():find("missed",1,true)~=nil and ctrl.displayedHP[side]==beforeHP)
++        ctrl:advanceMessage()
++        check("crash text precedes invisible HP "..label,
++          ctrl:message()==(side=="player" and "PLAYER" or "FOE").." kept going\nand crashed!"
++          and ctrl.displayedHP[side]==beforeHP and attacker.hp<beforeHP)
++        ctrl:advanceMessage()
++        check("crash invisible HP applies before faint or continuation "..label,
++          ctrl.displayedHP[side]==attacker.hp and ctrl.displayedHP[targetSide]==100
++          and target.hp==100 and draw==2)
++        if mode~="nonfatal" then
++          check("actual fatal crash presents faint after zero HP "..label,
++            ctrl:message():find("fainted",1,true)~=nil and ctrl.displayedHP[side]==0
++            and ctrl.state==BattleSceneController.MESSAGES)
++        end
++      end
++      local remaining=20
++      while ctrl.state==BattleSceneController.MESSAGES and remaining>0 do ctrl:advanceMessage(); remaining=remaining-1 end
++      local expected=mode=="fatal" and BattleSceneController.COMPLETE
++        or (mode=="replacement" and side=="player" and BattleSceneController.PARTY)
++        or BattleSceneController.ACTION
++      check("crash messages drain before completion "..label,remaining>0 and ctrl.state==expected)
++      if mode=="replacement" then
++        check("crash pending replacement survives message drain "..label,
++          engine.awaitingForcedSwitch==side and not engine:isOver())
++      end
++    end
++  end
++end
++
+ print(("%d passed, %d failed"):format(passed, failed))
+ os.exit(failed == 0 and 0 or 1)
+diff --git a/tests/phase4_move_effect_inventory_test.lua b/tests/phase4_move_effect_inventory_test.lua
+index 26e407364490f6c6e0abe4ceaaf1562aeddfdc36..77c19497c6e83d72d39818bfa40bc8d0ac96669a 100644
+--- a/tests/phase4_move_effect_inventory_test.lua
++++ b/tests/phase4_move_effect_inventory_test.lua
+@@ -54,7 +54,7 @@ local inventory = {
+   [42] = {"blocked_on_state", true, 1, {20,35,83,128,250,328}}, -- EFFECT_TRAP
+   [43] = {"represented", true, 1, {2,75,152,163,177,238,314,348}}, -- EFFECT_HIGH_CRITICAL
+   [44] = {"represented", true, 1, {24,155}}, -- EFFECT_DOUBLE_HIT
+-  [45] = {"candidate", true, 1, {26,136}}, -- EFFECT_RECOIL_IF_MISS
++  [45] = {"represented", true, 1, {26,136}}, -- EFFECT_RECOIL_IF_MISS: ordinary selected singles only
+   [46] = {"blocked_on_state", false, 0, {54}}, -- EFFECT_MIST
+   [47] = {"blocked_on_state", false, 0, {116}}, -- EFFECT_FOCUS_ENERGY
+   [48] = {"represented", true, 1, {36,66,165}}, -- EFFECT_RECOIL
+@@ -228,11 +228,11 @@ local inventory = {
+ local expectedTotals = {
+   moves = 354, defined = 214, used = 198, unused = 16,
+   positive = 216, zero = 138, admitted = 250, rejected = 104,
+-  admitted_uncovered_positive = 110,
++  admitted_uncovered_positive = 108,
+ }
+ local expectedClasses = {
+-  represented = {families = 52, moves = 140, positive = 105, zero = 35},
+-  candidate = {families = 18, moves = 22, positive = 9, zero = 13},
++  represented = {families = 53, moves = 142, positive = 107, zero = 35},
++  candidate = {families = 17, moves = 20, positive = 7, zero = 13},
+   blocked_on_state = {families = 127, moves = 191, positive = 101, zero = 90},
+   intentionally_rejected = {families = 1, moves = 1, positive = 1, zero = 0},
+   unused = {families = 16, moves = 0, positive = 0, zero = 0},
+diff --git a/tests/phase4_recoil_if_miss_effect_rom_test.lua b/tests/phase4_recoil_if_miss_effect_rom_test.lua
+new file mode 100644
+index 0000000000000000000000000000000000000000..4d1dd1cbccd8a15e192f934858d4a3daf4871572
+--- /dev/null
++++ b/tests/phase4_recoil_if_miss_effect_rom_test.lua
+@@ -0,0 +1,30 @@
++-- Accepted c75f352 source records; no extracted data is retained.
++package.path = package.path .. ";./?.lua"
++local BattleMove = require("import.BattleMove")
++local RomAddresses = require("import.RomAddresses")
++local RomImporter = require("import.RomImporter")
++local path = os.getenv("POKEPORT_ROM")
++if not path then print("SKIP phase4_recoil_if_miss_effect_rom_test (set POKEPORT_ROM)"); os.exit(0) end
++local ok = RomImporter.verify(path)
++assert(ok, "supported-ROM verification failed")
++local f = io.open(path, "rb")
++assert(f, "verified ROM could not be opened")
++local rom = f:read("*a"); f:close()
++local a = assert(RomAddresses["41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc"])
++local moves = BattleMove.parseTable(rom, a.gBattleMoves, RomAddresses.COUNTS.MOVES_COUNT)
++local expected = {[26]={70,95,25}, [136]={85,90,20}}
++local count = 0
++for id=0,RomAddresses.COUNTS.MOVES_COUNT-1 do
++  if moves[id].effect == 45 then
++    assert(expected[id], "unexpected effect-45 member"); count=count+1
++  end
++end
++assert(count==2, "effect-45 membership count changed")
++for id, fields in pairs(expected) do
++  local m=moves[id]
++  assert(m.effect==45 and m.power==fields[1] and m.type==1
++    and m.accuracy==fields[2] and m.pp==fields[3]
++    and m.secondaryEffectChance==0 and m.target==0 and m.priority==0
++    and m.flags==0x33, "effect-45 source record mismatch")
++end
++print("phase4_recoil_if_miss_effect_rom_test: 3 passed, 0 failed; exact two-member source family")
+diff --git a/work/reports/phase4-recoil-if-miss-implementation.md b/work/reports/phase4-recoil-if-miss-implementation.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..7d4c18e2f9aea8d10978c53c206e6da5fe53d1ae
+--- /dev/null
++++ b/work/reports/phase4-recoil-if-miss-implementation.md
+@@ -0,0 +1,101 @@
++# Effect-45 implementation — local construction evidence
++
++- Task: [P4-F3-RECOIL-IF-MISS-IMPLEMENTATION](../tasks/phase4-recoil-if-miss-implementation.md).
++- Status: `LOCAL PACKAGE READY — GUARDED EXECUTION AND OUTCOME REVIEW PENDING`.
++- Isolated construction base: `15c15c22634d48f7fc11ce4366fa4fc60f8e008d`.
++- Authority: exact task at `96b10ce`, independently
++  [PASS](../reviews/2026-10-13-recoil-if-miss-implementation-authority-review.md).
++- Behavior authority: accepted [design](phase4-recoil-if-miss-design.md)
++  and controlling [source supplement](phase4-recoil-if-miss-entry-state-discovery.md).
++
++The engine's literal effect-45/IDs-26-and-136 failed-accuracy branch now
++checks ordinary immunity before selecting its result. Immune failure emits
++noEffect and exits. Nonimmune failure emits miss, computes noncritical
++base/STAB/type/random damage, halves with zero-to-one then target-max-HP cap,
++clamps actual loss to attacker HP, emits a dedicated crash event, and invokes
++existing attacker faint handling. The small effect-specific arithmetic helper
++exposes the zero-after-cap boundary without inventing legal battler fixtures.
++Successful-hit/admission and unrelated miss/recoil paths are unchanged.
++
++The controller translates crash into text followed by an invisible attacker
++HP entry. It does not compute damage, consume RNG, or change model HP. The
++inventory changes only row 45 and totals implied by its two represented
++ordinary-singles moves; admission totals and all other rows remain unchanged.
++
++## Local evidence
++
++All local gameplay checks cleared both `POKEPORT_ROM` and
++`POKEPORT_RUNTIME_REPLAY`. No private ROM discovery/access occurred.
++
++| Check | Result |
++| --- | --- |
++| Before edits: `env -u POKEPORT_ROM -u POKEPORT_RUNTIME_REPLAY bash scripts/test_all.sh` | PASS, 154 test files; expected ROM-dependent skips. |
++| Focused engine | 332 passed, 0 failed; optional ROM fixture skip. |
++| Focused scene controller | 87 passed, 0 failed. |
++| Focused party bridge | 29 passed, 0 failed. |
++| Focused inventory | Literal expected partition passed; SHA-ROM aggregate explicitly skipped. |
++| New focused effect-45 ROM fixture | Explicit no-ROM SKIP, not acceptance evidence. |
++| After edits: same no-ROM full-suite command | PASS, 155 test files; expected ROM-dependent skips. |
++| Replay wrapper `bash -n` | PASS; wrapper was not executed locally. |
++
++Focused commands used `lua5.1` in the task's required order, with the two
++opt-ins cleared. The full after suite includes the final arithmetic test
++case distinguishing target-max cap from attacker-max cap. No test failed
++during this construction; no retry or substituted request was used.
++
++Added engine assertions cover both move IDs and acting sides, either
++position of dual-type immunity, exact event sequences, one PP, one/two
++failure-branch draws and the next RNG sentinel, retained hit/immune-hit
++draws, numeric stage/Reflect/STAB/type/random order, prior-critical reset,
++rounding/minimum/cap edges, zero-after-cap arithmetic, target current versus
++maximum HP, actual attacker HP clamp, firstBattle, noPP/auto-Struggle, and
++literal ID/effect negatives. Actual fatal crashes cover both sides/IDs with
++and without replacements, no remaining opponent action or duplicate faint,
++pending-turn refusal, replacement resolution and a later legal turn.
++
++Added controller assertions drive actual engine turns, for both sides and
++nonfatal/fatal/replacement/immune outcomes. They advance through use/miss/
++crash with old displayed HP, then check the invisible HP update precedes
++faint and final COMPLETE or pending player PARTY. Existing foe continuation
++remains caller-owned. Party assertions use real crash outcomes for both IDs,
++then call unchanged persistence and decode HP/PP/checksum/identity, including
++fatal HP zero and immune unchanged HP. Their in-memory save-block roundtrip
++proves codec compatibility only, not normal lifecycle, disk save/reload,
++live party-slot synchronization, fresh-process loading or trainer rewards.
++
++The new guarded-only ROM fixture verifies supported revision, both complete
++source-record fields and exactly two effect-45 members, without retaining
++ROM bytes. The replay wrapper requires the supplied ROM environment, runs
++the five exact tests through Lua 5.1 under strict failure handling, and only
++then prints its bounded represented-state receipt. Neither has supplied
++local ROM/replay evidence.
++
++## Pending guarded evidence and handoff
++
++Required and still pending: fresh parent prerequisites, exact patch
++applicability, the sole named request, guarded target/apply/diff checks,
++focused commands, guarded full no-ROM and SHA-ROM suites, non-skipped
++inventory/two-record fixture, mandatory headless replay, guarded publication,
++and separate independent exact published-outcome review. There is no guarded
++run/job/implementation commit receipt for this package yet. Local PASS cannot
++replace these gates; inventory metadata does not independently accept behavior.
++
++Only the ten allowlisted files are changed. Task changes append evidence;
++its accepted criteria are untouched. No workflow, shared fixture, main,
++formula/party runtime, save/schema/codec, AI, route/probe/request, broader
++coordination or capability-status edit occurred. No stage/commit/push or
++patch-file creation occurred in Worker construction. Parent mechanically
++derives the exact isolated diff and owns serialized dispatch after freshly
++checking the task's prerequisites. No second request/retry is authorized.
++
++All accepted exclusions remain: cancellation/interception, Protect/Substitute,
++abilities/items, Endure/Focus Band, status/Foresight, semi-invulnerability,
++called/mirrored or forced/multi-turn provenance, doubles/links,
++malformed/unsupported battlers or party state, animation/timing and generic
++MoveEnd/whole-turn parity. Conditional late-only immunity is not an ordinary
++fixture. Effect-45 tests do not create broad Gen 3 or Phase 4 completion claims.
++The evidence is headless represented-state behavior, not retail/LÖVE parity.
++
++Final whitespace, repository syntax/local-target and exact ten-file scope
++checks, plus artifact hashes, accompany the Worker handoff. The independent
++Reviewer, not this report, decides final behavior acceptance.
+diff --git a/work/tasks/phase4-recoil-if-miss-implementation.md b/work/tasks/phase4-recoil-if-miss-implementation.md
+index fa41f9cd4c4e52fbf869051b2bf33613265a176d..2914a3de87e3efe9ee5ddc8ab234b04bd25c279e 100644
+--- a/work/tasks/phase4-recoil-if-miss-implementation.md
++++ b/work/tasks/phase4-recoil-if-miss-implementation.md
+@@ -176,3 +176,34 @@ the parent for serialized guarded publication. A failing guarded job stops;
+ a successful one requires a separate independent outcome review. Orchestrator
+ reconciles only bounded effect-45 behavior, never Phase 4 completion, then
+ selects the next evidence-backed eligible gate under the standing goal.
++
++### Worker isolated-construction evidence — 2026-10-13
++
++Following authority PASS `96b10ce` and reconciliation `15c15c2`, Worker
++constructed only the ten allowed outputs in isolation. The
++[implementation report](../reports/phase4-recoil-if-miss-implementation.md)
++records the literal crash/immunity leaf, distinct controller event, concrete
++test coverage and remaining guarded gates. Criteria above are unchanged.
++
++Baseline full no-ROM suite passed 154 files. Focused checks passed engine
++332/0, controller 87/0, party bridge 29/0; inventory partition passed with
++ROM aggregate skipped, and new ROM fixture explicitly skipped. The final
++full no-ROM suite passed 155 files, including final engine assertions.
++All local checks cleared ROM and runtime-replay opt-ins; no ROM discovery or
++access occurred. Replay wrapper syntax passed; guarded replay remains pending.
++
++Only literal effect 45/IDs 26 and 136 gain crash behavior. Real fatal crashes,
++replacement continuation, controller text-before-HP and invoked encoded-party
++HP/PP persistence have local assertions. The report distinguishes codec
++compatibility from unclaimed lifecycle/disk save/reload. All exclusions remain.
++
++Final whitespace passed, including all three new files. The repository
++checker explicitly included the new outputs and passed: 281 Lua, 281
++Markdown, 928 local targets. Exact ten-file scope, empty staging index and
++verbatim preservation of the original task were checked. Hashes accompany
++Worker delivery. Parent must freshly validate prerequisites and mechanically derive
++the sole request from this exact diff. No Worker staging, commit, push,
++request creation or canonical runtime publication occurred. Guarded
++focused/full/SHA-ROM/non-skipped inventory/record/replay/publication receipts
++and independent exact outcome review are pending; local readiness is not
++behavior acceptance or Phase 4 completion.

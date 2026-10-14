@@ -31,14 +31,37 @@ strategic phase
 
 Default to one critical-path Worker package at a time.
 
-## Current authoritative critical path — 2026-10-02
+## Current critical path — reconciled 2026-10-13
 
-Restore HP is the active gated leaf: F1 source lock and F2 design passed; its
-F3 route configuration passed; the sole probe `3c03876` / run `36981539166` is
-queued because `firered-mint` is offline. Recover that exact probe, independently
-review it, then allow one route-bounded implementation request. In parallel,
-compile P0 first-run/tooling/desktop discovery; Phase 2 remains external-blocked
-on user-owned retail captures. See [recalibrated delivery plan](RECALIBRATED_DELIVERY_PLAN.md).
+[Effect45 outcome PASS](../reviews/2026-10-13-recoil-if-miss-implementation-outcome-review.md)
+closes `cfdbb96` and guarded run `38434551595`; do not repeat its consumed
+probe/request or review. Six owner-merged fast-lane batches (PR10–15) have
+final independent PASS records indexed in the task register. The current
+inventory has 70 represented families; six new ROM fixtures remain pending.
+Representation is bounded engine behavior, not complete trainer AI, whole-turn
+RNG or full Phase 4 parity. Preserve all review exclusions and follow-ups.
+
+Next active leaf is independent review of existing owner-dispatched
+[PR5](https://github.com/BigCatMellow/FireRedRecomp/pull/5): the normal START
+Pokédex zero-seen guard. Its contract lives on its branch until merged. Review
+source/count bounds and live wiring before accepting; route only the smallest
+correction on disagreement. PR3 design must be reviewed before PR6 Party
+SUMMARY can be accepted. A disjoint read-only Memento trainer-AI feasibility
+check does not authorize adding party context, persistent state or main wiring.
+
+Owner-approved battle fast lane in root AGENTS governs eligible source-known,
+no-ROM-testable packages; do not reinstate per-effect setup ceremony. Full
+relay remains required for new persistent/cross-turn state, main.lua, save or
+runtime replay changes and UNKNOWN source behavior. Restore HP `dc8ad06`,
+Magnitude `7b47c73`, inventory `c10bfa7` and P5 projection `d280751` remain
+accepted; their old requests are terminal.
+
+P0 reverification `93c4654` remains blocked pending supported-target
+preparation and fresh proof. Phase 2 awaits trusted external retail-reference
+evidence. These blockers do not prevent the separately gated implementation chain. See the
+[delivery plan](RECALIBRATED_DELIVERY_PLAN.md), current
+[task register](../coordination/TASK_REGISTER.md), and user-adopted
+[standing goal](../coordination/PROJECT_GOAL.md).
 
 ## Historical critical-path snapshot
 
@@ -73,7 +96,11 @@ Phase 9 postgame
 Phase 10 mod/release engineering
 ```
 
-## Gate graph
+## Historical gate graph
+
+The rows below preserve earlier snapshots and receipts, including old active
+and blocked labels. Current lifecycle and dispatch are owned by the register,
+state, and the reconciled critical path above; these rows do not revive work.
 
 | Phase / gate | Current state | Active or canonical task | Evidence required to unlock | Next |
 | --- | --- | --- | --- | --- |
@@ -152,7 +179,7 @@ Phase 10 mod/release engineering
 | Phase 9 — postgame/secondary | `NOT STARTED` | future | offline single-player content complete | complete offline surface |
 | Phase 10 — mod/release engineering | `NOT STARTED` | future | import/play/mod/update/diagnose without manual filesystem work | public extensible release |
 
-## Current bounded chain
+## Historical bounded chain
 
 ### Completed parent gate: Phase 3 exit proof
 

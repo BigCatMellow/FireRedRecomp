@@ -40,6 +40,7 @@
 local BoxPokemonCodec = require("src.core.BoxPokemonCodec")
 local ExperienceTable = require("src.core.ExperienceTable")
 local PokemonStats = require("src.core.PokemonStats")
+local StatusConditions = require("src.core.StatusConditions")
 
 local WildPokemonFactory = {}
 
@@ -344,7 +345,10 @@ function WildPokemonFactory.capture(instance, capture)
   local hp = capture.hp
   if hp == nil then hp = instance.hp end
   hp = math.max(0, math.min(instance.stats.hp, hp))
-  return persistentRecord(instance, boxData, hp, capture.status or instance.status or 0)
+  -- The live battler's toxic counter is battle-local; the real party copy
+  -- keeps counter 0 (see BattlePartyBridge.persistPartyBattler).
+  local status = StatusConditions.withToxicCounter(capture.status or instance.status or 0, 0)
+  return persistentRecord(instance, boxData, hp, status)
 end
 
 -- Real SendMonToPC calls MonRestorePP before copying only the 80-byte box.

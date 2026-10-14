@@ -39,17 +39,17 @@ Do not let README prose or an older handoff override newer direct evidence.
 
 ## Current dispatch
 
-**User-requested pause, 2026-09-21:** stop autonomous execution to conserve
-weekly tokens. Resume only when the user asks. Read the checkpoint at the top
-of `work/coordination/HANDOFF.md` before dispatching anything; it supersedes
-the historical continuous-work instruction and older runner-offline notes.
+**User-adopted persistent goal, 2026-10-11:** the user explicitly activated
+[`work/coordination/PROJECT_GOAL.md`](work/coordination/PROJECT_GOAL.md), including
+bounded Worker delegation, separate independent Reviewers, and automatic
+selection of the next eligible task. This supersedes the historical 2026-09-21
+pause; future user pauses still apply. The goal preserves all task, evidence,
+publication, and human-decision boundaries below.
 
-Phase 3 is complete. Pain Split is independently accepted at `a739ddc`.
-The full move-effect inventory remains active, but its dedicated private-runner
-probe is externally blocked while `firered-mint` is offline. Independent
-save counter-rollover correction and reviewed CI-check implementation proceed locally.
-The explicit save-version/refusal contract is accepted at `63592c3`. `STATE.json`, `HANDOFF.md`,
-and `TASK_REGISTER.md` own the current relay and supersede historical task prose.
+Recover the current relay from `STATE.json`, the top of `HANDOFF.md`, and
+`TASK_REGISTER.md`. Historical runner observations and completed task requests
+are not current dispatch instructions. A role handoff is an action for the
+Orchestrator to execute, not completion of the project goal.
 
 Current intended sequence:
 
@@ -80,3 +80,36 @@ Therefore Worker may commit/push/publish implementation and test/documentation c
 - broader capability/phase status does **not** advance until independent Reviewer has verified the relevant evidence and Orchestrator reconciles it.
 
 This standing envelope does **not** authorize Worker to create its own broader scope, ignore a task stop condition, alter supported-ROM policy, publish releases, distribute copyrighted content, merge unrelated refactors, self-review, or mark a phase complete. If a task requires a genuinely new human product/scope decision rather than merely an old publication gate, stop and escalate.
+
+## Battle-effect fast lane — human authorized 2026-10-13
+
+The human project owner explicitly approved this lane ("yes, add the fast
+lane"). Reason: the full relay cost effect 45 seven task files, eight reviews
+and about three days; roughly two hundred effects remain. This section
+supersedes the per-effect discovery/design/route-plan/configuration/probe/
+authority sequence for eligible families only.
+
+Eligible: Phase 4 move-effect families whose behavior is fully determined by
+the pinned pret source and testable with no-ROM engine/controller tests.
+
+1. **Batch.** Up to five eligible families per package. One task file under
+   `work/tasks/` holds the source lock (pinned-revision file/line citations),
+   design, MAY CHANGE paths and acceptance. No separate discovery, design,
+   route-plan, configuration, probe or authority documents or reviews.
+2. **Implement.** Worker implements on a branch with source-derived test
+   oracles (never values read back from the implementation) and opens a PR.
+   Public no-ROM CI must pass.
+3. **Review once.** One independent Reviewer checks source conformance,
+   assertions and scope on the PR and records PASS/NEEDS_FIX in
+   `work/reviews/`. On PASS the PR merges and the inventory marks those
+   families `represented`.
+4. **ROM evidence later.** New ROM fixture tests ride along and skip without a
+   ROM. Their non-skipped result comes from the next guarded bridge run's full
+   verified-ROM suite; until then the inventory notes `ROM fixture pending`.
+   A failing fixture reopens that family.
+
+Use the full relay instead when a family needs new persistent or cross-turn
+battle state, touches `main.lua`, the save format or a runtime replay, or has
+any `UNKNOWN` source behavior. All no-ROM/no-extracted-content rules,
+independent review, the capability-checklist evidence gate and the
+no-self-review rule still apply.
