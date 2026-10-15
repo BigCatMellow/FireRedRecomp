@@ -1,7 +1,7 @@
 # Task: weather slice W3a — Swift Swim/Chlorophyll speed, Sand Veil accuracy, Rain Dish
 
 - Task ID: `P4-WEATHER-W3A`
-- Status: `IMPLEMENTED — awaiting independent review`
+- Status: `DONE — independently reviewed PASS`
 - Lane: full relay (weather design proposal, W3a slice)
 - Spec: [weather design proposal](../reports/phase4-weather-design-proposal.md)
   ("Abilities (W3a: no new hook)", §3, §6, the RNG table, the W3a slice row,
@@ -166,3 +166,10 @@ of rows 115, 136, 137 and 164 and the boundary line now point to W3a.
 - Replays: a Swift Swim/Chlorophyll holder in its weather can add or remove
   the turn-start and the end-of-turn tie draws. Rain Dish and Sand Veil add
   no draws.
+
+## Review (2026-10-15)
+
+[Implementation review](../reviews/2026-10-15-weather-w3a-implementation-review.md):
+PASS. Every changed line checked by hand: no leftover mutation from the
+implementer's failed restore. 30/30 mutations caught (Thunder's rain sure-hit
+by the W2 test). Findings are nits/info only.
