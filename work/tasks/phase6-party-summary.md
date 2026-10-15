@@ -1,7 +1,7 @@
 # P6-04 — Read-only Party SUMMARY interaction
 
 - Task ID: `P6-04-PARTY-SUMMARY`
-- Status: `READY_FOR_WORKER` — align existing draft PR #6 with independently accepted corrected design; implementation not accepted
+- Status: `READY_FOR_REVIEWER` — aligned 2026-10-15 with independently accepted corrected design; exact-head independent implementation review still required
 - Parent capability: Phase 6 (no phase-status update)
 - Basis: accepted P6-01 inventory (`ee7535d6`); corrected P6-02 design `f3f9065` independently PASS in review `2ad1d7e`. Orchestrator explicitly adopts its bounded six-path successor proposal in this contract on 2026-10-14. This grants alignment authority, not acceptance of existing code.
 - Human dispatch: 2026-10-09 request to continue gameplay code progress.
@@ -104,3 +104,48 @@ Stop and leave the PR draft if a verified-ROM test, broader field actions, or un
 - [Public no-ROM CI 37946867516](https://github.com/BigCatMellow/FireRedRecomp/actions/runs/37946867516) passed at substantive head. Previous [run 37946553780](https://github.com/BigCatMellow/FireRedRecomp/actions/runs/37946553780) explicitly reported 278 tracked Lua, 204 Markdown, 616 local link targets and 152 test files PASS, with expected ROM-dependent SKIPs.
 - Local runtime, headless LÖVE field replay and ROM-backed tests **NOT RUN** here. Public checks prove only no-ROM tests and syntax/link checks, not graphical parity or live Party navigation.
 - Prerequisite P6-02 source-lock design resides in draft [PR #3](https://github.com/BigCatMellow/FireRedRecomp/pull/3) and is awaiting independent review. An independent Reviewer must inspect the design and exact PR #6 head/CI, including whether this reduced-summary UI is an acceptable increment, before any approval/merge or capability advancement.
+
+## Alignment Worker evidence — 2026-10-15
+
+- Authority `6ff4464`; worktree `/tmp/firered-party-summary-align.8vCZJo`,
+  local branch `work/p6-party-summary-alignment-20261014`; existing PR #6
+  branch remains the sole publication target. Integrated main `239c25f`
+  (accepted PR3/PR5) normally at `ff11dd0`, then inspected the disjoint
+  advance to `8f5e6d31ec304d64f2c9c2c0fa855c979966dc29` and merged normally
+  at `b6b5742f83e04503bf4e3dacbf1cf73bfd098549`. No conflict, reset or
+  overwritten main changes; the source386 Dex guard is retained.
+- Implementation changes are local action input (new A, new B, repeated
+  exact UP/DOWN mask with no-wrap clamping), explicit Egg saved-data label
+  retaining nickname, and clarification of the existing no-cycling view.
+  Existing production exclusive Party dispatch and read-only projection
+  remain intact. Shared MenuCursor/InputState and all non-Party behavior
+  are unchanged. Diff against integrated main contains exactly six allowed
+  paths, including this task; no review/runner/ROM/replay edits.
+- Baseline: **179 no-ROM test files PASS** at integrated `ff11dd0` before
+  alignment. Final focused checks: PartyScreen **33/0**, PartySelectionFlow
+  **162/0**, MenuCursor **14/0**. Final full suite **188 files PASS**, with
+  `POKEPORT_ROM` and `POKEPORT_RUNTIME_REPLAY` explicitly unset. Repository
+  checker **PASS, 316 Lua / 356 Markdown / 1175 local targets**;
+  `git diff --check` clean.
+- Source-literal tests cover fresh/repeated/clamped D-pad timing, rejected
+  direction chords, A-before-B-before-D-pad priority, held A/B across
+  transitions, ordinary and valid Egg saved values/identity/PP, no summary
+  mon/page cycling, both cancel paths, and clean reopening.
+- Production evidence executes actual `main.lua` function bodies for
+  `love.update`, START opening/selection/cleanup and Party overlay rendering
+  with synthetic state and no ROM/LÖVE bootstrap. Tests assert no list,
+  retained START, Bag, player movement or field-interaction input leakage
+  during actions/summary; a positive control reaches field movement and
+  interaction only after menus close. Full synthetic session snapshots
+  preserve every encoded party byte and cached value, count/order and
+  selected/nonselected record identity at projection and cancel boundaries.
+- In-memory regression witnesses (no source-file mutation): current flow
+  assertions against pre-alignment `ff11dd0` flow/main give **149 passed /
+  13 failed**, exit 1 (repeat/chord handling and Egg label). Injecting list
+  input into active Party actions gives **138/24**, exit 1. Injecting an HP
+  write into summary projection gives **114/48**, exit 1. The unmodified
+  aligned implementation passes **162/0**.
+- These are no-ROM function/component assertions, not a LÖVE/retail visual
+  replay, save/reload proof, Egg screen parity or Phase 6 completion. Final
+  published head/public CI must be handed to the separate Reviewer. Worker
+  does not merge PR #6, self-review, or advance capability status.

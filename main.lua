@@ -3329,9 +3329,11 @@ world.partyScreenLines = function()
     return lines
   elseif flow and flow.state == Battle.PartySelectionFlow.SUMMARY then
     local d = flow:summaryData()
-    -- Minimal read-only info page; not the GBA summary screen or move pages.
+    -- Minimal saved-data projection, not retail Summary/Egg pages. In
+    -- particular these cached Egg values do not claim retail Egg stat UI.
     return {
-      ("SUMMARY  %s  (B: back)"):format(d.nickname),
+      d.isEgg and ("EGG - saved-data projection  %s  (B: back)"):format(d.nickname)
+        or ("SUMMARY  %s  (B: back)"):format(d.nickname),
       ("Species #%d  Lv%d%s"):format(d.species, d.level, d.isEgg and "  EGG" or ""),
       ("HP %d/%d  STATUS %s"):format(d.hp, d.maxHp, d.status == 0 and "OK" or "AFFECTED"),
       ("ATK %d   DEF %d   SPD %d"):format(d.attack, d.defense, d.speed),

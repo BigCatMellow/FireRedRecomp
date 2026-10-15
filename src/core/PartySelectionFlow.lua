@@ -7,6 +7,9 @@
 -- This is deliberately only SUMMARY / CANCEL. Retail SWITCH, ITEM and
 -- field moves are NOT represented here because their normal callbacks and
 -- mutation handling have not been implemented or accepted.
+-- Summary mon cycling/page switching are deliberately excluded. Retail
+-- CB2_ReturnToPartyMenuFromSummaryScreen restores GetLastViewedMonIndex;
+-- it is the original slot here only because this reduced view cannot cycle.
 -- The caller holds the original PartyScreen selection while this flow is
 -- active; after closing, it calls PartyScreen:resumeBrowsing().
 
@@ -56,17 +59,29 @@ function PartySelectionFlow:processInput(input)
   if self.state == PartySelectionFlow.CLOSED then return end
 
   if self.state == PartySelectionFlow.SUMMARY then
-    -- The bounded summary has one information page. In FireRed B returns
-    -- to the previous party-slot action window, preserving the selected mon.
+    -- One read-only projection: A/directional/L/R input cannot change mon
+    -- or page. New B returns to actions without processing that input again.
     if input:isNewlyPressed(InputState.B_BUTTON) then
       self.state = PartySelectionFlow.ACTIONS
     end
     return
   end
 
-  -- The real Task_HandleSelectionMenuInput uses a no-wrap cursor when
-  -- there are three or fewer actions (we have two).
-  local result = self.cursor:processInputNoWrap(input)
+  -- c75f352 party_menu.c:3069-3070 selects the <=3-action variant;
+  -- menu.c:425-450 reads new A, new B, then JOY_REPT(DPAD_ANY), with
+  -- exact UP/DOWN equality. Shared processInputNoWrap is new-D-pad-only,
+  -- so keep this repeated-input variant local and reuse only its clamping.
+  local result
+  if input:isNewlyPressed(InputState.A_BUTTON) then
+    result = "confirm"
+  elseif input:isNewlyPressed(InputState.B_BUTTON) then
+    result = "cancel"
+  else
+    -- DPAD_ANY is bits 4-7 (0xF0); ignore other buttons, reject chords.
+    local dpad = input.newAndRepeatedKeys % 0x100 - input.newAndRepeatedKeys % 0x10
+    if dpad == InputState.DPAD_UP then self.cursor:moveCursorNoWrap(-1)
+    elseif dpad == InputState.DPAD_DOWN then self.cursor:moveCursorNoWrap(1) end
+  end
   if result == "cancel"
       or (result == "confirm" and self:currentAction() == PartySelectionFlow.ACTION_CANCEL) then
     self.state = PartySelectionFlow.CLOSED

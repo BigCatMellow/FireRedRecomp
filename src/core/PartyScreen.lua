@@ -183,7 +183,9 @@ end
 -- A bounded read-only Info/Summary data projection from the already
 -- validated party record. The caller must never modify this return value
 -- expecting changes to the saved party. Real summary art, move names,
--- page switching and editing actions are not implemented here.
+-- mon cycling, page switching and editing actions are not implemented here.
+-- Valid Eggs expose the same saved fields with isEgg; the caller labels
+-- them as a reduced saved-data projection, not a retail Egg stat screen.
 function PartyScreen:summaryData(slot)
   local data = self:rowData(slot)
   local record = self.party:get(slot)
