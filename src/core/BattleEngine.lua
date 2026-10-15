@@ -312,8 +312,9 @@
 --     the Drizzle/Sand Stream/Drought switch-in weather and Liquid Ooze on
 --     the Leech Seed drain);
 --     no held items,
---     multi-turn/charging moves (the trapping moves are residual R3 and
---     the Mean Look/Ingrain escape lock residual R2), forced switching, OHKO moves,
+--     multi-turn/charging moves other than those listed in their own slices
+--     (the trapping moves are supported by residual R3 and the Mean
+--     Look/Ingrain escape lock by residual R2), forced switching, OHKO moves,
 --     double battles, trainer AI, or EXP/level-up on victory.
 --   * Weather slice W1 (work/tasks/phase4-weather-w1.md): battle weather
 --     state and its shared 5-turn counter, the four weather moves, the
@@ -4193,8 +4194,9 @@ function BattleEngine:runTurn(playerAction, foeAction)
   if playerAction.action == "switch" then
     assert(playerAction.battler and playerAction.battler.hp > 0,
       "switch needs a caller-supplied, already-eligible battler")
-    -- SwitchInClearSetData (src/battle_main.c:2339-2343): the foe loses the
-    -- escape prevention the outgoing player held. The incoming battler is
+    -- SwitchInClearSetData (src/battle_main.c:2339-2343, :2375-2376): the
+    -- foe loses the escape prevention and any wrap the outgoing player
+    -- held (clearHeldBy). The incoming battler is
     -- fresh, so its own bits start clear (:2365-2368).
     self:clearHeldBy(BattleEngine.SIDE_PLAYER)
     self.player = playerAction.battler

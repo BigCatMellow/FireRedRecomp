@@ -33,7 +33,7 @@
 --     WRAPPED first, then LEECHSEED), BattleScript_WrapFree bs1.s:3445-3449;
 --   * AI: data/battle_ai_scripts.s AI_CheckBadMove has no EFFECT_TRAP or
 --     EFFECT_RAPID_SPIN row (EFFECT_TRAP appears only in AI_CheckViability
---     :685 and the roaming script :3227).
+--     :685; AI_Roaming :3227 tests STATUS2_WRAPPED, not the effect).
 -- Every expected number is worked from those formulas in the comments, never
 -- read back from the engine.
 package.path = package.path .. ";./?.lua"

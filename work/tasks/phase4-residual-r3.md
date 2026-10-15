@@ -1,7 +1,7 @@
 # Task: residual slice R3 — trapping moves (Bind, Wrap, Fire Spin, Clamp, Whirlpool, Sand Tomb), Rapid Spin's wrap arm
 
 - Task ID: `P4-RESIDUAL-R3`
-- Status: `IMPLEMENTED — awaiting independent review`
+- Status: `DONE — independently reviewed PASS`
 - Lane: full relay (new cross-turn battle state, new RNG draws on an
   already-admitted family, an escape lock that reaches the controller
   through R2's queries)
@@ -76,7 +76,7 @@ Abbreviations: `bsc.c` `src/battle_script_commands.c`, `bs1.s`
   (`bs1.s:3445-3449`); else LEECHSEED (R1); else Spikes (not modeled).
 - **AI** `ai.s`: `AI_CheckBadMove` (`:52` onward) has **no** EFFECT_TRAP or
   EFFECT_RAPID_SPIN row; EFFECT_TRAP appears only in `AI_CheckViability`
-  (`AI_CV_Trap`, `:685`) and the roaming script (`:3227`), both out of
+  (`AI_CV_Trap`, `:685`) and `AI_Roaming` (`:3227`, which tests `STATUS2_WRAPPED`), both out of
   scope. The generic 0x-effectiveness −10 (`:59`) already applies. **No
   `AICheckBadMove.lua` change.**
 
@@ -227,3 +227,11 @@ Abbreviations: `bsc.c` `src/battle_script_commands.c`, `bs1.s`
 - Seeded replays that contain a trap move diverge from its first use
   (design Risk R4); none exists in the repository.
 - ROM fixture pending for the six records.
+
+## Review (2026-10-15)
+
+[Implementation review](../reviews/2026-10-15-residual-r3-implementation-review.md):
+PASS. The Leech Seed / wrap claim is confirmed against source (a drain KO's
+`tryfaintmon` clears every wrap the fainted battler holds). 27/30 mutations
+caught; the 3 survivors are unobservable in singles. F1-F3 applied (two engine
+comments, the AI_Roaming citation); F4-F6 informational (Levitate unmodeled).
