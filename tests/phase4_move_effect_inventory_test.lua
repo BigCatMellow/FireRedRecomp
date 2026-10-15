@@ -51,7 +51,7 @@ local inventory = {
   [39] = {"represented", true, 1, {13}}, -- EFFECT_RAZOR_WIND: ROM fixture pending (phase4_multiturn_effect_rom_test)
   [40] = {"represented", true, 1, {162}}, -- EFFECT_SUPER_FANG
   [41] = {"represented", true, 1, {82}}, -- EFFECT_DRAGON_RAGE
-  [42] = {"blocked_on_state", true, 1, {20,35,83,128,250,328}}, -- EFFECT_TRAP
+  [42] = {"represented", true, 1, {20,35,83,128,250,328}}, -- EFFECT_TRAP: ROM fixture pending (phase4_residual_r3_effect_rom_test)
   [43] = {"represented", true, 1, {2,75,152,163,177,238,314,348}}, -- EFFECT_HIGH_CRITICAL
   [44] = {"represented", true, 1, {24,155}}, -- EFFECT_DOUBLE_HIT
   [45] = {"represented", true, 1, {26,136}}, -- EFFECT_RECOIL_IF_MISS: ordinary selected singles only
@@ -138,7 +138,7 @@ local inventory = {
   [126] = {"represented", true, 1, {222}}, -- EFFECT_MAGNITUDE (Magnitude only)
   [127] = {"blocked_on_state", false, 0, {226}}, -- EFFECT_BATON_PASS
   [128] = {"blocked_on_state", true, 1, {228}}, -- EFFECT_PURSUIT
-  [129] = {"represented", true, 1, {229}}, -- EFFECT_RAPID_SPIN: seed arm (wrap arm residual R3); ROM fixture pending (phase4_residual_r1_effect_rom_test)
+  [129] = {"represented", true, 1, {229}}, -- EFFECT_RAPID_SPIN: wrap arm (R3) then seed arm (R1); ROM fixture pending (phase4_residual_r1_effect_rom_test)
   [130] = {"represented", true, 1, {49}}, -- EFFECT_SONICBOOM
   [131] = {"unused", false, -1, {}}, -- EFFECT_UNUSED_83
   [132] = {"represented", true, 0, {234}}, -- EFFECT_MORNING_SUN: ROM fixture pending (phase4_weather_w2_effect_rom_test)
@@ -228,12 +228,12 @@ local inventory = {
 local expectedTotals = {
   moves = 354, defined = 214, used = 198, unused = 16,
   positive = 216, zero = 138, admitted = 299, rejected = 55,
-  admitted_uncovered_positive = 32,
+  admitted_uncovered_positive = 26,
 }
 local expectedClasses = {
-  represented = {families = 124, moves = 267, positive = 183, zero = 84},
+  represented = {families = 125, moves = 273, positive = 189, zero = 84},
   candidate = {families = 0, moves = 0, positive = 0, zero = 0},
-  blocked_on_state = {families = 73, moves = 86, positive = 32, zero = 54},
+  blocked_on_state = {families = 72, moves = 80, positive = 26, zero = 54},
   intentionally_rejected = {families = 1, moves = 1, positive = 1, zero = 0},
   unused = {families = 16, moves = 0, positive = 0, zero = 0},
 }

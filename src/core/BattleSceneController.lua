@@ -52,6 +52,17 @@ local TYPE_DISPLAY_NAMES = {
 }
 BattleSceneController.TYPE_DISPLAY_NAMES = TYPE_DISPLAY_NAMES
 
+-- gWrappedStringIds by trapping move (c75f352 src/battle_message.c:143-147,
+-- :1042-1050): (def, atk) -> text. B_DEF/B_ATK_NAME_WITH_PREFIX.
+local WRAPPED_TEXT = {
+  [20] = function(def, atk) return def .. " was squeezed by\n" .. possessive(atk) .. " BIND!" end, -- Bind
+  [35] = function(def, atk) return def .. " was WRAPPED by\n" .. atk .. "!" end,                -- Wrap
+  [83] = function(def) return def .. " was trapped\nin the vortex!" end,                         -- Fire Spin
+  [128] = function(def, atk) return atk .. " CLAMPED\n" .. def .. "!" end,                        -- Clamp
+  [250] = function(def) return def .. " was trapped\nin the vortex!" end,                        -- Whirlpool
+  [328] = function(def) return def .. " was trapped\nby SAND TOMB!" end,                         -- Sand Tomb
+}
+
 -- Weather texts (c75f352 src/battle_message.c:339-352).
 local WEATHER_SET_TEXT = {
   rain = "It started to rain!", sandstorm = "A sandstorm brewed!",
@@ -618,6 +629,24 @@ function BattleSceneController:_eventMessages(events)
       entries[#entries + 1] = { hpSide = event.side, hp = event.hpRemaining }
     elseif event.type == "escapePrevented" then
       add(name(event.target) .. " can't\nescape now!") -- sText_TargetCantEscapeNow :197
+    elseif event.type == "wrapped" then
+      -- gWrappedStringIds (c75f352 src/battle_message.c:1042-1050), indexed
+      -- by the move's position in gTrappingMoves (:1263-1271); the lookup
+      -- loop stops at the last index (bsc.c:2499-2505), so an unlisted move
+      -- gets the SAND TOMB text. DEF = the wrapped battler, ATK = the user.
+      add((WRAPPED_TEXT[event.move] or WRAPPED_TEXT[328])(name(event.side), name(event.by)))
+    elseif event.type == "wrapDamage" then
+      -- BattleScript_WrapTurnDmg (bs1.s:3769-3773): text, then HP;
+      -- sText_PkmnHurtBy :148 with B_BUFF1 = wrappedMove.
+      add(name(event.side) .. " is hurt\nby " .. self.moveName(event.move) .. "!")
+      entries[#entries + 1] = { hpSide = event.side, hp = event.hpRemaining }
+    elseif event.type == "wrapEnded" then
+      add(name(event.side) .. " was freed\nfrom " .. self.moveName(event.move) .. "!") -- sText_PkmnFreedFrom :149
+    elseif event.type == "wrapFreed" then
+      -- Cmd_rapidspinfree (bsc.c:8437-8450): ATK = the Rapid Spin user, DEF =
+      -- wrappedBy, B_BUFF1 = wrappedMove; sText_PkmnGotFree :211.
+      add(name(event.side) .. " got free of\n" .. possessive(name(event.by)) .. " "
+        .. self.moveName(event.move) .. "!")
     elseif event.type == "weatherAbility" then
       -- BattleScript_DrizzleActivates/SandstreamActivates/DroughtActivates
       -- (data/battle_scripts_1.s:3918-3924, :3946-3952, :4013-4019);

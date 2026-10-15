@@ -119,6 +119,14 @@
 --    "absorbed nutrients" text before the HP change
 --   {type="escapePrevented", side=<attacker>, target=} -- Mean Look/Spider
 --    Web/Block: "X can't escape now!" (residual R2)
+--   {type="wrapped", side=<wrapped>, by=<wrapper>, move=} -- trap hit set
+--    the 3-6 turn counter (residual R3); text from gWrappedStringIds
+--   {type="wrapDamage", side=, move=, amount=, hpRemaining=} -- end of turn,
+--    "X is hurt by MOVE!" before the HP change
+--   {type="wrapEnded", side=, move=}   -- end of turn, counter reached 0:
+--    "X was freed from MOVE!" (no damage, no team check)
+--   {type="wrapFreed", side=<attacker>, by=<wrapper>, move=} -- Rapid Spin
+--    freed the user: "X got free of Y's MOVE!"
 --   {type="weatherAbility", side=, ability=, kind=} -- Drizzle (2)/Sand
 --    Stream (45)/Drought (70) switch-in set permanent "rain"|"sandstorm"|
 --    "sun" (weather W3b); from resolveBattleStart, runTurn's switch branch
@@ -304,8 +312,9 @@
 --     the Drizzle/Sand Stream/Drought switch-in weather and Liquid Ooze on
 --     the Leech Seed drain);
 --     no held items,
---     multi-turn/charging moves, trapping moves (Bind/Wrap: residual R3;
---     the Mean Look/Ingrain escape lock is residual R2), forced switching, OHKO moves,
+--     multi-turn/charging moves other than those listed in their own slices
+--     (the trapping moves are supported by residual R3 and the Mean
+--     Look/Ingrain escape lock by residual R2), forced switching, OHKO moves,
 --     double battles, trainer AI, or EXP/level-up on victory.
 --   * Weather slice W1 (work/tasks/phase4-weather-w1.md): battle weather
 --     state and its shared 5-turn counter, the four weather moves, the
@@ -327,14 +336,19 @@
 --   * Residual slice R1 (work/tasks/phase4-residual-r1.md): Leech Seed
 --     (with Liquid Ooze on the drain), Nightmare, both Curse paths, Rapid
 --     Spin's seed arm, the extended per-battler end-of-turn order and the
---     deferred team check (resolveStatusEndTurn). Not yet: the trapping
---     moves and Rapid Spin's wrap arm (R3).
+--     deferred team check (resolveStatusEndTurn). The trapping moves and
+--     Rapid Spin's wrap arm came with R3.
 --   * Residual slice R2 (work/tasks/phase4-residual-r2.md): Ingrain (with
 --     its end-of-turn heal) and Mean Look/Spider Web/Block; the escape
 --     queries runBlocked/switchBlocked (the controller vetoes RUN and a
 --     voluntary switch at selection; runTurn asserts); clearHeldBy on the
 --     preventer's faint or switch. Escape prevention is tracked for the
 --     foe too but gates nothing (no foe run or switch is modeled).
+--   * Residual slice R3 (work/tasks/phase4-residual-r3.md): the six trapping
+--     moves (EFFECT_TRAP: the `% 100` secondary roll, the `& 3` 3-6 turn
+--     counter, per-move texts), the end-of-turn wrap damage/release, the
+--     wrap cleared with clearHeldBy on the wrapper's faint or switch,
+--     Whirlpool hitting a Dive user for x2, and Rapid Spin's wrap arm.
 --   * Pure single-stat stage-change moves (Growl/Tail Whip's full real
 --     family) ARE supported -- see BattleEngine.STAT_STAGE_MOVES and the
 --     move.power == 0 branch of resolveMove.
@@ -916,6 +930,9 @@ BattleEngine.TYPE_GRASS = 12
 BattleEngine.EFFECT_MEAN_LOOK = 106   -- BattleScript_EffectMeanLook (bs1.s:1440-1453)
 BattleEngine.EFFECT_INGRAIN = 181     -- BattleScript_EffectIngrain (bs1.s:2372-2380)
 BattleEngine.ABILITY_RUN_AWAY = 50    -- include/constants/abilities.h
+-- Residual slice R3 (work/tasks/phase4-residual-r3.md).
+BattleEngine.EFFECT_TRAP = 42         -- BattleScript_EffectTrap (bs1.s:829-835)
+BattleEngine.MOVE_WHIRLPOOL = 250     -- jumpifnotmove MOVE_WHIRLPOOL (bs1.s:830)
 BattleEngine.EFFECT_FOCUS_ENERGY = 47
 BattleEngine.MOVE_REST = 156
 -- SetMoveEffect ability guards (include/constants/abilities.h ids).
@@ -1146,6 +1163,15 @@ function BattleEngine.makeBattler(opts)
     --                   faints or switches out.
     rooted = false,
     escapePrevented = false,
+    -- Residual slice R3, battle-only, never persisted:
+    --   wrapTurns STATUS2_WRAPPED, the 3-bit turn counter (battle.h:116-117),
+    --             0 when not wrapped. The wrapper (gBattleStruct->wrappedBy,
+    --             bsc.c:2494) is always the opposing slot in singles;
+    --             clearHeldBy clears the counter when that slot faints or
+    --             switches out.
+    --   wrapMove  gBattleStruct->wrappedMove (bsc.c:2492-2493), for texts.
+    wrapTurns = 0,
+    wrapMove = nil,
     moves = {},
     statStages = {
       attack = BattleFormulas.DEFAULT_STAT_STAGE,
@@ -1328,8 +1354,9 @@ function BattleEngine:recordFaint(side, events)
   -- replacement afterwards.
   battler.seeded, battler.nightmare, battler.cursed = false, false, false
   battler.rooted, battler.escapePrevented = false, false
-  -- FaintClearSetData also clears the escape prevention ANOTHER battler
-  -- holds from this slot (src/battle_main.c:2444-2452).
+  battler.wrapTurns, battler.wrapMove = 0, nil
+  -- FaintClearSetData also clears the escape prevention and the wrap
+  -- ANOTHER battler holds from this slot (src/battle_main.c:2444-2452).
   self:clearHeldBy(side)
   for _, recorded in ipairs(self.faintSequence) do
     if recorded == side then return false end
@@ -1343,12 +1370,14 @@ end
 -- slot when that slot's battler faints (FaintClearSetData,
 -- src/battle_main.c:2444-2452) or switches out (SwitchInClearSetData,
 -- :2339-2343): every battler whose battlerPreventingEscape is this slot loses
--- STATUS2_ESCAPE_PREVENTION. In singles that is the opposing battler. A seed
--- whose receiver is this slot is NOT cleared (residual R1). Residual R3 adds
--- the wrap fields (:2371-2377, :2444-2452).
+-- STATUS2_ESCAPE_PREVENTION, and every battler whose wrappedBy is this slot
+-- loses STATUS2_WRAPPED -- the whole counter, so no turns carry over
+-- (:2371-2377, :2449-2451; residual R3). In singles that is the opposing
+-- battler. A seed whose receiver is this slot is NOT cleared (residual R1).
 function BattleEngine:clearHeldBy(side)
   local other = self:battler(otherSide(side))
   other.escapePrevented = false
+  other.wrapTurns, other.wrapMove = 0, nil
 end
 
 -- Residual slice R2. IsRunningFromBattleImpossible's trap clause
@@ -1357,7 +1386,7 @@ end
 -- STATUS2_ESCAPE_PREVENTION | STATUS2_WRAPPED or STATUS3_ROOTED ->
 -- BATTLE_RUN_FORBIDDEN (:3047-3052). Shadow Tag, Arena Trap and Magnet Pull
 -- (:3018-3046) are not modeled; this is the single place to add them.
--- `wrapTurns` is residual R3's STATUS2_WRAPPED counter (always 0 before R3).
+-- `wrapTurns` is residual R3's STATUS2_WRAPPED counter.
 function BattleEngine:runBlocked(side)
   local b = self:battler(side)
   if b.ability == BattleEngine.ABILITY_RUN_AWAY then return false end
@@ -1803,13 +1832,15 @@ end
 
 -- AccuracyCalcHelper's semi-invulnerable checks: an ON_AIR / UNDERGROUND /
 -- UNDERWATER target makes accuracycheck miss without RNG unless the move set
--- the matching IGNORE hitmarker (Surf only for underwater here).
+-- the matching IGNORE hitmarker (Surf, and Whirlpool through
+-- BattleScript_EffectTrap's HITMARKER_IGNORE_UNDERWATER, bs1.s:829-833,
+-- residual R3, for underwater here).
 function BattleEngine:semiInvulnerableMiss(defender, move, moveId)
   local state = defender.semiInvulnerable
   if not state then return false end
   if state == "air" then return BattleEngine.HITS_AIR[move.effect] == nil end
   if state == "underground" then return BattleEngine.HITS_UNDERGROUND[move.effect] == nil end
-  return moveId ~= BattleEngine.MOVE_SURF
+  return moveId ~= BattleEngine.MOVE_SURF and moveId ~= BattleEngine.MOVE_WHIRLPOOL
 end
 
 -- One accuracycheck: the semi-invulnerable miss first (no RNG), then the
@@ -2970,6 +3001,10 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
     damage = damage * BattleEngine.HITS_UNDERGROUND[move.effect]  -- Earthquake/Magnitude x2
   elseif defender.semiInvulnerable == "underwater" and moveId == BattleEngine.MOVE_SURF then
     damage = damage * 2
+  elseif defender.semiInvulnerable == "underwater" and moveId == BattleEngine.MOVE_WHIRLPOOL then
+    -- BattleScript_EffectTrap (bs1.s:829-833): setbyte sDMG_MULTIPLIER, 2
+    -- against an UNDERWATER target (residual R3, decision D6).
+    damage = damage * 2
   end
 
   -- 5. typecalc: STAB then per-row type effectiveness. Real Cmd_typecalc
@@ -3016,12 +3051,15 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
         or move.effect == BattleEngine.EFFECT_SMELLINGSALT
         or move.effect == BattleEngine.EFFECT_RECHARGE
         or move.effect == BattleEngine.EFFECT_RAMPAGE
-        or move.effect == BattleEngine.EFFECT_RAPID_SPIN then
+        or move.effect == BattleEngine.EFFECT_RAPID_SPIN
+        or move.effect == BattleEngine.EFFECT_TRAP then
       -- Smelling Salt's byte is CERTAIN, which skips the roll only when the
       -- move had an effect; a no-effect hit falls to the rolling branch.
       -- Rapid Spin (MOVE_EFFECT_RAPIDSPIN | AFFECTS_USER | CERTAIN, chance
       -- 0) has the same shape: against a Ghost the `% 100` is drawn and
       -- nothing is applied (Cmd_seteffectwithchance, bsc.c:2774-2805).
+      -- EFFECT_TRAP (chance 100, not CERTAIN) draws it too, e.g. Bind
+      -- against a Ghost or Sand Tomb against a Flying type (residual R3).
       BattleFormulas.secondaryEffectRoll(self.rng, move.secondaryEffectChance)
     end
     return
@@ -3190,16 +3228,41 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
     self:applySecondaryStatus2(defenderSide, defender, status2Kind, events)
   end
 
+  if move.effect == BattleEngine.EFFECT_TRAP then
+    -- setmoveeffect MOVE_EFFECT_WRAP + BattleScript_EffectHit (bs1.s:829-835,
+    -- :262-270): Cmd_seteffectwithchance (bsc.c:2774-2805) draws
+    -- `Random() % 100` (chance 100, not CERTAIN; always passes), then
+    -- SetMoveEffect (bsc.c:2132-2146): a target at 0 HP returns silently
+    -- (no further draw); Shield Dust (bytes <= 9) and Safeguard (<= 7) do
+    -- not cover byte 13. The wrap case (bsc.c:2483-2506): an already
+    -- WRAPPED target is left alone (no draw, no text, wrapMove kept);
+    -- otherwise STATUS2_WRAPPED_TURN((Random() & 3) + 3), wrappedMove,
+    -- wrappedBy, and gWrappedStringIds via BattleScript_MoveEffectWrap
+    -- (bs1.s:3888-3891). After the effectiveness text, before the caller's
+    -- tryfaintmon BS_TARGET.
+    BattleFormulas.secondaryEffectRoll(self.rng, move.secondaryEffectChance)
+    if defender.hp > 0 and (defender.wrapTurns or 0) == 0 then
+      defender.wrapTurns = (self.rng:next16() % 4) + 3
+      defender.wrapMove = moveId
+      events[#events + 1] = { type = "wrapped", side = defenderSide, by = attackerSide, move = moveId }
+    end
+  end
+
   if move.effect == BattleEngine.EFFECT_RAPID_SPIN and attacker.hp > 0 then
     -- MOVE_EFFECT_RAPIDSPIN | AFFECTS_USER | CERTAIN: no roll on a hit that
     -- had an effect; SetMoveEffect's 0-HP guard tests the user, then
     -- BattleScript_RapidSpinAway -> Cmd_rapidspinfree
-    -- (src/battle_script_commands.c:8435-8469), an else-if chain: WRAPPED
-    -- (residual slice R3; never set yet), else LEECHSEED -> clear it and
-    -- "shed LEECH SEED!" (data/battle_scripts_1.s:3451-3454), else Spikes
-    -- (not modeled). Runs before the caller's tryfaintmon BS_TARGET, so it
-    -- also frees the user on a KO.
-    if attacker.seeded then
+    -- (src/battle_script_commands.c:8435-8469), an else-if chain, so ONE
+    -- cleanup per use: WRAPPED -> clear it and "got free of Y's MOVE!"
+    -- (BattleScript_WrapFree, data/battle_scripts_1.s:3445-3449; residual
+    -- R3), else LEECHSEED -> clear it and "shed LEECH SEED!" (:3451-3454),
+    -- else Spikes (not modeled). Runs before the caller's tryfaintmon
+    -- BS_TARGET, so it also frees the user on a KO.
+    if (attacker.wrapTurns or 0) > 0 then
+      local wrapMove = attacker.wrapMove
+      attacker.wrapTurns, attacker.wrapMove = 0, nil
+      events[#events + 1] = { type = "wrapFreed", side = attackerSide, by = otherSide(attackerSide), move = wrapMove }
+    elseif attacker.seeded then
       attacker.seeded = false
       events[#events + 1] = { type = "leechSeedFreed", side = attackerSide }
     end
@@ -3883,11 +3946,15 @@ end
 --      clears silently (the FRLG re-check, :844-845).
 --   6. ENDTURN_CURSE (R1, :861-871): "afflicted by the CURSE!" then
 --      max(1, maxHP/4) (bs1.s:3797-3801).
---   7. ENDTURN_WRAP (residual slice R3; not yet).
+--   7. ENDTURN_WRAP (residual R3, :872-903): decrement the counter; still
+--      nonzero -> "is hurt by MOVE!" then max(1, maxHP/16)
+--      (bs1.s:3769-3773, DoTurnDmg); reached 0 -> "was freed from MOVE!"
+--      (bs1.s:3775-3778), no damage and no team check. A 3-6 counter gives
+--      2-5 damage ticks, then the release turn.
 --   8. ENDTURN_THRASH (:953-973): the rampage tick.
 -- No case tests semi-invulnerability: a Fly/Dig/Dive user still ticks.
 --
--- Faints and the team check (decision D2; review F1, F2). Ticks 4-6 run
+-- Faints and the team check (decision D2; review F1, F2). Ticks 4-7 run
 -- BattleScript_DoTurnDmg (bs1.s:3676-3688): tryfaintmon, then
 -- checkteamslost on EVERY tick, fatal or not. The Leech Seed drain has no
 -- checkteamslost, so its knockout does not end the battle by itself: the
@@ -4002,6 +4069,24 @@ function BattleEngine:resolveStatusEndTurn(events, sides)
       events[#events + 1] = { type = "curseDamage", side = side, amount = amount, hpRemaining = battler.hp }
       if tickTeamCheck(side) then break end
     end
+    -- ENDTURN_WRAP (src/battle_util.c:872-903), after Curse and before the
+    -- rampage tick: decrement the counter; still WRAPPED -> max(1, maxHP/16)
+    -- through BattleScript_WrapTurnDmg (text, then DoTurnDmg with its team
+    -- check, bs1.s:3769-3773, :3681-3688); reached 0 -> BattleScript_WrapEnds
+    -- (text only, no damage, no team check, :3775-3778). The wrapper's HP is
+    -- not tested: its faint already cleared the counter (clearHeldBy).
+    if battler.hp > 0 and (battler.wrapTurns or 0) > 0 then
+      battler.wrapTurns = battler.wrapTurns - 1
+      local wrapMove = battler.wrapMove
+      if battler.wrapTurns > 0 then
+        local amount = damage(battler, math.max(1, math.floor(battler.maxHP / 16)))
+        events[#events + 1] = { type = "wrapDamage", side = side, move = wrapMove, amount = amount, hpRemaining = battler.hp }
+        if tickTeamCheck(side) then break end
+      else
+        battler.wrapMove = nil
+        events[#events + 1] = { type = "wrapEnded", side = side, move = wrapMove }
+      end
+    end
     -- ENDTURN_THRASH (src/battle_util.c:953-973), after this battler's
     -- damage ticks. A faint above already cleared the lock (recordFaint).
     if (battler.rampageTurns or 0) > 0 then
@@ -4109,8 +4194,9 @@ function BattleEngine:runTurn(playerAction, foeAction)
   if playerAction.action == "switch" then
     assert(playerAction.battler and playerAction.battler.hp > 0,
       "switch needs a caller-supplied, already-eligible battler")
-    -- SwitchInClearSetData (src/battle_main.c:2339-2343): the foe loses the
-    -- escape prevention the outgoing player held. The incoming battler is
+    -- SwitchInClearSetData (src/battle_main.c:2339-2343, :2375-2376): the
+    -- foe loses the escape prevention and any wrap the outgoing player
+    -- held (clearHeldBy). The incoming battler is
     -- fresh, so its own bits start clear (:2365-2368).
     self:clearHeldBy(BattleEngine.SIDE_PLAYER)
     self.player = playerAction.battler
