@@ -65,6 +65,14 @@ local WEATHER_ENDED_TEXT = {
   rain = "The rain stopped.", sandstorm = "The sandstorm subsided.",
   sun = "The sunlight faded.", hail = "The hail stopped.",
 }
+-- Weather W3b: gAbilityNames (src/data/text/abilities.h:166, :209, :234)
+-- and the tails of STRINGID_PKMNMADEITRAIN / PKMNSXWHIPPEDUPSANDSTORM /
+-- PKMNSXINTENSIFIEDSUN (src/battle_message.c:263, :284, :285).
+local WEATHER_ABILITY_NAMES = { [2] = "DRIZZLE", [45] = "SAND STREAM", [70] = "DROUGHT" }
+local WEATHER_ABILITY_TEXT = {
+  rain = "made it rain!", sandstorm = "whipped up a sandstorm!",
+  sun = "intensified the sun's rays!",
+}
 
 -- Real gStatNamesTable (src/battle_message.c), for the stat keys
 -- BattleEngine.lua's statStages table already uses.
@@ -113,8 +121,39 @@ function BattleSceneController.new(opts)
   for _, entry in ipairs(intro) do
     entries[#entries + 1] = type(entry) == "string" and {text=entry} or entry
   end
+  -- Weather W3b: TryDoEventsBeforeFirstTurn (src/battle_main.c:2856-2927)
+  -- runs the leads' switch-in abilities after the intro and send-out
+  -- messages and before the first action selection. Every live battle start
+  -- builds its controller right after its fresh engine, so this is where
+  -- the battle-start events are resolved and presented. An engine that has
+  -- already resolved its start or played a turn is left alone.
+  local engine = self.engine
+  if type(engine.resolveBattleStart) == "function"
+      and not engine.battleStartResolved and engine.turn == 0 then
+    for _, entry in ipairs(self:_eventMessages(engine:resolveBattleStart())) do
+      entries[#entries + 1] = entry
+    end
+  end
   self:_setMessages(entries, BattleSceneController.ACTION)
   return self
+end
+
+-- Weather W3b: the events of a forced replacement that a caller resolved
+-- through BattleEngine:resolveForcedSwitch inside one of this controller's
+-- callbacks (the replacement's switch-in ability), as message entries. They
+-- follow the caller's own send-out text, as switchineffects follows
+-- printstring SWITCHINMON (data/battle_scripts_1.s:2879-2884).
+function BattleSceneController:_takeForcedSwitchMessages()
+  local engine = self.engine
+  if type(engine.takeForcedSwitchEvents) ~= "function" then return {} end
+  return self:_eventMessages(engine:takeForcedSwitchEvents())
+end
+
+local function concatEntries(first, second)
+  local out = {}
+  for _, entry in ipairs(first or {}) do out[#out + 1] = entry end
+  for _, entry in ipairs(second or {}) do out[#out + 1] = entry end
+  return out
 end
 
 function BattleSceneController:_touch()
@@ -174,7 +213,8 @@ function BattleSceneController:advanceMessage()
     -- hook returns the incoming-foe messages, if any; it has no player UI
     -- authority and is opt-in so all existing controller users are unchanged.
     local followup = self.onMessagesComplete and self.onMessagesComplete(self)
-    if followup and #followup > 0 then
+    followup = concatEntries(followup, self:_takeForcedSwitchMessages())
+    if #followup > 0 then
       self:_setMessages(followup, BattleSceneController.ACTION)
       return
     end
@@ -511,6 +551,12 @@ function BattleSceneController:_eventMessages(events)
       -- (data/battle_scripts_1.s:3938-3944).
       add(possessive(name(event.side)) .. " RAIN DISH\nrestored its HP a little!")
       entries[#entries + 1] = { hpSide = event.side, hp = event.hpRemaining }
+    elseif event.type == "weatherAbility" then
+      -- BattleScript_DrizzleActivates/SandstreamActivates/DroughtActivates
+      -- (data/battle_scripts_1.s:3918-3924, :3946-3952, :4013-4019);
+      -- B_SCR_ACTIVE_NAME_WITH_PREFIX/B_SCR_ACTIVE_ABILITY name the holder.
+      add(possessive(name(event.side)) .. " " .. (WEATHER_ABILITY_NAMES[event.ability] or "ABILITY")
+        .. "\n" .. WEATHER_ABILITY_TEXT[event.kind])
     elseif event.type == "statusDamage" then
       -- Message before the HP update (printstring, then datahpupdate).
       if event.kind == "burn" then
@@ -673,7 +719,10 @@ function BattleSceneController:processInput(input)
         -- Revalidate the UI selection at the save-backed callback. A legal
         -- voluntary callback may call _runTurn, retaining engine ordering.
         local entries = callback(self.partyChoices[self.partyCursor + 1])
-        if entries then self:_setMessages(entries, BattleSceneController.ACTION) end
+        local switchIn = self:_takeForcedSwitchMessages()
+        if entries or #switchIn > 0 then
+          self:_setMessages(concatEntries(entries, switchIn), BattleSceneController.ACTION)
+        end
       end
     end
     return
