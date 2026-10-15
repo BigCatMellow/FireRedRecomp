@@ -1,7 +1,7 @@
 # Task: weather slice W2 — Thunder, the Solar Beam sun path, Weather Ball, the sunlight heals
 
 - Task ID: `P4-WEATHER-W2`
-- Status: `IMPLEMENTED — awaiting independent review`
+- Status: `DONE — independently reviewed PASS WITH CORRECTIONS (applied)`
 - Lane: full relay (weather design proposal, W2 slice)
 - Spec: [weather design proposal](../reports/phase4-weather-design-proposal.md)
   ("Weather-dependent moves (W2)", §5, §9, §10, the W2 slice row, the W2
@@ -201,3 +201,10 @@ and draws only, both unchanged; its comment was updated).
 - Replays: Thunder in rain draws one fewer value; Solar Beam in sun draws its
   hit values on the selection turn. No existing replay can contain the heals
   (previously rejected).
+
+## Review (2026-10-15)
+
+[Implementation review](../reviews/2026-10-15-weather-w2-implementation-review.md):
+PASS WITH CORRECTIONS. F1 applied: a Flying-target assertion now tells
+Weather Ball's sandstorm Rock type from Ground (mutating the type to Ground
+fails it). F2/F3 informational. `tests/battle_weather_w2_test.lua`: 205 passed.

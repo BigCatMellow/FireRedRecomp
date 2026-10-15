@@ -527,6 +527,10 @@ do
   check("Weather Ball hail: Ice super effective vs Grass -> 32", amount == 32, amount)
   amount = weatherBall("sandstorm", nil, { foeTypes = { T.TYPE_FIRE, T.TYPE_FIRE } })
   check("Weather Ball sandstorm: Rock super effective vs Fire -> 56", amount == 56, amount)
+  -- Review F1: Rock, not Ground (both physical, both super effective vs
+  -- Fire): a Flying target takes Rock x2 (56); Ground would not affect it.
+  amount = weatherBall("sandstorm", nil, { foeTypes = { T.TYPE_FLYING, T.TYPE_FLYING } })
+  check("Weather Ball sandstorm: Rock super effective vs Flying -> 56", amount == 56, amount)
   -- Sun Fire vs Water: 22 -> 11.
   amount = weatherBall("sun", nil, { foeTypes = { T.TYPE_WATER, T.TYPE_WATER } })
   check("Weather Ball sun: Fire resisted by Water -> 11", amount == 11, amount)
