@@ -1,6 +1,9 @@
 # Phase 4 proposal: protection and turn-state moves (Protect/Detect, Endure, Fake Out, Focus Punch)
 
-- Status: `PROPOSAL — awaiting design review`
+- Status: `PROPOSAL — independently reviewed PASS WITH CORRECTIONS (applied)`
+- Review: [protection design review](../reviews/2026-10-15-protection-design-review.md)
+  (2026-10-15). Findings F1-F10 and decisions D1-D7 are folded in below;
+  see "Review corrections (applied)".
 - Date: 2026-10-15
 - Source pin: pret/pokefirered `c75f352304d529f6ba92d4f74b9cf8b5c3810788`
 - Builds on: status slices S1-S4, confusion/flinch C1-C2 (`flinched`,
@@ -39,6 +42,40 @@ proposals: `bsc.c` is `src/battle_script_commands.c`, `bs1.s` is
 `/tmp/claude-0/bm.c` is `battle_message.c`; this report calls that file
 `msg.c`. All local copies were byte-compared against the pinned raw files.)
 Engine paths are `src/core/…` at the 2026-10-15 working tree (after R3).
+
+## Review corrections (applied)
+
+The independent review returned PASS WITH CORRECTIONS. Each finding is
+folded into the section named here; the original text is replaced, not kept
+beside the correction.
+
+| Finding | Correction | Where |
+| --- | --- | --- |
+| F1 (MEDIUM) | Thunder Wave/Stun Spore/Glare (effect 67): `jumpifmovehadnoeffect BattleScript_ButItFailed` (`bs1.s:1011-1012`) runs **before** the already-paralyzed and `STATUS1_ANY` gates, and `NO_EFFECT` includes the `MISSED` that attackcanceler set. So a protected target gives Limber's text, then "doesn't affect" (immune) or the protected text, **even when it is already paralyzed**. Sleep, poison, Toxic and Will-O-Wisp have no such gate. | §4 shape B; P1 primary-status row; P1 verification |
+| F2 (MEDIUM) | Jump Kick / Hi Jump Kick into a protected **Ghost** prints the protected text and "kept going and crashed!", takes one `adjustnormaldamage` draw, and **loses no HP**: the crash's own `typecalc` sets `DOESNT_AFFECT_FOE` (`bsc.c:1246-1250`), `bicbyte` clears only `MISSED` (`bs1.s:865`), and `healthbarupdate`/`datahpupdate` are gated on `!NO_EFFECT` (`bsc.c:1713`, `:1759`). A non-immune protected target crashes normally. The engine's existing semi-invulnerable crash leaf had the same 1-HP divergence; it is fixed separately (see `work/tasks/phase4-multiturn-m2.md`). | §4 shape D row 45; P1 miss-branch item (b); verification; surprising item 7 |
+| F3 (MEDIUM) | Endure and False Swipe share **one** adjust condition evaluated on the **unclamped** damage (`bsc.c:1600-1610`): `(falseSwipe or endured) and hp <= rawDamage` → `hp - 1`, and `endured` only from the defender's flag. The False Swipe clamp moves into `applyDamage`. | P3 |
+| F4 (LOW) | `moveObeyed = true` goes after the cancellers and the locked 0-PP check, **before** the charge block (turn 1 returns early from it). | P2 (P1/P2 task note) |
+| F5 (LOW) | A protected Triple Kick still draws `seteffectwithchance`'s `Random() % 100` in source; the engine omits it under the tracked trailing-roll gap (inventory row 104). Multi-hit has no such draw. | P1 verification; RNG notes |
+| F6 (LOW) | Triple Kick prints ENDURED once at `TripleKickPrintStrings`, before the last kick's effectiveness. Put `endured` on the endured kick's `damage` event (ENDURED before its effectiveness), not on `multiHit`. 29/44/77 keep the `multiHit` placement. | P3 (P3 task note) |
+| F7 (wording) | `Random()` is the right operand of `>=`; the whole comparison is the left operand of `&&`, so it always runs. | §3, surprising item 3 |
+| F8 (INFO) | `HITMARKER_RUN` is set for any battler whose action reaches `B_ACTION_RUN` at `CASE_CHOSEN`, including the AI's flee (roamers, Safari; `battle_controller_opponent.c:1355-1367`). The engine has no roamers, so the latch is player-only; revisit when roamers land. | §1; P5 |
+| F9 (INFO) | An `error()` on protect index ≥ 4 would crash a live battle. | D1 |
+| F10 (INFO) | "Wild foes never choose these moves" holds only for the engine's first-damaging-slot rule; source wild foes pick `Random() & 3`. | §11 |
+
+Decisions, as accepted by the review:
+
+- **D1: accepted with a condition.** P2 stays **unmerged** until a ROM probe
+  has recorded the bytes after the protect rate table (`FF FF FF 7F FF 3F FF
+  1F`). There is no `error()` in live play (F9). The expected words (118,
+  165, 166, 102, 0xFFFE) are a hypothesis until the ROM confirms them.
+- **D2: yes.** P1 ships as infrastructure, with F1 and F2 folded in.
+- **D3: yes.** Order P4, P5, P1, P2, P3.
+- **D4: yes.** The run latch is modeled (player-only, F8).
+- **D5: yes.** Nightmare, Ghost Curse and Psych Up bypass Protect as in
+  source.
+- **D6: yes.** The 2/1/0 counter; the decrement is the **last** statement of
+  `resolveEndTurn`; `resolveForcedSwitch` sets 1.
+- **D7: yes** for single hits and 29/44/77; Triple Kick per F6.
 
 ## Summary
 
@@ -82,7 +119,7 @@ code path.
 | `gDisableStructs[b].protectUses` (u8) | `battle.h:144` | `++` on success (`bsc.c:6243`) | `= 0` on failure (`:6247`), or when the last resulting move is not Protect/Detect/Endure (`:6225-6226`); zeroed with the whole disable struct on switch-in (`bm.c:2383-2384`), on faint (`bm.c:2458-2459`) and at battle start (`bm.c:2224-2226`) |
 | `gLastResultingMoves[b]` | `bm.c:179` | `MOVEEND_UPDATE_LAST_MOVES` (`bsc.c:4235-4262`): `gCurrentMove` if `HITMARKER_OBEYS`, else `MOVE_UNAVAILABLE` (0xFFFF) | `MOVE_NONE` at battle start, on switch-in and on faint (`bm.c:2233`, `:2400`, `:2486`) |
 | `gDisableStructs[b].isFirstTurn` | `battle.h:164` | `= 2` at battle start, on switch-in and on faint (`bm.c:2228`, `:2396`, `:2481`) | `--` (if nonzero) in every `TurnValuesCleanUp(FALSE)` (`bm.c:3640-3641`), that is, once in `TryDoEventsBeforeFirstTurn` (`bm.c:2909`) and once at the end of every turn (`bm.c:2970`) |
-| `HITMARKER_RUN` (bit 15, `cb.h:168`) | `gHitMarker` | the player's `B_ACTION_RUN` reaching `STATE_WAIT_ACTION_CASE_CHOSEN` (`bm.c:3326-3328`; Safari run `:3340-3342`) | **only** `gHitMarker = 0` in `BattleStartClearSetData` (`bm.c:2257`). No `&= ~HITMARKER_RUN` exists in `battle_main.c`, `battle_script_commands.c`, `battle_util.c`, `battle_util2.c`, the battle controllers or `pokemon.c` at the pin (grep). |
+| `HITMARKER_RUN` (bit 15, `cb.h:168`) | `gHitMarker` | the player's `B_ACTION_RUN` reaching `STATE_WAIT_ACTION_CASE_CHOSEN` (`bm.c:3326-3328`; Safari run `:3340-3342`) | **only** `gHitMarker = 0` in `BattleStartClearSetData` (`bm.c:2257`). No `&= ~HITMARKER_RUN` exists in `battle_main.c`, `battle_script_commands.c`, `battle_util.c`, `battle_util2.c`, the battle controllers or `pokemon.c` at the pin (grep). The latch is set for **any** battler reaching `B_ACTION_RUN`, including the AI's flee (`battle_controller_opponent.c:1355-1367`, roamers and Safari); the engine has no AI flee, so it latches on the player's run only (review F8). |
 
 `HITMARKER_OBEYS` is set in `Cmd_attackcanceler` only after
 `AtkCanceller_UnableToUseMove`, the move-blocking abilities and the no-PP
@@ -206,8 +243,10 @@ gProtectLikeUsedStringIds`. So PP is spent even when it fails.
    second of the turn's two actions, **whatever the first one was** (a
    move, a switch, an item or a failed run).
 3. `if (sProtectSuccessRates[protectUses] >= Random() && notLastTurn)`
-   (`:6231`). **`Random()` is the left operand, so exactly one draw happens
-   on every call, including the last-mover failure.**
+   (`:6231`). `Random()` is the right operand of `>=`, and the whole
+   comparison is the left operand of `&&`, so it always runs: **exactly one
+   draw happens on every call, including the last-mover failure** (review
+   F7).
    - The table is `{0xFFFF, 0x7FFF, 0x3FFF, 0x1FFF}` (`bsc.c:701`).
    - The success probability is (rate+1)/65536: 1, 1/2, 1/4, 1/8.
 4. On success: `protected = 1` for effect 111 or `endured = 1` for effect
@@ -296,7 +335,8 @@ poison, 67 paralyze, 33 Toxic, 167 Will-O-Wisp, 49 confuse, 199 Teeter
 Dance, 205 Tickle.
 
 - Gates whose failure path is a `printstring` keep their own text:
-  - "already asleep/poisoned/paralyzed/burned/confused";
+  - "already asleep/poisoned/burned/confused" (**not** "already
+    paralyzed", see below);
   - the Insomnia/Vital Spirit/Immunity/Limber/Water Veil/Own Tempo
     prevention texts;
   - Tickle's "won't go lower" (`BattleScript_CantLowerMultipleStats`);
@@ -305,6 +345,16 @@ Dance, 205 Tickle.
 - Gates that `goto BattleScript_ButItFailed` (Substitute, "has any
   status1") print **"Foe Y\nprotected itself!"** instead of "But it
   failed!", because `MISSED` is already set.
+- **67 paralyze (review F1).** `BattleScript_EffectParalyze`
+  (`bs1.s:1005-1022`) runs Limber, Substitute, `typecalc`, then
+  **`jumpifmovehadnoeffect BattleScript_ButItFailed`** (`:1011-1012`), and
+  only then the already-paralyzed and `STATUS1_ANY` gates.
+  `jumpifmovehadnoeffect` tests `NO_EFFECT`, which includes the `MISSED`
+  set by attackcanceler (`asm/macros/battle_script.inc:1370-1372`;
+  `cb.h:203`). So a protected target gives Limber's text, else "It doesn't
+  affect" (a typecalc immunity), else the **protected** text, **even when
+  the target is already paralyzed**. The already-paralyzed and "any
+  status" gates are unreachable while protected.
 - Otherwise `accuracycheck` → `ButItFailed` → the protected text, with no
   draw. Teeter Dance uses `BattleScript_TeeterDanceMissed`, which has the
   same `resultmessage`.
@@ -328,7 +378,7 @@ Dance, 205 Tickle.
 | 168 Memento | `jumpifbyte cMISS_TYPE == B_MSG_PROTECTED` → `MementoTargetProtect`: attackstring, ppreduce, `trymemento` (cannot fail while protected, `bsc.c:8683-8685`), `setatkhptozero`, protected text, `tryfaintmon BS_ATTACKER`. **The user still faints, and no stats drop.** | `bs1.s:2199-2201`, `:2234-2244` |
 | 7 Explosion | `setatkhptozero` precedes everything. Each loop pass runs `movevaluescleanup`, critcalc, damagecalc, typecalc and **adjustnormaldamage (crit and random draws taken)**, then `accuracycheck ExplosionMissed` → protected (no accuracy draw). The text is "doesn't affect" for an immune target, else protected. The user faints. | `bs1.s:376-417` |
 | 147 Earthquake / 126 Magnitude | Magnitude rolls and prints its strength first. `accuracycheck HitAllWithUndergroundBonusMissed` runs **`typecalc` in the miss path**: an immune (Flying) target prints "doesn't affect", otherwise protected. | `bs1.s:1679-1690`, `:1830-1875` |
-| 45 Jump Kick / Hi Jump Kick | `accuracycheck MoveMissedDoDamage` → protected text, then **crash**. The `DOESNT_AFFECT` test after `resultmessage` is false (no `CheckWonderGuardAndLevitate` on the protect path), so the crash happens **even against a protected Ghost**. Crash damage = damagecalc (no crit) + typecalc (0 against a Ghost) + `adjustnormaldamage` (one random draw), then `DMG_RECOIL_FROM_MISS` (0 → 1). | `bs1.s:848-870` |
+| 45 Jump Kick / Hi Jump Kick | `accuracycheck MoveMissedDoDamage` → protected text, then "kept going and crashed!". The `DOESNT_AFFECT` test after `resultmessage` is false (no `CheckWonderGuardAndLevitate` on the protect path), so the crash **text** prints even against a protected Ghost. Crash damage = damagecalc (no crit) + typecalc + `adjustnormaldamage` (one random draw), then `DMG_RECOIL_FROM_MISS` (0 → 1). **Against a Ghost no HP is lost (review F2):** the crash's own `typecalc` sets `DOESNT_AFFECT_FOE` (`bsc.c:1246-1250`), `bicbyte` clears only `MISSED` (`bs1.s:865`), and `healthbarupdate`/`datahpupdate` skip on any `NO_EFFECT` (`bsc.c:1713`, `:1759`). A non-immune protected target crashes normally. | `bs1.s:848-870` |
 | 189 Endeavor | `setdamagetohealthdifference ButItFailed` (target HP ≤ user HP) prints the **protected** text, because `MISSED` is set. Otherwise `accuracycheck MoveMissedPause` → protected. Always the protected text, no draw. | `bs1.s:2474-2485` |
 | 92 Snore | Awake: `ButItFailed` → **protected** text. Asleep: "fast asleep", then `accuracycheck MoveMissedPause` → protected; no flinch draw. | `bs1.s:1253-1268` |
 
@@ -601,9 +651,11 @@ derive from learnsets and are not counted).
     `AICheckBadMove` error.
 - **Focus Punch:** no FRLG-native level-up learner (Vigoroth only). Custom
   party: Painter Daisy's Smeargle.
-- **Wild foes never choose these moves.** The wild AI picks the first
-  damaging slot (`main.lua:1300-1308`), so Fake Out or Focus Punch is used
-  only when it is that first slot.
+- **In the engine, wild foes never choose these moves.** The engine's wild
+  AI picks the first damaging slot (`main.lua:1300-1308`), so Fake Out or
+  Focus Punch is used only when it is that first slot. Source wild foes
+  pick `Random() & 3` (`battle_controller_opponent.c:1383-1388`); that
+  divergence predates this proposal (review F10).
 
 ## Engine today (fit points)
 
@@ -688,7 +740,7 @@ Lifetimes:
 | --- | --- |
 | `protected`, `endured`, `tookMoveDamage` | both battlers at `runTurn` start, beside `targetNotAffected` (equivalent to `TurnValuesCleanUp(TRUE/FALSE)`: nothing reads them between turns); `recordFaint` |
 | `protectUses`, `lastResultingMove` | fresh battler on switch-in; zeroed in `recordFaint` |
-| `isFirstTurn` | `makeBattler` 2; `BattleEngine.new` sets both leads to **1** (`bm.c:2909`); the switch branch keeps 2; **`resolveForcedSwitch` sets 1** (it runs after `resolveEndTurn`, while source decrements after the replacement arrives, `bm.c:2964-2970`); decrement both (if > 0) at the end of `resolveEndTurn`; `recordFaint` sets 2 |
+| `isFirstTurn` | `makeBattler` 2; `BattleEngine.new` sets both leads to **1** (`bm.c:2909`); the switch branch keeps 2; **`resolveForcedSwitch` sets 1** (it runs after `resolveEndTurn`, while source decrements after the replacement arrives, `bm.c:2964-2970`); decrement both (if > 0) as the **last statement** of `resolveEndTurn` (D6, as reviewed); `recordFaint` sets 2 |
 
 The counter mirrors source rather than a turn number (decision D6). The AI
 can then read `user.isFirstTurn` directly, as `is_first_turn_for` does, and
@@ -733,7 +785,7 @@ event replaces the generic texts:
 | Engine site | Change when `protectedMove` |
 | --- | --- |
 | Shared accuracy step (`:2502-2515`) | Treat it as a miss **before** the semi-invulnerable test and the roll (no draw). Applies to every family that reaches the shared step with an `accuracycheck` or `NO_ACC_CALC` in source: shape A, OHKO and Pain Split (shape C), always-hit and Vital Throw. **Not** when `tickleGateFails`: Tickle's gate text wins. |
-| Miss branch (`:2537-2601`) | Order: (a) `HITS_UNDERGROUND` → the existing typecalc query, `noEffect` if immune, else `protected`; (b) Jump Kick → `protected`, then the crash, **skipping** the immunity query (like `semiMiss`); (c) rampage → `protected`, **no** `targetNotAffected` query; (d) OHKO and Pain Split → `protected` (not `moveFailed`); (e) otherwise `protected`. PP: unchanged rule, using the captured `rampageLocked`. A charge turn 2 spends none (`noPPDeduct`). |
+| Miss branch (`:2537-2601`) | Order: (a) `HITS_UNDERGROUND` → the existing typecalc query, `noEffect` if immune, else `protected`; (b) Jump Kick → `protected`, then the crash text, **skipping** the immunity query (like `semiMiss`); the crash takes its random draw and loses HP only against a non-immune target, **0 HP against a Ghost** (review F2; the semi-invulnerable leaf is fixed the same way); (c) rampage → `protected`, **no** `targetNotAffected` query; (d) OHKO and Pain Split → `protected` (not `moveFailed`); (e) otherwise `protected`. PP: unchanged rule, using the captured `rampageLocked`. A charge turn 2 spends none (`noPPDeduct`). |
 | Explosion (`:2107`) | No `accuracyRoll`. `noEffect` if immune, else `protected`. The user still faints (`settleExplosion(false)`). The crit and damage draws stay before. |
 | Endeavor HP gate (`:2132-2135`) | `protected` instead of `moveFailed`. Otherwise the shared step gives `protected`. |
 | Confuse / Teeter Dance (`:2138-2157`) | The Own Tempo and already-confused texts stay. The accuracy step gives `protected`, no draw. |
@@ -743,7 +795,7 @@ event replaces the generic texts:
 | Nightmare (`:2270-2285`) | The fail paths emit `protected` instead of `moveFailed`. **The success path is unchanged (it lands).** |
 | Curse, Psych Up, Haze, Hail, all `USER` moves | Never gated (the predicate is false). |
 | Mean Look (`:2366-2381`) | After the semi-invulnerable test, `protected` before the already-prevented gate. |
-| Primary status (`resolvePrimaryStatusMove`, `:1691-1748`) | `failed()` emits `protected`. `already`, `prevented`, `stayedAwake` and `notAffected` stay. The final `accuracyRoll` is replaced by `protected`, no draw. |
+| Primary status (`resolvePrimaryStatusMove`, `:1691-1748`) | `failed()` emits `protected`. `already`, `prevented`, `stayedAwake` and `notAffected` stay, **except for paralysis (review F1)**: in the paralysis arm (`:1721-1726`), when `protectedMove` is set, apply Limber, then the typecalc immunity (`notAffected`), then emit `protected`, skipping `already()` and `failed()`. The final `accuracyRoll` is replaced by `protected`, no draw. |
 | Memento (`:2642`) | Before the both-at-minimum gate: `mementoHP`, `protected`, `checkFaint(attacker)`. No stat change. |
 | Triple Kick (`resolveTripleKick`) | The first iteration's accuracy is `protected` (0 hits, no count event). |
 | Multi-hit, fixed damage, Super Fang, Psywave, trap, Rapid Spin, Brick Break, recharge, Struggle | Covered by the shared step. They never reach their tails. |
@@ -766,8 +818,10 @@ itself!". No other P1 event.
     (it follows the player's action);
   - false otherwise.
 - **Last resulting move.** `resolveMoveCore` sets `self.moveObeyed = true`
-  at the attackcanceler step, that is, after the cancellers, the locked
-  0-PP check and the defensive noPP return.
+  after the cancellers, the locked 0-PP check and the defensive noPP return
+  (`:2005-2017`), **before the charge block** (`chargeKind`), because a
+  charging turn 1 returns early from that block yet passed attackcanceler
+  in source (review F4; P2 task note).
   - `resolveMove` then writes `attacker.lastResultingMove = moveObeyed and
     effectiveMoveId or 0xFFFF`. Struggle gives 165.
   - Item, run and switch actions never call `resolveMove`, so the value is
@@ -790,21 +844,26 @@ itself!". No other P1 event.
 
 - Admit `EFFECT_ENDURE` (116). It uses the same branch, setting
   `endured = true` and `result = "braced"` ("X braced\nitself!").
-- **Clamp.** `applyDamage(…, opts)` gains `opts.noAdjust` (passed only by
-  Super Fang, `:2893`).
-  - Before the HP subtraction: `if not opts.noAdjust and defender.endured
-    and defender.hp <= damage then damage = defender.hp - 1; endured = true
-    end`.
-  - The event gets `endured = true`.
-  - The False Swipe clamp (`:3072`) stays where it is. When both apply, the
-    result is the same `hp - 1` and the ENDURED text still prints, because
-    `endured` is checked independently (`bsc.c:1606-1609`).
+- **Clamp (review F3).** `applyDamage(…, opts)` gains `opts.noAdjust`
+  (passed only by Super Fang, `:2893`) and `opts.falseSwipe`.
+  - The False Swipe clamp (`:3072`) **moves into `applyDamage`**: it must
+    not run before it, or the Endure test would see `hp <= hp - 1`.
+  - Before the HP subtraction, one condition on the **unclamped** damage,
+    as `bsc.c:1600-1610`: `if not opts.noAdjust and (opts.falseSwipe or
+    defender.endured) and defender.hp <= damage then damage = defender.hp -
+    1; if defender.endured then endured = true end end`.
+  - The event gets `endured = true`. False Swipe into Endure prints ENDURED.
+  - A later Focus Band hooks into the same condition.
 - **OHKO** (`:2942`): the clamp applies through `applyDamage`. There is no
   OHKO text in the engine today, so only ENDURED is added.
 - **Multi-hit / Triple Kick:** after a hit whose damage event has
-  `endured`, stop the loop, as for a KO. Emit `multiHit` with `endured =
-  true`. Then follow the existing tail (one `seteffectwithchance` roll for
-  the 2-5 family and Double Kick/Twineedle).
+  `endured`, stop the loop, as for a KO. For 29/44/77 emit `multiHit` with
+  `endured = true`, then follow the existing tail (one
+  `seteffectwithchance` roll for the 2-5 family and Double
+  Kick/Twineedle). **For Triple Kick (review F6)** put `endured` on the
+  endured kick's `damage` event, so ENDURED prints before that kick's
+  effectiveness, as source's single `resultmessage` at
+  `TripleKickPrintStrings` does (P3 task note).
 - **Pain Split, crash, recoil, confusion and end-of-turn damage** do not use
   `applyDamage` and are unaffected (correct).
 - **Text order.** The controller prints "<target> ENDURED\nthe hit!" after
@@ -837,6 +896,7 @@ itself!". No other P1 event.
 - **Pre-turn hook** in `runTurn`, right after `turnStart` and the
   locked-action substitution, before every branch:
   - `if playerAction.action == "run" then self.runAttempted = true end`.
+    Player-only: the engine has no AI flee (review F8).
     This is set before the hook, as source sets `HITMARKER_RUN` at
     selection. The controller vetoes for trainer and trapped runs never
     reach `runTurn`, which matches the source vetoes.
@@ -929,7 +989,10 @@ depend on nothing. Recommended order: P4, P5, P1, P2, P3 (D3).
 
 - **P1** (the flag set directly on the defender):
   - Shape A on a representative of every table row:
-    - "used", then `protected`; no RNG consumed (compare the stream);
+    - "used", then `protected`; no RNG consumed (compare the stream).
+      Triple Kick's source `seteffectwithchance` draw is absent under the
+      tracked trailing-roll gap (inventory row 104), not as a source fact
+      (review F5);
     - PP −1, and 0 stays 0 on a locked rampage;
     - no damage, no secondary, no wrap, no recoil or drain, no recharge
       lock;
@@ -940,7 +1003,8 @@ depend on nothing. Recommended order: P4, P5, P1, P2, P3 (D3).
     `moveFailed`.
   - Shape B: each gate text keeps priority; the Substitute and "any status"
     `moveFailed` → `protected`; Thunder Wave against a Ground target keeps
-    "doesn't affect".
+    "doesn't affect"; **Thunder Wave against a protected, already-paralyzed
+    target gives `protected`** (review F1).
   - Shape D:
     - Leech Seed `evaded`, no draw.
     - Nightmare on an asleep target **lands**; on an awake one it gives
@@ -951,7 +1015,9 @@ depend on nothing. Recommended order: P4, P5, P1, P2, P3 (D3).
       faints; "doesn't affect" against a Ghost.
     - Earthquake against a Flying target gives `noEffect`, otherwise
       `protected`.
-    - Jump Kick into a protected Ghost: `protected`, then a 1-HP crash.
+    - Jump Kick into a protected Ghost: `protected`, the crash text, one
+      random draw, **no HP loss** (review F2). Into a protected non-Ghost:
+      the normal crash damage.
     - Endeavor in both HP orders gives `protected`.
     - Snore awake and asleep.
   - Shape E: Ghost Curse curses a protected target; Psych Up copies; Haze
@@ -984,13 +1050,15 @@ depend on nothing. Recommended order: P4, P5, P1, P2, P3 (D3).
   - Endure at full HP against an over-kill hit: 1 HP left and ENDURED
     before "super effective".
   - At 1 HP: 0 damage, ENDURED.
-  - False Swipe + Endure prints ENDURED.
+  - False Swipe + Endure prints ENDURED (one condition on the unclamped
+    damage, review F3).
   - Super Fang KOs a 1-HP Enduring target.
   - Sonic Boom, Seismic Toss, Psywave and OHKO are clamped (OHKO still
     draws).
   - Explosion is clamped.
   - A multi-hit stops at the endured hit (count, draws, the final roll).
-  - Triple Kick stops.
+  - Triple Kick stops; ENDURED precedes the endured kick's effectiveness
+    (review F6).
   - The endured flag clears next turn; end-of-turn poison still KOs.
 - **P4:**
   - Turn 1 succeeds; turn 2 gives `moveFailed`.
@@ -1022,6 +1090,11 @@ depend on nothing. Recommended order: P4, P5, P1, P2, P3 (D3).
 
 ## Decisions for review
 
+All seven were accepted by the review; see "Review corrections (applied)"
+for the outcomes (D1 with its condition, D6 with the last-statement
+placement, D7 with the F6 Triple Kick placement).
+
+
 - **D1 (protect-rate overflow).** `protectUses` reaches 4 after four
   consecutive successes (1/64 of five-use chains). The fifth use reads past
   `sProtectSuccessRates`.
@@ -1029,11 +1102,14 @@ depend on nothing. Recommended order: P4, P5, P1, P2, P3 (D3).
     table `FF FF FF 7F FF 3F FF 1F` in the verified ROM and record the
     following u16 words. In source order they are expected to be
     118, 165, 166, 102, 0xFFFE.
-  - Extend `PROTECT_SUCCESS_RATES` with the verified words through index 7,
-    and `error()` beyond. Index 8 is unreachable in practice: about
-    1e-13 per chain.
-  - Until the probe runs, P2 records index ≥ 4 as `UNKNOWN` and errors
-    loudly rather than inventing a cap.
+  - Extend `PROTECT_SUCCESS_RATES` with the verified words through index 7.
+    Index 8 is unreachable in practice: about 1e-13 per chain.
+  - **Review outcome (D1 accepted with a condition, F9):** P2 stays
+    **unmerged** until the ROM probe has run. There is **no `error()` in
+    live play**: a player can spam Protect, and Lorelei's or Berke's
+    Cloyster can choose it repeatedly, so an `error()` would crash a real
+    battle. Index ≥ 4 stays `UNKNOWN` until the probe records the words;
+    no cap is invented.
 - **D2 (P1 as infrastructure).** Ship the gate before any move can set it,
   tested by setting the flag directly.
   - Recommendation: yes. It is the riskiest change (every family), and
@@ -1071,7 +1147,11 @@ depend on nothing. Recommended order: P4, P5, P1, P2, P3 (D3).
   - Explosion (crit and damage random);
   - Magnitude (strength);
   - the cancellers (freeze, confusion, paralysis);
-  - Jump Kick, which adds one crash `adjustnormaldamage` random draw.
+  - Jump Kick, which adds one crash `adjustnormaldamage` random draw (and
+    loses no HP against a Ghost, review F2).
+  - Triple Kick's source `seteffectwithchance` draw on the protected path
+    is already absent in the engine under the tracked trailing-roll gap
+    (inventory row 104, review F5).
 - **P3:** one `Random()` per Endure. The multi-hit and Triple Kick early
   stop removes the remaining per-hit crit and damage draws (and Triple
   Kick's per-hit accuracy draws).
@@ -1124,8 +1204,9 @@ depend on nothing. Recommended order: P4, P5, P1, P2, P3 (D3).
 2. **Protect's consecutive-use counter has no cap.** The fifth consecutive
    use after four successes reads past the four-entry rate table, probably
    into `sMovesForbiddenToCopy` (about 0.18%). This needs ROM confirmation.
-3. **A last-moving Protect still draws `Random()`** before failing (operand
-   order, `bsc.c:6231`).
+3. **A last-moving Protect still draws `Random()`** before failing: the
+   comparison holding `Random()` is the left operand of `&&`
+   (`bsc.c:6231`, review F7).
 4. **Protect does not stop Ghost Curse or Psych Up** (`flags = 0`; the
    Curse clause in `attackcanceler` is dead code). It also does not stop
    **Nightmare on a sleeping target**: Nightmare has no accuracy check, so
@@ -1134,8 +1215,10 @@ depend on nothing. Recommended order: P4, P5, P1, P2, P3 (D3).
    itself!".
 6. **Memento into Protect still knocks out the user** and can no longer
    fail.
-7. **Jump Kick into Protect crashes even against a Ghost.** The protect path
-   skips the immunity scan that a normal miss runs.
+7. **Jump Kick into Protect prints the crash text even against a Ghost**,
+   because the protect path skips the immunity scan that a normal miss
+   runs. **But the Ghost costs it no HP** (review F2): the crash's own
+   `typecalc` marks no-effect, which skips the HP update.
 8. **"But it failed!" turns into "protected itself!"** for Fake Out after
    turn 1, an awake Snore, Endeavor's HP gate and the status moves'
    Substitute or "already statused" gates, whenever the target is
