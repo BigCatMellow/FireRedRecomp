@@ -1,6 +1,9 @@
 # Phase 4 proposal: residual and volatile end-of-turn effects (Leech Seed, Nightmare, Curse, Ingrain, Mean Look, trapping moves)
 
-- Status: `PROPOSAL — awaiting design review`
+- Status: `PROPOSAL — independently reviewed PASS WITH CORRECTIONS (applied)`
+- Review: [2026-10-15 residual effects design review](../reviews/2026-10-15-residual-effects-design-review.md).
+  Every finding (F1-F8) and decision (D1-D6) is folded in below; see
+  "Review corrections applied" for the index.
 - Date: 2026-10-15
 - Source pin: pret/pokefirered `c75f352304d529f6ba92d4f74b9cf8b5c3810788`
 - Builds on: status slices S1-S4 (`StatusConditions`, `resolveStatusEndTurn`),
@@ -10,7 +13,8 @@
   (`checkFaint`, `recordFaint`, `finalizeFaintSequence`, `resolveForcedSwitch`).
 - Lane: full relay. These slices add battle-only volatile state, new
   end-of-turn output, a deferred team-loss check, new RNG draws (Wrap) and
-  an action veto that reaches the controller and `main.lua`.
+  an action veto that reaches the controller. No slice edits `main.lua`
+  (review F4).
 
 The [move-effect inventory](phase4-move-effect-inventory.md) marks every
 family here `B`:
@@ -41,7 +45,8 @@ the current working tree (2026-10-15, after W3b).
   does not end the battle by itself.
 - **R2** — the escape-prevention core, plus Ingrain and Mean Look / Spider
   Web / Block. Adds an engine query, `runTurn` asserts, a controller veto
-  for RUN and for a voluntary switch, and one named `main.lua` guard.
+  for RUN and for a voluntary switch, and a controller-side wrapper around
+  the voluntary-switch callback. No `main.lua` change (review F4).
 - **R3** — the six trapping moves: the 3-6 turn timer and its draws,
   residual damage, the release text, clearing when the wrapper leaves,
   Whirlpool against a Dive user, and Rapid Spin's wrap arm. Needs R2.
@@ -327,7 +332,7 @@ Case details:
   - any later `DoTurnDmg` tick (poison, toxic, burn, nightmare, curse,
     wrap damage), **even a non-fatal one**; or
   - `HandleFaintedMonActions`'s `BattleScript_HandleFaintedMon`
-    (`bu.c:1144`; `bs1.s:2824-2826`).
+    (`bu.c:1143`; `bs1.s:2824-2826`).
 
   If the other battler's own poison then knocks out its last mon, the
   result is a **draw**, not a win.
@@ -512,13 +517,27 @@ sites below):
 ### R1: Leech Seed, Nightmare, Curse, Rapid Spin's seed arm
 
 **Admission.** `supportsMove` admits effects 84, 107 and 109 with power 0
-and target `SELECTED` (0). Accuracy exclusions:
+and target `SELECTED` (0).
 
-- Nightmare and both Curse forms skip the roll.
-- Ghost Curse keeps the semi-invulnerable fail: add it to the `:2239`
-  "But it failed!" branch.
-- Leech Seed keeps the ordinary roll and semi-invulnerable miss, but takes
-  its own result branch (below).
+**Accuracy (review F3).** The semi-invulnerable "But it failed!" rule for
+Curse depends on the **attacker's type**, not on effect 109 alone. The
+non-Ghost path has no `accuracycheck` at all (`bs1.s:1478-1485`); the Ghost
+path has `NO_ACC_CALC_CHECK_LOCK_ON`, which fails a semi-invulnerable target
+(`bsc.c:1020-1025`). Effect 109 must therefore never be added to the shared
+predicates by effect id:
+
+| Move | Ordinary roll (`needsAccuracyCheck`) | Semi-invulnerable test (`scriptHasAccuracyCheck`) | Notes |
+| --- | --- | --- | --- |
+| Leech Seed | yes | yes | Own result branch (below): a miss is "evaded", not the generic miss. |
+| Ghost Curse | no | yes | Semi-invulnerable target → "But it failed!", no draw. |
+| Non-Ghost Curse | no | no | Plays against a target in mid-Fly or mid-Dig: its stat changes target the user. |
+| Nightmare | no | no | |
+| Mean Look / Spider Web / Block (R2) | no | yes | Not in `HITS_AIR`/`HITS_UNDERGROUND`, so `semiInvulnerableMiss` gives the source answer. |
+| Ingrain (R2) | no | no | |
+
+The simplest conforming shape is an early branch per family (beside
+Refresh, after the cancellers) that performs its own accuracy step, so the
+shared predicates stay untouched.
 
 **Leech Seed** (early branch beside Refresh, after the cancellers):
 
@@ -547,9 +566,13 @@ equivalent.
   - Otherwise emit, in order, Speed −1, Attack +1, Defense +1 as
     `statChange` events. Use `prevented=true` at a limit ("won't go
     lower/higher"); the stage stays clamped.
+  - **Review F7:** a prevented event carries **signed** `stages`: −1 for
+    Speed, +1 for Attack and Defense. The controller picks "won't go
+    higher!" only when `stages > 0` (`BattleSceneController.lua:329`), so
+    `stages = 0` would print "ATTACK won't go lower!" for −6/+6/+5.
   - No Mist, Clear Body or Protect gate.
 - **Ghost:** spend PP.
-  - Semi-invulnerable target → `moveFailed`.
+  - Semi-invulnerable target → `moveFailed` (F3: the Ghost path only).
   - `defender.cursed` → `moveFailed`.
   - Otherwise set `defender.cursed`, take
     `cost = min(attacker.hp, max(1, floor(attacker.maxHP/2)))`, and emit
@@ -582,39 +605,54 @@ Also add `EFFECT_RAPID_SPIN` to the no-effect discarded-roll list
    3. Emit **one** event, `leechSeedDrain{side, receiver, amount,
       hpRemaining, receiverAmount, receiverHpRemaining, ooze}`. The text
       follows both HP changes.
-   4. Then call `recordFaintDeferred(side)` and, for an ooze knockout,
-      `recordFaintDeferred(receiver)` in that order (§3, `tryfaintmon`
-      attacker then target).
-4. Poison / toxic / burn (unchanged amounts), then
-   `endTurnTeamCheck(events)`.
+   4. If either battler is now at 0 HP: open `faintSequence` if none is
+      open, then `recordFaint(side)` and `recordFaint(receiver)` in that
+      order (§3, `tryfaintmon` attacker then target; `recordFaint` is a
+      no-op for a battler above 0 HP). **Do not finalize.**
+4. Poison / toxic / burn (unchanged amounts), then the tick team check.
 5. **Nightmare:** if `hp > 0` and `nightmare`:
    - asleep: `amount = min(hp, max(1, floor(maxHP/4)))`, emit
-     `nightmareDamage{side, amount, hpRemaining}`, then `endTurnTeamCheck`;
+     `nightmareDamage{side, amount, hpRemaining}`, then the tick team
+     check;
    - otherwise clear the flag silently.
 6. **Curse:** if `hp > 0` and `cursed`: `max(1, floor(maxHP/4))`, emit
-   `curseDamage`, then `endTurnTeamCheck`.
+   `curseDamage`, then the tick team check.
 7. *(R3) Wrap.*
 8. Rampage tick (unchanged).
 
-After the loop, call `endTurnTeamCheck(events)` once more. This stands in
-for `HandleFaintedMonActions`.
+After the loop, if a faint sequence is still open, finalize it. This stands
+in for `HandleFaintedMonActions`.
 
-**Deferred team check (decision D2).** It replaces the immediate
-`checkFaint` inside the per-battler phase:
+**Deferred team check (decision D2, with review F1 and F2).** It is built
+on the existing `faintSequence`; there is **no** separate deferred list
+(F2: a second list would trip `recordFaint`'s/`beginFaintSequence`'s
+asserts, or emit a second `faint` event and a second "fainted!" text).
 
-- `recordFaintDeferred(side, events)` runs the existing `recordFaint`
-  clearing and emits `faint`, but appends the side to
-  `self.deferredFaints` without finalizing. The battle is not over, so
-  the loop continues.
-- `endTurnTeamCheck(events)` opens a faint sequence, records the
-  deferred sides plus any battler this tick left at 0 HP, and calls
-  `finalizeFaintSequence`. A combined player and foe faint yields
-  `playerDrew`, exactly as `checkteamslost`'s OR does. If no faint is
-  pending, it does nothing.
-- It is called after **every** `DoTurnDmg`-shaped tick (poison, toxic,
-  burn, nightmare, curse and, in R3, wrap damage), **fatal or not**,
-  because `checkteamslost` runs on every tick. It is not called after
-  Ingrain, Rain Dish, Leech Seed or the wrap release.
+- **Leech Seed KO:** open `faintSequence` lazily (only if none is open) and
+  record the fainted battler(s), as in step 3.4. Nothing is finalized.
+- **Tick team check** (after every `DoTurnDmg`-shaped tick: poison, toxic,
+  burn, Nightmare, Curse and, in R3, wrap damage; **fatal or not**, because
+  `checkteamslost` runs on every tick): if the ticking battler is at 0 HP
+  **or** a sequence is open, open one if needed, `recordFaint(tickingSide)`
+  (only the battler that ticked; a no-op above 0 HP), then
+  `finalizeFaintSequence`. This replaces `checkFaint` inside
+  `resolveStatusEndTurn`. A combined player and foe faint yields
+  `playerDrew`, exactly as `checkteamslost`'s OR does. With no faint
+  pending and a living battler it does nothing, so pre-R1 behaviour is
+  unchanged.
+- It is **not** called after Ingrain, Rain Dish, Leech Seed or the wrap
+  release.
+- **F1:** after **every** tick team check, test `isOver()`. A decided
+  battle stops the phase at once (`BattleTurnPassed` skips the rest of
+  `DoBattlerEndTurnEffects`, `bm.c:2958-2962`), including the **same**
+  battler's later cases (Nightmare, Curse, Wrap, the rampage tick). Use
+  `break` out of the side loop, never `return`, so the post-loop finalize
+  is always reached.
+- Only the ticking battler is ever recorded. A battler that fainted
+  **mid-turn** and still waits for its replacement (Risk R2) was already
+  finalized; recording it again would print "fainted!" twice.
+- `resolveWeatherEndTurn`'s `checkFaint` stays: every field case runs
+  before any Leech Seed, so no sequence can be open there.
 - Effect: a Leech Seed knockout of the foe's last mon lets the player's
   own list still run until its next damage tick.
 
@@ -644,33 +682,75 @@ end
 - Before R3, `wrapTurns` is always 0. The term lands in R2 so that R3
   only sets the field.
 
-**Controller changes** (`BattleSceneController.lua`, owned by the
-controller agent):
+**Controller changes** (`BattleSceneController.lua`; the R1-R3 task files
+list it under **MAY CHANGE** and `main.lua` under **MUST NOT CHANGE**,
+review F6). Every new engine call is nil-guarded with the existing idiom
+(`self.engine.isLocked`, `BattleSceneController.lua:603`), because the
+controller tests build stub engines without these methods (review F5):
 
-1. In `_runTurn`, after the `runDisabledMessage` test (the trainer check
-   precedes in source, `bm.c:3239-3245`): if `playerAction.action ==
-   "run"` and `engine:runBlocked("player")`, set messages
-   `{ "Can't escape!" }` and return to ACTION. There is no `runTurn`, no
-   RNG and no `runTries` change.
-2. In the PARTY A-press, voluntary mode only, before calling
-   `onVoluntarySwitchChoice`: if `engine:switchBlocked("player")`, show
-   `"<playerName> can't be switched\nout!"` and **stay in PARTY**
-   (`pm.c:5960-5966`). A forced replacement is never blocked.
+1. **RUN.** In `_runTurn`, after the `runDisabledMessage` test (the trainer
+   check precedes in source, `bm.c:3239-3245`): if `playerAction.action ==
+   "run"` and `self.engine.runBlocked and self.engine:runBlocked("player")`,
+   set messages `{ "Can't escape!" }` and return to ACTION. There is no
+   `runTurn`, no RNG and no `runTries` change.
+2. **PARTY.** In the A-press, voluntary mode only, before invoking the
+   callback: if `self.engine.switchBlocked and
+   self.engine:switchBlocked("player")`, show `"<playerName> can't be
+   switched\nout!"` with after-state `PARTY`, keeping `partyMode =
+   "voluntary"` so that B still cancels (`pm.c:5960-5966`). A forced
+   replacement is never blocked. `voluntarySwitchChoices` still lists the
+   bench, because source opens the menu anyway (`bm.c:3198-3200`).
    - The existing "There are no other POKEMON!" path stays as it is. It
      is already a bounded stand-in: in source the menu would open anyway.
+3. **Defence in depth (review F4; replaces the earlier `main.lua` guard).**
+   In `Controller.new`, store the voluntary callback wrapped:
 
-**`main.lua` change (explicit, one guard).** In `onVoluntarySwitchChoice`
-(`main.lua:1653`), add `if engine:switchBlocked("player") then return nil
-end` beside the existing `awaitingForcedSwitch` guard. It must come
-**before** `persistPartyBattler` and the `activePartySlot` update
-(`:1675-1689`). Without it, any caller that bypasses the controller veto
-(the trainer test seam) would mutate party state and then trip the
-engine's assert.
+   ```lua
+   local onVoluntary = opts.onVoluntarySwitchChoice
+   self.onVoluntarySwitchChoice = onVoluntary and function(choice)
+     if self.engine.switchBlocked and self.engine:switchBlocked("player") then return nil end
+     return onVoluntary(choice)
+   end
+   ```
 
-- No `main.lua` change is needed for RUN: the controller has the engine.
+   `main.lua` passes the callback as an anonymous closure in the
+   `Controller.new` opts (`main.lua:1653`), so the controller field is the
+   only route to it: the PARTY A-press (`BattleSceneController.lua:714-725`)
+   is its only caller, the trainer test seam (`main.lua:5206-5215`) drives
+   it through `processInput`, and `runBattle()` (`main.lua:3882-3901`) also
+   goes through `processInput`. Wrapping the field therefore guards every
+   caller, including a direct `controller.onVoluntarySwitchChoice(...)`,
+   and main's party mutation (`main.lua:1675-1689`) cannot run while the
+   player is trapped. The forced callback is not wrapped.
+
+**`main.lua`: no change.** It would need one only if it later gained a
+second path that mutates party state and then calls
+`_runTurn({action="switch"})` outside this callback; none exists. Optional,
+non-blocking hand-off note for the `main.lua` owner:
+
+> "R2 (residual effects) adds `BattleEngine:switchBlocked(side)`.
+> `BattleSceneController` already refuses a voluntary switch while the
+> player is trapped, and wraps `onVoluntarySwitchChoice` with the same
+> check. If you want belt-and-braces, add `if engine.switchBlocked and
+> engine:switchBlocked("player") then return nil end` beside the
+> `awaitingForcedSwitch` guard at the top of `onVoluntarySwitchChoice`
+> (`main.lua:1657`), before `persistPartyBattler`. No behaviour changes for
+> any reachable path."
+
 - The `runBattle()` replay driver (`main.lua:3882-3901`) would make no
   progress against a trapped player. Its current route encounters have no
   trapping move, so nothing changes now (Risks R5).
+- **Run Away (D4, accepted; review F8.1).** A separate R2 commit gives
+  `tryRunFromBattle` the source's no-draw, no-`runTries` escape for a Run
+  Away holder (`bm.c:4246-4251`, `:4272`). Its text is
+  `sText_PkmnFledUsing`, "{B_ATK_NAME_WITH_PREFIX} fled\nusing
+  {B_ATK_ABILITY}!\p" (`msg.c:322`), selected by
+  `HandleEndTurn_RanFromBattle` for `fleeType == FLEE_ABILITY`
+  (`bm.c:3798-3812`). The `run` event needs a flag for it.
+- **CANT_SWITCH checks (review F8.3).** In that mode source tests fainted,
+  already-in-battle and Egg before the trap text (`pm.c:5928-5966`). The
+  controller lists only legal choices, so every listed entry gets the trap
+  text, which matches source.
 
 **Ingrain:** admit effect 181 (power 0, `MOVE_TARGET_USER`), with no
 accuracy check. Spend PP. If `attacker.rooted`, emit `moveFailed`.
@@ -690,6 +770,8 @@ Spend PP. Fail with `moveFailed` if the target is semi-invulnerable (the
 
 - Only the player's escape is observable. The foe's flag is set and
   cleared but gates nothing.
+- Lane: R2 stays full relay, because it adds new cross-turn battle state
+  (`AGENTS.md`, "Use the full relay instead when…").
 
 **AI rows:** 106 → `escapePrevented` −10; 181 → user `rooted` −10.
 
@@ -710,7 +792,8 @@ Spend PP. Fail with `moveFailed` if the target is semi-invulnerable (the
   `defender.semiInvulnerable == "underwater" and moveId == 250 → ×2`.
 - **End of turn** (step 7): if `hp > 0` and `wrapTurns > 0`, decrement.
   - Still > 0: `amount = min(hp, max(1, floor(maxHP/16)))`, emit
-    `wrapDamage{side, move, amount, hpRemaining}`, then `endTurnTeamCheck`.
+    `wrapDamage{side, move, amount, hpRemaining}`, then the tick team check
+    (F1, F2).
   - Reached 0: emit `wrapEnded{side, move}` and clear `wrapMove`.
 - **Rapid Spin wrap arm**, before the seed arm: if `attacker.wrapTurns >
   0`, clear it and emit `wrapFreed{side, by=otherSide, move}`. Do not also
@@ -732,10 +815,15 @@ Spend PP. Fail with `moveFailed` if the target is semi-invulnerable (the
 | Snatch (Ingrain), Magic Coat (Leech Seed, Mean Look) | Not modeled. |
 | Spikes arm of `rapidspinfree` | Spikes is not modeled, so never set. |
 | Foe-side run/switch veto | The engine has no foe run or foe switch. |
+| Teleport (effect 153, inventory `:259`, `B`) | Uses `getifcantrunfrombattle` (`bs1.s:1921-1928`). When admitted it must reuse `runBlocked` (review F8.2). |
+| Curse's `MOVE_RESULT_MISSED` side effect at +6 Attack/Defense (`bsc.c:6810-6811`) | Nothing the engine models observes it (review F8.4). |
+| Self-target UP stat move at +6 (e.g. Swords Dance) prints "won't go lower!" (`stages = 0`) | Pre-existing; source prints "won't go higher!" through `ALLOW_PTR` (`bsc.c:6799-6810`). Out of scope for the design (review F7); R1 may fix it in a separate, tested commit if contained. |
 
 ## Events and controller texts
 
-The controller is owned by another agent; this table is its work list.
+The R1-R3 task files list `BattleSceneController.lua` under MAY CHANGE
+(texts, RUN/PARTY vetoes, callback wrapper) and `main.lua` under MUST NOT
+CHANGE (review F6).
 
 | Event | Text (source) | Order |
 | --- | --- | --- |
@@ -752,6 +840,7 @@ The controller is owned by another agent; this table is its work list.
 | `ingrainHeal` (R2) | "X absorbed\nnutrients with its roots!" (`msg.c:235`) | text, then HP |
 | `escapePrevented` (R2) | "X can't\nescape now!" (`msg.c:197`) | target name |
 | controller veto (R2) | "Can't escape!" (`msg.c:333`); "X can't be switched\nout!" (`strings.c:256`) | no engine event |
+| `run{success=true, ability=true}` (R2, D4) | "X fled\nusing RUN AWAY!" (`msg.c:322`) | replaces "Got away safely!" |
 | `wrapped` (R3) | Bind "X was squeezed by\nY's BIND!"; Wrap "X was WRAPPED by\nY!"; Fire Spin / Whirlpool "X was trapped\nin the vortex!"; Clamp "Y CLAMPED\nX!"; Sand Tomb "X was trapped\nby SAND TOMB!" (`msg.c:143-147`, table `:1042-1050`) | after the effectiveness text, before the faint |
 | `wrapDamage` (R3) | "X is hurt\nby MOVE!" (`msg.c:148`) | text, then HP |
 | `wrapEnded` (R3) | "X was freed\nfrom MOVE!" (`msg.c:149`) | |
@@ -765,8 +854,8 @@ Also update the header event list (`BattleEngine.lua:21-100`) and the
 
 | Slice | Content | Unlocks (inventory test authoritative) |
 | --- | --- | --- |
-| R1 | Fields `seeded`/`nightmare`/`cursed`; `clearHeldBy`; Leech Seed (miss/seeded = "evaded", Grass), Nightmare, Curse (both paths, Ghost self-KO); wake clears Nightmare; Rapid Spin seed arm and no-effect roll; end-of-turn Leech Seed (Liquid Ooze), Nightmare (with the silent clear), Curse; `recordFaintDeferred` / `endTurnTeamCheck`; AI rows 84 and 107 gain their first −10 test; texts | 3 records admitted (expected 295/59); 129 leaves the uncovered list (25 → 24 effects, 33 → 32 records); rows 84/107/109/129 → R |
-| R2 | Fields `rooted`/`escapePrevented`; `runBlocked`/`switchBlocked` (with the `wrapTurns` term) and the `runTurn` asserts; the controller RUN and PARTY vetoes; the `main.lua:1653` guard; Ingrain (with the end-of-turn heal) and Mean Look/Spider Web/Block; AI rows 106/181; texts | 4 records admitted (expected 299/55); rows 106/181 → R |
+| R1 | Fields `seeded`/`nightmare`/`cursed`; `clearHeldBy`; Leech Seed (miss/seeded = "evaded", Grass), Nightmare, Curse (both paths, Ghost self-KO; F3 accuracy; F7 signed stages); wake clears Nightmare; Rapid Spin seed arm and no-effect roll; end-of-turn Leech Seed (Liquid Ooze), Nightmare (with the silent clear), Curse; the deferred team check on `faintSequence` (F1, F2); AI rows 84 and 107 gain their first −10 test; texts | 3 records admitted (expected 295/59); 129 leaves the uncovered list (25 → 24 effects, 33 → 32 records); rows 84/107/109/129 → R |
+| R2 | Fields `rooted`/`escapePrevented`; `runBlocked`/`switchBlocked` (with the `wrapTurns` term) and the `runTurn` asserts; the controller RUN and PARTY vetoes and the `onVoluntarySwitchChoice` wrapper (F4, F5; no `main.lua` change); Run Away escape as a separate commit (D4); Ingrain (with the end-of-turn heal) and Mean Look/Spider Web/Block; AI rows 106/181; texts | 4 records admitted (expected 299/55); rows 106/181 → R |
 | R3 | Fields `wrapTurns`/`wrapMove`; the trap hit tail (`% 100` + `& 3`); no-effect roll; Whirlpool vs Dive; end-of-turn wrap damage/release; wrapper switch/faint clears; Rapid Spin wrap arm; texts | 42 leaves the uncovered list (24 → 23 effects, 32 → 26 records); rows 42/129 notes updated |
 
 R3 depends on R2: a wrapped player must not be able to run. R1 and R2
@@ -798,6 +887,12 @@ deferred team check that R2's Ingrain and R3's wrap tick slot into.
     - the same, but the poison KOs the player → `playerDrew`;
     - a non-fatal tick still ends the phase, so a later Curse tick on the
       player does not run;
+    - F1: the player survives its poison tick with Curse and a rampage
+      pending; neither runs after `battleEnd` (no `curseDamage`, no
+      `fatigueConfusion`);
+    - F2: deferred KO then a non-fatal tick → exactly one `faint` event per
+      side; a mid-turn foe faint followed by a player poison tick → no
+      second foe `faint`;
     - Ingrain (R2) and Rain Dish do not trigger the check.
   - Nightmare: all three fail paths; the end-of-turn tick at `maxHP/4`;
     cleared on `wokeUp`; silently cleared at end of turn when not asleep;
@@ -807,6 +902,8 @@ deferred team check that R2's Ingrain and R3's wrap tick slot into.
   - Curse, Ghost: the semi-invulnerable fail with no draw; the
     already-cursed fail with no HP cost; the HP cost at odd maxHP and at
     1 HP; a self-KO loses the battle; the `maxHP/4` tick.
+  - Curse, non-Ghost, against a semi-invulnerable target: plays normally
+    (F3). Capped stats print signed "won't" texts (F7).
   - Order on one battler: Rain Dish < Leech Seed < poison < Nightmare <
     Curse < rampage tick.
   - Rapid Spin: frees the seed (including on a KO); no draw on a landed
@@ -818,8 +915,11 @@ deferred team check that R2's Ingrain and R3's wrap tick slot into.
     escape!", no turn, no RNG, `runTries` unchanged; a trainer battle
     still shows `runDisabledMessage` first; Run Away bypasses the veto.
   - PARTY: a voluntary pick while trapped → "can't be switched out!",
-    stays in PARTY, party state unchanged (the `main.lua` guard); a forced
-    replacement is unaffected.
+    stays in PARTY, party state unchanged (the controller veto and callback
+    wrapper); B still cancels; a forced replacement is unaffected; a direct
+    call of the wrapped `onVoluntarySwitchChoice` returns nil without
+    invoking main's closure;
+  - stub engines without `runBlocked`/`switchBlocked` keep working (F5).
   - Mean Look: the escape lock is cleared when the preventer switches or
     faints; semi-invulnerable and repeat fails.
   - Ingrain: the heal order before Rain Dish, the full-HP skip, the
@@ -833,7 +933,7 @@ deferred team check that R2's Ingrain and R3's wrap tick slot into.
   - A wrapped player cannot run or switch.
   - The wrap clears when the wrapper switches or faints.
   - Whirlpool hits Dive for ×2; other trap moves miss Dive.
-  - Wrap damage triggers `endTurnTeamCheck`; the release does not.
+  - Wrap damage triggers the tick team check; the release does not.
   - Rapid Spin frees the wrap only, even when also seeded.
 - **All slices.**
   - Controller text order through the real engine.
@@ -842,6 +942,19 @@ deferred team check that R2's Ingrain and R3's wrap tick slot into.
   - The no-ROM suite, the repository checker, and an independent review.
 
 ## Decisions for review
+
+Resolved by the review (all accepted; see the review's Decisions table):
+
+| # | Resolution |
+| --- | --- |
+| D1 | **Accepted.** Ingrain goes to R2 (`STATUS3_ROOTED` is part of every veto, `bm.c:3047-3048`, `:3198`; `bsc.c:4543-4545`). Rapid Spin is split: seed arm in R1, wrap arm in R3. |
+| D2 | **Accepted with F1 and F2.** Built on `faintSequence`; `main.lua` already handles `playerDrew` (`main.lua:4316`, `:4352`, `:4416`), so no `main.lua` work. |
+| D3 | **Accepted, amended by F4.** Engine queries and `runTurn` asserts; RUN and PARTY vetoes in the controller; the callback wrapper in `Controller.new` instead of a `main.lua` guard. `main.lua` is not edited. |
+| D4 | **Accepted.** Separate R2 commit: Run Away gives a no-draw, no-`runTries` escape (`bm.c:4246-4251`) with the `msg.c:322` text. |
+| D5 | **Accepted** as a separate follow-up (ability 64, `msg.c:290`). |
+| D6 | **Accepted, kept in R3** and pinned with a test. |
+
+The original questions follow for the record.
 
 - **D1 (split).** Should Ingrain move to R2, and Rapid Spin's cleanup be
   split across R1 and R3?
@@ -855,9 +968,10 @@ deferred team check that R2's Ingrain and R3's wrap tick slot into.
   - If declined, Leech Seed calls `checkFaint`, and this becomes a Known
     limit.
 - **D3 (veto placement).** Put the queries on the engine, assert in
-  `runTurn`, put the user-facing veto in the controller, and add one
-  `main.lua` guard before party mutation. Confirm with the controller
-  owner.
+  `runTurn`, put the user-facing veto in the controller, and (as first
+  proposed) add one `main.lua` guard before party mutation. *Superseded by
+  F4: the guard is the controller-side callback wrapper; `main.lua` is not
+  edited.*
 - **D4 (Run Away).** R2 adds the veto bypass, which is needed so that a
   trapped Run Away holder is not wrongly vetoed.
   - Should R2 also give `tryRunFromBattle` the source's always-escape, no-
@@ -903,15 +1017,21 @@ deferred team check that R2's Ingrain and R3's wrap tick slot into.
 - **R3. The deferred team check** changes `faint` / `battleEnd` event
   spacing within one turn. Controller tests that assume `battleEnd`
   directly follows `faint` need checking.
+  - Exp timing (review F8.5): `HandleFaintedMonActions` gives exp
+    (`bu.c:1162-1172`) before `BattleScript_HandleFaintedMon`'s team check.
+    Any exp-text timing the presentation uses is pre-existing and not
+    changed by D2.
 - **R4. Trap-move RNG today.** Effect 42 is admitted as a plain hit and
   takes neither draw. Any seeded replay with a landed Wrap (a wild Ekans
   or Dratini, or a trainer's Bind) is already off by two draws per hit.
   R3 fixes this but will shift such replays.
-- **R5. Ownership.** The controller and `main.lua` belong to another
-  agent. R2 cannot land without the controller veto: the engine assert
-  would otherwise surface as a crash on RUN while rooted. The R2 task
-  needs a coordinated controller change, or an interim controller-side
-  guard.
+- **R5. Ownership (review F4, F6).** R2 cannot land without the
+  controller veto: the engine assert would otherwise surface as a crash on
+  RUN while rooted. The R2 task file lists `BattleSceneController.lua`
+  under MAY CHANGE and `main.lua` under MUST NOT CHANGE; the controller
+  veto plus the callback wrapper close every live path without `main.lua`.
+  If the controller belongs to another lane at that time, R2 needs that
+  owner's sign-off on the controller items, and nothing else.
 - **R6. A Leech Seed "receiver" is a slot.** A future doubles or
   Baton Pass port must keep it a slot id, not a battler reference.
 
@@ -934,3 +1054,26 @@ deferred team check that R2's Ingrain and R3's wrap tick slot into.
 7. Run Away bypasses the trap veto for running but not for switching.
 8. The trap draw `% 100` happens even on an immune target. A KO'd target
    costs no turn-count draw.
+
+## Review corrections applied
+
+Index of where each finding of the
+[design review](../reviews/2026-10-15-residual-effects-design-review.md)
+landed in this document:
+
+| Finding | Applied in |
+| --- | --- |
+| F1 (stop the phase after a deciding tick) | R1 "Deferred team check"; R1 verification |
+| F2 (no separate deferred list; lazy `faintSequence`; record only the ticking battler; post-loop finalize with `break`) | R1 end-of-turn steps 3.4 and after the loop; "Deferred team check"; R1 verification |
+| F3 (Curse accuracy by attacker type) | R1 "Accuracy" table; Curse Ghost path; R1 verification |
+| F4 (no `main.lua` in R2) | Header lane; Summary; R2 controller item 3 and "`main.lua`: no change"; Slices R2 row; R2 verification; D3; Risk R5 |
+| F5 (nil-guard controller calls on stub engines) | R2 controller preamble and items 1-3; R2 verification |
+| F6 (controller MAY CHANGE, `main.lua` MUST NOT CHANGE) | R2 controller heading; Events table preamble; Risk R5 |
+| F7 (Curse's capped events carry signed `stages`; the Swords Dance `stages = 0` observation) | R1 Curse non-Ghost path; Deferred table |
+| F8.1 (Run Away flee text) | R2 Run Away bullet; Events table |
+| F8.2 (Teleport reuses `runBlocked`) | Deferred table |
+| F8.3 (CANT_SWITCH checks) | R2 controller bullets |
+| F8.4 (`MOVE_RESULT_MISSED` at +6) | Deferred table |
+| F8.5 (exp timing) | Risk R3 |
+| F8.6 (citation `bu.c:1143`) | §5 |
+| D1-D6 | "Decisions for review" resolution table |
