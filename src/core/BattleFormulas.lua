@@ -97,8 +97,9 @@
 --
 -- Real modifiers NOT ported here (all no-ops in this slice, each because
 -- the system it depends on doesn't exist yet): held items and their hold
--- effects, abilities other than those listed in 7b/7c, badge stat boosts, weather,
--- double-battle spread-damage halving,
+-- effects, abilities other than those listed in 7b/7c, badge stat boosts,
+-- weather beyond the damage block in 9 (speed, accuracy and Weather Ball
+-- are later weather slices), double-battle spread-damage halving,
 -- Helping Hand, Charge, Flash Fire, Levitate and Wonder Guard. Each is a
 -- documented gap, not an approximation: the ported code paths above are
 -- byte-for-byte the real ones for a plain single-battle direct-damage move
@@ -125,6 +126,11 @@
 --    already-decided halving to a damage number. Real double-battle
 --    2*(damage/3) variant is out of scope; Brick Break's screen removal
 --    happens in BattleEngine before this halving is consulted.
+--
+-- 9. Weather damage terms (weather slice W1) ARE supported inside the
+--    special branch of calculateBaseDamage only, after Light Screen
+--    (src/pokemon.c:2605-2637). The caller passes the WEATHER_HAS_EFFECT2
+--    weather kind (BattleEngine:damageWeather) and the move id.
 
 local StatusConditions = require("src.core.StatusConditions")
 
@@ -221,7 +227,8 @@ end
 -- Real CalculateBaseDamage (src/pokemon.c:2385), reduced to the code
 -- paths that are live in a single battle with no items/abilities/status/
 -- weather/screens (see this file's header for the full list of real
--- branches deliberately not modeled). Returns the real s32 result --
+-- branches deliberately not modeled; screens, status, the listed ability
+-- terms and the weather block, header 9, have since been added). Returns the real s32 result --
 -- which already includes the real trailing "+ 2".
 --
 -- attacker/defender: battler tables (see BattleEngine.lua) needing
@@ -271,7 +278,12 @@ function BattleFormulas.abilityAdjustedStats(attacker, defender, moveType)
   return attack, defense, spAttack, spDefense
 end
 
-function BattleFormulas.calculateBaseDamage(attacker, defender, move, isCrit, defenderScreens)
+BattleFormulas.MOVE_SOLAR_BEAM = 76
+BattleFormulas.TYPE_WATER = 11
+-- weatherKind/moveId (optional, weather W1): the WEATHER_HAS_EFFECT2
+-- weather ("rain"|"sun"|"sandstorm"|"hail" or nil) and the real move id
+-- (gCurrentMove, for the Solar Beam halving). nil for both is clear weather.
+function BattleFormulas.calculateBaseDamage(attacker, defender, move, isCrit, defenderScreens, weatherKind, moveId)
   local moveType = move.type
   local power = move.power
   local damage = 0
@@ -378,10 +390,34 @@ function BattleFormulas.calculateBaseDamage(attacker, defender, move, isCrit, de
     if defenderScreens and defenderScreens.lightScreen and not isCrit then
       damage = idiv(damage, 2)
     end
+    -- Real weather block (src/pokemon.c:2605-2637), under
+    -- WEATHER_HAS_EFFECT2, after Light Screen (the doubles halving between
+    -- them is not modeled) and before Flash Fire (not modeled). Rain tests
+    -- B_WEATHER_RAIN_TEMPORARY, which every reachable rain sets. Each step
+    -- truncates.
+    if weatherKind == "rain" then
+      if moveType == BattleFormulas.TYPE_FIRE then
+        damage = idiv(damage, 2)
+      elseif moveType == BattleFormulas.TYPE_WATER then
+        damage = idiv(15 * damage, 10)
+      end
+    end
+    -- "Any weather except sun weakens solar beam": the move id, not the effect.
+    if (weatherKind == "rain" or weatherKind == "sandstorm" or weatherKind == "hail")
+        and moveId == BattleFormulas.MOVE_SOLAR_BEAM then
+      damage = idiv(damage, 2)
+    end
+    if weatherKind == "sun" then
+      if moveType == BattleFormulas.TYPE_FIRE then
+        damage = idiv(15 * damage, 10)
+      elseif moveType == BattleFormulas.TYPE_WATER then
+        damage = idiv(damage, 2)
+      end
+    end
     -- No minimum-1 clamp here: real special branch genuinely lacks one,
     -- confirmed still true even after Light Screen halving -- real source
     -- has no such clamp anywhere in this branch, so a special hit that
-    -- Light Screen halves to 0 legitimately stays 0.
+    -- Light Screen (or a rain/sun halving) reduces to 0 legitimately stays 0.
   end
 
   return damage + 2
@@ -501,7 +537,8 @@ end
 -- attackerAbility/moveType (optional) apply Cmd_accuracycheck's ability
 -- terms (src/battle_script_commands.c:1069-1074) after the stage ratio:
 -- Compound Eyes `calc * 130 / 100`; Hustle `calc * 80 / 100` for a
--- physical-type move. Sand Veil needs weather and is not represented.
+-- physical-type move. Sand Veil's sandstorm accuracy term is weather
+-- slice W3a and is not represented yet.
 BattleFormulas.ABILITY_COMPOUND_EYES = 14
 BattleFormulas.ABILITY_HUSTLE = 55
 function BattleFormulas.accuracyCheck(moveAccuracy, accStage, evasionStage, rng, attackerAbility, moveType)

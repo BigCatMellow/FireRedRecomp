@@ -89,6 +89,12 @@
 --   {type="fatigueConfusion", side=}  -- rampage lock ended: "became
 --    confused due to fatigue!" (ENDTURN_THRASH)
 --   {type="mustRecharge", side=}       -- recharge canceller
+--   {type="weatherSet", side=, kind=}  -- Rain Dance/Sunny Day/Sandstorm/Hail
+--    set kind ("rain"|"sun"|"sandstorm"|"hail") for 5 turns (weather W1)
+--   {type="weatherContinues", kind=}   -- end of turn, timer still running
+--   {type="weatherEnded", kind=}       -- end of turn, timer reached 0
+--   {type="weatherDamage", side=, kind="sandstorm"|"hail", amount=,
+--    hpRemaining=}                     -- end-of-turn sandstorm/hail damage
 --   {type="battleEnd", outcome="playerWon"|"playerLost"|"ran"|"caught"}
 --
 -- Real turn structure ported, in real execution order:
@@ -265,10 +271,18 @@
 --     them through STATUS2_HIT_MOVES (applySecondaryStatus2) and the
 --     Confuse/Teeter Dance/Swagger/Flatter handlers (applyConfusion).
 --     Soundproof is not represented (Supersonic, Snore, Growl, Sing).
---   * Abilities only where named (Damp, Guts, the status guards above);
---     no held items, weather,
+--   * Abilities only where named (Damp, Guts, the status guards above,
+--     Cloud Nine/Air Lock and Sand Veil's sandstorm immunity);
+--     no held items,
 --     multi-turn/charging moves, trapping, forced switching, OHKO moves,
 --     double battles, trainer AI, or EXP/level-up on victory.
+--   * Weather slice W1 (work/tasks/phase4-weather-w1.md): battle weather
+--     state and its shared 5-turn counter, the four weather moves, the
+--     end-of-turn weather texts and sandstorm/hail damage, the special-branch
+--     Fire/Water and Solar Beam damage terms, freeze blocked in sun, and
+--     Cloud Nine/Air Lock. Not yet: Thunder/Solar Beam/Weather Ball/the
+--     sunlight heals (W2), Swift Swim/Chlorophyll/Sand Veil accuracy/Rain
+--     Dish (W3a), Drizzle/Drought/Sand Stream (W3b), Forecast.
 --   * Pure single-stat stage-change moves (Growl/Tail Whip's full real
 --     family) ARE supported -- see BattleEngine.STAT_STAGE_MOVES and the
 --     move.power == 0 branch of resolveMove.
@@ -746,6 +760,10 @@ BattleEngine.MOVE_SNORE = 173
 BattleEngine.MOVE_SLEEP_TALK = 214
 BattleEngine.EFFECT_THAW_HIT = 125
 BattleEngine.TYPE_FIRE = 10
+BattleEngine.TYPE_GROUND = 4  -- include/constants/pokemon.h
+BattleEngine.TYPE_ROCK = 5
+BattleEngine.TYPE_STEEL = 8
+BattleEngine.TYPE_ICE = 15
 
 -- Status-on-hit families (slice S2): the stock hit script with a
 -- setmoveeffect status byte applied by seteffectwithchance
@@ -809,6 +827,7 @@ BattleEngine.SEMI_INVULNERABLE_MOVES = {
 }
 -- Moves that set the matching IGNORE hitmarker (data/battle_scripts_1.s
 -- :239-243, 1822-1858, 1888-1891, 1916-1919, 2704-2706) and their x2.
+-- Thunder's rain/sun accuracy is weather W2; this table only covers ON_AIR.
 BattleEngine.HITS_AIR = { [149] = 2, [146] = 2, [152] = 1, [207] = 1 } -- Gust, Twister, Thunder, Sky Uppercut
 BattleEngine.HITS_UNDERGROUND = { [147] = 2, [126] = 2 }                -- Earthquake, Magnitude
 BattleEngine.EFFECT_SKY_ATTACK = 75
@@ -817,7 +836,7 @@ BattleEngine.CHARGE_MOVES = {
   [39] = "razorWind",   -- EFFECT_RAZOR_WIND
   [75] = "skyAttack",   -- EFFECT_SKY_ATTACK
   [145] = "skullBash",  -- EFFECT_SKULL_BASH
-  [151] = "solarBeam",  -- EFFECT_SOLAR_BEAM (weather unmodeled: always charges)
+  [151] = "solarBeam",  -- EFFECT_SOLAR_BEAM (always charges: the sun path is weather W2)
   [155] = "semiInvulnerable", -- EFFECT_SEMI_INVULNERABLE (kind by move)
 }
 BattleEngine.EFFECT_CONFUSE = 49
@@ -842,6 +861,17 @@ BattleEngine.ABILITY_MAGMA_ARMOR = 40
 BattleEngine.ABILITY_WATER_VEIL = 41
 BattleEngine.ABILITY_INSOMNIA = 15
 BattleEngine.ABILITY_VITAL_SPIRIT = 72
+
+-- Weather slice W1 (pret/pokefirered c75f352). Effect -> weather kind for
+-- the four weather moves (EFFECT_SANDSTORM 115, EFFECT_RAIN_DANCE 136,
+-- EFFECT_SUNNY_DAY 137, EFFECT_HAIL 164; src/battle_script_commands.c
+-- :6399-6413, :7200-7214, :8381-8396, :8664-8678).
+BattleEngine.WEATHER_MOVES = { [115] = "sandstorm", [136] = "rain", [137] = "sun", [164] = "hail" }
+BattleEngine.ABILITY_SAND_VEIL = 8
+BattleEngine.ABILITY_CLOUD_NINE = 13  -- include/constants/abilities.h
+BattleEngine.ABILITY_AIR_LOCK = 77
+BattleEngine.MOVE_SOLAR_BEAM = 76     -- CalculateBaseDamage tests the move id
+BattleEngine.WEATHER_DURATION = 5     -- gWishFutureKnock.weatherDuration = 5
 -- Primary status moves (slice S3): zero-power scripts with their own gate
 -- order before accuracycheck (data/battle_scripts_1.s:287-301 Sleep,
 -- :984-1003 Poison, :1005-1024 Paralyze, :687-706 Toxic, :2170-2185
@@ -1080,6 +1110,16 @@ function BattleEngine.new(opts)
     -- compatibility view for existing controller/orchestrator callers.
     pendingForcedSwitches = {},
     faintSequence = nil,
+    -- gBattleWeather (src/battle_main.c:199) reduced to its reachable shape:
+    -- every setter assigns the whole word, so at most one family is active,
+    -- plus the family's permanent bit (ability weather, W3b). Downpour is
+    -- never set in FRLG. Battle-only: zeroed at battle start
+    -- (src/battle_main.c:2251-2255), never persisted, never cleared by a
+    -- faint or a switch.
+    weather = { kind = nil, permanent = false }, -- "rain"|"sun"|"sandstorm"|"hail"
+    -- gWishFutureKnock.weatherDuration (include/battle.h:263): one shared
+    -- byte, not per family.
+    weatherDuration = 0,
   }, BattleEngine)
 end
 
@@ -1095,6 +1135,46 @@ end
 
 function BattleEngine:isOver()
   return self.outcome ~= nil
+end
+
+-- Cloud Nine / Air Lock (include/battle_util.h:49-50). WEATHER_HAS_EFFECT
+-- is AbilityBattleEffects(ABILITYEFFECT_CHECK_ON_FIELD, ...) for each of the
+-- two abilities (src/battle_util.c:2354-2362): a holder counts only with
+-- hp != 0. WEATHER_HAS_EFFECT2 uses the ABILITYEFFECT_FIELD_SPORT default
+-- arm (:2325-2352), which has no HP test; source uses it only for the
+-- CalculateBaseDamage weather block. The engine halts the turn at a faint,
+-- so the two differ for a 0-HP holder awaiting its replacement and for a
+-- Self-Destruct/Explosion user, whose HP is already 0 at its damage call;
+-- the damage sites therefore use the HP-free variant, as source does (no
+-- Cloud Nine/Air Lock holder learns either move in FRLG; design R3).
+local function suppressesWeather(battler, ignoreHP)
+  local ability = battler.ability
+  if ability ~= BattleEngine.ABILITY_CLOUD_NINE and ability ~= BattleEngine.ABILITY_AIR_LOCK then
+    return false
+  end
+  return ignoreHP or battler.hp > 0
+end
+
+function BattleEngine:weatherHasEffect()
+  return not suppressesWeather(self.player, false) and not suppressesWeather(self.foe, false)
+end
+
+function BattleEngine:weatherHasEffectIgnoringHP()
+  return not suppressesWeather(self.player, true) and not suppressesWeather(self.foe, true)
+end
+
+-- The weather every gameplay check reads (WEATHER_HAS_EFFECT && family),
+-- or nil. The end-of-turn timer and texts read self.weather directly: source
+-- DoFieldEndTurnEffects never tests the abilities.
+function BattleEngine:activeWeather()
+  if self.weather.kind and self:weatherHasEffect() then return self.weather.kind end
+  return nil
+end
+
+-- The CalculateBaseDamage view (WEATHER_HAS_EFFECT2, no HP test).
+function BattleEngine:damageWeather()
+  if self.weather.kind and self:weatherHasEffectIgnoringHP() then return self.weather.kind end
+  return nil
 end
 
 function BattleEngine:_syncForcedSwitchHead()
@@ -1211,6 +1291,9 @@ function BattleEngine:supportsMove(move, moveId)
     return move.power == 0 and move.target == 0 -- MOVE_TARGET_SELECTED
   end
   if move.effect == BattleEngine.EFFECT_REFRESH then
+    return move.power == 0 and move.target == MOVE_TARGET_USER
+  end
+  if BattleEngine.WEATHER_MOVES[move.effect] then
     return move.power == 0 and move.target == MOVE_TARGET_USER
   end
   if move.effect == BattleEngine.EFFECT_REST then
@@ -1375,6 +1458,12 @@ function BattleEngine:applySecondaryStatus(targetSide, kind, certain, events)
   local ok = StatusConditions.canApply(target, kind)
   if not ok then return false end
   if kind == "freeze" and target.ability == BattleEngine.ABILITY_MAGMA_ARMOR then
+    return false
+  end
+  -- SetMoveEffect's freeze case (src/battle_script_commands.c:2257-2265):
+  -- WEATHER_HAS_EFFECT && sun refuses silently. The chance roll (and Tri
+  -- Attack's `% 3`) has already been drawn by the caller.
+  if kind == "freeze" and self:activeWeather() == "sun" then
     return false
   end
   StatusConditions.apply(target, kind, self.rng)
@@ -1748,7 +1837,7 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
     -- calculateBaseDamage halves defense for EFFECT_EXPLOSION after the
     -- ability terms (source order, src/pokemon.c:2505-2507).
     local damage = BattleFormulas.calculateBaseDamage(
-      attacker, defender, move, isCrit, self.sideStatus[defenderSide])
+      attacker, defender, move, isCrit, self.sideStatus[defenderSide], self:damageWeather(), moveId)
     if isCrit then damage = damage * BattleFormulas.CRIT_MULTIPLIER end
     local flags
     damage, flags = BattleFormulas.typeCalc(
@@ -1848,6 +1937,28 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
     -- turn) -> attackstring, ppreduce, But it failed.
     if slot then slot.pp = slot.pp - 1 end
     events[#events + 1] = { type = "moveFailed", side = attackerSide }
+    return
+  end
+
+  local weatherKind = BattleEngine.WEATHER_MOVES[move.effect]
+  if weatherKind then
+    -- BattleScript_EffectRainDance/SunnyDay/Sandstorm/Hail
+    -- (data/battle_scripts_1.s:1740-1758, :1585-1590, :2128-2133):
+    -- attackcanceler/attackstring/ppreduce, then setrain/setsunny/
+    -- setsandstorm/sethail. No accuracycheck, no RNG. The command fails
+    -- ("But it failed!", B_MSG_WEATHER_FAILED, src/battle_message.c:916)
+    -- when gBattleWeather already has the move's own family bits, the
+    -- permanent bit included; otherwise it assigns the whole word to the
+    -- temporary bit, overwriting any other family (permanent included), and
+    -- sets the shared duration to 5. Forecast is not represented.
+    if slot then slot.pp = slot.pp - 1 end
+    if self.weather.kind == weatherKind then
+      events[#events + 1] = { type = "moveFailed", side = attackerSide }
+    else
+      self.weather = { kind = weatherKind, permanent = false }
+      self.weatherDuration = BattleEngine.WEATHER_DURATION
+      events[#events + 1] = { type = "weatherSet", side = attackerSide, kind = weatherKind }
+    end
     return
   end
 
@@ -2300,7 +2411,7 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
   -- per-effect-id hit-count source.
   local multiHitEntry = BattleEngine.MULTI_HIT_MOVES[move.effect]
   if multiHitEntry then
-    self:resolveMultiHit(attackerSide, attacker, defenderSide, defender, move, multiHitEntry, events)
+    self:resolveMultiHit(attackerSide, attacker, defenderSide, defender, move, multiHitEntry, events, moveId)
     return
   end
 
@@ -2391,7 +2502,7 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
   end
 
   if move.effect == BattleEngine.EFFECT_TRIPLE_KICK then
-    self:resolveTripleKick(attackerSide, attacker, defenderSide, defender, move, events)
+    self:resolveTripleKick(attackerSide, attacker, defenderSide, defender, move, events, moveId)
     return
   end
 
@@ -2418,8 +2529,10 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
   -- side (self.sideStatus[defenderSide] already has exactly the .reflect/
   -- .lightScreen fields calculateBaseDamage expects); a crit's non-crit
   -- gate is handled inside that function, not here.
+  -- The weather terms (special branch only) use the HP-free Cloud Nine
+  -- test (WEATHER_HAS_EFFECT2) and the move id (Solar Beam halving).
   local damage = BattleFormulas.calculateBaseDamage(
-    attacker, defender, move, isCrit, self.sideStatus[defenderSide])
+    attacker, defender, move, isCrit, self.sideStatus[defenderSide], self:damageWeather(), moveId)
   if isCrit then
     damage = damage * BattleFormulas.CRIT_MULTIPLIER
   end
@@ -2860,7 +2973,7 @@ end
 --   * Entries WITHOUT sourceTail keep the pre-follow-up shape (checkFaint
 --     after every landed hit, no count after a KO, effectiveness on every
 --     damage event, no trailing roll). No current entry uses it.
-function BattleEngine:resolveMultiHit(attackerSide, attacker, defenderSide, defender, move, entry, events)
+function BattleEngine:resolveMultiHit(attackerSide, attacker, defenderSide, defender, move, entry, events, moveId)
   local hitCount
   if entry.fixed then
     hitCount = entry.fixed
@@ -2884,7 +2997,7 @@ function BattleEngine:resolveMultiHit(attackerSide, attacker, defenderSide, defe
     local isCrit = rolledCrit and not (self.firstBattle and not self.tutorialPlayerDamageDone)
 
     local damage = BattleFormulas.calculateBaseDamage(
-      attacker, defender, move, isCrit, self.sideStatus[defenderSide])
+      attacker, defender, move, isCrit, self.sideStatus[defenderSide], self:damageWeather(), moveId)
     if isCrit then
       damage = damage * BattleFormulas.CRIT_MULTIPLIER
     end
@@ -2961,7 +3074,7 @@ end
 -- The trailing seteffectwithchance Random() is not spent, matching the
 -- tracked plain-hit gap; note the source spends it on every path here,
 -- including a first-kick miss (bs1.s:1431).
-function BattleEngine:resolveTripleKick(attackerSide, attacker, defenderSide, defender, move, events)
+function BattleEngine:resolveTripleKick(attackerSide, attacker, defenderSide, defender, move, events, moveId)
   local hits, power = 0, 0
   local stopped
   for _ = 1, 3 do
@@ -2975,7 +3088,7 @@ function BattleEngine:resolveTripleKick(attackerSide, attacker, defenderSide, de
     local rolledCrit = BattleFormulas.critRoll(self.rng, self:critStageFor(attacker, move))
     local isCrit = rolledCrit and not (self.firstBattle and not self.tutorialPlayerDamageDone)
     local damage = BattleFormulas.calculateBaseDamage(
-      attacker, defender, kick, isCrit, self.sideStatus[defenderSide])
+      attacker, defender, kick, isCrit, self.sideStatus[defenderSide], self:damageWeather(), moveId)
     if isCrit then damage = damage * BattleFormulas.CRIT_MULTIPLIER end
     local flags
     damage, flags = BattleFormulas.typeCalc(damage, move.type, attacker.types, defender.types, self.typeChart)
@@ -3118,7 +3231,75 @@ function BattleEngine:resolveEndTurn(events, playerMove, foeMove)
   -- after HandleEndTurn_ContinueBattle's flinch/sleep work above.
   local sides = self:endTurnOrder(playerMove, foeMove)
   self:decaySideTimers(events)
+  -- Mist, Safeguard and Wish (not represented) come between the screens and
+  -- weather; every field case precedes every battler case
+  -- (src/battle_util.c:451-463, src/battle_main.c:2958-2963).
+  self:resolveWeatherEndTurn(events, sides)
   self:resolveStatusEndTurn(events, sides)
+end
+
+-- Real ENDTURN_RAIN/SANDSTORM/SUN/HAIL (src/battle_util.c:624-711), one
+-- case for the single active family:
+--   * Not permanent (or hail, which cannot be permanent and decrements
+--     unconditionally): decrement the shared duration; at 0 clear the
+--     weather and print the "stopped/subsided/faded" text, with no damage
+--     (BattleScript_SandStormHailEnds, data/battle_scripts_1.s:3184-3187).
+--   * Otherwise print the "continues" text. The counter set to 5 on turn T
+--     therefore prints "continues" at the ends of T..T+3 and "stopped" at
+--     T+4: sandstorm and hail deal four damage ticks.
+--   * Sandstorm/hail then run BattleScript_DamagingWeatherLoop (:3162-3182)
+--     over gBattlerByTurnOrder (`sides`, the ENDTURN_ORDER result):
+--     Cmd_weatherdamage (src/battle_script_commands.c:7216-7268) gives 0
+--     without WEATHER_HAS_EFFECT (the timer and text above are not
+--     suppressed), for a Rock/Steel/Ground or Sand Veil battler in sand, an
+--     Ice battler in hail, or an UNDERGROUND/UNDERWATER battler in either;
+--     ON_AIR (Fly/Bounce) is NOT exempt. Otherwise max(1, maxHP/16). A 0
+--     result is skipped silently; otherwise text, HP update, tryfaintmon,
+--     checkteamslost, and a decided battle ends the loop. No RNG anywhere.
+--   * A 0-HP battler is skipped (design D4): in source that slot already
+--     holds its replacement, which would take the tick (R2). The
+--     Ghost-without-Scope exemption is not represented (no Ghost battle).
+-- Do not use applyDamage: it targets a defender and advances Oak's tip.
+function BattleEngine:resolveWeatherEndTurn(events, sides)
+  local kind = self.weather.kind
+  if not kind then return end
+  if kind == "hail" or not self.weather.permanent then
+    self.weatherDuration = self.weatherDuration - 1
+    if self.weatherDuration == 0 then
+      self.weather = { kind = nil, permanent = false }
+      events[#events + 1] = { type = "weatherEnded", kind = kind }
+      return
+    end
+  end
+  events[#events + 1] = { type = "weatherContinues", kind = kind }
+  if kind ~= "sandstorm" and kind ~= "hail" then return end
+  for _, side in ipairs(sides) do
+    if self:isOver() then return end
+    local battler = self:battler(side)
+    if battler.hp > 0 and self:activeWeather() then
+      local function isType(t) return battler.types[1] == t or battler.types[2] == t end
+      local semi = battler.semiInvulnerable
+      local exempt = semi == "underground" or semi == "underwater"
+      if kind == "sandstorm" then
+        exempt = exempt or isType(BattleEngine.TYPE_ROCK) or isType(BattleEngine.TYPE_STEEL)
+          or isType(BattleEngine.TYPE_GROUND) or battler.ability == BattleEngine.ABILITY_SAND_VEIL
+      else
+        exempt = exempt or isType(BattleEngine.TYPE_ICE)
+      end
+      if not exempt then
+        local amount = math.max(1, math.floor(battler.maxHP / 16))
+        if amount > battler.hp then amount = battler.hp end
+        battler.hp = battler.hp - amount
+        events[#events + 1] = {
+          type = "weatherDamage", side = side, kind = kind,
+          amount = amount, hpRemaining = battler.hp,
+        }
+        if battler.hp == 0 then
+          self:checkFaint(side, events)
+        end
+      end
+    end
+  end
 end
 
 -- Real DoBattlerEndTurnEffects status cases (src/battle_util.c:805-841),
