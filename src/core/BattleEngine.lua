@@ -1143,8 +1143,10 @@ end
 -- hp != 0. WEATHER_HAS_EFFECT2 uses the ABILITYEFFECT_FIELD_SPORT default
 -- arm (:2325-2352), which has no HP test; source uses it only for the
 -- CalculateBaseDamage weather block. The engine halts the turn at a faint,
--- so the two differ only for a 0-HP holder awaiting its replacement, which
--- no damage calculation can see today (design R3).
+-- so the two differ for a 0-HP holder awaiting its replacement and for a
+-- Self-Destruct/Explosion user, whose HP is already 0 at its damage call;
+-- the damage sites therefore use the HP-free variant, as source does (no
+-- Cloud Nine/Air Lock holder learns either move in FRLG; design R3).
 local function suppressesWeather(battler, ignoreHP)
   local ability = battler.ability
   if ability ~= BattleEngine.ABILITY_CLOUD_NINE and ability ~= BattleEngine.ABILITY_AIR_LOCK then

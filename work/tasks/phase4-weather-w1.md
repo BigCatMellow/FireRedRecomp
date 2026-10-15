@@ -1,7 +1,7 @@
 # Task: weather slice W1 — weather state, the four weather moves, end-of-turn weather, damage terms
 
 - Task ID: `P4-WEATHER-W1`
-- Status: `IMPLEMENTED — awaiting independent review`
+- Status: `DONE — independently reviewed PASS`
 - Lane: full relay (new cross-turn battle state)
 - Spec: [weather design proposal](../reports/phase4-weather-design-proposal.md)
   ("State (W1)", "Weather moves (W1)", "End of turn (W1)", "Damage block
@@ -205,3 +205,12 @@ draw count in the existing suite moved.
 - Replays: no existing replay can contain the four moves (they were
   rejected), so none diverges; a battle using them changes HP totals and
   Fire/Water/Solar Beam damage from that point on. W1 adds no RNG draw.
+
+## Review (2026-10-15)
+
+[Implementation review](../reviews/2026-10-15-weather-w1-implementation-review.md):
+PASS (45/47 mutants killed; the two survivors swap the HP-free and HP-gated
+weather helpers at the ordinary and Explosion sites, unobservable with FRLG
+data). F1 applied (Cloud Nine helper comment now names the Explosion case);
+F2 optional test gap and F3 stale AICheckBadMove header (file-ownership
+limit) left as recorded.
