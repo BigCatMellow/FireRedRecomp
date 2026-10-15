@@ -83,6 +83,10 @@
 --   {type="focusEnergy", side=<attacker>}  -- Focus Energy: "is getting pumped!"
 --   {type="paralysisHealed", side=<target>} -- Smelling Salt
 --   {type="flinched", side=}          -- flinch canceller: move not used
+--   {type="focusPunchSetup", side=}   -- pre-turn "X is tightening its
+--    focus!", immediately after turnStart, player first (protection P5)
+--   {type="focusLost", side=}         -- Focus Punch user took move damage
+--    this turn: "X lost its focus and couldn't move!", no useMove (P5)
 --   {type="flinchPrevented", side=<target>, ability=39} -- Fake Out's
 --    certain flinch blocked by Inner Focus: "X's INNER FOCUS\nprevents
 --    flinching!" (protection slice P4)
@@ -940,6 +944,11 @@ BattleEngine.EFFECT_TRAP = 42         -- BattleScript_EffectTrap (bs1.s:829-835)
 -- BattleScript_ButItFailedAtkStringPpReduce, setmoveeffect MOVE_EFFECT_FLINCH
 -- | MOVE_EFFECT_CERTAIN, goto BattleScript_EffectHit.
 BattleEngine.EFFECT_FAKE_OUT = 158
+-- Protection slice P5: BattleScript_EffectFocusPunch (data/battle_scripts_1.s
+-- :2255-2261) and the pre-turn CheckFocusPunch_ClearVarsBeforeTurnStarts
+-- (src/battle_main.c:3669-3702), which tests the chosen move id.
+BattleEngine.EFFECT_FOCUS_PUNCH = 170
+BattleEngine.MOVE_FOCUS_PUNCH = 264
 BattleEngine.MOVE_WHIRLPOOL = 250     -- jumpifnotmove MOVE_WHIRLPOOL (bs1.s:830)
 BattleEngine.EFFECT_FOCUS_ENERGY = 47
 BattleEngine.MOVE_REST = 156
@@ -1190,6 +1199,15 @@ function BattleEngine.makeBattler(opts)
     -- sets 1 (the engine resolves the replacement after its end-of-turn
     -- step, where source decrements after it, :2964-2970).
     isFirstTurn = 2,
+    -- Protection slice P5: gProtectStructs[].physicalDmg || specialDmg != 0
+    -- (include/battle.h:206), the per-turn "took move damage" record read by
+    -- Focus Punch's jumpifnodamage (src/battle_script_commands.c:8757-8763).
+    -- Set by applyDamage for nonzero damage from the opposing battler's move
+    -- (Cmd_datahpupdate, :1822-1854: not passive damage, not Pain Split);
+    -- reset at each runTurn start (TurnValuesCleanUp(FALSE) clears the
+    -- whole struct after the previous turn, src/battle_main.c:3637-3639) and
+    -- on faint (FaintClearSetData, :2461). Battle-only, never persisted.
+    tookMoveDamage = false,
     moves = {},
     statStages = {
       attack = BattleFormulas.DEFAULT_STAT_STAGE,
@@ -1239,6 +1257,14 @@ function BattleEngine.new(opts)
     rng = opts.rng,
     turn = 0,
     runTries = 0, -- real gBattleStruct->runTries
+    -- Protection slice P5: HITMARKER_RUN (include/constants/battle.h:168).
+    -- Set when a B_ACTION_RUN reaches STATE_WAIT_ACTION_CASE_CHOSEN
+    -- (src/battle_main.c:3326-3328) and cleared only by gHitMarker = 0 at
+    -- battle start (:2257), so a failed run silences the Focus Punch setup
+    -- text for the rest of the battle (decision D4). Player-only: source
+    -- also sets it for an AI flee (roamers, Safari), which the engine does
+    -- not model (review F8).
+    runAttempted = false,
     -- Real gSideStatuses/gSideTimers, reduced to the two fields this slice
     -- models (SIDE_STATUS_REFLECT/SIDE_STATUS_LIGHTSCREEN and their paired
     -- reflectTimer/lightscreenTimer, src/battle_util.c). Keyed by side
@@ -1381,6 +1407,8 @@ function BattleEngine:recordFaint(side, events)
   -- FaintClearSetData zeroes gDisableStructs and sets isFirstTurn = 2
   -- (src/battle_main.c:2458-2459, :2481; protection slice P4).
   battler.isFirstTurn = 2
+  -- ...and gProtectStructs (src/battle_main.c:2461; protection slice P5).
+  battler.tookMoveDamage = false
   -- FaintClearSetData also clears the escape prevention and the wrap
   -- ANOTHER battler holds from this slot (src/battle_main.c:2444-2452).
   self:clearHeldBy(side)
@@ -2088,6 +2116,16 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
     -- the hit and miss paths; nothing observes it in between.
     attacker.semiInvulnerable = nil
     self.noPPDeduct = true
+  end
+  if move.effect == BattleEngine.EFFECT_FOCUS_PUNCH and attacker.tookMoveDamage then
+    -- BattleScript_EffectFocusPunch (data/battle_scripts_1.s:2255-2261):
+    -- attackcanceler, then jumpifnodamage (src/battle_script_commands.c
+    -- :8757-8763) continues to ppreduce and "lost its focus and couldn't
+    -- move!" when physicalDmg || specialDmg is nonzero. There is no
+    -- attackstring, so no "used" line, and no RNG. Protection slice P5.
+    if slot and slot.pp > 0 then slot.pp = slot.pp - 1 end
+    events[#events + 1] = { type = "focusLost", side = attackerSide }
+    return
   end
   self.currentMove = move
   events[#events + 1] = { type = "useMove", side = attackerSide, move = moveId }
@@ -3448,6 +3486,10 @@ function BattleEngine:applyDamage(attackerSide, defenderSide, defender, damage, 
   defender.hp = defender.hp - damage
   if defenderSide ~= attackerSide then
     self.moveDamageDealt = (self.moveDamageDealt or 0) + damage
+    -- Cmd_datahpupdate records gHpDealt into physicalDmg/specialDmg
+    -- (src/battle_script_commands.c:1822-1854); a 0-HP hit records 0
+    -- (protection slice P5).
+    if damage > 0 then defender.tookMoveDamage = true end
   end
   events[#events + 1] = {
     type = "damage",
@@ -4195,6 +4237,39 @@ function BattleEngine:chosenMoveRecord(side, action)
   return self.moves[self:battler(side).moves[action.moveSlot].move]
 end
 
+-- Protection slice P5: CheckFocusPunch_ClearVarsBeforeTurnStarts
+-- (src/battle_main.c:3669-3702). It runs after both actions are chosen and
+-- SetActionsAndBattlersTurnOrder has run (:3578-3579, :3619-3620), before
+-- the first action, so its texts head the turn. Skipped entirely while
+-- HITMARKER_RUN is set (:3671). Otherwise, in battler-id order (the player,
+-- then the foe; not turn order), a battler whose gChosenMoveByBattler is
+-- MOVE_FOCUS_PUNCH, that is not asleep (freeze, paralysis and confusion do
+-- not suppress it), not Truant-loafing (not modeled) and not noValidMoves
+-- (every slot at 0 PP: Struggle) runs BattleScript_FocusPunchSetUp
+-- (data/battle_scripts_1.s:3649-3655): "X is tightening\nits focus!"
+-- (src/battle_message.c:224). No RNG, so its position relative to the
+-- speed-tie draw is unobservable. A locked battler skips selection and its
+-- chosen move stays MOVE_NONE (:2907, :3125-3130, :3288).
+function BattleEngine:resolveFocusPunchSetup(playerAction, foeAction, events)
+  if self.runAttempted then return end
+  for _, entry in ipairs({ { BattleEngine.SIDE_PLAYER, playerAction }, { BattleEngine.SIDE_FOE, foeAction } }) do
+    local side, action = entry[1], entry[2]
+    local b = self:battler(side)
+    local slot = action and action.action == "move" and b.moves[action.moveSlot]
+    if slot and slot.move == BattleEngine.MOVE_FOCUS_PUNCH
+        and not self.lockedThisTurn[side]
+        and not StatusConditions.isAsleep(b.status) then
+      local noValidMoves = true
+      for i = 1, #b.moves do
+        if b.moves[i].pp > 0 then noValidMoves = false; break end
+      end
+      if not noValidMoves then
+        events[#events + 1] = { type = "focusPunchSetup", side = side }
+      end
+    end
+  end
+end
+
 -- Runs one full turn. Each action is a table:
 --   {action="move", moveSlot=n}   -- use the move in that 1-based slot
 --   {action="run"}                -- player only (real singles run)
@@ -4231,6 +4306,9 @@ function BattleEngine:runTurn(playerAction, foeAction)
   -- gProtectStructs[].targetNotAffected is per turn (cleared with the
   -- other protect structs after the end-of-turn effects).
   self.player.targetNotAffected, self.foe.targetNotAffected = false, false
+  -- gProtectStructs[].physicalDmg/specialDmg are per turn (protection slice
+  -- P5): TurnValuesCleanUp(FALSE) zeroed them after the previous turn.
+  self.player.tookMoveDamage, self.foe.tookMoveDamage = false, false
   -- A locked side's chosen action is replaced by its locked move.
   self.lockedThisTurn = {
     [BattleEngine.SIDE_PLAYER] = self:isLocked(BattleEngine.SIDE_PLAYER),
@@ -4242,6 +4320,12 @@ function BattleEngine:runTurn(playerAction, foeAction)
   if self:isLocked(BattleEngine.SIDE_FOE) then
     foeAction = { action = "move", moveSlot = self.foe.lockedSlot }
   end
+  -- Protection slice P5. HITMARKER_RUN is set when the chosen run reaches
+  -- STATE_WAIT_ACTION_CASE_CHOSEN (src/battle_main.c:3326-3328), before the
+  -- hook below; the trainer and trapped vetoes (:3239-3253) return earlier
+  -- and never reach runTurn here either.
+  if playerAction.action == "run" then self.runAttempted = true end
+  self:resolveFocusPunchSetup(playerAction, foeAction, events)
   -- rechargeTimer counts down at each turn's action start; at 0 the
   -- recharge lapses unused (src/battle_main.c:3641-3646).
   for _, b in ipairs({ self.player, self.foe }) do
