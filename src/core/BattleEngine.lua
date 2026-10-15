@@ -2520,8 +2520,13 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
     local atLimit = (delta > 0 and current == BattleFormulas.MAX_STAT_STAGE)
       or (delta < 0 and current == BattleFormulas.MIN_STAT_STAGE)
     if atLimit then
+      -- ChangeStatBuffs with STAT_CHANGE_ALLOW_PTR prints
+      -- B_MSG_STAT_WONT_INCREASE / _DECREASE from the move's direction
+      -- (src/battle_script_commands.c:6772-6775, :6799-6810), so the
+      -- prevented event keeps the signed delta: the controller picks "won't
+      -- go higher!" for stages > 0 and "won't go lower!" otherwise.
       events[#events + 1] = {
-        type="statChange", side=targetSide, stat=stat, stages=0, prevented=true,
+        type="statChange", side=targetSide, stat=stat, stages=delta, prevented=true,
       }
     else
       local newStage = current + delta
