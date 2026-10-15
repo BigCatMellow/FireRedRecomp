@@ -1080,7 +1080,7 @@ check("a missed multi-hit move never reaches setmultihitcounter -- exactly one R
 -- newly-switched-in battler. Real Cmd_switchindataupdate confirms an
 -- ordinary switch-in starts with neutral stat stages regardless of what
 -- the outgoing battler's stages were.
-battle = makeBattle({ 0, 0, 0 }, { { move = Data.MOVE_GROWL, pp = 40 } }, { { move = Data.MOVE_TACKLE, pp = 1 } })
+battle = makeBattle({ 0, 0, 0, 0 }, { { move = Data.MOVE_GROWL, pp = 40 } }, { { move = Data.MOVE_TACKLE, pp = 1 } })
 battle.foe.statStages.attack = 5 -- simulate a prior Growl already having landed
 local incoming = BattleEngine.makeBattler({
   species = 99, level = 10, stats = charStats, types = Data.CHARMANDER.types,
@@ -1094,8 +1094,12 @@ check("the incoming battler starts with neutral stat stages, not carried over fr
   incoming.statStages.attack == 6)
 check("the foe still attacks the same turn, landing on the newly-switched-in battler",
   incoming.hp < incoming.maxHP)
-check("a switch consumes no RNG of its own (only the foe's ordinary attack draws)",
-  battle.rng.draws == 3, battle.rng.draws)
+-- Weather W0: the incoming battler (Charmander stats, speed 11) ties the
+-- foe (11) and a switch is MOVE_NONE vs Tackle, both priority 0, so
+-- ENDTURN_ORDER draws one `Random() & 1` (src/battle_util.c:484-501,
+-- src/battle_main.c:3486-3496, :3523). The switch itself still draws none.
+check("a switch consumes no RNG of its own (the foe's attack draws 3, then one end-of-turn tie draw)",
+  battle.rng.draws == 4, battle.rng.draws)
 
 -- The same recoil-outcome guard capture/run already rely on: a foe recoil
 -- move that faints the foe itself right after a switch must not have its

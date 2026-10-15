@@ -192,10 +192,13 @@ end
 do
   -- Paralyzed player speed 40 -> 10 == foe 10: a speed tie draw first.
   -- Tie draw 0 -> player first; paralysis draw 4 -> fully paralyzed.
-  local b = battle({ 0, 4, MISS }, { playerStatus = S.PARALYSIS, playerSpeed = 40 })
+  -- Weather W0: ENDTURN_ORDER re-runs GetWhoStrikesFirst(FALSE) on the
+  -- same tie (src/battle_util.c:484-501, src/battle_main.c:3523), so a
+  -- fourth draw (`Random() & 1`, 0 -> player first) follows the foe's miss.
+  local b = battle({ 0, 4, MISS, 0 }, { playerStatus = S.PARALYSIS, playerSpeed = 40 })
   local events = b:runTurn(MOVE, MOVE)
-  check("paralysis /4 creates a speed tie that consumes the tie draw",
-    b.rng.draws == 3 and select(2, find(events, "fullyParalyzed", "player")) < select(2, find(events, "useMove", "foe")),
+  check("paralysis /4 creates a speed tie that consumes the tie draw (turn start and end of turn)",
+    b.rng.draws == 4 and select(2, find(events, "fullyParalyzed", "player")) < select(2, find(events, "useMove", "foe")),
     types(events))
   check("Random() % 4 == 0 fully paralyzes without PP", find(events, "fullyParalyzed", "player")
     and not find(events, "useMove", "player") and b.player.moves[1].pp == 10)
@@ -545,8 +548,11 @@ do
 end
 
 do
-  -- Hoisted actions: switch, failed run and failed capture still tick, in
-  -- player-first order, after the screen timers.
+  -- Hoisted actions: switch, failed run and failed capture still tick,
+  -- after the screen timers. Order is the ENDTURN_ORDER recompute (weather
+  -- W0; src/battle_util.c:484-501): here the incoming battler (20) is
+  -- faster than the foe (10), so it ticks first. The foe-faster and
+  -- priority cases are in tests/battle_end_turn_order_test.lua.
   local b = battle({ MISS }, { playerStatus = S.POISON, foeStatus = S.POISON })
   local incoming = BattleEngine.makeBattler({ species = 1, level = 10, stats = stats(40, 20),
     types = { 0, 0 }, status = S.BURN, moves = { { move = Data.MOVE_TACKLE, pp = 10 } } })
