@@ -36,7 +36,8 @@
 --    start another turn until BattleEngine:resolveForcedSwitch(side,
 --    newBattler) is called. See the header's forced-switch paragraph below.
 --   {type="forcedSwitchResolved", side=}           -- resolveForcedSwitch
---    supplied the replacement; the battle may proceed normally again.
+--    supplied the replacement; the battle may proceed normally again. The
+--    replacement's switch-in ability events follow it (weather W3b).
 --   {type="noPP", side=, move=}                   -- see the Struggle stub
 --   {type="moveFailed", side=}                    -- generic But it failed; distinct from screenFailed
 --   {type="statChange", side=<target>, stat=, stages=-1, prevented=}
@@ -97,6 +98,10 @@
 --    hpRemaining=}                     -- end-of-turn sandstorm/hail damage
 --   {type="rainDish", side=, amount=, hpRemaining=} -- Rain Dish end-of-turn
 --    heal in rain (weather W3a): "X's RAIN DISH\nrestored its HP a little!"
+--   {type="weatherAbility", side=, ability=, kind=} -- Drizzle (2)/Sand
+--    Stream (45)/Drought (70) switch-in set permanent "rain"|"sandstorm"|
+--    "sun" (weather W3b); from resolveBattleStart, runTurn's switch branch
+--    and resolveForcedSwitch
 --   {type="battleEnd", outcome="playerWon"|"playerLost"|"ran"|"caught"}
 --
 -- Real turn structure ported, in real execution order:
@@ -274,7 +279,8 @@
 --     Confuse/Teeter Dance/Swagger/Flatter handlers (applyConfusion).
 --     Soundproof is not represented (Supersonic, Snore, Growl, Sing).
 --   * Abilities only where named (Damp, Guts, the status guards above,
---     Cloud Nine/Air Lock, Sand Veil, Swift Swim/Chlorophyll and Rain Dish);
+--     Cloud Nine/Air Lock, Sand Veil, Swift Swim/Chlorophyll, Rain Dish and
+--     the Drizzle/Sand Stream/Drought switch-in weather);
 --     no held items,
 --     multi-turn/charging moves, trapping, forced switching, OHKO moves,
 --     double battles, trainer AI, or EXP/level-up on victory.
@@ -289,8 +295,12 @@
 --     Sun/Synthesis/Moonlight.
 --   * Weather slice W3a (work/tasks/phase4-weather-w3a.md): Swift Swim/
 --     Chlorophyll turn-order speed (turn start and ENDTURN_ORDER), Sand
---     Veil's sandstorm accuracy term, and Rain Dish's end-of-turn heal. Not
---     yet: Drizzle/Drought/Sand Stream (W3b), Forecast.
+--     Veil's sandstorm accuracy term, and Rain Dish's end-of-turn heal.
+--   * Weather slice W3b (work/tasks/phase4-weather-w3b.md): the switch-in
+--     ability hook (resolveSwitchInAbility) for Drizzle/Sand Stream/Drought,
+--     run at battle start (resolveBattleStart, leads fastest first), on a
+--     voluntary switch (runTurn) and on a forced replacement
+--     (resolveForcedSwitch). Not yet: Forecast, Intimidate, Trace.
 --   * Pure single-stat stage-change moves (Growl/Tail Whip's full real
 --     family) ARE supported -- see BattleEngine.STAT_STAGE_MOVES and the
 --     move.power == 0 branch of resolveMove.
@@ -880,6 +890,18 @@ BattleEngine.ABILITY_SAND_VEIL = 8
 BattleEngine.ABILITY_CLOUD_NINE = 13  -- include/constants/abilities.h
 BattleEngine.ABILITY_AIR_LOCK = 77
 BattleEngine.ABILITY_RAIN_DISH = 44   -- weather W3a
+-- Weather slice W3b: AbilityBattleEffects(ABILITYEFFECT_ON_SWITCHIN)
+-- (src/battle_util.c:1748-1774). Ability id -> the weather family it sets.
+BattleEngine.ABILITY_DRIZZLE = 2
+BattleEngine.ABILITY_SAND_STREAM = 45
+BattleEngine.ABILITY_DROUGHT = 70
+BattleEngine.SWITCH_IN_WEATHER_ABILITIES = { [2] = "rain", [45] = "sandstorm", [70] = "sun" }
+-- Overworld weathers ABILITYEFFECT_SWITCH_IN_WEATHER acts on
+-- (src/battle_util.c:1709-1746; include/constants/weather.h: RAIN 3,
+-- RAIN_THUNDERSTORM 5, SANDSTORM 8, DROUGHT 12, DOWNPOUR 13). No FRLG map
+-- header, map script or battle setup reaches any of them at the pin (weather
+-- design review F7), so resolveBattleStart asserts instead of modelling it.
+BattleEngine.OVERWORLD_BATTLE_WEATHERS = { [3] = true, [5] = true, [8] = true, [12] = true, [13] = true }
 BattleEngine.MOVE_SOLAR_BEAM = 76     -- CalculateBaseDamage tests the move id
 BattleEngine.WEATHER_DURATION = 5     -- gWishFutureKnock.weatherDuration = 5
 -- Weather slice W2 (work/tasks/phase4-weather-w2.md): the weather-dependent
@@ -1142,6 +1164,13 @@ function BattleEngine.new(opts)
     -- gWishFutureKnock.weatherDuration (include/battle.h:263): one shared
     -- byte, not per family.
     weatherDuration = 0,
+    -- Weather W3b. resolveBattleStart runs once (TryDoEventsBeforeFirstTurn).
+    battleStartResolved = false,
+    -- Events resolveForcedSwitch returned that no presenter has taken yet
+    -- (takeForcedSwitchEvents). The return value stays authoritative; this
+    -- queue lets BattleSceneController present a replacement's switch-in
+    -- events when the caller that resolved the switch ignores them.
+    forcedSwitchEvents = {},
   }, BattleEngine)
 end
 
@@ -3283,7 +3312,110 @@ function BattleEngine:resolveForcedSwitch(side, newBattler)
   end
   table.remove(self.pendingForcedSwitches, 1)
   self:_syncForcedSwitchHead()
-  return { { type = "forcedSwitchResolved", side = side } }
+  local events = { { type = "forcedSwitchResolved", side = side } }
+  -- BattleScript_HandleFaintedMon (data/battle_scripts_1.s:2824-2884):
+  -- openpartyscreen, printstring SWITCHINMON, switchinanim, then
+  -- switchineffects BS_FAINTED (:2884), whose
+  -- Cmd_switchineffects (src/battle_script_commands.c:4961-5010) runs
+  -- AbilityBattleEffects(ABILITYEFFECT_ON_SWITCHIN) for the replacement.
+  self:resolveSwitchInAbility(side, events)
+  for _, event in ipairs(events) do
+    self.forcedSwitchEvents[#self.forcedSwitchEvents + 1] = event
+  end
+  return events
+end
+
+-- Returns, and forgets, the events resolveForcedSwitch produced since the
+-- last call (or since the last runTurn). For a presenter whose caller
+-- resolved the switch but ignored the returned list.
+function BattleEngine:takeForcedSwitchEvents()
+  local events = self.forcedSwitchEvents
+  self.forcedSwitchEvents = {}
+  return events
+end
+
+-- Weather slice W3b. AbilityBattleEffects(ABILITYEFFECT_ON_SWITCHIN, battler)
+-- (src/battle_util.c:1704-1815), weather cases only:
+--   * Drizzle: if !(gBattleWeather & B_WEATHER_RAIN_PERMANENT), assign
+--     RAIN_PERMANENT | RAIN_TEMPORARY (:1748-1756). A temporary rain is
+--     therefore converted to permanent rain, with the text.
+--   * Sand Stream: if !(gBattleWeather & SANDSTORM_PERMANENT), assign
+--     B_WEATHER_SANDSTORM (both bits) (:1757-1765).
+--   * Drought: if !(gBattleWeather & SUN_PERMANENT), assign B_WEATHER_SUN
+--     (both bits) (:1766-1774).
+--   Each assignment replaces the whole word, so it overwrites any other
+--   family, permanent or not. gWishFutureKnock.weatherDuration is not
+--   touched. When the family's permanent bit is already set, nothing happens
+--   and nothing is printed. There is no WEATHER_HAS_EFFECT test: under Cloud
+--   Nine/Air Lock the weather is still set and announced.
+--   BattleScript_DrizzleActivates/SandstreamActivates/DroughtActivates
+--   (data/battle_scripts_1.s:3918-3924, :3946-3952, :4013-4019): pause,
+--   printstring, animation, BattleScript_WeatherFormChanges (Forecast, not
+--   represented). No RNG.
+--   * Cloud Nine/Air Lock (:1798-1813) only re-check Castform: no event.
+--   * Intimidate, Trace and Forecast are not represented.
+-- Safari battles skip AbilityBattleEffects (:1678); no Safari battle is
+-- modelled.
+function BattleEngine:resolveSwitchInAbility(side, events)
+  local battler = self:battler(side)
+  local kind = BattleEngine.SWITCH_IN_WEATHER_ABILITIES[battler.ability]
+  if not kind then return end
+  if self.weather.kind == kind and self.weather.permanent then return end
+  self.weather = { kind = kind, permanent = true }
+  events[#events + 1] = { type = "weatherAbility", side = side, ability = battler.ability, kind = kind }
+end
+
+-- Weather design decision D3 (work/reviews/2026-10-14-weather-design-
+-- review.md): source breaks a battle-start speed tie with `Random() & 1`
+-- (GetWhoStrikesFirst(..., TRUE) inside TryDoEventsBeforeFirstTurn,
+-- src/battle_main.c:2864-2872). That draw is deferred to the RNG-parity item
+-- together with gRandomTurnNumber (:2926), so this is the one place that
+-- orders a tie: player first, no draw. The later item changes only this
+-- function.
+function BattleEngine:breakBattleStartSpeedTie()
+  return { BattleEngine.SIDE_PLAYER, BattleEngine.SIDE_FOE }
+end
+
+-- gBattlerByTurnOrder at battle start (src/battle_main.c:2864-2872):
+-- GetWhoStrikesFirst with ignoreChosenMoves = TRUE, so speed only, no
+-- priority. Speed is effectiveSpeed (stage, paralysis; Swift Swim/
+-- Chlorophyll read the weather, which is always clear before the first
+-- switch-in). Badge boost, Macho Brace and Quick Claw are not modelled, as
+-- at turn start.
+function BattleEngine:battleStartOrder()
+  local weather = self:activeWeather()
+  local playerSpeed = BattleFormulas.effectiveSpeed(self.player, weather)
+  local foeSpeed = BattleFormulas.effectiveSpeed(self.foe, weather)
+  if playerSpeed > foeSpeed then
+    return { BattleEngine.SIDE_PLAYER, BattleEngine.SIDE_FOE }
+  elseif playerSpeed < foeSpeed then
+    return { BattleEngine.SIDE_FOE, BattleEngine.SIDE_PLAYER }
+  end
+  return self:breakBattleStartSpeedTie()
+end
+
+-- Real TryDoEventsBeforeFirstTurn (src/battle_main.c:2856-2927), the parts
+-- this engine represents: order the leads (battleStartOrder), then run
+-- ABILITYEFFECT_ON_SWITCHIN for each, fastest first (:2879-2887). The order
+-- is computed once, so with two different-family setters the slower one
+-- runs last and its weather stays. Returns the event list. Call once, after
+-- the intro/send-out messages and before the first runTurn;
+-- BattleSceneController.new does this.
+--
+-- `overworldWeather` (optional, include/constants/weather.h id) stands in
+-- for ABILITYEFFECT_SWITCH_IN_WEATHER (:2873-2878). Every weather it acts on
+-- is unreachable in FRLG at the pin, so passing one is an error; any other
+-- value is a no-op.
+function BattleEngine:resolveBattleStart(overworldWeather)
+  assert(not self.battleStartResolved, "battle start was already resolved")
+  assert(not BattleEngine.OVERWORLD_BATTLE_WEATHERS[overworldWeather],
+    "overworld battle weather is unreachable in FRLG at this pin")
+  self.battleStartResolved = true
+  local events = {}
+  for _, side in ipairs(self:battleStartOrder()) do
+    self:resolveSwitchInAbility(side, events)
+  end
+  return events
 end
 
 -- Real ENDTURN_ORDER (src/battle_util.c:484-501): gBattlerByTurnOrder is
@@ -3521,6 +3653,8 @@ function BattleEngine:runTurn(playerAction, foeAction)
   assert(not self.awaitingForcedSwitch,
     "a forced switch is pending; call resolveForcedSwitch first")
   local events = {}
+  -- A forced switch is always resolved (and presented) before the next turn.
+  self.forcedSwitchEvents = {}
   self.turn = self.turn + 1
   events[#events + 1] = { type = "turnStart", turn = self.turn }
   -- STATUS2_FLINCHED is cleared for every battler between turns
@@ -3573,6 +3707,10 @@ function BattleEngine:runTurn(playerAction, foeAction)
       "switch needs a caller-supplied, already-eligible battler")
     self.player = playerAction.battler
     events[#events + 1] = { type = "switch", side = BattleEngine.SIDE_PLAYER }
+    -- BattleScript_ActionSwitch (data/battle_scripts_1.s:3046-3078) ends
+    -- with switchineffects BS_ATTACKER (:3076), before the foe's move
+    -- (weather W3b).
+    self:resolveSwitchInAbility(BattleEngine.SIDE_PLAYER, events)
     self:resolveMove(BattleEngine.SIDE_FOE, foeAction.moveSlot, events)
     -- Same guard the capture/run branches below already use: a recoil/
     -- drain move can end the battle via the foe's own faint inside
