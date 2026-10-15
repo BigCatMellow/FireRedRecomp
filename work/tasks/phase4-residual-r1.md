@@ -1,7 +1,7 @@
 # Task: residual slice R1 — Leech Seed, Nightmare, Curse, Rapid Spin's seed arm, deferred team check
 
 - Task ID: `P4-RESIDUAL-R1`
-- Status: `IMPLEMENTED — awaiting independent review`
+- Status: `DONE — independently reviewed PASS WITH CORRECTIONS (applied)`
 - Lane: full relay (new battle-only volatile state, new end-of-turn output,
   a deferred team-loss check)
 - Spec: [residual effects design proposal](../reports/phase4-residual-effects-design-proposal.md)
@@ -271,3 +271,14 @@ Abbreviations: `bsc.c` `src/battle_script_commands.c`, `bs1.s`
   Nightmare and Leech Seed. Only the rows/handlers R1 needs were changed,
   as the task requires.
 - ROM fixture pending for the four records.
+
+## Review (2026-10-15)
+
+[Implementation review](../reviews/2026-10-15-residual-r1-implementation-review.md):
+PASS WITH CORRECTIONS. F1 applied: two new checks pin the F1 stop after a
+deciding Nightmare tick (no Curse tick follows) and after a deciding Curse tick
+(no rampage tick follows); the reviewer's surviving mutants M19/M20 now each
+fail one check. `tests/battle_residual_r1_test.lua`: 105 passed. F2 (stale
+AICheckBadMove no-op comments, shared file), F3 (proposal leftovers:
+`clearHeldBy` now belongs to R2), F4 (secondary +6 raise text, separate
+ticket) and F5 recorded.

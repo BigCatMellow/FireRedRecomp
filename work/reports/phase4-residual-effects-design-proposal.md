@@ -1077,3 +1077,7 @@ landed in this document:
 | F8.5 (exp timing) | Risk R3 |
 | F8.6 (citation `bu.c:1143`) | §5 |
 | D1-D6 | "Decisions for review" resolution table |
+
+> R1 implementation note (2026-10-15): `clearHeldBy` was deferred to R2, where
+> the first battler-held field (escape prevention) arrives; R1 clears a
+> fainting battler's own flags in `recordFaint`.

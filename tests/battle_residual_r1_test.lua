@@ -388,6 +388,31 @@ do
     types(events) == "leechSeedDrain,faint,statusDamage,battleEnd" and e.player.hp == 350
       and e.player.rampageTurns == 1 and e.rng.draws == 0, types(events))
 
+  -- Review F1 (M19): the Nightmare tick decides it; the Curse tick after it
+  -- must not run. Asleep player (sleep 3), 400/4 = 100 per tick.
+  e = battle({}, { foeHP = 80, foeCurrentHP = 10, foeSpeed = 40, playerStatus = S.withSleepTurns(0, 3) })
+  e.foe.seeded = true
+  e.player.nightmare = true
+  e.player.cursed = true
+  events = {}
+  e:resolveStatusEndTurn(events, { "foe", "player" })
+  check("F1: Nightmare decides; no Curse tick after battleEnd",
+    types(events) == "leechSeedDrain,faint,nightmareDamage,battleEnd" and e.player.hp == 300
+      and e.outcome == "playerWon", types(events))
+
+  -- Review F1 (M20): the Curse tick decides it; the rampage tick after it
+  -- must not run (counter unchanged, no fatigue draw).
+  e = battle({}, { foeHP = 80, foeCurrentHP = 10, foeSpeed = 40 })
+  e.foe.seeded = true
+  e.player.cursed = true
+  e.player.rampageTurns = 1
+  e.player.lockedSlot = 1
+  events = {}
+  e:resolveStatusEndTurn(events, { "foe", "player" })
+  check("F1: Curse decides; no rampage tick after battleEnd",
+    types(events) == "leechSeedDrain,faint,curseDamage,battleEnd" and e.player.hp == 300
+      and e.player.rampageTurns == 1 and e.rng.draws == 0, types(events))
+
   -- Without a later damage tick the post-phase check decides it, and the
   -- player's whole list (Rain Dish, the rampage tick) still runs first.
   -- Rain: 400/16 = 25 heal from 300. Rampage 1 -> 0 -> fatigue confusion
