@@ -548,6 +548,11 @@ function BattleSceneController:_eventMessages(events)
       add(name(event.side) .. " must\nrecharge!") -- :185
     elseif event.type == "flinched" then
       add(name(event.side) .. " flinched!") -- battle_message.c:123
+    elseif event.type == "flinchPrevented" then
+      -- sText_PkmnsXPreventsFlinching (battle_message.c:296) via
+      -- BattleScript_FlinchPrevention; Inner Focus is the only reachable
+      -- ability (protection slice P4, Fake Out).
+      add(possessive(name(event.side)) .. " INNER FOCUS\nprevents flinching!")
     elseif event.type == "confusedTurn" then
       add(name(event.side) .. " is\nconfused!") -- :114
     elseif event.type == "confusionSelfHit" then

@@ -167,7 +167,7 @@ local inventory = {
   [155] = {"represented", true, 1, {19,91,291,340}}, -- EFFECT_SEMI_INVULNERABLE: ROM fixture pending (phase4_semi_invulnerable_effect_rom_test)
   [156] = {"blocked_on_state", false, 0, {111}}, -- EFFECT_DEFENSE_CURL
   [157] = {"represented", true, 0, {135,208}}, -- EFFECT_SOFTBOILED: ROM fixture pending (phase4_batch3_status_effect_rom_test)
-  [158] = {"blocked_on_state", true, 1, {252}}, -- EFFECT_FAKE_OUT
+  [158] = {"represented", true, 1, {252}}, -- EFFECT_FAKE_OUT: ROM fixture pending (phase4_protection_p4_effect_rom_test)
   [159] = {"blocked_on_state", true, 1, {253}}, -- EFFECT_UPROAR
   [160] = {"blocked_on_state", false, 0, {254}}, -- EFFECT_STOCKPILE
   [161] = {"blocked_on_state", true, 1, {255}}, -- EFFECT_SPIT_UP
@@ -228,12 +228,12 @@ local inventory = {
 local expectedTotals = {
   moves = 354, defined = 214, used = 198, unused = 16,
   positive = 216, zero = 138, admitted = 299, rejected = 55,
-  admitted_uncovered_positive = 26,
+  admitted_uncovered_positive = 25,
 }
 local expectedClasses = {
-  represented = {families = 125, moves = 273, positive = 189, zero = 84},
+  represented = {families = 126, moves = 274, positive = 190, zero = 84},
   candidate = {families = 0, moves = 0, positive = 0, zero = 0},
-  blocked_on_state = {families = 72, moves = 80, positive = 26, zero = 54},
+  blocked_on_state = {families = 71, moves = 79, positive = 25, zero = 54},
   intentionally_rejected = {families = 1, moves = 1, positive = 1, zero = 0},
   unused = {families = 16, moves = 0, positive = 0, zero = 0},
 }

@@ -83,6 +83,9 @@
 --   {type="focusEnergy", side=<attacker>}  -- Focus Energy: "is getting pumped!"
 --   {type="paralysisHealed", side=<target>} -- Smelling Salt
 --   {type="flinched", side=}          -- flinch canceller: move not used
+--   {type="flinchPrevented", side=<target>, ability=39} -- Fake Out's
+--    certain flinch blocked by Inner Focus: "X's INNER FOCUS\nprevents
+--    flinching!" (protection slice P4)
 --   {type="confusedTurn", side=}      -- "is confused!" (still confused)
 --   {type="confusionSelfHit", side=, amount=, hpRemaining=}
 --   {type="confusionEnded", side=}    -- snapped out; move proceeds
@@ -932,6 +935,11 @@ BattleEngine.EFFECT_INGRAIN = 181     -- BattleScript_EffectIngrain (bs1.s:2372-
 BattleEngine.ABILITY_RUN_AWAY = 50    -- include/constants/abilities.h
 -- Residual slice R3 (work/tasks/phase4-residual-r3.md).
 BattleEngine.EFFECT_TRAP = 42         -- BattleScript_EffectTrap (bs1.s:829-835)
+-- Protection slice P4: BattleScript_EffectFakeOut (data/battle_scripts_1.s
+-- :2044-2048): attackcanceler, jumpifnotfirstturn
+-- BattleScript_ButItFailedAtkStringPpReduce, setmoveeffect MOVE_EFFECT_FLINCH
+-- | MOVE_EFFECT_CERTAIN, goto BattleScript_EffectHit.
+BattleEngine.EFFECT_FAKE_OUT = 158
 BattleEngine.MOVE_WHIRLPOOL = 250     -- jumpifnotmove MOVE_WHIRLPOOL (bs1.s:830)
 BattleEngine.EFFECT_FOCUS_ENERGY = 47
 BattleEngine.MOVE_REST = 156
@@ -1172,6 +1180,16 @@ function BattleEngine.makeBattler(opts)
     --   wrapMove  gBattleStruct->wrappedMove (bsc.c:2492-2493), for texts.
     wrapTurns = 0,
     wrapMove = nil,
+    -- Protection slice P4: gDisableStructs[].isFirstTurn (include/battle.h
+    -- :164), battle-only, never persisted. 2 when the battler enters (battle
+    -- start, switch-in and faint set it, src/battle_main.c:2228, :2396,
+    -- :2481); decremented if nonzero by every TurnValuesCleanUp(FALSE)
+    -- (:3640-3641), i.e. once before turn 1 (:2909) and as the last step
+    -- of every turn (:2970). An acting battler holds 1 on its first turn and
+    -- 0 afterwards. BattleEngine.new sets the leads to 1; resolveForcedSwitch
+    -- sets 1 (the engine resolves the replacement after its end-of-turn
+    -- step, where source decrements after it, :2964-2970).
+    isFirstTurn = 2,
     moves = {},
     statStages = {
       attack = BattleFormulas.DEFAULT_STAT_STAGE,
@@ -1208,6 +1226,11 @@ function BattleEngine.new(opts)
   assert(opts.moves, "BattleEngine needs the gBattleMoves table")
   assert(opts.typeChart, "BattleEngine needs the parsed type chart rows")
   assert(opts.rng, "BattleEngine needs an Rng instance")
+  -- Protection slice P4: battle start sets isFirstTurn = 2 for both leads
+  -- and TryDoEventsBeforeFirstTurn's TurnValuesCleanUp(FALSE) decrements it
+  -- before turn 1 (src/battle_main.c:2228, :2909, :3640-3641).
+  opts.player.isFirstTurn = 1
+  opts.foe.isFirstTurn = 1
   return setmetatable({
     player = opts.player,
     foe = opts.foe,
@@ -1355,6 +1378,9 @@ function BattleEngine:recordFaint(side, events)
   battler.seeded, battler.nightmare, battler.cursed = false, false, false
   battler.rooted, battler.escapePrevented = false, false
   battler.wrapTurns, battler.wrapMove = 0, nil
+  -- FaintClearSetData zeroes gDisableStructs and sets isFirstTurn = 2
+  -- (src/battle_main.c:2458-2459, :2481; protection slice P4).
+  battler.isFirstTurn = 2
   -- FaintClearSetData also clears the escape prevention and the wrap
   -- ANOTHER battler holds from this slot (src/battle_main.c:2444-2452).
   self:clearHeldBy(side)
@@ -1795,13 +1821,26 @@ end
 -- gCurrentTurnActionNumber, :2435-2436) -- in this singles engine, only the
 -- first mover of a two-move turn (self.flinchTargetPending). No message is
 -- printed when the bit is set.
-function BattleEngine:applySecondaryStatus2(targetSide, target, kind, events)
+-- `certain` (protection slice P4, Fake Out's MOVE_EFFECT_FLINCH |
+-- MOVE_EFFECT_CERTAIN, reached through Cmd_seteffectwithchance's CERTAIN arm
+-- with primary FALSE, :2783-2788): Shield Dust and the 0-HP guard still
+-- apply silently (:2132-2142), but Inner Focus jumps to
+-- BattleScript_FlinchPrevention (:2421-2427; data/battle_scripts_1.s
+-- :4109-4113): "<target>'s INNER FOCUS\nprevents flinching!"
+-- (src/battle_message.c:296), the flinchPrevented event.
+function BattleEngine:applySecondaryStatus2(targetSide, target, kind, events, certain)
   if target.ability == BattleEngine.ABILITY_SHIELD_DUST then return false end
   if target.hp <= 0 then return false end
   if kind == "confusion" then
     return self:applyConfusion(targetSide, target, events)
   end
-  if target.ability == BattleEngine.ABILITY_INNER_FOCUS then return false end
+  if target.ability == BattleEngine.ABILITY_INNER_FOCUS then
+    if certain then
+      events[#events + 1] = { type = "flinchPrevented", side = targetSide,
+        ability = BattleEngine.ABILITY_INNER_FOCUS }
+    end
+    return false
+  end
   if self.flinchTargetPending then
     target.flinched = true
     return true
@@ -2052,6 +2091,17 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
   end
   self.currentMove = move
   events[#events + 1] = { type = "useMove", side = attackerSide, move = moveId }
+  if move.effect == BattleEngine.EFFECT_FAKE_OUT and attacker.isFirstTurn == 0 then
+    -- Cmd_jumpifnotfirstturn (src/battle_script_commands.c:6504-6512)
+    -- passes iff isFirstTurn != 0; otherwise
+    -- BattleScript_ButItFailedAtkStringPpReduce (data/battle_scripts_1.s
+    -- :2050-2059): attackstring, ppreduce, "But it failed!". It runs before
+    -- accuracycheck: no RNG. (A protected target would print the protected
+    -- text instead; Protect is not represented yet, protection slice P1.)
+    if slot and slot.pp > 0 then slot.pp = slot.pp - 1 end
+    events[#events + 1] = { type = "moveFailed", side = attackerSide }
+    return
+  end
   local isMagnitude = moveId == BattleEngine.MOVE_MAGNITUDE
     and move.effect == BattleEngine.EFFECT_MAGNITUDE
   if isMagnitude then
@@ -3052,7 +3102,8 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
         or move.effect == BattleEngine.EFFECT_RECHARGE
         or move.effect == BattleEngine.EFFECT_RAMPAGE
         or move.effect == BattleEngine.EFFECT_RAPID_SPIN
-        or move.effect == BattleEngine.EFFECT_TRAP then
+        or move.effect == BattleEngine.EFFECT_TRAP
+        or move.effect == BattleEngine.EFFECT_FAKE_OUT then
       -- Smelling Salt's byte is CERTAIN, which skips the roll only when the
       -- move had an effect; a no-effect hit falls to the rolling branch.
       -- Rapid Spin (MOVE_EFFECT_RAPIDSPIN | AFFECTS_USER | CERTAIN, chance
@@ -3060,6 +3111,8 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
       -- nothing is applied (Cmd_seteffectwithchance, bsc.c:2774-2805).
       -- EFFECT_TRAP (chance 100, not CERTAIN) draws it too, e.g. Bind
       -- against a Ghost or Sand Tomb against a Flying type (residual R3).
+      -- Fake Out (FLINCH | CERTAIN, chance 0) has Smelling Salt's shape: a
+      -- Ghost target takes the discarded draw (protection slice P4).
       BattleFormulas.secondaryEffectRoll(self.rng, move.secondaryEffectChance)
     end
     return
@@ -3226,6 +3279,16 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
   if status2Kind
       and BattleFormulas.secondaryEffectRoll(self.rng, move.secondaryEffectChance) then
     self:applySecondaryStatus2(defenderSide, defender, status2Kind, events)
+  end
+
+  if move.effect == BattleEngine.EFFECT_FAKE_OUT then
+    -- MOVE_EFFECT_FLINCH | MOVE_EFFECT_CERTAIN on a hit that had an effect:
+    -- Cmd_seteffectwithchance's CERTAIN arm, no Random()
+    -- (src/battle_script_commands.c:2783-2788), then SetMoveEffect(FALSE,
+    -- CERTAIN): Shield Dust silent, a 0-HP target silent, Inner Focus prints
+    -- its text, otherwise the flinch is set only for a target that has not
+    -- acted yet (:2132-2142, :2419-2439). Protection slice P4.
+    self:applySecondaryStatus2(defenderSide, defender, "flinch", events, true)
   end
 
   if move.effect == BattleEngine.EFFECT_TRAP then
@@ -3669,6 +3732,12 @@ function BattleEngine:resolveForcedSwitch(side, newBattler)
   else
     self.foe = newBattler
   end
+  -- SwitchInClearSetData sets isFirstTurn = 2 (src/battle_main.c:2396) and
+  -- the same BattleTurnPassed's TurnValuesCleanUp(FALSE) runs after
+  -- HandleFaintedMonActions (:2964-2970), giving 1. The engine has already
+  -- run its end-of-turn step, so the replacement starts at 1 (protection
+  -- slice P4, decision D6): its first turn is the next one.
+  newBattler.isFirstTurn = 1
   table.remove(self.pendingForcedSwitches, 1)
   self:_syncForcedSwitchHead()
   local events = { { type = "forcedSwitchResolved", side = side } }
@@ -3847,6 +3916,15 @@ function BattleEngine:resolveEndTurn(events, playerMove, foeMove)
   -- (src/battle_util.c:451-463, src/battle_main.c:2958-2963).
   self:resolveWeatherEndTurn(events, sides)
   self:resolveStatusEndTurn(events, sides)
+  -- BattleTurnPassed's TurnValuesCleanUp(FALSE) (src/battle_main.c:2970,
+  -- :3640-3641) decrements a nonzero isFirstTurn after every end-of-turn
+  -- effect and the fainted-mon handling. The last step of the end of turn
+  -- (protection slice P4, decision D6); a battler that fainted here holds
+  -- 2 from recordFaint and its replacement is set to 1 by
+  -- resolveForcedSwitch.
+  for _, b in ipairs({ self.player, self.foe }) do
+    if (b.isFirstTurn or 0) > 0 then b.isFirstTurn = b.isFirstTurn - 1 end
+  end
 end
 
 -- Real ENDTURN_RAIN/SANDSTORM/SUN/HAIL (src/battle_util.c:624-711), one
@@ -4200,6 +4278,9 @@ function BattleEngine:runTurn(playerAction, foeAction)
     -- fresh, so its own bits start clear (:2365-2368).
     self:clearHeldBy(BattleEngine.SIDE_PLAYER)
     self.player = playerAction.battler
+    -- SwitchInClearSetData: isFirstTurn = 2 (src/battle_main.c:2396); the
+    -- end of this turn makes it 1, so its first turn is the next one.
+    self.player.isFirstTurn = 2
     events[#events + 1] = { type = "switch", side = BattleEngine.SIDE_PLAYER }
     -- BattleScript_ActionSwitch (data/battle_scripts_1.s:3046-3078) ends
     -- with switchineffects BS_ATTACKER (:3076), before the foe's move
