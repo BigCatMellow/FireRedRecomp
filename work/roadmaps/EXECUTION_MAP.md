@@ -49,9 +49,12 @@ RNG or full Phase 4 parity. Preserve all review exclusions and follow-ups.
 The normal START Pokédex zero-seen guard [PR5](https://github.com/BigCatMellow/FireRedRecomp/pull/5)
 is independently PASS and merged `52fbf69`: source386 replaces erroneous411;
 post-merge178 no-ROM files pass. Only the bounded guard/range fix is accepted.
-PR3 Party design is independently PASS and merged `239c25f`. Current leaf is
-actual PR6 SUMMARY code alignment under amended six-path task `6ff4464`;
-Worker implementation/evidence and independent exact review remain required.
+PR3 Party design merged `239c25f`; PR6 SUMMARY is independently PASS and merged
+`ba669fb`, with post-merge192 no-ROM files passing. Only bounded read-only UI
+is accepted. Current leaf is [P5-05 Viridian northbound source discovery](../tasks/phase5-viridian-northbound-gate-discovery.md):
+Old Man C0/C2/C3 triggers/tutorial continuation beyond accepted projection.
+Source report and independent review select one smallest next code prerequisite;
+no tutorial/traversal or generic VM implementation is authorized yet.
 Read-only Memento AI feasibility found an existing
 replacement callback; this is not implementation authority and must be checked
 against later battle changes before a separate task.

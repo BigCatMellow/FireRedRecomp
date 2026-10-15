@@ -38,8 +38,11 @@ rule or traversal work without an evidenced dependency.
 3. Recover existing first-corridor integration work before inventing another
    effect batch: normal START Pokédex-count PR5's source-bound correction
    passed independent review and merged `52fbf69`. Party design PR3 also passed
-   and merged `239c25f`; execute actual PR6 alignment under six-path task
-   `6ff4464`, then independently review. No rendered Pokédex,
+   and merged `239c25f`; PR6 SUMMARY independently passed and merged `ba669fb`.
+   Next, execute [P5-05 northbound gate source discovery](../tasks/phase5-viridian-northbound-gate-discovery.md)
+   to select one smallest missing Viridian trigger/tutorial prerequisite beyond
+   the accepted pre-spawn projection. No implementation is authorized by this
+   research. No rendered Pokédex,
    full Party UI or normal traversal proof is implied. Memento's trainer-AI
    reserve-count gap is separately under read-only feasibility inspection;
    engine acceptance does not establish AI support.

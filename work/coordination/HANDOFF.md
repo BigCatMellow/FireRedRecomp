@@ -1,11 +1,34 @@
 # FireRedRecomp Coordination Handoff
 
-- Status: `READY_FOR_REVIEWER — published PR6 SUMMARY implementation cb2a2de`
-- Task ID: `P6-04-PARTY-SUMMARY`
+- Status: `READY_FOR_WORKER — bounded Viridian northbound source lock`
+- Task ID: `P5-05-VIRIDIAN-NORTHBOUND-DISCOVERY`
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
 - Current plan: [`../roadmaps/RECALIBRATED_DELIVERY_PLAN.md`](../roadmaps/RECALIBRATED_DELIVERY_PLAN.md)
 
 ## Current relay — 2026-10-15
+
+### Latest closure and next action — 16:16 UTC
+
+PR6 is CLOSED: exact `cb2a2de` independently PASS in `6389960`; final public
+CI `38720916074` / `38720909470` passed and exact-head merge produced
+`ba669fb`. Independent source/assertion review and188-file no-ROM evidence
+accepted only reduced read-only SUMMARY. Post-merge192 no-ROM files and
+checker PASS. No ROM/LÖVE replay, save/reload or full retail/Phase6 claim.
+
+Next active package is the [two-path P5-05 source task](../tasks/phase5-viridian-northbound-gate-discovery.md):
+Viridian Old Man coordinate C0/C2/C3 eligibility, movement/input lock, tutorial
+return and scene/item continuation. The accepted projection `d280751` is
+terminal and does not execute these paths. Worker must source-lock the actual
+missing seam, compare live/component/evidence coverage, and propose exactly
+one smallest next leaf. Publish one report PR, then separate independent
+review; no implementation/ROM/runner/generic-VM work is authorized here.
+
+Runtime baseline `ba669fb`, public source `c75f352`. Owner battle PR40/41 was
+preserved without overlap in Party paths; its own evidence gates remain.
+Do not repeat accepted PR3/5/6 or the projection, and do not revive exhausted
+bridge requests. Older next-action paragraphs below are historical.
+
+### Previous implementation-review checkpoint
 
 Exact next action: assigned independent Reviewer verifies published PR6
 `cb2a2dee735834148d226a5ae44d5d408b2014a2` under authority `6ff4464` and

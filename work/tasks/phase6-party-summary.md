@@ -1,7 +1,7 @@
 # P6-04 — Read-only Party SUMMARY interaction
 
 - Task ID: `P6-04-PARTY-SUMMARY`
-- Status: `READY_FOR_REVIEWER` — aligned 2026-10-15 with independently accepted corrected design; exact-head independent implementation review still required
+- Status: `CLOSED — REVIEWED PASS` — exact `cb2a2de` independently PASS in `6389960`; PR6 merged `ba669fb` on 2026-10-15, bounded read-only interaction only
 - Parent capability: Phase 6 (no phase-status update)
 - Basis: accepted P6-01 inventory (`ee7535d6`); corrected P6-02 design `f3f9065` independently PASS in review `2ad1d7e`. Orchestrator explicitly adopts its bounded six-path successor proposal in this contract on 2026-10-14. This grants alignment authority, not acceptance of existing code.
 - Human dispatch: 2026-10-09 request to continue gameplay code progress.
