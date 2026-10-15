@@ -1,7 +1,7 @@
 # P5-05 — source-lock the remaining Viridian northbound gate
 
 - Task ID: `P5-05-VIRIDIAN-NORTHBOUND-DISCOVERY`
-- Status: `READY_FOR_REVIEWER` — Worker research submitted; independent acceptance pending
+- Status: `CLOSED — REVIEWED PASS` — source-only; no gameplay acceptance
 - Type: `RESEARCH / SOURCE DISCOVERY`; no implementation authority
 - Parent capability: Phase 5/7 first-corridor progression in [capability checklist](../roadmaps/CAPABILITY_CHECKLIST.md)
 - Assigned role: `WORKER` acting as bounded researcher
@@ -123,6 +123,12 @@ This research does not advance canonical phase status or waive outstanding
 guarded battle/replay gates.
 
 ## Worker evidence and handoff — 2026-10-15
+
+Orchestrator closure: exact report `684f69c` independently PASS in
+[review `ba86377`](../reviews/2026-10-15-viridian-northbound-gate-discovery-review.md).
+Final PR42 public CI `38812239244` / `38812232691` PASS; merged `ae3d559`.
+Source-only scope closed; no runtime/route acceptance. Next dispatch is the
+[elevation input lifecycle source task](phase5-player-elevation-input-source-lock.md).
 
 - Report: [bounded source/runtime lock](../reports/phase5-viridian-northbound-gate-discovery.md).
 - Fresh branch `work/p5-viridian-northbound-discovery-20261015`, base

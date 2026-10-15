@@ -1,11 +1,30 @@
 # FireRedRecomp Coordination Handoff
 
-- Status: `READY_FOR_WORKER — bounded Viridian northbound source lock`
-- Task ID: `P5-05-VIRIDIAN-NORTHBOUND-DISCOVERY`
+- Status: `READY_FOR_WORKER — player elevation lifecycle source lock`
+- Task ID: `P5-05-PLAYER-ELEVATION-INPUT-SOURCE-LOCK`
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
 - Current plan: [`../roadmaps/RECALIBRATED_DELIVERY_PLAN.md`](../roadmaps/RECALIBRATED_DELIVERY_PLAN.md)
 
 ## Current relay — 2026-10-15
+
+### Latest closure and dispatch — 21:45 UTC
+
+PR42 source report `684f69c` independently PASS in `ba86377`; final public
+CI `38812239244` / `38812232691` passed. Merged `ae3d559`. This closes only
+northbound discovery, not gameplay. Do not repeat tutorial tracing or accepted
+projection/Party/Dex work. Runtime remains `ba669fb` (parent192-file PASS).
+
+Exact next action: Worker executes the [two-path elevation lifecycle task](../tasks/phase5-player-elevation-input-source-lock.md)
+in a fresh isolated worktree from this authority checkpoint. Resolve avatar
+bootstrap and ordinary-step elevation producer/observation timing; classify
+load/reposition boundaries; propose one minimal live integration with exact
+paths, literal oracles and stops. No runtime/test/ROM/runner changes yet.
+Independent exact report review and final public CI precede reconciliation.
+No new bridge allowance or phase-status advancement is implied.
+
+Previous northbound worktree `/tmp/firered-northbound-discovery.aOKINv` and
+review `/tmp/firered-northbound-review-PqwDjK` are preserved, not pending work.
+Older resume/next-action paragraphs below are historical.
 
 ### Resume checkpoint — 21:38 UTC
 

@@ -1,4 +1,4 @@
-# Recalibrated delivery plan — routing reconciled 2026-10-14
+# Recalibrated delivery plan — routing reconciled 2026-10-15
 
 This is the concise current routing view. The capability checklist remains the
 canonical phase-status authority; task contracts and independent reviews remain
@@ -29,8 +29,9 @@ rule or traversal work without an evidenced dependency.
 2. [Effect45 implementation `cfdbb96` independently passed](../reviews/2026-10-13-recoil-if-miss-implementation-outcome-review.md).
    Its guarded request is terminal. Owner-merged fast-lane batches PR10–15
    add 17 bounded families with final independent PASS records; inventory
-   at `3adc7e8` now has85 represented families including owner-merged status
-   work. Nine new ROM fixtures await guarded evidence. Status S1–S4 are not
+   snapshot `3adc7e8` had85 represented families and nine pending ROM fixtures;
+   newer owner work throughPR41 retains its own records, not those stale totals.
+   Status S1–S4 are not
    fast-lane eligible: the accepted design also requires changed-RNG/turn-order
    guarded replay evidence, absent from the merged records. Retain bounded
    no-ROM PASS results without promoting these missing gates. Scope the
@@ -39,9 +40,11 @@ rule or traversal work without an evidenced dependency.
    effect batch: normal START Pokédex-count PR5's source-bound correction
    passed independent review and merged `52fbf69`. Party design PR3 also passed
    and merged `239c25f`; PR6 SUMMARY independently passed and merged `ba669fb`.
-   Next, execute [P5-05 northbound gate source discovery](../tasks/phase5-viridian-northbound-gate-discovery.md)
-   to select one smallest missing Viridian trigger/tutorial prerequisite beyond
-   the accepted pre-spawn projection. No implementation is authorized by this
+   [P5-05 northbound source discovery](../tasks/phase5-viridian-northbound-gate-discovery.md)
+   independently passed and merged PR42 `ae3d559`. Next, execute its selected
+   [elevation lifecycle source prerequisite](../tasks/phase5-player-elevation-input-source-lock.md):
+   establish bootstrap/ordinary-step producer and observation timing before
+   proposing minimal live integration. No implementation is authorized by this
    research. No rendered Pokédex,
    full Party UI or normal traversal proof is implied. Memento's trainer-AI
    reserve-count gap is separately under read-only feasibility inspection;
