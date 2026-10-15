@@ -52,6 +52,20 @@ local TYPE_DISPLAY_NAMES = {
 }
 BattleSceneController.TYPE_DISPLAY_NAMES = TYPE_DISPLAY_NAMES
 
+-- Weather texts (c75f352 src/battle_message.c:339-352).
+local WEATHER_SET_TEXT = {
+  rain = "It started to rain!", sandstorm = "A sandstorm brewed!",
+  sun = "The sunlight got bright!", hail = "It started to hail!",
+}
+local WEATHER_CONTINUES_TEXT = {
+  rain = "Rain continues to fall.", sandstorm = "The sandstorm rages.",
+  sun = "The sunlight is strong.", hail = "Hail continues to fall.",
+}
+local WEATHER_ENDED_TEXT = {
+  rain = "The rain stopped.", sandstorm = "The sandstorm subsided.",
+  sun = "The sunlight faded.", hail = "The hail stopped.",
+}
+
 -- Real gStatNamesTable (src/battle_message.c), for the stat keys
 -- BattleEngine.lua's statStages table already uses.
 local STAT_DISPLAY_NAMES = {
@@ -472,6 +486,24 @@ function BattleSceneController:_eventMessages(events)
       entries[#entries + 1] = { hpSide = event.side, hp = event.hpRemaining }
     elseif event.type == "confusionEnded" then
       add(name(event.side) .. " snapped\nout of confusion!") -- :115
+    elseif event.type == "weatherSet" then
+      -- gMoveWeatherChangeStringIds (c75f352 src/battle_message.c:912-920).
+      add(WEATHER_SET_TEXT[event.kind])
+    elseif event.type == "weatherContinues" then
+      -- ENDTURN_* (src/battle_util.c:624-711), gRainContinuesStringIds /
+      -- gSandstormHailContinuesStringIds (battle_message.c:928-945).
+      add(WEATHER_CONTINUES_TEXT[event.kind])
+    elseif event.type == "weatherEnded" then
+      add(WEATHER_ENDED_TEXT[event.kind])
+    elseif event.type == "weatherDamage" then
+      -- gSandstormHailDmgStringIds (:156-157), printed before datahpupdate
+      -- (data/battle_scripts_1.s:3167-3173).
+      if event.kind == "sandstorm" then
+        add(name(event.side) .. " is buffeted\nby the sandstorm!")
+      else
+        add(name(event.side) .. " is pelted\nby HAIL!")
+      end
+      entries[#entries + 1] = { hpSide = event.side, hp = event.hpRemaining }
     elseif event.type == "statusDamage" then
       -- Message before the HP update (printstring, then datahpupdate).
       if event.kind == "burn" then
