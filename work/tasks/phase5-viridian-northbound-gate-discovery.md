@@ -1,7 +1,7 @@
 # P5-05 — source-lock the remaining Viridian northbound gate
 
 - Task ID: `P5-05-VIRIDIAN-NORTHBOUND-DISCOVERY`
-- Status: `READY_FOR_WORKER`
+- Status: `READY_FOR_REVIEWER` — Worker research submitted; independent acceptance pending
 - Type: `RESEARCH / SOURCE DISCOVERY`; no implementation authority
 - Parent capability: Phase 5/7 first-corridor progression in [capability checklist](../roadmaps/CAPABILITY_CHECKLIST.md)
 - Assigned role: `WORKER` acting as bounded researcher
@@ -121,3 +121,30 @@ independently verifies it; Orchestrator reconciles only the source lock and
 compiles the evidence-backed next task without asking the user to pick it.
 This research does not advance canonical phase status or waive outstanding
 guarded battle/replay gates.
+
+## Worker evidence and handoff — 2026-10-15
+
+- Report: [bounded source/runtime lock](../reports/phase5-viridian-northbound-gate-discovery.md).
+- Fresh branch `work/p5-viridian-northbound-discovery-20261015`, base
+  `86bf0aceeb81140dad703efc4fb5ffa3b529029c`; runtime remains `ba669fb`.
+  Source checkout clean at `c75f352304d529f6ba92d4f74b9cf8b5c3810788`.
+- C0/C2/C3 predicates, source priority, movement/wait, normal tutorial
+  continuation and scene-before-item ordering recorded. Live runtime lacks
+  selected handlers/effective player elevation/waitstate/tutorial adapter.
+- Exactly one proposed next prerequisite: source-only player elevation
+  bootstrap/normal-step ownership lock. Update function known; observation
+  timing/bootstrap remain UNKNOWN. No disconnected selector or implementation
+  authority proposed; abnormal tutorial branches and exact RNG/timing remain
+  explicit exclusions/UNKNOWN.
+- Actual checks: clean revision/runtime comparison, selected source JSON and
+  numbered control-flow reads, synthetic no-ROM missing-handler/elevation/
+  waitstate witnesses PASS. Baseline repository checker PASS (320 Lua,
+  362 Markdown, 1201 targets). Final repository checker PASS (320 Lua,
+  363 Markdown, 1205 targets); both working/index whitespace checks PASS.
+  Initial checker rejected the new untracked report link; staging the two
+  authorized files resolved that tracking prerequisite without changing checks.
+  Parent 192-file no-ROM baseline retained; no full local rerun,
+  ROM, private-runner or replay action in this documentation-only package.
+- Reviewer handoff: inspect the exact published head, source facts, UNKNOWN
+  boundaries and two changed paths; Worker does not self-certify source-lock
+  acceptance or advance phase/coordination state.
