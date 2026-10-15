@@ -2646,7 +2646,7 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
       -- Ordinary accuracy failure already scans type immunity in source,
       -- before resultmessage/the crash guard. This pure query spends no RNG.
       -- AccuracyCalcHelper's semi-invulnerable miss returns before that
-      -- scan, so the crash happens even against an immune target.
+      -- scan, so the crash text prints even against an immune target.
       local _, immunity = BattleFormulas.typeCalc(
         1, move.type, attacker.types, defender.types, self.typeChart)
       if immunity.noEffect and not semiMiss then
@@ -2661,6 +2661,18 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
       damage = BattleFormulas.typeCalc(damage, move.type, attacker.types, defender.types, self.typeChart)
       damage = BattleFormulas.applyRandomDamageMultiplier(damage, self.rng)
       local loss = math.min(attacker.hp, BattleEngine.recoilIfMissDamage(damage, defender.maxHP))
+      if immunity.noEffect then
+        -- BattleScript_MoveMissedDoDamage (data/battle_scripts_1.s:853-870):
+        -- the crash's own typecalc sets MOVE_RESULT_DOESNT_AFFECT_FOE against
+        -- the immune target (ModulateDmgByType, src/battle_script_commands.c
+        -- :1246-1250); adjustnormaldamage still draws (:1558-1569) and
+        -- DMG_RECOIL_FROM_MISS makes 0 into 1 (:6465-6470), but `bicbyte
+        -- gMoveResultFlags, MOVE_RESULT_MISSED` (bs1.s:865) clears only
+        -- MISSED, so healthbarupdate and datahpupdate, both gated on
+        -- !(gMoveResultFlags & MOVE_RESULT_NO_EFFECT) (bsc.c:1713, :1758),
+        -- are skipped: the crash text prints and no HP is lost.
+        loss = 0
+      end
       attacker.hp = attacker.hp - loss
       events[#events + 1] = { type = "crash", side = attackerSide, amount = loss, hpRemaining = attacker.hp }
       -- Do not use applyDamage: it targets the defender and advances Oak's
