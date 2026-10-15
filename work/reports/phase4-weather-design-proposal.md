@@ -1,6 +1,10 @@
 # Phase 4 proposal: battle weather (rain, sun, sandstorm, hail)
 
-- Status: `PROPOSAL — awaiting design review`
+- Status: `PROPOSAL — independently reviewed PASS WITH CORRECTIONS (applied)`
+- Review: [2026-10-14 weather design review](../reviews/2026-10-14-weather-design-review.md).
+  Findings F1-F10 and decisions D1-D4 are folded in below; each change is
+  tagged with its finding id. W0 is implemented
+  ([task](../tasks/phase4-weather-w0.md)); W1-W3 are corrected on paper only.
 - Date: 2026-10-14
 - Source pin: pret/pokefirered `c75f352304d529f6ba92d4f74b9cf8b5c3810788`
 - Builds on: status slices S1-S4 (`resolveStatusEndTurn`, `applySecondaryStatus`),
@@ -110,17 +114,32 @@ weather text and weather damage for **both** battlers come before either
 battler's Rain Dish (`ENDTURN_ABILITIES`, `:774-778`) and before poison
 and burn (`:805-`).
 
-**`ENDTURN_ORDER` (`bu.c:484-501`).** The end-of-turn order is
-recomputed with `GetWhoStrikesFirst(i, j, FALSE)`:
+**`ENDTURN_ORDER` (`bu.c:484-501`).** `gBattlerByTurnOrder` is reset to
+battler-id order and re-sorted with `GetWhoStrikesFirst(i, j, FALSE)`,
+swapping on any nonzero result. In singles that is exactly one call,
+`(battler 0 = player, battler 1 = foe)`, so **at most one draw**.
 
 - `ignoreChosenMoves = FALSE`, so the priorities of this turn's chosen
-  moves count (`bm.c:3478-3503`). A non-move action counts as
-  `MOVE_NONE`, priority 0.
-- Speed is recomputed now. Paralysis, stage changes and Swift
-  Swim/Chlorophyll applied *during* the turn all count.
-- An exact tie draws `Random() & 1` (`bm.c:3510`, `:3523`).
+  moves count (`bm.c:3478-3503`). `gChosenActionByBattler` is still this
+  turn's action at this point; it is cleared only after the end of turn
+  (`bm.c:2990-2994`).
+  - A `B_ACTION_USE_MOVE` battler contributes
+    `moves[chosenMovePositions]`, or `MOVE_STRUGGLE` (priority 0) when
+    `noValidMoves`. `TurnValuesCleanUp(TRUE)` (`bm.c:3623-3634`) clears
+    only `protected`/`endured`, so `noValidMoves` survives to here.
+  - A locked or recharging battler is forced to `B_ACTION_USE_MOVE` with
+    its stale slot (`bm.c:3125-3130`).
+  - Switch, item (Poke Ball) and run actions are not `B_ACTION_USE_MOVE`,
+    so they count as `MOVE_NONE`, priority 0 (`bm.c:3486-3496`).
+- Speed is recomputed now: stage, then badge boost and Macho Brace (not
+  modeled), then paralysis `/4`, then Quick Claw (`bm.c:3428-3452`).
+  Paralysis, stage changes and Swift Swim/Chlorophyll applied *during*
+  the turn all count. Quick Claw compares `gRandomTurnNumber` and makes
+  no draw; it is not modeled (no held items), as at turn start.
+- An exact tie at equal priority draws `Random() & 1` (`bm.c:3510`,
+  `:3523`), in both the nonzero-priority and the zero-priority branch.
 
-See Risks R1: the engine does not do this today.
+The engine did not do this before W0 (Risks R1). W0 implements it.
 
 **Rain (`bu.c:624-652`).**
 
@@ -373,19 +392,33 @@ re-checks Castform (`bu.c:1798-1813`).
 `ABILITYEFFECT_SWITCH_IN_WEATHER` acts only for `WEATHER_RAIN`,
 `_THUNDERSTORM`, `_DOWNPOUR`, `_SANDSTORM` and `_DROUGHT`
 (`bu.c:1709-1746`). All 425 `data/maps/*/map.json` headers use NONE
-(333), SUNNY (66), FOG_HORIZONTAL (19) or SHADE (7). The only
-`setweather` in the 425 map `scripts.inc` files is `setweather 0`.
-Shared `data/scripts/*` files were not scanned (Known limits).
+(333), SUNNY (66), FOG_HORIZONTAL (19) or SHADE (7), and no map has a
+`"type": "weather"` coord event, so `DoCoordEventWeather`
+(`src/field_control_avatar.c:1031`) has no FRLG trigger (F7). Every
+`setweather` in `data/`: `data/event_scripts.s:1308` sets `WEATHER_SHADE`
+(Tanoby) and `data/maps/NavelRock_Summit/scripts.inc:46` sets weather 0;
+nothing in `data/scripts/*` sets weather. `TranslateWeatherNum`
+(`src/field_weather_util.c:68-91`) maps header values one to one.
+`GetCurrentWeather` has only two battle readers (`bu.c:1710`, `:1744`),
+and `src/battle_setup.c` neither touches `gBattleWeather` nor sets field
+weather. A battle can still start with weather through a lead's Drizzle,
+Drought or Sand Stream (W3b).
 
 **Reachability.** Cloud Nine holders (Psyduck, Golduck) are common:
 Psyduck appears in 154 wild-slot entries and Golduck in 21
 (`src/data/wild_encounters.json`). `trainer_parties.h` has three
 Tyranitar entries with Sand Stream (`:10734`, `:10779`, `:10824`).
-No Castform, Kyogre, Groudon, Rayquaza or Pelipper appears in wild or
-trainer data. They can still arrive from a save through a trade.
+No Castform, Kyogre, Groudon or Rayquaza appears in wild or trainer
+data. They can still arrive from a save through a trade. The only
+Drizzle/Drought/Air Lock holders are Kyogre, Groudon and Rayquaza
+(`species_info.h:11049`, `:11078`, `:11107`); Pelipper has Keen Eye in
+Gen 3 and is not a weather setter (F6).
 Trainer custom movesets contain Rain Dance (7), Sunny Day (2),
 Sandstorm (2), Hail (2), Solar Beam (4), Thunder (2), Synthesis (3) and
-Moonlight (4).
+Moonlight (4). Outside `trainer_parties.h`, `src/trainer_tower_sets.c`
+has Rain Dance (7), Sunny Day (10), Sandstorm (3) and one Tyranitar; these
+become reachable only if Trainer Tower is supported, which it is not
+today (F7).
 
 ### 9. RNG
 
@@ -482,9 +515,12 @@ faint (`bm.c:2515-2516`).
      0-HP battlers, calls `checkFaint` per tick, and stops once
      `isOver()`.
 
-  `sides` is the turn's action order: `sidesOf(order)` or the fixed
-  player-first `HOISTED_ORDER` (`:3067-3070`). Every non-deciding exit of
-  `runTurn` (`:3152-3371`) calls it.
+  Before W0, `sides` was the turn's action order: `sidesOf(order)` or the
+  fixed player-first `HOISTED_ORDER` (`:3067-3070`). Every non-deciding
+  exit of `runTurn` (`:3152-3371`) calls it. After W0 the signature is
+  `resolveEndTurn(events, playerMove, foeMove)` and the order comes from
+  `endTurnOrder` (see Design W0). Engine line numbers in this document
+  are at `43d2d52`, before W0.
 - **Damage.** `BattleFormulas.calculateBaseDamage(attacker, defender,
   move, isCrit, defenderScreens)` (`BattleFormulas.lua:274-388`). The
   special branch ends at Light Screen (`:378-383`), then `damage + 2`
@@ -523,7 +559,7 @@ faint (`bm.c:2515-2516`).
   - The trainer start at `:1537` uses `TrainerAI` and `hasReplacement`.
 
   The controller's intro messages are fixed
-  (`BattleSceneController.lua:94-102`). **No switch-in ability hook
+  (`BattleSceneController.lua:93-97`; F6). **No switch-in ability hook
   exists**: no Intimidate, no Trace, nothing runs on send-out. The
   `resolveForcedSwitch` return value (`BattleEngine.lua:3047-3062`) is
   ignored by both callers (`main.lua:1620`,
@@ -534,6 +570,73 @@ faint (`bm.c:2515-2516`).
   called from `TrainerAI.lua:112`.
 
 ## Design
+
+### End-of-turn order (W0, implemented)
+
+- New `BattleEngine:endTurnOrder(playerMove, foeMove)` returns the side
+  list for the per-battler phases. It calls
+  `BattleFormulas.getWhoStrikesFirst(self.player, self.foe, playerMove,
+  foeMove, self.rng)` once and puts the foe first on any nonzero result.
+- `resolveEndTurn(events, playerMove, foeMove)` runs the flinch clear and
+  the sleep cancel (`HandleEndTurn_ContinueBattle`), then `endTurnOrder`
+  (`ENDTURN_ORDER` is the first field case), then `decaySideTimers`, then
+  `resolveStatusEndTurn(events, sides)`. `HOISTED_ORDER` and `sidesOf` are
+  removed.
+- **0-HP rule (F1).** If either battler is at 0 HP there is no recompute
+  and no draw, and the order is player first. In source the slot already
+  holds the replacement, so source compares the replacement's speed (and
+  the stale `chosenMovePositions` move). Every per-battler phase skips a
+  0-HP battler, so the order is not observable; not drawing matches
+  source whenever the replacement does not tie. This is a Known limit
+  under R2.
+- **Call sites (F3).** `BattleFormulas.getWhoStrikesFirst` reads only
+  `.priority` from a record, and `nil` is `MOVE_NONE`. The records come
+  from a new `BattleEngine:chosenMoveRecord(side, action)`, which is
+  `self.moves[battler.moves[action.moveSlot].move]`, the record turn start
+  already used. `runTurn` substitutes `lockedSlot` before any of these
+  (`:3176-3181`), so a locked or recharging foe contributes its locked move.
+
+  | Site (at `43d2d52`) | Branch | Player record | Foe record |
+  | --- | --- | --- | --- |
+  | `:3226` | switch | `nil` (`B_ACTION_SWITCH` → `MOVE_NONE`); the battler is the switched-in `self.player` (`:3206`) | `chosenMoveRecord(FOE, foeAction)` |
+  | `:3271` | failed capture | `nil` (`B_ACTION_USE_ITEM`) | same |
+  | `:3301` | failed run | `nil` (`B_ACTION_RUN`) | same |
+  | `:3348` | early exit: attacker's own faint (recoil, crash, Explosion) | `playerMove` | `foeMove` |
+  | `:3354` | early exit: defender faint queues a switch | `playerMove` | `foeMove` |
+  | `:3364` | normal exit | `playerMove` | `foeMove` |
+
+  Struggle (`noValidMoves`) is priority 0 in source. The engine, like turn
+  start, passes the chosen slot's record. The two differ only if every
+  slot is at 0 PP and the chosen slot holds a priority move; this is a
+  Known limit shared with turn start.
+- **Changed draw counts (D1).** Exactly one extra `Random() & 1` per end
+  of turn that reaches `ENDTURN_ORDER` with both battlers above 0 HP, equal
+  chosen priority and equal effective speed. Across the no-ROM suite this
+  changes two assertions:
+  - `tests/battle_status_engine_test.lua:193-205` (paralysis creates a
+    tie): 3 → 4 draws. The paralyzed player (10) still ties the foe (10)
+    at end of turn.
+  - `tests/battle_engine_test.lua:1101` (voluntary switch): 3 → 4 draws.
+    The switched-in battler (speed 11) ties the foe (11), `MOVE_NONE` vs
+    Tackle, both priority 0.
+
+  The other two blocks of the review's cited range
+  (`battle_status_engine_test.lua:193-219` at `43d2d52`, now `:207-229`)
+  keep their counts: the paralyzed battler is slower than the other at
+  both points, so there is no end-of-turn tie. Other
+  tests whose end-of-turn order changes (hoisted turns against a faster
+  foe, and 0-HP early exits) have only one ticking battler, so they are
+  unaffected.
+- **Mutation M28 (D1).** `work/reviews/2026-10-14-status-s1-review.md:245`
+  "hoisted order foe-first" assumed a player-first hoisted order. Its
+  premise is now source order: the mutant is "hoisted end-of-turn order
+  ignores speed and priority". `tests/battle_end_turn_order_test.lua`
+  kills it with the switch, capture and run cases against a faster or
+  priority foe.
+- **Superseded ruling (D1).** Correction (b) of
+  `work/reviews/2026-10-14-status-conditions-design-review.md:86`
+  ("battler order is the turn's action order") is superseded by W0 and is
+  annotated there.
 
 ### State (W1)
 
@@ -563,7 +666,7 @@ weatherDuration = 0,                          -- gWishFutureKnock.weatherDuratio
 - `BattleEngine.WEATHER_MOVES = { [115]="sandstorm", [136]="rain",
   [137]="sun", [164]="hail" }`.
 - `supportsMove` admits them with power 0 and `MOVE_TARGET_USER`.
-- Add an early branch beside Refresh (`:1797`), after `useMove`:
+- Add an early branch beside Refresh (`:1854`; F6), after `useMove`:
   1. Spend one PP. There is no accuracy check and no RNG.
   2. If `self.weather.kind == kind` (permanent included), emit
      `moveFailed`.
@@ -644,6 +747,10 @@ sun reachable.
 - `AICheckBadMove.score` gains a trailing `weatherKind`
   (`engine.weather.kind`: bits only, no Cloud Nine gate, as
   `get_weather` does). `TrainerAI.lua:112` passes it.
+- **Handler arity (F4).** `score` calls `handler(user, target, move,
+  typeChart, sideStatus)` (`AICheckBadMove.lua:673`). W1 must forward
+  `weatherKind` there as the sixth argument, not only add it to `score`'s
+  signature.
 - Rows 115, 136, 137 and 164 become:
 
   ```lua
@@ -658,6 +765,12 @@ sun reachable.
 
   `target.ability` follows the module's existing documented "known
   ability" simplification.
+- The Sunny Day versus stale result 0 case is fixture-only (F4). The only
+  `ABILITY_NONE` entry in `species_info.h` is the unused old-Unown
+  placeholder macro (`:29`). The `(target.ability or 0)` fallback still
+  fires for fixtures that omit `ability`, so W1 tests set `ability`
+  explicitly, and the quirk comment says that the Sunny Day case cannot
+  happen for a real species.
 
 ### Weather-dependent moves (W2)
 
@@ -674,7 +787,10 @@ sun reachable.
      end`, `attacker.charging = true`, `attacker.lockedSlot = moveSlot`.
   3. The existing cancellers then cancel the lock or keep it, matching
      source:
-     - paralysis, flinch, confusion self-hit and recharge clear it;
+     - paralysis, flinch and confusion self-hit clear it. (Recharge is
+       not listed (F2): a recharging battler is forced into its recharge
+       slot and cannot select Solar Beam, `BattleEngine.lua:3176-3181`,
+       `bm.c:3125-3130`.)
      - freeze keeps it;
      - sleep keeps it until `resolveEndTurn`'s existing cancel.
   4. Because `charging` is now true, the existing `CHARGE_MOVES` block
@@ -772,7 +888,7 @@ Also update the header event list (`BattleEngine.lua:21-92`) and the
 
 | Slice | Content | Unlocks |
 | --- | --- | --- |
-| W0 (decision D1) | Recompute the end-of-turn order with `getWhoStrikesFirst(player, foe, chosenMoveOrNil, chosenMoveOrNil, rng)` at the start of `resolveEndTurn`, including the tie draw; replace `HOISTED_ORDER` and `sidesOf` for end of turn | Source end-of-turn order for status and, later, weather |
+| W0 (decision D1; implemented) | Recompute the end-of-turn order with `getWhoStrikesFirst(player, foe, chosenMoveOrNil, chosenMoveOrNil, rng)` in `resolveEndTurn`, including the tie draw; replace `HOISTED_ORDER` and `sidesOf`; the 0-HP rule (F1); the six call sites (F3) | Source end-of-turn order for status and, later, weather |
 | W1 | State and helpers (including Cloud Nine/Air Lock); the four weather moves; `resolveWeatherEndTurn` (texts, timer, sandstorm/hail damage with type, Sand Veil and Dig/Dive exemptions); the rain/sun Fire/Water terms and Solar Beam halving; freeze-in-sun; AI rows 115/136/137/164 with the stale-result rule; texts; inventory rows 115/136/137/164 → R | 4 moves admitted (expected 289/65) |
 | W2 | Thunder rain (no draw) and sun (50); the Solar Beam sun path (PP and lock before the cancellers); Weather Ball type and ×2; Morning Sun/Synthesis/Moonlight; inventory rows 132-134 and 203 → R, and the 151/152 limit notes updated | 3 moves admitted (expected 292/62); 203 leaves the "admitted, semantically uncovered" list (26 → 25 effects, 34 → 33 records) |
 | W3a | Swift Swim/Chlorophyll speed; Sand Veil accuracy; Rain Dish | Ability coverage only |
@@ -791,13 +907,21 @@ Also update the header event list (`BattleEngine.lua:21-92`) and the
 
 ## Verification plan
 
-- **W0.**
-  - A tie turn draws once more at end of turn.
-  - A switch turn against a faster foe orders foe-first.
-  - A priority move reorders the end of turn.
-  - A paralysis applied mid-turn reorders the end of turn.
-  - Existing `battle_status_engine_test.lua:193-219` draw counts change
-    on purpose, and the slice must list each change.
+- **W0** (`tests/battle_end_turn_order_test.lua`).
+  - A tie turn draws exactly once more at end of turn, and the draw
+    decides the order (0 player first, 1 foe first).
+  - A switch, failed-capture or failed-run turn against a faster foe
+    orders foe first.
+  - Priority reorders only on a hoisted turn (F8): priority alone never
+    reorders a move-vs-move turn, because the turn-start order already
+    reflects it. The tests use a switch, a capture and a run against a
+    Quick Attack foe.
+  - A speed change applied mid-turn reorders the end of turn (String
+    Shot), and a paralysis applied mid-turn can create the tie draw
+    (Thunder Wave).
+  - A 0-HP battler (move KO and hoisted KO, each with a replacement
+    pending): no recompute and no draw (F1).
+  - The changed draw counts are listed in Design W0.
 - **W1 matrix.**
   - Each move succeeds; each fails in its own family (temporary, and
     permanent once W3b lands).
@@ -811,6 +935,8 @@ Also update the header event list (`BattleEngine.lua:21-92`) and the
     `activeWeather` checks.
   - A deciding faint in the loop stops before the second battler. A
     replacement-pending faint continues.
+  - A 0-HP battler awaiting its replacement takes no weather tick (D4).
+    This pins the R2 symptom: in source the replacement would take it.
   - Weather damage precedes poison and burn for both battlers.
   - Rain/sun Fire/Water values at the exact truncation points, including
     a rain-halved special hit reaching 0 → 2. Physical moves are
@@ -826,8 +952,12 @@ Also update the header event list (`BattleEngine.lua:21-92`) and the
   - Solar Beam in sun:
     - it hits on turn 1;
     - PP is spent before a full paralysis (lock cleared);
-    - it freezes locked: PP is spent again next turn, and it fires once
-      sun ends;
+    - frozen first, then Solar Beam selected in sun: PP spent and lock
+      kept; next turn locked, PP spent again while sun lasts; after sun
+      ends no further PP, still locked; fires (no PP) on the thaw turn
+      (F2). A Solar Beam that is already charging cannot become frozen
+      and locked, because freezing cancels multi-turn moves (`bsc.c:2270`,
+      `BattleEngine.lua:1381`);
     - sleep is cancelled at end of turn;
     - charged-then-sun spends two PP;
     - Cloud Nine forces the charge.
@@ -854,6 +984,30 @@ Also update the header event list (`BattleEngine.lua:21-92`) and the
   the no-ROM suite, the repository checker, and an independent review.
 
 ## Decisions for review
+
+Outcomes recorded by the review (all accepted):
+
+- **D1 accepted.** W0 first, as its own slice, with F1 and F3 folded in,
+  every changed draw count listed, M28 updated and the earlier ruling
+  annotated as superseded. Done in W0.
+- **D2 accepted.** The Solar Beam halving is in the same
+  `WEATHER_HAS_EFFECT2` block as the Fire/Water terms
+  (`pokemon.c:2605-2637`), and freeze in sun becomes reachable as soon as
+  W1 makes sun reachable (`bsc.c:2257-2265`). Both stay in W1.
+- **D3 accepted (deferral).** The battle-start tie draw goes to the
+  RNG-parity item with `gRandomTurnNumber` (`bm.c:2926`, `:2999`). An
+  order-sensitive pair (two different-family setters at tied speed) is
+  practically unreachable in FRLG data. Conditions for W3b: order ties
+  player first through one named helper, so the later item changes one
+  place; pin the player-first rule with a test; record it in Known limits.
+- **D4 accepted.** `weatherdamage` has no HP test because a non-absent
+  slot at end of turn always holds a living battler or its replacement
+  (`bsc.c:7264-7265`). Skipping a 0-HP battler matches
+  `resolveStatusEndTurn` (`BattleEngine.lua:3100`) and avoids a duplicate
+  faint. The cost is the replacement's missing weather tick; W1 records it
+  as an R2 symptom and pins it with a test.
+
+The original questions follow.
 
 - **D1 (W0).** Should end-of-turn order be fixed before W1?
   - Recommendation: yes, as its own slice.
@@ -885,7 +1039,10 @@ Also update the header event list (`BattleEngine.lua:21-92`) and the
   Beam) and HP totals, and therefore later KO timing. Replays that
   contain the four moves diverge from their first use. Today no replay
   can contain them, because they are rejected.
-- **W0** adds one `Random() & 1` per tied end of turn.
+- **W0** adds one `Random() & 1` per end of turn with both battlers above
+  0 HP, equal chosen priority and equal effective speed. It never adds
+  more than one in singles. The two changed test assertions are listed in
+  Design W0.
 - **W2** removes one accuracy draw per Thunder in rain. It moves Solar
   Beam's hit draws from the release turn to the selection turn in sun.
   Weather Ball and the heals add none.
@@ -903,10 +1060,19 @@ Also update the header event list (`BattleEngine.lua:21-92`) and the
 
 ## Risks
 
-- **R1. End-of-turn order (pre-existing).** See D1. Two cases already
-  diverge without weather: a tied end of turn (a missing draw), and a
-  switch, item or run turn against a faster or priority foe (wrong
-  order). Weather makes the order decide outcomes.
+- **R1. End-of-turn order (pre-existing; fixed by W0).** See D1. Before
+  W0 the order diverged in four ways without weather (F8):
+  1. ties: every tied, equal-priority turn lacked the second
+     `Random() & 1`, which shifted every later draw by one;
+  2. speed changes: paralysis or a stage change applied mid-turn could
+     reorder the end of turn;
+  3. hoisted turns: on switch, capture and failed-run turns the engine
+     always went player first;
+  4. order-dependent results: which side's lethal poison or burn decides
+     a double KO, and the order of the `ENDTURN_THRASH` fatigue-confusion
+     draws (`bu.c:953-973`).
+
+  Weather would make the order decide outcomes.
 - **R2. Mid-turn replacement timing (pre-existing).**
   - Source runs `HandleFaintedMonActions` after **each** action
     (`bsc.c:3797-3802`, `bm.c:4433-4440`). A non-deciding mid-turn faint
@@ -914,9 +1080,12 @@ Also update the header event list (`BattleEngine.lua:21-92`) and the
     the sandstorm or hail and any Drizzle switch-in at that point.
   - The engine keeps the fainted battler until after the turn. W1 skips
     it, so the replacement's weather damage is missing on that turn.
-  - This is the tracked follow-up in
-    `work/reviews/2026-10-14-conversion-memento-review.md:150`. Weather
-    adds another visible symptom of it and does not fix it.
+  - This is the tracked follow-up N1 in
+    `work/reviews/2026-10-13-conversion-memento-review.md:148` (F6).
+    Weather adds another visible symptom of it and does not fix it.
+  - W0 symptom (F1): with a battler at 0 HP, `ENDTURN_ORDER` makes no
+    recompute and no draw. Source compares the replacement and draws
+    `Random() & 1` if the replacement ties.
 - **R3. The two Cloud Nine macros.** Damage uses the HP-free variant and
   everything else the HP-gated one. The engine cannot currently be in
   the state that distinguishes them. A test should still pin each call
@@ -924,14 +1093,21 @@ Also update the header event list (`BattleEngine.lua:21-92`) and the
   does not silently swap them.
 - **R4. The Solar Beam sun path reorders PP and lock before the
   cancellers.** It interacts with M1-M3's `lockedThisTurn`, the locked
-  0-PP check and the sleep end-of-turn cancel. Frozen-in-sun leaves
-  Solar Beam locked and burning PP every turn until it thaws or the sun
-  ends. That is source behaviour, but it looks like a bug and must be
+  0-PP check and the sleep end-of-turn cancel. A battler frozen before it
+  selects Solar Beam in sun stays locked: it spends PP every turn while
+  sun lasts, spends none after sun ends, and fires only on the thaw turn
+  (F2). That is source behaviour, but it looks like a bug and must be
   tested explicitly.
 - **R5. Weather Ball's dynamic copy.** Every reader must take the copy,
   not `self.moves[moveId]`: accuracy, damage, typecalc and the defrost
   check through `currentMove`. A missed reader would give a Normal
   Weather Ball in one step only.
+  - Readers the engine does not model yet (F5): `AbilityBattleEffects`'s
+    move type (`bu.c:1693`, which drives Water/Volt Absorb, Flash Fire and
+    Color Change on a Weather Ball) and `datahpupdate`'s physical/special
+    damage tracking for Counter and Mirror Coat (`bsc.c:1751-1756`). The
+    slice that adds any of these must route it through the Weather Ball
+    copy.
 - **R6. AI stale result.** It reproduces a source quirk exactly, which
   reviewers may read as a bug. It depends on the port's true-ability
   simplification. In source, a dual-ability target's guess is random.
@@ -950,8 +1126,20 @@ Also update the header event list (`BattleEngine.lua:21-92`) and the
 - The AI CheckViability and HP-aware weather terms are out of the
   `TrainerAI` scope. The AI's `RecordAbilityBattle` history for weather
   abilities is not represented.
-- Overworld battle weather: no map header or map script reaches it at
-  this pin. Shared `data/scripts/*` and special-battle setups were not
-  scanned. W3b should add a no-op input that asserts this.
+- Overworld battle weather: no map header, map script, shared script or
+  battle setup reaches it at this pin (§8, F7). W3b keeps a no-op input
+  that asserts this.
 - Mid-turn replacement (R2), and the battle-start and `gRandomTurnNumber`
-  draws (D3) are pre-existing.
+  draws (D3) are pre-existing. W0 adds the 0-HP `ENDTURN_ORDER` symptom
+  under R2 (F1).
+- W0: Quick Claw (no held items) and the Struggle-at-0-PP priority case
+  are not represented in the end-of-turn order, as at turn start.
+- Info, outside weather (F9): source decrements Reflect for side 0 then
+  side 1, then Light Screen for both (`bu.c:503-555`), while
+  `decaySideTimers` loops per side (`BattleEngine.lua:2743-2761`). Two
+  screens of different types expiring on the same turn print their "wore
+  off" lines in a different order. No RNG or weather effect; track
+  separately if wanted.
+- After W1 alone, admitted rows 151, 152 and 203 are wrong in reachable
+  weather (F10). The inventory already flags them, and W2 should land
+  immediately after W1.

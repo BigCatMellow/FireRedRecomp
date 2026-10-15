@@ -242,7 +242,7 @@ equivalent or unreachable (M4, M10, M14, M15).
 | M25 | toxic increment after multiply | Engine | killed | status: 2,4,6 |
 | M26 | end-turn order reversed | Engine | killed | status: turn order |
 | M27 | battler effects before field | Engine | killed | status: field first |
-| M28 | hoisted order foe-first | Engine | killed | status: switch turn |
+| M28 | hoisted order foe-first **[premise superseded by weather W0: the hoisted end-of-turn order is now source order (`ENDTURN_ORDER`, `battle_util.c:484-501`), not player first. Updated mutant: "hoisted end-of-turn order ignores speed and priority", killed by `tests/battle_end_turn_order_test.lua` (switch/capture/run vs faster or priority foe)]** | Engine | killed | status: switch turn |
 | M29 | switch site not converted | Engine | killed | status: switch turn |
 | M30 | capture site not converted | Engine | **survived** | untested (F3) |
 | M31 | run site not converted | Engine | killed | status: failed run |

@@ -3059,17 +3059,53 @@ function BattleEngine:resolveForcedSwitch(side, newBattler)
   return { { type = "forcedSwitchResolved", side = side } }
 end
 
--- Real BattleTurnPassed end-of-turn work (src/battle_main.c:2958-2964):
--- field effects (screen timers) first, then per-battler effects. Callers
--- only reach this when the battle is not over (the real gBattleOutcome == 0
--- gate). `sides` is the turn's action order: hoisted switch/item/run
--- actions first, otherwise the getWhoStrikesFirst order.
-local HOISTED_ORDER = { BattleEngine.SIDE_PLAYER, BattleEngine.SIDE_FOE }
-local function sidesOf(order)
-  return { order[1][1], order[2][1] }
+-- Real ENDTURN_ORDER (src/battle_util.c:484-501): gBattlerByTurnOrder is
+-- reset to battler id order and re-sorted with GetWhoStrikesFirst(i, j,
+-- FALSE). In singles that is exactly one call, (player, foe), so one
+-- `Random() & 1` draw on an exact speed tie at equal chosen priority and
+-- none otherwise. Speed is read now, so paralysis or a speed-stage change
+-- applied during the turn counts. Quick Claw (gRandomTurnNumber, no draw
+-- here) is not modeled, as at turn start.
+--
+-- 0-HP rule (weather review F1): if either battler is at 0 HP no recompute
+-- and no draw happen, and the order is player first. In source that slot
+-- already holds the replacement (HandleFaintedMonActions runs after each
+-- action), so source would compare the replacement instead; the engine
+-- keeps the fainted battler until after the turn (R2 in
+-- work/reports/phase4-weather-design-proposal.md). Every per-battler phase
+-- skips a 0-HP battler, so the order cannot be observed; not drawing
+-- matches source whenever the replacement does not tie.
+function BattleEngine:endTurnOrder(playerMove, foeMove)
+  local P, F = BattleEngine.SIDE_PLAYER, BattleEngine.SIDE_FOE
+  if self.player.hp == 0 or self.foe.hp == 0 then
+    return { P, F }
+  end
+  -- SwapTurnOrder happens on any nonzero result (1 faster/priority, 2 tie).
+  if BattleFormulas.getWhoStrikesFirst(self.player, self.foe, playerMove, foeMove, self.rng) ~= 0 then
+    return { F, P }
+  end
+  return { P, F }
 end
 
-function BattleEngine:resolveEndTurn(events, sides)
+-- Real BattleTurnPassed end-of-turn work (src/battle_main.c:2958-2964):
+-- field effects (ENDTURN_ORDER, then the screen timers) first, then
+-- per-battler effects. Callers only reach this when the battle is not over
+-- (the real gBattleOutcome == 0 gate).
+--
+-- playerMove/foeMove are the parsed gBattleMoves records of each side's
+-- chosen move this turn, or nil for a non-move action (switch, Poke Ball,
+-- run). They are what real GetWhoStrikesFirst(i, j, FALSE) reads at
+-- ENDTURN_ORDER: gChosenActionByBattler is still this turn's action
+-- (cleared only after the end of turn, src/battle_main.c:2990-2994), so a
+-- B_ACTION_USE_MOVE battler contributes the move at its chosenMovePositions
+-- slot and any other action contributes MOVE_NONE, priority 0
+-- (src/battle_main.c:3478-3503). A locked/recharging battler is forced to
+-- B_ACTION_USE_MOVE with its stale slot (:3125-3130), which is the
+-- lockedSlot runTurn substitutes. Struggle (noValidMoves) is MOVE_STRUGGLE,
+-- priority 0; like turn start, the engine passes the chosen slot's record,
+-- which differs only if every slot is at 0 PP and that slot's move has
+-- nonzero priority (a known limit shared with turn start).
+function BattleEngine:resolveEndTurn(events, playerMove, foeMove)
   -- HandleEndTurn_ContinueBattle clears flinch before end-turn effects.
   self.player.flinched, self.foe.flinched = false, false
   -- ...and cancels a sleeping battler's multi-turn move (:2941-2942).
@@ -3078,13 +3114,17 @@ function BattleEngine:resolveEndTurn(events, sides)
       self:cancelMultiTurnMoves(b)
     end
   end
+  -- ENDTURN_ORDER is the first field case (src/battle_util.c:484-501),
+  -- after HandleEndTurn_ContinueBattle's flinch/sleep work above.
+  local sides = self:endTurnOrder(playerMove, foeMove)
   self:decaySideTimers(events)
   self:resolveStatusEndTurn(events, sides)
 end
 
 -- Real DoBattlerEndTurnEffects status cases (src/battle_util.c:805-841),
--- per battler in turn order: poison max(1, maxHP/8); toxic counter
--- incremented first (capped at 15) then max(1, maxHP/16) * counter; burn
+-- per battler in ENDTURN_ORDER order (endTurnOrder): poison max(1,
+-- maxHP/8); toxic counter incremented first (capped at 15) then max(1,
+-- maxHP/16) * counter; burn
 -- max(1, maxHP/8). Battlers at 0 HP are skipped. Each tick runs
 -- tryfaintmon/checkteamslost (data/battle_scripts_1.s:3685-3686): a faint
 -- that decides the battle stops the phase (BattleTurnPassed re-tests
@@ -3142,6 +3182,13 @@ function BattleEngine:resolveStatusEndTurn(events, sides)
       end
     end
   end
+end
+
+-- The gBattleMoves record GetWhoStrikesFirst reads for a side's chosen
+-- move action: the move in the (already lock-substituted) chosen slot.
+-- This is the record turn start has always used; end of turn reuses it.
+function BattleEngine:chosenMoveRecord(side, action)
+  return self.moves[self:battler(side).moves[action.moveSlot].move]
 end
 
 -- Runs one full turn. Each action is a table:
@@ -3223,7 +3270,9 @@ function BattleEngine:runTurn(playerAction, foeAction)
     -- Reflect/Light Screen timers down, as long as the battle didn't just
     -- end.
     if not self:isOver() then
-      self:resolveEndTurn(events, HOISTED_ORDER)
+      -- Player B_ACTION_SWITCH -> MOVE_NONE; the switched-in battler is
+      -- self.player. The foe's record is its (lock-substituted) slot.
+      self:resolveEndTurn(events, nil, self:chosenMoveRecord(BattleEngine.SIDE_FOE, foeAction))
     end
     return events
   end
@@ -3268,7 +3317,8 @@ function BattleEngine:runTurn(playerAction, foeAction)
     -- is only set by a SUCCESSFUL catch, handled by the early return
     -- above) -- so the timers still tick down here too.
     if not self:isOver() then
-      self:resolveEndTurn(events, HOISTED_ORDER)
+      -- Player B_ACTION_USE_ITEM -> MOVE_NONE.
+      self:resolveEndTurn(events, nil, self:chosenMoveRecord(BattleEngine.SIDE_FOE, foeAction))
     end
     return events
   end
@@ -3298,13 +3348,14 @@ function BattleEngine:runTurn(playerAction, foeAction)
     -- sets gBattleOutcome and returns above, before this point) -- the
     -- timers still tick down.
     if not self:isOver() then
-      self:resolveEndTurn(events, HOISTED_ORDER)
+      -- Player B_ACTION_RUN -> MOVE_NONE.
+      self:resolveEndTurn(events, nil, self:chosenMoveRecord(BattleEngine.SIDE_FOE, foeAction))
     end
     return events
   end
 
-  local playerMove = self.moves[self.player.moves[playerAction.moveSlot].move]
-  local foeMove = self.moves[self.foe.moves[foeAction.moveSlot].move]
+  local playerMove = self:chosenMoveRecord(BattleEngine.SIDE_PLAYER, playerAction)
+  local foeMove = self:chosenMoveRecord(BattleEngine.SIDE_FOE, foeAction)
   local strikesFirst = BattleFormulas.getWhoStrikesFirst(
     self.player, self.foe, playerMove, foeMove, self.rng
   )
@@ -3345,13 +3396,13 @@ function BattleEngine:runTurn(playerAction, foeAction)
         -- still decays Reflect/Light Screen timers -- only a turn that
         -- truly ends the whole battle skips it.
         if not self:isOver() then
-          self:resolveEndTurn(events, sidesOf(order))
+          self:resolveEndTurn(events, playerMove, foeMove)
         end
         return events
       end
       if self:checkFaint(otherSide(side), events) then
         if not self:isOver() then
-          self:resolveEndTurn(events, sidesOf(order))
+          self:resolveEndTurn(events, playerMove, foeMove)
         end
         return events
       end
@@ -3361,7 +3412,7 @@ function BattleEngine:runTurn(playerAction, foeAction)
   -- Both actions for this ordinary move-exchange turn resolved without
   -- deciding the battle outcome -- the real gBattleOutcome == 0 case that
   -- reaches BattleTurnPassed and runs DoFieldEndTurnEffects.
-  self:resolveEndTurn(events, sidesOf(order))
+  self:resolveEndTurn(events, playerMove, foeMove)
 
   return events
 end
