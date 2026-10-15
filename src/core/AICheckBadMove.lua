@@ -496,6 +496,23 @@ local function focusEnergy(user, target, move, typeChart)
   return 0
 end
 
+-- AI_CBM_CantEscape (data/battle_ai_scripts.s:434-436): `if_status2
+-- AI_TARGET, STATUS2_ESCAPE_PREVENTION, Score_Minus10` reads the battler's
+-- escapePrevented flag (residual slice R2). It does not test WRAPPED or
+-- ROOTED.
+local function cantEscape(user, target, move, typeChart)
+  if target.escapePrevented then return -10 end
+  return 0
+end
+
+-- AI_CBM_Ingrain (data/battle_ai_scripts.s:554-556): `if_status3 AI_USER,
+-- STATUS3_ROOTED, Score_Minus10` reads the user's rooted flag (residual
+-- slice R2).
+local function ingrain(user, target, move, typeChart)
+  if user.rooted then return -10 end
+  return 0
+end
+
 -- AI_CBM_Teleport (data/battle_ai_scripts.s:185): real dispatch entry jumps
 -- straight to Score_Minus10 unconditionally, no sub-label at all.
 local function alwaysMinus10(user, target, move, typeChart)
@@ -596,7 +613,7 @@ local EFFECT_HANDLERS = {
   [92] = damageDuringSleep,                        -- EFFECT_SNORE
   [97] = damageDuringSleep,                        -- EFFECT_SLEEP_TALK
   [99] = highRiskForDamage,                        -- EFFECT_FLAIL
-  [106] = alwaysNoPenalty,                         -- EFFECT_MEAN_LOOK: status2 escape-prevention unmodeled
+  [106] = cantEscape,                              -- EFFECT_MEAN_LOOK
   [107] = nightmare,                               -- EFFECT_NIGHTMARE
   [108] = statUp("evasion"),                       -- EFFECT_MINIMIZE -> AI_CBM_EvasionUp
   [109] = curse,                                   -- EFFECT_CURSE
@@ -630,7 +647,7 @@ local EFFECT_HANDLERS = {
   [170] = highRiskForDamage,                       -- EFFECT_FOCUS_PUNCH
   [176] = helpingHand,                             -- EFFECT_HELPING_HAND
   [177] = trickAndKnockOff,                        -- EFFECT_TRICK
-  [181] = alwaysNoPenalty,                         -- EFFECT_INGRAIN: status3 rooted unmodeled
+  [181] = ingrain,                                 -- EFFECT_INGRAIN
   [182] = highRiskForDamage,                       -- EFFECT_SUPERPOWER
   [184] = recycle,                                 -- EFFECT_RECYCLE
   [188] = trickAndKnockOff,                        -- EFFECT_KNOCK_OFF -> AI_CBM_TrickAndKnockOff
