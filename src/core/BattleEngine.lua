@@ -95,6 +95,8 @@
 --   {type="weatherEnded", kind=}       -- end of turn, timer reached 0
 --   {type="weatherDamage", side=, kind="sandstorm"|"hail", amount=,
 --    hpRemaining=}                     -- end-of-turn sandstorm/hail damage
+--   {type="rainDish", side=, amount=, hpRemaining=} -- Rain Dish end-of-turn
+--    heal in rain (weather W3a): "X's RAIN DISH\nrestored its HP a little!"
 --   {type="battleEnd", outcome="playerWon"|"playerLost"|"ran"|"caught"}
 --
 -- Real turn structure ported, in real execution order:
@@ -272,7 +274,7 @@
 --     Confuse/Teeter Dance/Swagger/Flatter handlers (applyConfusion).
 --     Soundproof is not represented (Supersonic, Snore, Growl, Sing).
 --   * Abilities only where named (Damp, Guts, the status guards above,
---     Cloud Nine/Air Lock and Sand Veil's sandstorm immunity);
+--     Cloud Nine/Air Lock, Sand Veil, Swift Swim/Chlorophyll and Rain Dish);
 --     no held items,
 --     multi-turn/charging moves, trapping, forced switching, OHKO moves,
 --     double battles, trainer AI, or EXP/level-up on victory.
@@ -284,8 +286,11 @@
 --   * Weather slice W2 (work/tasks/phase4-weather-w2.md): Thunder's rain
 --     sure hit and sun accuracy 50, the Solar Beam sun path (PP and lock
 --     before the cancellers), Weather Ball's dynamic type and x2, and Morning
---     Sun/Synthesis/Moonlight. Not yet: Swift Swim/Chlorophyll/Sand Veil
---     accuracy/Rain Dish (W3a), Drizzle/Drought/Sand Stream (W3b), Forecast.
+--     Sun/Synthesis/Moonlight.
+--   * Weather slice W3a (work/tasks/phase4-weather-w3a.md): Swift Swim/
+--     Chlorophyll turn-order speed (turn start and ENDTURN_ORDER), Sand
+--     Veil's sandstorm accuracy term, and Rain Dish's end-of-turn heal. Not
+--     yet: Drizzle/Drought/Sand Stream (W3b), Forecast.
 --   * Pure single-stat stage-change moves (Growl/Tail Whip's full real
 --     family) ARE supported -- see BattleEngine.STAT_STAGE_MOVES and the
 --     move.power == 0 branch of resolveMove.
@@ -874,6 +879,7 @@ BattleEngine.WEATHER_MOVES = { [115] = "sandstorm", [136] = "rain", [137] = "sun
 BattleEngine.ABILITY_SAND_VEIL = 8
 BattleEngine.ABILITY_CLOUD_NINE = 13  -- include/constants/abilities.h
 BattleEngine.ABILITY_AIR_LOCK = 77
+BattleEngine.ABILITY_RAIN_DISH = 44   -- weather W3a
 BattleEngine.MOVE_SOLAR_BEAM = 76     -- CalculateBaseDamage tests the move id
 BattleEngine.WEATHER_DURATION = 5     -- gWishFutureKnock.weatherDuration = 5
 -- Weather slice W2 (work/tasks/phase4-weather-w2.md): the weather-dependent
@@ -1660,16 +1666,20 @@ end
 -- and rain, after the Dig/Dive miss; under sun, Cmd_accuracycheck replaces
 -- its accuracy with 50 before the stage ratio (:1062-1064), then the usual
 -- single draw.
+-- Sand Veil (weather W3a): `WEATHER_HAS_EFFECT && target ability == Sand
+-- Veil && sandstorm` scales the threshold by 80/100 between Compound Eyes
+-- and Hustle (:1071-1072); still the single draw.
 function BattleEngine:accuracyRoll(attacker, defender, move, moveId)
   if self:semiInvulnerableMiss(defender, move, moveId) then return false end
   local accuracy = move.accuracy
+  local weather = self:activeWeather()
   if move.effect == BattleEngine.EFFECT_THUNDER then
-    local weather = self:activeWeather()
     if weather == "rain" then return true end
     if weather == "sun" then accuracy = 50 end
   end
+  local sandVeil = weather == "sandstorm" and defender.ability == BattleEngine.ABILITY_SAND_VEIL
   return BattleFormulas.accuracyCheck(accuracy, attacker.statStages.accuracy,
-    defender.statStages.evasion, self.rng, attacker.ability, move.type)
+    defender.statStages.evasion, self.rng, attacker.ability, move.type, sandVeil)
 end
 
 function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
@@ -3298,7 +3308,11 @@ function BattleEngine:endTurnOrder(playerMove, foeMove)
     return { P, F }
   end
   -- SwapTurnOrder happens on any nonzero result (1 faster/priority, 2 tie).
-  if BattleFormulas.getWhoStrikesFirst(self.player, self.foe, playerMove, foeMove, self.rng) ~= 0 then
+  -- Swift Swim/Chlorophyll read gBattleWeather live here, before the
+  -- weather case decrements it (W3a): weather set this turn counts, and so
+  -- does a weather that is about to end.
+  if BattleFormulas.getWhoStrikesFirst(self.player, self.foe, playerMove, foeMove, self.rng,
+      self:activeWeather()) ~= 0 then
     return { F, P }
   end
   return { P, F }
@@ -3416,11 +3430,28 @@ end
 -- gBattleOutcome); one that only queues a forced switch lets the remaining
 -- battlers tick. The toxic counter is battle-local: BattlePartyBridge masks
 -- it on persist.
+--
+-- Rain Dish (weather W3a) is this battler's ENDTURN_ABILITIES case, which
+-- precedes ENDTURN_POISON/BURN and ENDTURN_THRASH (src/battle_util.c
+-- :720-743, :774-778); every field case, weather damage included, already
+-- ran for both battlers. AbilityBattleEffects(ABILITYEFFECT_ENDTURN)
+-- (:1817-1831): hp != 0, WEATHER_HAS_EFFECT && rain, maxHP > hp; heal
+-- max(1, maxHP/16). BattleScript_RainDishActivates
+-- (data/battle_scripts_1.s:3938-3944) prints the text, then updates HP;
+-- datahpupdate clamps at maxHP. At full HP nothing happens (no text). No
+-- RNG.
 function BattleEngine:resolveStatusEndTurn(events, sides)
   local S = StatusConditions
   for _, side in ipairs(sides) do
     if self:isOver() then return end
     local battler = self:battler(side)
+    if battler.hp > 0 and battler.ability == BattleEngine.ABILITY_RAIN_DISH
+        and self:activeWeather() == "rain" and battler.hp < battler.maxHP then
+      local amount = math.max(1, math.floor(battler.maxHP / 16))
+      if amount > battler.maxHP - battler.hp then amount = battler.maxHP - battler.hp end
+      battler.hp = battler.hp + amount
+      events[#events + 1] = { type = "rainDish", side = side, amount = amount, hpRemaining = battler.hp }
+    end
     local status = battler.status or 0
     if battler.hp > 0 then
       local kind, amount
@@ -3642,7 +3673,7 @@ function BattleEngine:runTurn(playerAction, foeAction)
   local playerMove = self:chosenMoveRecord(BattleEngine.SIDE_PLAYER, playerAction)
   local foeMove = self:chosenMoveRecord(BattleEngine.SIDE_FOE, foeAction)
   local strikesFirst = BattleFormulas.getWhoStrikesFirst(
-    self.player, self.foe, playerMove, foeMove, self.rng
+    self.player, self.foe, playerMove, foeMove, self.rng, self:activeWeather()
   )
 
   local order
