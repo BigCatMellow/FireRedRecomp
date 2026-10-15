@@ -23,7 +23,7 @@ Existing accepted engine families retain their documented limits.
 A separate source-only invocation of the actual current
 `BattleEngine:supportsMove` on source-derived effect/power metadata returned
 248 admissions and 106 rejections at that refresh (now 299/55 after the status slices,
-fast-lane batches, weather slices W1-W2 and residual slices R1-R2; the test is authoritative). These are source/predicate observations,
+fast-lane batches, weather slices W1-W2 and residual slices R1-R3; the test is authoritative). These are source/predicate observations,
 **not a local ROM result**. The checked-in [inventory test](../../tests/phase4_move_effect_inventory_test.lua)
 contains literal expected membership, admission and coverage metadata. It does
 not read engine tables to construct expectations. It checks partition integrity
@@ -35,9 +35,9 @@ labels `defined_source=214`; the ROM gate checks member usage and unused IDs.
 
 | Source-confirmed semantic class | Used families | Moves | Positive power | Zero power | Admitted / rejected |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| Represented with stated limits | 124 | 267 | 183 | 84 | 267 / 0 |
+| Represented with stated limits | 125 | 273 | 189 | 84 | 273 / 0 |
 | Candidate for separate discovery | 0 | 0 | 0 | 0 | 0 / 0 |
-| Blocked on additional state or an absent cross-component path | 73 | 86 | 32 | 54 | 32 / 54 |
+| Blocked on additional state or an absent cross-component path | 72 | 80 | 26 | 54 | 26 / 54 |
 | Intentionally rejected | 1 | 1 | 1 | 0 | 0 / 1 |
 | Total used | 198 | 354 | 216 | 138 | 299 / 55 |
 | Defined but unused | 16 | 0 | 0 | 0 | no real-record claim |
@@ -53,12 +53,12 @@ families are unimplemented, not a policy decision that they should never work.
 
 ## Coverage and admission are separate
 
-The **32 admitted, semantically uncovered positive-power records** occupy
-24 effects: `26, 34, 42, 81, 89, 105, 117, 119, 121, 122, 123, 128, 135, 144, 148, 154, 158, 159, 161, 170, 185, 188, 196, 197`.
+The **26 admitted, semantically uncovered positive-power records** occupy
+23 effects: `26, 34, 81, 89, 105, 117, 119, 121, 122, 123, 128, 135, 144, 148, 154, 158, 159, 161, 170, 185, 188, 196, 197`.
 Their precise move members and counts are the `yes / C` and `yes / B` rows
 below. They reach ordinary damage because of the positive-power fallback;
 admission does not implement their effects. None is a candidate record; all
-32 need additional state/path work. This refresh supersedes the older
+26 need additional state/path work. This refresh supersedes the older
 140-fallback positive-only count; accepted intervening leaves account for the
 reduction, while 138 zero-power records are now included explicitly.
 
@@ -145,7 +145,7 @@ body (Protect/Endure, Return/Frustration, sunlight recovery, Mud/Water Sport).
 | 39 `EFFECT_RAZOR_WIND` | 13 (1; P) | yes | R | [`BattleScript_EffectRazorWind`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L777) | Turn 1 whirlwind text, PP, lock; turn 2 hit without PP. Multi-turn slice [M1](../tasks/phase4-multiturn-m1.md); ROM fixture pending. |
 | 40 `EFFECT_SUPER_FANG` | 162 (1; P) | yes | R / R10 | [`BattleScript_EffectSuperFang`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L808) | Reviewed floor(target HP/2), minimum-one and shared immunity path. |
 | 41 `EFFECT_DRAGON_RAGE` | 82 (1; P) | yes | R / R7 | [`BattleScript_EffectDragonRage`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L818) | Fixed 40/level/20 damage with shared accuracy, immunity and HP; no item/Endure state. |
-| 42 `EFFECT_TRAP` | 20, 35, 83, 128, 250, 328 (6; P) | yes | B | [`BattleScript_EffectTrap`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L829) | Wrap secondary needs duration/residual/escape-lock lifecycle; #250 adds underwater interaction. |
+| 42 `EFFECT_TRAP` | 20, 35, 83, 128, 250, 328 (6; P) | yes | R | [`BattleScript_EffectTrap`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L829) | Ordinary hit, then the `% 100` roll (also on a no-effect hit; none on a miss) and, for a living target not already wrapped, the `& 3` 3-6 turn counter with the per-move text; end-of-turn `maxHP/16` ticks (after Curse, before the rampage tick, with the team check) then the release text; blocks run/switch; cleared when the wrapper faints or switches; Whirlpool hits a Dive user for x2. Residual slice [R3](../tasks/phase4-residual-r3.md); Substitute not modeled; ROM fixture pending. |
 | 43 `EFFECT_HIGH_CRITICAL` | 2, 75, 152, 163, 177, 238, 314, 348 (8; P) | yes | R / R8 | [`BattleScript_EffectHit`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L239) | Reviewed no-roll/high-critical/priority/HP-floor leaf; shared singles limitations apply. |
 | 44 `EFFECT_DOUBLE_HIT` | 24, 155 (2; P) | yes | R / R3 | [`BattleScript_EffectDoubleHit`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L838) | Shared accuracy/PP, fixed 2 hits, per-hit critical/damage; a KO on any hit breaks the loop, then "Hit N time(s)!" (hits landed), the trailing seteffectwithchance `%100` (byte 0, drawn on landed and no-effect paths), then the faint and any forced switch; effectiveness text once, just before the count (`bs1.s:644-649`); no-effect (immunity) stops with no count. Multi-hit tail follow-up ([task](../tasks/phase4-multihit-tail.md)); no item/ability hit reactions. |
 | 45 `EFFECT_RECOIL_IF_MISS` | 26, 136 (2; P) | yes | R | [`BattleScript_EffectRecoilIfMiss`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L848) | Miss-only damagecalc/manipulatedamage and attacker faint; exact miss/RNG/type/order contract needed. |
@@ -232,7 +232,7 @@ body (Protect/Endure, Return/Frustration, sunlight recovery, Mud/Water Sport).
 | 126 `EFFECT_MAGNITUDE` | 222 (1; P) | yes | R | [`BattleScript_EffectMagnitude`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L1679) | magnitudedamagecalculation plus underground/multi-target loop; possible singles subset needs explicit exclusions. Hits an UNDERGROUND target with x2; a miss against an immune target prints no effect (M2). |
 | 127 `EFFECT_BATON_PASS` | 226 (1; Z) | no | B | [`BattleScript_EffectBatonPass`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L1690) | Baton Pass needs selected volatile/stage transfer through switch; ordinary/faint switching is insufficient. |
 | 128 `EFFECT_PURSUIT` | 228 (1; P) | yes | B | [`BattleScript_EffectHit`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L239) | Hit dispatch also has trypursuit interception in switching; interception/damage modifier absent. |
-| 129 `EFFECT_RAPID_SPIN` | 229 (1; P) | yes | R | [`BattleScript_EffectRapidSpin`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L1711) | Ordinary hit; on a hit with effect (no draw) a seeded user sheds the seed before the target's faint; a no-effect hit (Ghost) draws the discarded `% 100`. Seed arm by residual slice [R1](../tasks/phase4-residual-r1.md); the wrap arm (else-if before the seed) is residual R3; Spikes not modeled; ROM fixture pending. |
+| 129 `EFFECT_RAPID_SPIN` | 229 (1; P) | yes | R | [`BattleScript_EffectRapidSpin`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L1711) | Ordinary hit; on a hit with effect (no draw) a seeded user sheds the seed before the target's faint; a no-effect hit (Ghost) draws the discarded `% 100`. Seed arm by residual slice [R1](../tasks/phase4-residual-r1.md); the wrap arm (else-if before the seed, one cleanup per use, "got free of") by residual slice [R3](../tasks/phase4-residual-r3.md); Spikes not modeled; ROM fixture pending. |
 | 130 `EFFECT_SONICBOOM` | 49 (1; P) | yes | R / R7 | [`BattleScript_EffectSonicboom`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L1715) | Fixed 40/level/20 damage with shared accuracy, immunity and HP; no item/Endure state. |
 | 131 `EFFECT_UNUSED_83` | none (0; —) | — | U | [`BattleScript_EffectHit`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L239) | No real move member; source aliases Hit. No runtime coverage/admission claim. |
 | 132 `EFFECT_MORNING_SUN` | 234 (1; Z) | yes | R | [`BattleScript_EffectMorningSun`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L1726) | Weather slice [W2](../tasks/phase4-weather-w2.md): attackstring/ppreduce, no accuracycheck or RNG; recoverbasedonsunlight: full HP -> "HP is full!" (PP spent), else maxHP/2 with no weather or Cloud Nine/Air Lock, floor(20*maxHP/30) in sun, maxHP/4 in rain/sandstorm/hail, minimum 1, clamped; no AI_CheckBadMove entry (0). AI CheckViability (AI_CV_HealWeather) and Snatch absent; ROM fixture pending. |
