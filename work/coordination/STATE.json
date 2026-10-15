@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_utc": "2026-10-15T16:16:46Z",
+  "updated_utc": "2026-10-15T21:38:14Z",
   "execution_paused": false,
   "role": "ORCHESTRATOR",
   "status": "READY_FOR_WORKER",
@@ -77,10 +77,11 @@
     "inspection_revision": "ba669fb420d68f54c8dab362c21bc0faf874f372",
     "pending_jobs": "PR6 merged after independentPASS6389960 and final CI38720916074/38720909470 success. No new bridge request. P5 source research is sole active package; owner battle work throughPR41 preserved.",
     "preserved_drafts": "Unreviewed Brick Break package isolated in named local stash quarantine-unreviewed-brick-break-rerank-2026-10-11; outside active dispatch.",
-    "next_action": "Dispatch fresh isolated two-path P5-05 Worker source/report branch, publish PR and obtain independent review. Do not reopen completed Party/Dex/projection packages or execute any old bridge input.",
+    "next_action": "Resume existing P5-05 worktree /tmp/firered-northbound-discovery.aOKINv branch work/p5-viridian-northbound-discovery-20261015 at86bf0ac. Finish/publish concise report from retained findings; mark uncompleted lifecycle/tutorial branches UNKNOWN and select one precise next prerequisite. Do not restart broad tracing or accepted work.",
     "remaining_acceptance": "P5-05 source report/review outstanding; subsequent code requires separate task. Post-mergeba669fb192 no-ROMfiles and checker320Lua/361Markdown/1191targets PASS. P4 guarded changed-RNG/turn-order evidence remains separate; owner battle work not re-reviewed here.",
     "coordination_note": "Historical nested records above are evidence receipts, not pending jobs or permission to repeat completed actions.",
-    "worker_session": "PR6 code/review terminal: cb2a2de/6389960 mergedba669fb. Oldworktrees preserved. Prior next-checkpoint feasibility agent was usage-limited before producing work; new explicit P5-05 contract governs continuation.",
+    "worker_session": "P5-05 source work usage-limited before writing report; resumed2026-10-15T21:38 from clean86bf0ac. Known anchors retained below; report/independent acceptance still pending. PR6 code/review terminal mergedba669fb; oldworktrees preserved.",
+    "preliminary_source_findings": "Unaccepted report inputs atc75f352: field_control_avatar.c345-348 gets PlayerGetElevation; field_player_avatar.c1092-1094 returns object.previousElevation; event_object_movement.c8400-8411 retains both on current/previous grid15 and retains previousElevation on current0. Root reread these exact anchors. Current movement lacks corresponding state; raw decoded block elevation is not a substitute. Worker reports source trainer-before-coordinate-before-warp/wild order and C0/C2/C3 predicates; final source report must distinguish known facts from unfinished lifecycle/tutorial questions.",
     "implementation_authority": {
       "revision": "96b10ceebc96dfc4d40cabae43faecf27abe0ce3",
       "task_sha256": "cbba3ad180b5ce98c1d5a4bb113ab71e608be845af933eae411b32b0ef80042c",

@@ -7,6 +7,25 @@
 
 ## Current relay — 2026-10-15
 
+### Resume checkpoint — 21:38 UTC
+
+P5-05 Worker source tracing was usage-limited before producing a report;
+resume the existing clean worktree `/tmp/firered-northbound-discovery.aOKINv`,
+branch `work/p5-viridian-northbound-discovery-20261015`, baseline `86bf0ac`.
+Remote main was unchanged. Exact next action is to finish the bounded report
+from retained findings, preserving unresolved questions as UNKNOWN, then
+publish the two-path PR for independent review. Do not restart broad tracing.
+
+Important preliminary finding, not accepted source-lock completion: pinned
+`field_control_avatar.c:345–348` reads PlayerGetElevation;
+`field_player_avatar.c:1092–1094` returns **previousElevation**.
+`event_object_movement.c:8400–8411` retains state for grid15 and retains
+previousElevation on current0. Root reread these anchors. The current player
+movement has no corresponding state; raw block height must not be substituted
+or hardcoded to3. Worker should name the smallest explicit elevation-owner/
+lifecycle prerequisite if it cannot yet ground production wiring. Completed
+Party/Dex/projection leaves remain terminal.
+
 ### Latest closure and next action — 16:16 UTC
 
 PR6 is CLOSED: exact `cb2a2de` independently PASS in `6389960`; final public
