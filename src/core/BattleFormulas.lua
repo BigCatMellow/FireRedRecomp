@@ -98,8 +98,10 @@
 -- Real modifiers NOT ported here (all no-ops in this slice, each because
 -- the system it depends on doesn't exist yet): held items and their hold
 -- effects, abilities other than those listed in 7b/7c, badge stat boosts,
--- weather beyond the damage block in 9 (speed, accuracy and Weather Ball
--- are later weather slices), double-battle spread-damage halving,
+-- weather beyond the damage block in 9 (Swift Swim/Chlorophyll speed and
+-- Sand Veil accuracy are weather W3a; Thunder's weather accuracy and Weather
+-- Ball's dynamic type/x2 live in BattleEngine since W2), double-battle
+-- spread-damage halving,
 -- Helping Hand, Charge, Flash Fire, Levitate and Wonder Guard. Each is a
 -- documented gap, not an approximation: the ported code paths above are
 -- byte-for-byte the real ones for a plain single-battle direct-damage move
