@@ -1,7 +1,7 @@
 # Task: weather slice W3b — Drizzle/Sand Stream/Drought switch-in weather
 
 - Task ID: `P4-WEATHER-W3B`
-- Status: `IMPLEMENTED — awaiting independent review`
+- Status: `DONE — independently reviewed PASS`
 - Lane: full relay (weather design proposal, W3b slice)
 - Spec: [weather design proposal](../reports/phase4-weather-design-proposal.md)
   (§8 "Switch-in weather abilities", "Abilities (W3b: switch-in hook)", the
@@ -218,3 +218,13 @@ line now point to W3b.
 - Texts omit the "Wild"/"Foe" prefix, as every other controller text.
 - ROM-backed or replay runs in which a Kyogre, Groudon or trainer Tyranitar
   enters battle now set weather; no current replay contains one.
+
+## Review (2026-10-15)
+
+[Implementation review](../reviews/2026-10-15-weather-w3b-implementation-review.md):
+PASS. Battle start resolves exactly once in every real main.lua flow (wild,
+Oak lab, one- and two-foe trainers, early rival); forced-switch texts follow
+the send-out line. 27/27 mutations caught. F1-F3 applied as engine comments
+(double-presentation warning on `resolveForcedSwitch`; headless runners must
+call `resolveBattleStart`). F4-F7 informational; ROM-gated tests still need a
+verified-ROM run.

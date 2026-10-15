@@ -3300,6 +3300,10 @@ end
 -- here. Returns the events this step produces, matching this project's
 -- always-return-an-event-list convention, so a caller can feed it through
 -- the same presentation pipeline as runTurn's own return value.
+-- WARNING (W3b): the same events are also queued for
+-- BattleSceneController (takeForcedSwitchEvents), which presents them after
+-- the send-out text. A caller running inside a controller callback must not
+-- also present the returned list, or the switch-in ability text shows twice.
 function BattleEngine:resolveForcedSwitch(side, newBattler)
   assert(self.awaitingForcedSwitch == side,
     ("no forced switch is pending for side %s"):format(tostring(side)))
@@ -3398,9 +3402,11 @@ end
 -- this engine represents: order the leads (battleStartOrder), then run
 -- ABILITYEFFECT_ON_SWITCHIN for each, fastest first (:2879-2887). The order
 -- is computed once, so with two different-family setters the slower one
--- runs last and its weather stays. Returns the event list. Call once, after
--- the intro/send-out messages and before the first runTurn;
--- BattleSceneController.new does this.
+-- runs last and its weather stays. Returns the event list. Call once,
+-- before the first runTurn; its messages belong after the intro/send-out
+-- text. BattleSceneController.new calls it when the controller is built
+-- (turn 0) and queues the messages after the intro; a headless runner that
+-- builds no controller must call it itself.
 --
 -- `overworldWeather` (optional, include/constants/weather.h id) stands in
 -- for ABILITYEFFECT_SWITCH_IN_WEATHER (:2873-2878). Every weather it acts on
