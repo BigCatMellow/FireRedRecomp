@@ -85,9 +85,10 @@
 --      (a real coin flip -- NOT "player first", and NOT a re-roll loop).
 --    Real return values: 0 = battler1 first, 1 or 2 = battler2 first (2 is
 --    the speed-tie-coin-flip case; every real caller just tests nonzero).
---    Paralysis (speed/4), Macho Brace, Quick Claw, Swift Swim/Chlorophyll
---    and the Badge 3 speed boost are all real modifiers deliberately left
---    out of this slice (no status/items/abilities/weather/badges yet).
+--    Macho Brace, Quick Claw and the Badge 3 speed boost are real
+--    modifiers left out (no items/badges yet). Paralysis (speed/4, 7b) and
+--    Swift Swim/Chlorophyll (x2 on the raw stat in rain/sun, weather W3a;
+--    see effectiveSpeed) are supported.
 --
 -- 7. TryRunFromBattle (src/battle_main.c:4229) -- run odds, singles path:
 --      if runner speed >= opponent speed: always escapes
@@ -97,8 +98,11 @@
 --
 -- Real modifiers NOT ported here (all no-ops in this slice, each because
 -- the system it depends on doesn't exist yet): held items and their hold
--- effects, abilities other than those listed in 7b/7c, badge stat boosts, weather,
--- double-battle spread-damage halving,
+-- effects, abilities other than those listed in 7b/7c, badge stat boosts,
+-- weather beyond the damage block in 9 and the W3a ability terms in 7c
+-- (Thunder's weather accuracy and Weather Ball's dynamic type/x2 live in
+-- BattleEngine since W2), double-battle
+-- spread-damage halving,
 -- Helping Hand, Charge, Flash Fire, Levitate and Wonder Guard. Each is a
 -- documented gap, not an approximation: the ported code paths above are
 -- byte-for-byte the real ones for a plain single-battle direct-damage move
@@ -111,8 +115,9 @@
 -- 7c. Ability terms ARE supported where source applies them to raw stats
 --    or accuracy: Huge Power/Pure Power, Thick Fat, Hustle, Guts, Marvel
 --    Scale (abilityAdjustedStats), Overgrow/Blaze/Torrent/Swarm power,
---    Explosion's defense halving after them, and Compound Eyes/Hustle
---    accuracy (accuracyCheck).
+--    Explosion's defense halving after them, Compound Eyes/Sand Veil/Hustle
+--    accuracy (accuracyCheck), and Swift Swim/Chlorophyll turn-order speed
+--    (effectiveSpeed).
 --
 -- 8. Reflect / Light Screen halving IS supported, inside
 --    calculateBaseDamage -- see that function's own comment for the exact
@@ -125,6 +130,11 @@
 --    already-decided halving to a damage number. Real double-battle
 --    2*(damage/3) variant is out of scope; Brick Break's screen removal
 --    happens in BattleEngine before this halving is consulted.
+--
+-- 9. Weather damage terms (weather slice W1) ARE supported inside the
+--    special branch of calculateBaseDamage only, after Light Screen
+--    (src/pokemon.c:2605-2637). The caller passes the WEATHER_HAS_EFFECT2
+--    weather kind (BattleEngine:damageWeather) and the move id.
 
 local StatusConditions = require("src.core.StatusConditions")
 
@@ -221,7 +231,8 @@ end
 -- Real CalculateBaseDamage (src/pokemon.c:2385), reduced to the code
 -- paths that are live in a single battle with no items/abilities/status/
 -- weather/screens (see this file's header for the full list of real
--- branches deliberately not modeled). Returns the real s32 result --
+-- branches deliberately not modeled; screens, status, the listed ability
+-- terms and the weather block, header 9, have since been added). Returns the real s32 result --
 -- which already includes the real trailing "+ 2".
 --
 -- attacker/defender: battler tables (see BattleEngine.lua) needing
@@ -271,7 +282,12 @@ function BattleFormulas.abilityAdjustedStats(attacker, defender, moveType)
   return attack, defense, spAttack, spDefense
 end
 
-function BattleFormulas.calculateBaseDamage(attacker, defender, move, isCrit, defenderScreens)
+BattleFormulas.MOVE_SOLAR_BEAM = 76
+BattleFormulas.TYPE_WATER = 11
+-- weatherKind/moveId (optional, weather W1): the WEATHER_HAS_EFFECT2
+-- weather ("rain"|"sun"|"sandstorm"|"hail" or nil) and the real move id
+-- (gCurrentMove, for the Solar Beam halving). nil for both is clear weather.
+function BattleFormulas.calculateBaseDamage(attacker, defender, move, isCrit, defenderScreens, weatherKind, moveId)
   local moveType = move.type
   local power = move.power
   local damage = 0
@@ -378,10 +394,34 @@ function BattleFormulas.calculateBaseDamage(attacker, defender, move, isCrit, de
     if defenderScreens and defenderScreens.lightScreen and not isCrit then
       damage = idiv(damage, 2)
     end
+    -- Real weather block (src/pokemon.c:2605-2637), under
+    -- WEATHER_HAS_EFFECT2, after Light Screen (the doubles halving between
+    -- them is not modeled) and before Flash Fire (not modeled). Rain tests
+    -- B_WEATHER_RAIN_TEMPORARY, which every reachable rain sets. Each step
+    -- truncates.
+    if weatherKind == "rain" then
+      if moveType == BattleFormulas.TYPE_FIRE then
+        damage = idiv(damage, 2)
+      elseif moveType == BattleFormulas.TYPE_WATER then
+        damage = idiv(15 * damage, 10)
+      end
+    end
+    -- "Any weather except sun weakens solar beam": the move id, not the effect.
+    if (weatherKind == "rain" or weatherKind == "sandstorm" or weatherKind == "hail")
+        and moveId == BattleFormulas.MOVE_SOLAR_BEAM then
+      damage = idiv(damage, 2)
+    end
+    if weatherKind == "sun" then
+      if moveType == BattleFormulas.TYPE_FIRE then
+        damage = idiv(15 * damage, 10)
+      elseif moveType == BattleFormulas.TYPE_WATER then
+        damage = idiv(damage, 2)
+      end
+    end
     -- No minimum-1 clamp here: real special branch genuinely lacks one,
     -- confirmed still true even after Light Screen halving -- real source
     -- has no such clamp anywhere in this branch, so a special hit that
-    -- Light Screen halves to 0 legitimately stays 0.
+    -- Light Screen (or a rain/sun halving) reduces to 0 legitimately stays 0.
   end
 
   return damage + 2
@@ -501,10 +541,14 @@ end
 -- attackerAbility/moveType (optional) apply Cmd_accuracycheck's ability
 -- terms (src/battle_script_commands.c:1069-1074) after the stage ratio:
 -- Compound Eyes `calc * 130 / 100`; Hustle `calc * 80 / 100` for a
--- physical-type move. Sand Veil needs weather and is not represented.
+-- physical-type move. defenderSandVeil (weather W3a) is the caller's
+-- `WEATHER_HAS_EFFECT && target ability == Sand Veil && sandstorm` test
+-- (:1071-1072); it applies `calc * 80 / 100` between Compound Eyes and
+-- Hustle, each step truncating.
 BattleFormulas.ABILITY_COMPOUND_EYES = 14
 BattleFormulas.ABILITY_HUSTLE = 55
-function BattleFormulas.accuracyCheck(moveAccuracy, accStage, evasionStage, rng, attackerAbility, moveType)
+function BattleFormulas.accuracyCheck(moveAccuracy, accStage, evasionStage, rng, attackerAbility, moveType,
+    defenderSandVeil)
   accStage = accStage or BattleFormulas.DEFAULT_STAT_STAGE
   evasionStage = evasionStage or BattleFormulas.DEFAULT_STAT_STAGE
 
@@ -516,6 +560,9 @@ function BattleFormulas.accuracyCheck(moveAccuracy, accStage, evasionStage, rng,
   local calc = idiv(ratio[1] * moveAccuracy, ratio[2])
   if attackerAbility == BattleFormulas.ABILITY_COMPOUND_EYES then
     calc = idiv(calc * 130, 100)
+  end
+  if defenderSandVeil then
+    calc = idiv(calc * 80, 100)
   end
   if attackerAbility == BattleFormulas.ABILITY_HUSTLE and moveType ~= nil
       and BattleFormulas.isPhysicalType(moveType) then
@@ -578,11 +625,24 @@ function BattleFormulas.rollMultiHitCount(rng)
 end
 
 -- Real speed used for turn order (GetWhoStrikesFirst, src/battle_main.c
--- :3428-3452): stat stage, then (badge boost and Macho Brace, not modeled)
--- then paralysis `/= 4`, then (Quick Claw, not modeled). Run odds use the
--- raw stat instead (TryRunFromBattle), so only turn order calls this.
-function BattleFormulas.effectiveSpeed(battler)
-  local speed = BattleFormulas.applyStatMod(battler.speed, stageOf(battler, "speed"))
+-- :3409-3452): under WEATHER_HAS_EFFECT, Swift Swim in rain or Chlorophyll
+-- in sun doubles the RAW stat before the stage ratio
+-- (`speed * mult * ratio[0] / ratio[1]`, :3428-3430 -- not 2x the staged
+-- value, which truncates differently); then the stat stage, then (badge
+-- boost and Macho Brace, not modeled) then paralysis `/= 4`, then (Quick
+-- Claw, not modeled). weatherKind is BattleEngine:activeWeather() (nil
+-- when there is no weather or Cloud Nine/Air Lock suppresses it). Run odds
+-- use the raw stat instead (TryRunFromBattle), so only turn order calls
+-- this.
+BattleFormulas.ABILITY_SWIFT_SWIM = 33  -- include/constants/abilities.h
+BattleFormulas.ABILITY_CHLOROPHYLL = 34
+function BattleFormulas.effectiveSpeed(battler, weatherKind)
+  local speed = battler.speed
+  if (battler.ability == BattleFormulas.ABILITY_SWIFT_SWIM and weatherKind == "rain")
+      or (battler.ability == BattleFormulas.ABILITY_CHLOROPHYLL and weatherKind == "sun") then
+    speed = speed * 2
+  end
+  speed = BattleFormulas.applyStatMod(speed, stageOf(battler, "speed"))
   if StatusConditions.isParalyzed(battler.status) then
     speed = idiv(speed, 4)
   end
@@ -590,7 +650,8 @@ function BattleFormulas.effectiveSpeed(battler)
 end
 
 -- Real GetWhoStrikesFirst (src/battle_main.c:3400), reduced to the
--- singles no-items/no-status path. move1/move2 are parsed gBattleMoves
+-- singles no-items path. weatherKind (optional) feeds effectiveSpeed's
+-- Swift Swim/Chlorophyll term. move1/move2 are parsed gBattleMoves
 -- records (only .priority is read) or nil for a non-move action, matching
 -- the real MOVE_NONE case (gBattleMoves[MOVE_NONE].priority == 0).
 -- Returns 0 if battler1 strikes first, or a nonzero value if battler2
@@ -598,9 +659,9 @@ end
 -- flip), preserved so callers can tell a tie-break apart from a clean win.
 -- Consumes one Random() call if and only if speeds tie at equal priority,
 -- which is exactly when the real code rolls.
-function BattleFormulas.getWhoStrikesFirst(battler1, battler2, move1, move2, rng)
-  local speed1 = BattleFormulas.effectiveSpeed(battler1)
-  local speed2 = BattleFormulas.effectiveSpeed(battler2)
+function BattleFormulas.getWhoStrikesFirst(battler1, battler2, move1, move2, rng, weatherKind)
+  local speed1 = BattleFormulas.effectiveSpeed(battler1, weatherKind)
+  local speed2 = BattleFormulas.effectiveSpeed(battler2, weatherKind)
   local priority1 = (move1 and move1.priority) or 0
   local priority2 = (move2 and move2.priority) or 0
 

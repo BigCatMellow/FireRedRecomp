@@ -110,7 +110,7 @@ local function chooseCheckBadMove(engine)
       anyCandidate = true
       local move = assert(engine.moves[slot.move], "trainer move missing from battle table")
       local delta = AICheckBadMove.score(engine.foe, engine.player, move, slot.move,
-        engine.typeChart, engine.sideStatus)
+        engine.typeChart, engine.sideStatus, engine.weather and engine.weather.kind)
       -- Real Cmd_score flattens a move's score at 0 if it goes negative
       -- (src/battle_ai_script_commands.c:525-530); base is always 100 and
       -- every ported delta here is <= 12 in magnitude, so this floor is

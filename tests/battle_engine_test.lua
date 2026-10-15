@@ -494,9 +494,24 @@ battle = makeBattle({}, { { move = Data.MOVE_SWORDS_DANCE, pp = 30 } }, { { move
 battle.player.statStages.attack = 12
 statEvents = {}
 battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, statEvents)
+-- The prevented event keeps the signed delta (Swords Dance +2) so the
+-- controller prints "won't go higher!" (ChangeStatBuffs ALLOW_PTR,
+-- src/battle_script_commands.c:6799-6810).
 check("stat-UP move already at MAX_STAT_STAGE is prevented, not silently clamped",
-  statEvents[2].type == "statChange" and statEvents[2].stages == 0 and statEvents[2].prevented == true, statEvents[2])
+  statEvents[2].type == "statChange" and statEvents[2].stages == 2 and statEvents[2].prevented == true
+    and battle.player.statStages.attack == 12, statEvents[2])
 check("prevented UP move still consumes zero RNG", battle.rng.draws == 0)
+do
+  -- Review F7 follow-up: the controller now renders the source text for a
+  -- self-target UP move at +6 ("won't go higher!", B_MSG_STAT_WONT_INCREASE
+  -- via EffectStatUp's ALLOW_PTR statbuffchange), not "won't go lower!".
+  local Controller = require("src.core.BattleSceneController")
+  local c = Controller.new({ engine = battle, playerName = "BULBASAUR", foeName = "RATTATA",
+    introMessages = {} })
+  local texts = c:_eventMessages(statEvents)
+  check("Swords Dance at +6 prints \"won't go higher!\"",
+    texts[2] and texts[2].text == "BULBASAUR's ATTACK\nwon't go higher!", texts[2] and texts[2].text)
+end
 
 -- Boundary: already at MIN_STAT_STAGE (0) prevents a further DOWN move
 -- (existing behavior, re-checked against the new table-driven dispatch).
@@ -505,7 +520,8 @@ battle.foe.statStages.accuracy = 0
 statEvents = {}
 battle:resolveMove(BattleEngine.SIDE_PLAYER, 1, statEvents)
 check("stat-DOWN move already at MIN_STAT_STAGE is prevented",
-  statEvents[2].type == "statChange" and statEvents[2].stages == 0 and statEvents[2].prevented == true, statEvents[2])
+  statEvents[2].type == "statChange" and statEvents[2].stages == -1 and statEvents[2].prevented == true
+    and battle.foe.statStages.accuracy == 0, statEvents[2])
 
 -- A DOWN-family move can still miss (it does run accuracycheck); the miss
 -- still deducts PP and consumes only its one accuracy draw.
@@ -1080,7 +1096,7 @@ check("a missed multi-hit move never reaches setmultihitcounter -- exactly one R
 -- newly-switched-in battler. Real Cmd_switchindataupdate confirms an
 -- ordinary switch-in starts with neutral stat stages regardless of what
 -- the outgoing battler's stages were.
-battle = makeBattle({ 0, 0, 0 }, { { move = Data.MOVE_GROWL, pp = 40 } }, { { move = Data.MOVE_TACKLE, pp = 1 } })
+battle = makeBattle({ 0, 0, 0, 0 }, { { move = Data.MOVE_GROWL, pp = 40 } }, { { move = Data.MOVE_TACKLE, pp = 1 } })
 battle.foe.statStages.attack = 5 -- simulate a prior Growl already having landed
 local incoming = BattleEngine.makeBattler({
   species = 99, level = 10, stats = charStats, types = Data.CHARMANDER.types,
@@ -1094,8 +1110,12 @@ check("the incoming battler starts with neutral stat stages, not carried over fr
   incoming.statStages.attack == 6)
 check("the foe still attacks the same turn, landing on the newly-switched-in battler",
   incoming.hp < incoming.maxHP)
-check("a switch consumes no RNG of its own (only the foe's ordinary attack draws)",
-  battle.rng.draws == 3, battle.rng.draws)
+-- Weather W0: the incoming battler (Charmander stats, speed 11) ties the
+-- foe (11) and a switch is MOVE_NONE vs Tackle, both priority 0, so
+-- ENDTURN_ORDER draws one `Random() & 1` (src/battle_util.c:484-501,
+-- src/battle_main.c:3486-3496, :3523). The switch itself still draws none.
+check("a switch consumes no RNG of its own (the foe's attack draws 3, then one end-of-turn tie draw)",
+  battle.rng.draws == 4, battle.rng.draws)
 
 -- The same recoil-outcome guard capture/run already rely on: a foe recoil
 -- move that faints the foe itself right after a switch must not have its

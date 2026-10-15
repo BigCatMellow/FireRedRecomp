@@ -106,7 +106,9 @@ Rules (review F3): (a) run the phase at every site where `decaySideTimers`
 runs, under the same `not isOver()` gate (today `BattleEngine.lua:2101,2146,
 2176,2220,2226,2236`). (b) Battler order is the turn's action order: hoisted
 switch, item and run actions first, otherwise the `getWhoStrikesFirst`
-result. (c) Skip battlers at 0 HP. (d) After each faint call `checkFaint`; if
+result. *(Superseded by weather slice W0: the order is recomputed as
+`ENDTURN_ORDER` does, `src/battle_util.c:484-501`; see
+[`phase4-weather-w0`](../tasks/phase4-weather-w0.md).)* (c) Skip battlers at 0 HP. (d) After each faint call `checkFaint`; if
 that decides the battle, stop the phase; if it only queues a forced switch,
 continue with the remaining battlers and resolve the replacement after the
 phase. (e) Two forced switches can come out of one phase. (f) Future

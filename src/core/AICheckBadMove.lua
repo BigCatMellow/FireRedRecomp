@@ -288,10 +288,12 @@ local function dreamEater(user, target, move, typeChart)
   return 0
 end
 
--- AI_CBM_Nightmare (data/battle_ai_scripts.s:237-240): the first branch
--- (status2 nightmare already set) is a confirmed no-op (status2 is not
--- modeled); then `if_not_status AI_TARGET STATUS1_SLEEP, Score_Minus8`.
+-- AI_CBM_Nightmare (data/battle_ai_scripts.s:237-240): `if_status2
+-- AI_TARGET, STATUS2_NIGHTMARE, Score_Minus10` reads the battler's
+-- nightmare flag (residual slice R1); then `if_not_status AI_TARGET
+-- STATUS1_SLEEP, Score_Minus8`.
 local function nightmare(user, target, move, typeChart)
+  if target.nightmare then return -10 end
   if not StatusConditions.isAsleep(target.status) then return -8 end
   return 0
 end
@@ -357,10 +359,11 @@ local function substitute(user, target, move, typeChart)
   return 0
 end
 
--- AI_CBM_LeechSeed (data/battle_ai_scripts.s:414-420). Real
--- `if_status3 AI_TARGET STATUS3_LEECHSEED` (already seeded) is a confirmed
--- no-op.
+-- AI_CBM_LeechSeed (data/battle_ai_scripts.s:414-420): `if_status3
+-- AI_TARGET, STATUS3_LEECHSEED, Score_Minus10` reads the battler's seeded
+-- flag (residual slice R1); then Grass in type1 or type2 -> -10.
 local function leechSeed(user, target, move, typeChart)
+  if target.seeded then return -10 end
   if target.types[1] == TYPE_GRASS or target.types[2] == TYPE_GRASS then return -10 end
   return 0
 end
@@ -507,6 +510,32 @@ local function alwaysNoPenalty(user, target, move, typeChart)
   return 0
 end
 
+-- AI_CBM_Sandstorm/RainDance/SunnyDay/Hail (data/battle_ai_scripts.s
+-- :455-458, :495-503, :526-529): get_weather, then Score_Minus8 when it
+-- equals the move's own AI_WEATHER_* id (SUN 0, RAIN 1, SANDSTORM 2, HAIL 3;
+-- include/constants/battle_ai.h:26-29). Weather is real engine state since
+-- weather W1, so these four rows left the no-op class above. Handler arity:
+-- the sixth argument is the raw weather kind (AICheckBadMove.score's
+-- `weatherKind`).
+-- Source quirk: Cmd_get_weather (src/battle_ai_script_commands.c:1385-1397)
+-- leaves funcResult unchanged when no weather bit is set. For these power-0
+-- moves the last writer is AI_CheckBadMove_CheckSoundproof's get_ability
+-- AI_TARGET (data/battle_ai_scripts.s:91-92), so in clear weather the
+-- comparison is against the target's ability id (this module's known-ability
+-- simplification): Rain Dance -8 vs Stench (1), Sandstorm vs Drizzle (2),
+-- Hail vs Speed Boost (3). Sunny Day vs ability 0 cannot happen for a real
+-- species (the only ABILITY_NONE entry in species_info.h is the unused
+-- old-Unown placeholder); it fires only for fixtures that omit `ability`.
+local AI_WEATHER = { sun = 0, rain = 1, sandstorm = 2, hail = 3 }
+local function weatherMove(own)
+  return function(user, target, move, typeChart, sideStatus, weatherKind)
+    local result
+    if weatherKind then result = AI_WEATHER[weatherKind] else result = target.ability or 0 end
+    if result == AI_WEATHER[own] then return -8 end
+    return 0
+  end
+end
+
 ------------------------------------------------------------------------
 -- Real if_effect dispatch chain (data/battle_ai_scripts.s:105-213), ported
 -- as effect id -> handler. Ids sharing a real target label share the same
@@ -574,7 +603,7 @@ local EFFECT_HANDLERS = {
   [112] = alwaysNoPenalty,                         -- EFFECT_SPIKES: SIDE_STATUS_SPIKES unmodeled
   [113] = alwaysNoPenalty,                         -- EFFECT_FORESIGHT: status2 unmodeled
   [114] = alwaysNoPenalty,                         -- EFFECT_PERISH_SONG: status3 unmodeled
-  [115] = alwaysNoPenalty,                         -- EFFECT_SANDSTORM: weather unmodeled
+  [115] = weatherMove("sandstorm"),                -- EFFECT_SANDSTORM -> AI_CBM_Sandstorm
   [118] = confuse,                                 -- EFFECT_SWAGGER -> AI_CBM_Confuse
   [121] = highRiskForDamage,                       -- EFFECT_RETURN
   [122] = highRiskForDamage,                       -- EFFECT_PRESENT
@@ -582,8 +611,8 @@ local EFFECT_HANDLERS = {
   [124] = alwaysNoPenalty,                         -- EFFECT_SAFEGUARD: side status unmodeled
   [126] = magnitude,                               -- EFFECT_MAGNITUDE
   [130] = highRiskForDamage,                       -- EFFECT_SONICBOOM
-  [136] = alwaysNoPenalty,                         -- EFFECT_RAIN_DANCE: weather unmodeled
-  [137] = alwaysNoPenalty,                         -- EFFECT_SUNNY_DAY: weather unmodeled
+  [136] = weatherMove("rain"),                     -- EFFECT_RAIN_DANCE -> AI_CBM_RainDance
+  [137] = weatherMove("sun"),                      -- EFFECT_SUNNY_DAY -> AI_CBM_SunnyDay
   [142] = bellyDrum,                               -- EFFECT_BELLY_DRUM
   [143] = haze,                                    -- EFFECT_PSYCH_UP -> AI_CBM_Haze
   [144] = highRiskForDamage,                       -- EFFECT_MIRROR_COAT
@@ -594,7 +623,7 @@ local EFFECT_HANDLERS = {
   [160] = stockpile,                               -- EFFECT_STOCKPILE
   [161] = spitUpAndSwallow,                        -- EFFECT_SPIT_UP
   [162] = spitUpAndSwallow,                        -- EFFECT_SWALLOW
-  [164] = alwaysNoPenalty,                         -- EFFECT_HAIL: weather unmodeled
+  [164] = weatherMove("hail"),                     -- EFFECT_HAIL -> AI_CBM_Hail
   [165] = alwaysNoPenalty,                         -- EFFECT_TORMENT: status2 unmodeled
   [166] = confuse,                                 -- EFFECT_FLATTER -> AI_CBM_Confuse
   [167] = willOWisp,                               -- EFFECT_WILL_O_WISP
@@ -642,7 +671,10 @@ local UNPORTED_EFFECTS = {
 -- sound-move list). `typeChart`/`sideStatus` come straight from the
 -- BattleEngine instance (import/TypeChart.lua rows; BattleEngine.new's
 -- per-side reflect/lightScreen table).
-function AICheckBadMove.score(user, target, move, moveId, typeChart, sideStatus)
+-- `weatherKind` (weather W1) is the engine's raw weather family
+-- (engine.weather.kind, or nil): Cmd_get_weather tests the bits only and
+-- ignores Cloud Nine/Air Lock.
+function AICheckBadMove.score(user, target, move, moveId, typeChart, sideStatus, weatherKind)
   -- Step 1-2: get_how_powerful_move_is gate + AI_CBM_CheckIfNegatesType.
   local powerDiscouraged = move.power <= 1 or DISCOURAGED_POWERFUL_EFFECTS[move.effect]
   if not powerDiscouraged then
@@ -670,7 +702,7 @@ function AICheckBadMove.score(user, target, move, moveId, typeChart, sideStatus)
   -- Step 4: AI_CheckBadMove_CheckEffect dispatch.
   local handler = EFFECT_HANDLERS[move.effect]
   if handler then
-    return handler(user, target, move, typeChart, sideStatus)
+    return handler(user, target, move, typeChart, sideStatus, weatherKind)
   end
   if UNPORTED_EFFECTS[move.effect] then
     error(("AICheckBadMove: real AI_CheckBadMove effect %d (%s) is in the real dispatch " ..

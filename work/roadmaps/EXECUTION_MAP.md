@@ -49,9 +49,10 @@ RNG or full Phase 4 parity. Preserve all review exclusions and follow-ups.
 The normal START Pokédex zero-seen guard [PR5](https://github.com/BigCatMellow/FireRedRecomp/pull/5)
 is independently PASS and merged `52fbf69`: source386 replaces erroneous411;
 post-merge178 no-ROM files pass. Only the bounded guard/range fix is accepted.
-Current leaf is the two-document correction of PR3 Party design after
-NEEDS_FIX; independent design recheck is required before existing PR6 Party
-SUMMARY code can be accepted. Read-only Memento AI feasibility found an existing
+PR3 Party design is independently PASS and merged `239c25f`. Current leaf is
+actual PR6 SUMMARY code alignment under amended six-path task `6ff4464`;
+Worker implementation/evidence and independent exact review remain required.
+Read-only Memento AI feasibility found an existing
 replacement callback; this is not implementation authority and must be checked
 against later battle changes before a separate task.
 
