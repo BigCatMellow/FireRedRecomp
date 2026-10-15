@@ -41,6 +41,8 @@
 --   {type="noPP", side=, move=}                   -- see the Struggle stub
 --   {type="moveFailed", side=}                    -- generic But it failed; distinct from screenFailed
 --   {type="statChange", side=<target>, stat=, stages=-1, prevented=}
+--    (a prevented event keeps the signed stage delta: > 0 "won't go
+--    higher!", otherwise "won't go lower!")
 --   {type="statsWontRise", side=<attacker>}  -- two-stat UP move, both at +6
 --   {type="statsWontFall", side=<defender>}  -- Tickle, target ATK/DEF both at -6
 --   {type="splash"} / {type="haze"}
@@ -98,6 +100,19 @@
 --    hpRemaining=}                     -- end-of-turn sandstorm/hail damage
 --   {type="rainDish", side=, amount=, hpRemaining=} -- Rain Dish end-of-turn
 --    heal in rain (weather W3a): "X's RAIN DISH\nrestored its HP a little!"
+--   {type="leechSeed", side=<attacker>, target=, result="seeded"|"evaded"|
+--    "noEffect"}                       -- Leech Seed (residual R1): a miss and
+--    an already-seeded target are both "evaded"; a Grass target "noEffect"
+--   {type="leechSeedDrain", side=<seeded>, receiver=, ooze=, amount=,
+--    hpRemaining=, receiverAmount=, receiverHpRemaining=} -- end of turn;
+--    ooze (Liquid Ooze on the seeded battler) damages the receiver instead
+--    of healing it; both HP changes precede the text
+--   {type="leechSeedFreed", side=<attacker>} -- Rapid Spin shed the seed
+--   {type="nightmare", side=<attacker>, target=} -- "fell into a NIGHTMARE!"
+--   {type="nightmareDamage", side=, amount=, hpRemaining=} -- end of turn
+--   {type="curseLaid", side=<attacker>, target=, amount=, hpRemaining=}
+--    -- Ghost Curse: the user's HP cost, then the text
+--   {type="curseDamage", side=, amount=, hpRemaining=} -- end of turn
 --   {type="weatherAbility", side=, ability=, kind=} -- Drizzle (2)/Sand
 --    Stream (45)/Drought (70) switch-in set permanent "rain"|"sandstorm"|
 --    "sun" (weather W3b); from resolveBattleStart, runTurn's switch branch
@@ -279,8 +294,9 @@
 --     Confuse/Teeter Dance/Swagger/Flatter handlers (applyConfusion).
 --     Soundproof is not represented (Supersonic, Snore, Growl, Sing).
 --   * Abilities only where named (Damp, Guts, the status guards above,
---     Cloud Nine/Air Lock, Sand Veil, Swift Swim/Chlorophyll, Rain Dish and
---     the Drizzle/Sand Stream/Drought switch-in weather);
+--     Cloud Nine/Air Lock, Sand Veil, Swift Swim/Chlorophyll, Rain Dish,
+--     the Drizzle/Sand Stream/Drought switch-in weather and Liquid Ooze on
+--     the Leech Seed drain);
 --     no held items,
 --     multi-turn/charging moves, trapping, forced switching, OHKO moves,
 --     double battles, trainer AI, or EXP/level-up on victory.
@@ -301,6 +317,12 @@
 --     run at battle start (resolveBattleStart, leads fastest first), on a
 --     voluntary switch (runTurn) and on a forced replacement
 --     (resolveForcedSwitch). Not yet: Forecast, Intimidate, Trace.
+--   * Residual slice R1 (work/tasks/phase4-residual-r1.md): Leech Seed
+--     (with Liquid Ooze on the drain), Nightmare, both Curse paths, Rapid
+--     Spin's seed arm, the extended per-battler end-of-turn order and the
+--     deferred team check (resolveStatusEndTurn). Not yet: Ingrain, Mean
+--     Look/Spider Web/Block and the escape veto (R2), the trapping moves
+--     and Rapid Spin's wrap arm (R3).
 --   * Pure single-stat stage-change moves (Growl/Tail Whip's full real
 --     family) ARE supported -- see BattleEngine.STAT_STAGE_MOVES and the
 --     move.power == 0 branch of resolveMove.
@@ -870,6 +892,14 @@ BattleEngine.EFFECT_REFRESH = 193
 -- Status-leftovers slice L2 (BattleScript_EffectRest, bs1.s:735-759;
 -- BattleScript_EffectFocusEnergy, bs1.s:884-894).
 BattleEngine.EFFECT_REST = 37
+-- Residual slice R1 (work/tasks/phase4-residual-r1.md).
+BattleEngine.EFFECT_LEECH_SEED = 84   -- BattleScript_EffectLeechSeed (bs1.s:1153-1166)
+BattleEngine.EFFECT_NIGHTMARE = 107   -- BattleScript_EffectNightmare (bs1.s:1455-1469)
+BattleEngine.EFFECT_CURSE = 109       -- BattleScript_EffectCurse (bs1.s:1478-1526)
+BattleEngine.EFFECT_RAPID_SPIN = 129  -- BattleScript_EffectRapidSpin (bs1.s:1711-1713)
+BattleEngine.ABILITY_LIQUID_OOZE = 64 -- include/constants/abilities.h
+BattleEngine.TYPE_GHOST = 7           -- include/constants/pokemon.h
+BattleEngine.TYPE_GRASS = 12
 BattleEngine.EFFECT_FOCUS_ENERGY = 47
 BattleEngine.MOVE_REST = 156
 -- SetMoveEffect ability guards (include/constants/abilities.h ids).
@@ -1077,6 +1107,19 @@ function BattleEngine.makeBattler(opts)
     rampageTurns = 0,
     targetNotAffected = false,
     lockedSlot = nil,
+    -- Residual slice R1, battle-only, never persisted (a switch-in is a
+    -- fresh battler, so its own bits clear for free; bm.c:2365-2368):
+    --   seeded    STATUS3_LEECHSEED (include/constants/battle.h:134-135).
+    --             The partner bits STATUS3_LEECHSEED_BATTLER hold the
+    --             seeder's battler SLOT (bsc.c:6450); in singles that is
+    --             always the opposing slot, so the receiver is otherSide(side)
+    --             -- a slot, not a battler, so the seed outlives the seeder's
+    --             switch or faint and heals whoever holds that slot.
+    --   nightmare STATUS2_NIGHTMARE (battle.h:127)
+    --   cursed    STATUS2_CURSED (battle.h:128)
+    seeded = false,
+    nightmare = false,
+    cursed = false,
     moves = {},
     statStages = {
       attack = BattleFormulas.DEFAULT_STAT_STAGE,
@@ -1252,6 +1295,12 @@ function BattleEngine:recordFaint(side, events)
   battler.charging, battler.recharging, battler.rechargeTimer, battler.lockedSlot = false, false, 0, nil
   battler.semiInvulnerable = nil
   battler.rampageTurns = 0
+  -- FaintClearSetData zeroes the fainted battler's status2/status3
+  -- (src/battle_main.c:2441-2442). Nothing clears ANOTHER battler's seed
+  -- whose receiver is this slot (bm.c:2433-2452): its drain is skipped
+  -- while this slot is at 0 HP (src/battle_util.c:791) and heals the
+  -- replacement afterwards.
+  battler.seeded, battler.nightmare, battler.cursed = false, false, false
   for _, recorded in ipairs(self.faintSequence) do
     if recorded == side then return false end
   end
@@ -1364,6 +1413,10 @@ function BattleEngine:supportsMove(move, moveId)
   if move.effect == BattleEngine.EFFECT_TEETER_DANCE then
     return move.power == 0 and move.target == 0x20 -- MOVE_TARGET_FOES_AND_ALLY
   end
+  if move.effect == BattleEngine.EFFECT_LEECH_SEED or move.effect == BattleEngine.EFFECT_NIGHTMARE
+      or move.effect == BattleEngine.EFFECT_CURSE then
+    return move.power == 0 and move.target == 0 -- MOVE_TARGET_SELECTED
+  end
   return move.power > 0 or BattleEngine.STAT_STAGE_MOVES[move.effect] ~= nil
     or BattleEngine.SCREEN_MOVES[move.effect] ~= nil
     or move.effect == BattleEngine.EFFECT_PAIN_SPLIT
@@ -1426,6 +1479,8 @@ function BattleEngine:resolveStatusCancellers(attackerSide, attacker, moveId, mo
       end
       snoreAsleep = true
     else
+      -- The wake-up also clears STATUS2_NIGHTMARE (src/battle_util.c:1300).
+      attacker.nightmare = false
       events[#events + 1] = { type = "wokeUp", side = attackerSide }
     end
   end
@@ -2082,6 +2137,113 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
     else
       events[#events + 1] = { type = "moveFailed", side = attackerSide }
     end
+    return
+  end
+
+  if move.effect == BattleEngine.EFFECT_LEECH_SEED then
+    -- BattleScript_EffectLeechSeed (data/battle_scripts_1.s:1153-1166):
+    -- attackcanceler/attackstring/ppreduce, (Substitute: not modeled), then
+    -- `accuracycheck BattleScript_DoLeechSeed, ACC_CURR_MOVE` -- the miss
+    -- pointer IS the success label, so a hit and a miss both reach
+    -- Cmd_setseeded (src/battle_script_commands.c:6436-6456). A
+    -- semi-invulnerable target misses with no draw (:958-1001); otherwise
+    -- one accuracy draw. setseeded checks, in order: MOVE_RESULT_NO_EFFECT
+    -- (the miss) or already seeded -> B_MSG_LEECH_SEED_MISS ("evaded");
+    -- a Grass type in either slot -> B_MSG_LEECH_SEED_FAIL ("It doesn't
+    -- affect"), the draw already spent; otherwise seed the target with the
+    -- attacker's slot. No typecalc: a Ghost target can be seeded.
+    if slot then slot.pp = slot.pp - 1 end
+    local hit = self:accuracyRoll(attacker, defender, move, moveId)
+    local result
+    if not hit or defender.seeded then
+      result = "evaded"
+    elseif defender.types[1] == BattleEngine.TYPE_GRASS or defender.types[2] == BattleEngine.TYPE_GRASS then
+      result = "noEffect"
+    else
+      defender.seeded = true
+      result = "seeded"
+    end
+    events[#events + 1] = { type = "leechSeed", side = attackerSide, target = defenderSide, result = result }
+    return
+  end
+
+  if move.effect == BattleEngine.EFFECT_NIGHTMARE then
+    -- BattleScript_EffectNightmare (data/battle_scripts_1.s:1455-1469):
+    -- attackcanceler/attackstring/ppreduce, then (Substitute: not modeled),
+    -- already NIGHTMARE -> But it failed, target asleep -> worked, else But
+    -- it failed. No accuracycheck, no typecalc, no RNG. seteffectprimary
+    -- MOVE_EFFECT_NIGHTMARE sets the bit (src/battle_script_commands.c
+    -- :2678-2681).
+    if slot then slot.pp = slot.pp - 1 end
+    if defender.nightmare or not StatusConditions.isAsleep(defender.status) then
+      events[#events + 1] = { type = "moveFailed", side = attackerSide }
+      return
+    end
+    defender.nightmare = true
+    events[#events + 1] = { type = "nightmare", side = attackerSide, target = defenderSide }
+    return
+  end
+
+  if move.effect == BattleEngine.EFFECT_CURSE then
+    -- BattleScript_EffectCurse (data/battle_scripts_1.s:1478-1526). The
+    -- path is chosen by `jumpiftype2 BS_ATTACKER, TYPE_GHOST` (type1 or
+    -- type2, src/battle_script_commands.c:3826-3834) before attackcanceler;
+    -- running the cancellers first is equivalent (they never read it).
+    -- Accuracy depends on the path (review F3): only the Ghost path has an
+    -- accuracycheck, so the shared accuracy predicates never see effect 109.
+    if slot then slot.pp = slot.pp - 1 end
+    local ghost = attacker.types[1] == BattleEngine.TYPE_GHOST or attacker.types[2] == BattleEngine.TYPE_GHOST
+    if not ghost then
+      -- Non-Ghost: no accuracycheck (a target in mid-Fly/Dig does not
+      -- matter: the stat changes target the user). Fails only at Speed -6
+      -- AND Attack +6 AND Defense +6 (:1483-1485). Otherwise Speed -1,
+      -- Attack +1, Defense +1, each `statbuffchange AFFECTS_USER |
+      -- STAT_CHANGE_ALLOW_PTR`: ChangeStatBuffs returns WORKED at a limit
+      -- and prints "won't go lower/higher" (bsc.c:6772-6775, :6799-6810).
+      -- Mist, Protect and Clear Body exempt MOVE_CURSE (:6679-6704); none is
+      -- modeled anyway. Prevented events carry the signed stage (review F7).
+      local stages = attacker.statStages
+      local MIN, MAX = BattleFormulas.MIN_STAT_STAGE, BattleFormulas.MAX_STAT_STAGE
+      if stages.speed == MIN and stages.attack == MAX and stages.defense == MAX then
+        events[#events + 1] = { type = "moveFailed", side = attackerSide }
+        return
+      end
+      for _, change in ipairs({ { "speed", -1 }, { "attack", 1 }, { "defense", 1 } }) do
+        local stat, delta = change[1], change[2]
+        local current = stages[stat]
+        if (delta < 0 and current == MIN) or (delta > 0 and current == MAX) then
+          events[#events + 1] = {
+            type = "statChange", side = attackerSide, stat = stat, stages = delta, prevented = true,
+          }
+        else
+          stages[stat] = current + delta
+          events[#events + 1] = {
+            type = "statChange", side = attackerSide, stat = stat, stages = delta, stage = stages[stat],
+          }
+        end
+      end
+      return
+    end
+    -- Ghost (BattleScript_GhostCurse, :1507-1526): (Substitute: not
+    -- modeled), `accuracycheck BattleScript_ButItFailed,
+    -- NO_ACC_CALC_CHECK_LOCK_ON`: no draw, but any ON_AIR/UNDERGROUND/
+    -- UNDERWATER target jumps to But it failed (bsc.c:1020-1025; Lock-On
+    -- and Protect not modeled). Cmd_cursetarget (bsc.c:8093-8108): already
+    -- cursed -> But it failed; otherwise set CURSED, damage =
+    -- max(1, attacker maxHP / 2); datahpupdate clamps at the user's HP;
+    -- printstring after the HP update; then tryfaintmon BS_ATTACKER.
+    if defender.semiInvulnerable or defender.cursed then
+      events[#events + 1] = { type = "moveFailed", side = attackerSide }
+      return
+    end
+    defender.cursed = true
+    local cost = math.min(attacker.hp, math.max(1, math.floor(attacker.maxHP / 2)))
+    attacker.hp = attacker.hp - cost
+    events[#events + 1] = {
+      type = "curseLaid", side = attackerSide, target = defenderSide,
+      amount = cost, hpRemaining = attacker.hp,
+    }
+    self:checkFaint(attackerSide, events)
     return
   end
 
@@ -2747,9 +2909,13 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
         or BattleEngine.STATUS2_HIT_MOVES[move.effect]
         or move.effect == BattleEngine.EFFECT_SMELLINGSALT
         or move.effect == BattleEngine.EFFECT_RECHARGE
-        or move.effect == BattleEngine.EFFECT_RAMPAGE then
+        or move.effect == BattleEngine.EFFECT_RAMPAGE
+        or move.effect == BattleEngine.EFFECT_RAPID_SPIN then
       -- Smelling Salt's byte is CERTAIN, which skips the roll only when the
       -- move had an effect; a no-effect hit falls to the rolling branch.
+      -- Rapid Spin (MOVE_EFFECT_RAPIDSPIN | AFFECTS_USER | CERTAIN, chance
+      -- 0) has the same shape: against a Ghost the `% 100` is drawn and
+      -- nothing is applied (Cmd_seteffectwithchance, bsc.c:2774-2805).
       BattleFormulas.secondaryEffectRoll(self.rng, move.secondaryEffectChance)
     end
     return
@@ -2916,6 +3082,21 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
   if status2Kind
       and BattleFormulas.secondaryEffectRoll(self.rng, move.secondaryEffectChance) then
     self:applySecondaryStatus2(defenderSide, defender, status2Kind, events)
+  end
+
+  if move.effect == BattleEngine.EFFECT_RAPID_SPIN and attacker.hp > 0 then
+    -- MOVE_EFFECT_RAPIDSPIN | AFFECTS_USER | CERTAIN: no roll on a hit that
+    -- had an effect; SetMoveEffect's 0-HP guard tests the user, then
+    -- BattleScript_RapidSpinAway -> Cmd_rapidspinfree
+    -- (src/battle_script_commands.c:8435-8469), an else-if chain: WRAPPED
+    -- (residual slice R3; never set yet), else LEECHSEED -> clear it and
+    -- "shed LEECH SEED!" (data/battle_scripts_1.s:3451-3454), else Spikes
+    -- (not modeled). Runs before the caller's tryfaintmon BS_TARGET, so it
+    -- also frees the user on a KO.
+    if attacker.seeded then
+      attacker.seeded = false
+      events[#events + 1] = { type = "leechSeedFreed", side = attackerSide }
+    end
   end
 
   if move.effect == BattleEngine.EFFECT_SMELLINGSALT and defender.hp > 0
@@ -3563,30 +3744,80 @@ function BattleEngine:resolveWeatherEndTurn(events, sides)
   end
 end
 
--- Real DoBattlerEndTurnEffects status cases (src/battle_util.c:805-841),
--- per battler in ENDTURN_ORDER order (endTurnOrder): poison max(1,
--- maxHP/8); toxic counter incremented first (capped at 15) then max(1,
--- maxHP/16) * counter; burn
--- max(1, maxHP/8). Battlers at 0 HP are skipped. Each tick runs
--- tryfaintmon/checkteamslost (data/battle_scripts_1.s:3685-3686): a faint
--- that decides the battle stops the phase (BattleTurnPassed re-tests
--- gBattleOutcome); one that only queues a forced switch lets the remaining
--- battlers tick. The toxic counter is battle-local: BattlePartyBridge masks
--- it on persist.
+-- Real DoBattlerEndTurnEffects (src/battle_util.c:720-1060), the cases this
+-- engine represents, per battler in ENDTURN_ORDER order (endTurnOrder), one
+-- battler's whole list before the next (:749-757, :1051-1054). Battlers at
+-- 0 HP are skipped (every represented case tests the battler's own
+-- hp != 0). In source order:
+--   1. ENDTURN_INGRAIN (residual slice R2; not yet).
+--   2. ENDTURN_ABILITIES: Rain Dish (weather W3a). Every field case,
+--      weather damage included, already ran for both battlers.
+--      AbilityBattleEffects(ABILITYEFFECT_ENDTURN) (:1817-1831): hp != 0,
+--      WEATHER_HAS_EFFECT && rain, maxHP > hp; heal max(1, maxHP/16).
+--      BattleScript_RainDishActivates (data/battle_scripts_1.s:3938-3944)
+--      prints the text, then updates HP; datahpupdate clamps at maxHP. At
+--      full HP nothing happens (no text). No RNG.
+--   3. ENDTURN_LEECH_SEED (residual R1, :789-804): seeded, the receiver
+--      slot (the opposing slot in singles) at hp != 0, own hp != 0.
+--      BattleScript_LeechSeedTurnDrain (bs1.s:3223-3243): the seeded
+--      battler loses max(1, maxHP/8) (clamped: gHpDealt is the real loss);
+--      with Liquid Ooze (the SEEDED battler's ability) the receiver takes
+--      gHpDealt as damage, otherwise it heals gHpDealt (clamped at maxHP);
+--      the text follows both HP updates; then tryfaintmon seeded, then
+--      tryfaintmon receiver -- and NO checkteamslost (decision D2).
+--   4. ENDTURN_POISON/BAD_POISON/BURN (:805-840): poison max(1, maxHP/8);
+--      toxic counter incremented first (capped at 15) then max(1,
+--      maxHP/16) * counter; burn max(1, maxHP/8). The toxic counter is
+--      battle-local: BattlePartyBridge masks it on persist.
+--   5. ENDTURN_NIGHTMARES (R1, :841-860): asleep -> "locked in a
+--      NIGHTMARE!" then max(1, maxHP/4) (bs1.s:3791-3795); awake -> the bit
+--      clears silently (the FRLG re-check, :844-845).
+--   6. ENDTURN_CURSE (R1, :861-871): "afflicted by the CURSE!" then
+--      max(1, maxHP/4) (bs1.s:3797-3801).
+--   7. ENDTURN_WRAP (residual slice R3; not yet).
+--   8. ENDTURN_THRASH (:953-973): the rampage tick.
+-- No case tests semi-invulnerability: a Fly/Dig/Dive user still ticks.
 --
--- Rain Dish (weather W3a) is this battler's ENDTURN_ABILITIES case, which
--- precedes ENDTURN_POISON/BURN and ENDTURN_THRASH (src/battle_util.c
--- :720-743, :774-778); every field case, weather damage included, already
--- ran for both battlers. AbilityBattleEffects(ABILITYEFFECT_ENDTURN)
--- (:1817-1831): hp != 0, WEATHER_HAS_EFFECT && rain, maxHP > hp; heal
--- max(1, maxHP/16). BattleScript_RainDishActivates
--- (data/battle_scripts_1.s:3938-3944) prints the text, then updates HP;
--- datahpupdate clamps at maxHP. At full HP nothing happens (no text). No
--- RNG.
+-- Faints and the team check (decision D2; review F1, F2). Ticks 4-6 run
+-- BattleScript_DoTurnDmg (bs1.s:3676-3688): tryfaintmon, then
+-- checkteamslost on EVERY tick, fatal or not. The Leech Seed drain has no
+-- checkteamslost, so its knockout does not end the battle by itself: the
+-- phase goes on and the next checkteamslost decides it (any later damage
+-- tick, or HandleFaintedMonActions after the phase, src/battle_util.c:1143,
+-- bs1.s:2824-2826). Ported on the existing faintSequence:
+--   * a Leech Seed knockout opens the sequence lazily and records the
+--     fainted battler(s) without finalizing;
+--   * after each damage tick, if the ticking battler is at 0 HP or a
+--     sequence is open, record ONLY the ticking battler (a no-op above
+--     0 HP; a battler that fainted mid-turn was already finalized) and
+--     finalize. LOST and WON are ORed independently (bsc.c:3385-3420), as
+--     finalizeFaintSequence's playerDrew;
+--   * a decided battle stops the phase at once, including this battler's
+--     later cases (BattleTurnPassed, src/battle_main.c:2958-2962): `break`,
+--     never `return`, so the post-loop finalize below is always reached;
+--   * after the loop an open sequence is finalized (HandleFaintedMonActions).
+-- With no Leech Seed knockout this is exactly the previous immediate
+-- checkFaint per tick. A faint that only queues a forced switch lets the
+-- remaining battlers tick.
 function BattleEngine:resolveStatusEndTurn(events, sides)
   local S = StatusConditions
+  -- DoTurnDmg's tryfaintmon + checkteamslost for the battler that ticked.
+  -- Returns true when the battle is decided (review F1).
+  local function tickTeamCheck(side)
+    if self:battler(side).hp == 0 or self.faintSequence then
+      if not self.faintSequence then self:beginFaintSequence() end
+      self:recordFaint(side, events)
+      self:finalizeFaintSequence(events)
+    end
+    return self:isOver()
+  end
+  local function damage(battler, amount)
+    if amount > battler.hp then amount = battler.hp end
+    battler.hp = battler.hp - amount
+    return amount
+  end
   for _, side in ipairs(sides) do
-    if self:isOver() then return end
+    if self:isOver() then break end
     local battler = self:battler(side)
     if battler.hp > 0 and battler.ability == BattleEngine.ABILITY_RAIN_DISH
         and self:activeWeather() == "rain" and battler.hp < battler.maxHP then
@@ -3594,6 +3825,29 @@ function BattleEngine:resolveStatusEndTurn(events, sides)
       if amount > battler.maxHP - battler.hp then amount = battler.maxHP - battler.hp end
       battler.hp = battler.hp + amount
       events[#events + 1] = { type = "rainDish", side = side, amount = amount, hpRemaining = battler.hp }
+    end
+    local receiverSide = otherSide(side)
+    local receiver = self:battler(receiverSide)
+    if battler.hp > 0 and battler.seeded and receiver.hp > 0 then
+      local amount = damage(battler, math.max(1, math.floor(battler.maxHP / 8)))
+      local ooze = battler.ability == BattleEngine.ABILITY_LIQUID_OOZE
+      local receiverAmount
+      if ooze then
+        receiverAmount = damage(receiver, amount)
+      else
+        receiverAmount = math.min(receiver.maxHP - receiver.hp, amount)
+        receiver.hp = receiver.hp + receiverAmount
+      end
+      events[#events + 1] = {
+        type = "leechSeedDrain", side = side, receiver = receiverSide, ooze = ooze,
+        amount = amount, hpRemaining = battler.hp,
+        receiverAmount = receiverAmount, receiverHpRemaining = receiver.hp,
+      }
+      if battler.hp == 0 or receiver.hp == 0 then
+        if not self.faintSequence then self:beginFaintSequence() end
+        self:recordFaint(side, events)
+        self:recordFaint(receiverSide, events)
+      end
     end
     local status = battler.status or 0
     if battler.hp > 0 then
@@ -3612,19 +3866,30 @@ function BattleEngine:resolveStatusEndTurn(events, sides)
         amount = math.max(1, math.floor(battler.maxHP / 8))
       end
       if kind then
-        if amount > battler.hp then amount = battler.hp end
-        battler.hp = battler.hp - amount
+        amount = damage(battler, amount)
         events[#events + 1] = {
           type = "statusDamage", side = side, kind = kind,
           amount = amount, hpRemaining = battler.hp,
         }
-        if battler.hp == 0 then
-          self:checkFaint(side, events)
-        end
+        if tickTeamCheck(side) then break end
       end
     end
+    if battler.hp > 0 and battler.nightmare then
+      if S.isAsleep(battler.status) then
+        local amount = damage(battler, math.max(1, math.floor(battler.maxHP / 4)))
+        events[#events + 1] = { type = "nightmareDamage", side = side, amount = amount, hpRemaining = battler.hp }
+        if tickTeamCheck(side) then break end
+      else
+        battler.nightmare = false
+      end
+    end
+    if battler.hp > 0 and battler.cursed then
+      local amount = damage(battler, math.max(1, math.floor(battler.maxHP / 4)))
+      events[#events + 1] = { type = "curseDamage", side = side, amount = amount, hpRemaining = battler.hp }
+      if tickTeamCheck(side) then break end
+    end
     -- ENDTURN_THRASH (src/battle_util.c:953-973), after this battler's
-    -- status damage. A faint above already cleared the lock (recordFaint).
+    -- damage ticks. A faint above already cleared the lock (recordFaint).
     if (battler.rampageTurns or 0) > 0 then
       battler.rampageTurns = battler.rampageTurns - 1
       if battler.targetNotAffected then
@@ -3641,6 +3906,9 @@ function BattleEngine:resolveStatusEndTurn(events, sides)
       end
     end
   end
+  -- HandleFaintedMonActions' BattleScript_HandleFaintedMon checkteamslost
+  -- for a Leech Seed knockout no later tick decided.
+  if self.faintSequence then self:finalizeFaintSequence(events) end
 end
 
 -- The gBattleMoves record GetWhoStrikesFirst reads for a side's chosen
