@@ -280,9 +280,12 @@
 --     state and its shared 5-turn counter, the four weather moves, the
 --     end-of-turn weather texts and sandstorm/hail damage, the special-branch
 --     Fire/Water and Solar Beam damage terms, freeze blocked in sun, and
---     Cloud Nine/Air Lock. Not yet: Thunder/Solar Beam/Weather Ball/the
---     sunlight heals (W2), Swift Swim/Chlorophyll/Sand Veil accuracy/Rain
---     Dish (W3a), Drizzle/Drought/Sand Stream (W3b), Forecast.
+--     Cloud Nine/Air Lock.
+--   * Weather slice W2 (work/tasks/phase4-weather-w2.md): Thunder's rain
+--     sure hit and sun accuracy 50, the Solar Beam sun path (PP and lock
+--     before the cancellers), Weather Ball's dynamic type and x2, and Morning
+--     Sun/Synthesis/Moonlight. Not yet: Swift Swim/Chlorophyll/Sand Veil
+--     accuracy/Rain Dish (W3a), Drizzle/Drought/Sand Stream (W3b), Forecast.
 --   * Pure single-stat stage-change moves (Growl/Tail Whip's full real
 --     family) ARE supported -- see BattleEngine.STAT_STAGE_MOVES and the
 --     move.power == 0 branch of resolveMove.
@@ -827,7 +830,8 @@ BattleEngine.SEMI_INVULNERABLE_MOVES = {
 }
 -- Moves that set the matching IGNORE hitmarker (data/battle_scripts_1.s
 -- :239-243, 1822-1858, 1888-1891, 1916-1919, 2704-2706) and their x2.
--- Thunder's rain/sun accuracy is weather W2; this table only covers ON_AIR.
+-- Thunder's rain/sun accuracy (weather W2) lives in accuracyRoll; this
+-- table only covers ON_AIR.
 BattleEngine.HITS_AIR = { [149] = 2, [146] = 2, [152] = 1, [207] = 1 } -- Gust, Twister, Thunder, Sky Uppercut
 BattleEngine.HITS_UNDERGROUND = { [147] = 2, [126] = 2 }                -- Earthquake, Magnitude
 BattleEngine.EFFECT_SKY_ATTACK = 75
@@ -836,7 +840,7 @@ BattleEngine.CHARGE_MOVES = {
   [39] = "razorWind",   -- EFFECT_RAZOR_WIND
   [75] = "skyAttack",   -- EFFECT_SKY_ATTACK
   [145] = "skullBash",  -- EFFECT_SKULL_BASH
-  [151] = "solarBeam",  -- EFFECT_SOLAR_BEAM (always charges: the sun path is weather W2)
+  [151] = "solarBeam",  -- EFFECT_SOLAR_BEAM (charges unless sun: see the W2 sun path)
   [155] = "semiInvulnerable", -- EFFECT_SEMI_INVULNERABLE (kind by move)
 }
 BattleEngine.EFFECT_CONFUSE = 49
@@ -872,6 +876,18 @@ BattleEngine.ABILITY_CLOUD_NINE = 13  -- include/constants/abilities.h
 BattleEngine.ABILITY_AIR_LOCK = 77
 BattleEngine.MOVE_SOLAR_BEAM = 76     -- CalculateBaseDamage tests the move id
 BattleEngine.WEATHER_DURATION = 5     -- gWishFutureKnock.weatherDuration = 5
+-- Weather slice W2 (work/tasks/phase4-weather-w2.md): the weather-dependent
+-- moves (include/constants/battle_move_effects.h ids).
+BattleEngine.EFFECT_MORNING_SUN = 132 -- BattleScript_EffectMorningSun (bs1.s:1726)
+BattleEngine.EFFECT_SYNTHESIS = 133   -- (bs1.s:1727), same script
+BattleEngine.EFFECT_MOONLIGHT = 134   -- (bs1.s:1728), same script
+BattleEngine.SUNLIGHT_HEAL_MOVES = { [132] = true, [133] = true, [134] = true }
+BattleEngine.EFFECT_SOLAR_BEAM = 151
+BattleEngine.EFFECT_THUNDER = 152
+BattleEngine.EFFECT_WEATHER_BALL = 203
+-- Cmd_setweatherballtype (src/battle_script_commands.c:9345-9364): the
+-- dynamic type per weather family (TYPE_WATER 11, ROCK 5, FIRE 10, ICE 15).
+BattleEngine.WEATHER_BALL_TYPES = { rain = 11, sandstorm = 5, sun = 10, hail = 15 }
 -- Primary status moves (slice S3): zero-power scripts with their own gate
 -- order before accuracycheck (data/battle_scripts_1.s:287-301 Sleep,
 -- :984-1003 Poison, :1005-1024 Paralyze, :687-706 Toxic, :2170-2185
@@ -1296,6 +1312,9 @@ function BattleEngine:supportsMove(move, moveId)
   if BattleEngine.WEATHER_MOVES[move.effect] then
     return move.power == 0 and move.target == MOVE_TARGET_USER
   end
+  if BattleEngine.SUNLIGHT_HEAL_MOVES[move.effect] then
+    return move.power == 0 and move.target == MOVE_TARGET_USER
+  end
   if move.effect == BattleEngine.EFFECT_REST then
     return moveId == BattleEngine.MOVE_REST
       and move.power == 0 and move.target == MOVE_TARGET_USER
@@ -1636,9 +1655,20 @@ end
 
 -- One accuracycheck: the semi-invulnerable miss first (no RNG), then the
 -- ordinary roll.
+-- Thunder (weather W2): AccuracyCalcHelper (src/battle_script_commands.c
+-- :993-998) makes it a sure hit with no Random() under WEATHER_HAS_EFFECT
+-- and rain, after the Dig/Dive miss; under sun, Cmd_accuracycheck replaces
+-- its accuracy with 50 before the stage ratio (:1062-1064), then the usual
+-- single draw.
 function BattleEngine:accuracyRoll(attacker, defender, move, moveId)
   if self:semiInvulnerableMiss(defender, move, moveId) then return false end
-  return BattleFormulas.accuracyCheck(move.accuracy, attacker.statStages.accuracy,
+  local accuracy = move.accuracy
+  if move.effect == BattleEngine.EFFECT_THUNDER then
+    local weather = self:activeWeather()
+    if weather == "rain" then return true end
+    if weather == "sun" then accuracy = 50 end
+  end
+  return BattleFormulas.accuracyCheck(accuracy, attacker.statStages.accuracy,
     defender.statStages.evasion, self.rng, attacker.ability, move.type)
 end
 
@@ -1724,6 +1754,25 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
     dynamicMove.power = BattleEngine.eruptionPowerFromHP(attacker.hp, attacker.maxHP, move.power)
     move = dynamicMove
   end
+  if move.effect == BattleEngine.EFFECT_WEATHER_BALL then
+    -- Cmd_setweatherballtype (src/battle_script_commands.c:9345-9364) runs
+    -- before attackcanceler: under WEATHER_HAS_EFFECT with any weather bit,
+    -- dmgMultiplier = 2 and dynamicMoveType = Water/Rock/Fire/Ice. The local
+    -- copy carries the type to every reader (accuracy/Hustle, the split,
+    -- Thick Fat, pinch abilities, the weather term, STAB/typecalc and the
+    -- move-end defrost through currentMove); the shared record stays Normal,
+    -- which is what the AI sees (battle_ai_script_commands.c:981-982,
+    -- :1205-1206). dynamicMoveType is cleared after the action (bm.c
+    -- :4453-4470); the copy is local to this action.
+    local weather = self:activeWeather()
+    if weather then
+      local dynamicMove = {}
+      for k, v in pairs(move) do dynamicMove[k] = v end
+      dynamicMove.type = BattleEngine.WEATHER_BALL_TYPES[weather]
+      dynamicMove.weatherBallDoubled = true
+      move = dynamicMove
+    end
+  end
 
   -- (A locked action is exempt here; its 0-PP case is handled after the
   -- cancellers, as in source.)
@@ -1741,6 +1790,24 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
   end
 
   local moveId = effectiveMoveId
+  if move.effect == BattleEngine.EFFECT_SOLAR_BEAM and self:activeWeather() == "sun" then
+    -- BattleScript_EffectSolarBeam's sun path (data/battle_scripts_1.s
+    -- :1899-1914), before attackcanceler: jumpifabilitypresent Cloud Nine/
+    -- Air Lock (HP-gated, bsc.c:3836-3842) -> the ordinary charge; sun ->
+    -- SolarBeamOnFirstTurn: MOVE_EFFECT_CHARGING (STATUS2_MULTIPLETURNS and
+    -- the locked move) and ppreduce (deducts only while pp > 0,
+    -- bsc.c:1146-1152). It also runs on a locked release turn, which spends
+    -- a second PP. Then BattleScript_TwoTurnMovesSecondTurn (:784-792):
+    -- attackcanceler, and the charge block below takes its second-turn arm
+    -- (lock cleared, NO_PPDEDUCT). A canceller that does not cancel
+    -- multi-turn moves (freeze; sleep until end of turn) leaves the lock
+    -- set; paralysis, flinch and the confusion self-hit clear it. A live
+    -- lock bypasses the post-canceller 0-PP check (MULTIPLETURNS,
+    -- bsc.c:838-839). No chargeTurn event.
+    if slot and slot.pp > 0 then slot.pp = slot.pp - 1 end
+    attacker.charging = true
+    attacker.lockedSlot = moveSlot
+  end
   if self:resolveStatusCancellers(attackerSide, attacker, moveId, move, events) then
     return
   end
@@ -2074,6 +2141,7 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
     and move.effect ~= BattleEngine.EFFECT_PAIN_SPLIT
     and move.effect ~= BattleEngine.EFFECT_RESTORE_HP
     and move.effect ~= BattleEngine.EFFECT_SOFTBOILED
+    and not BattleEngine.SUNLIGHT_HEAL_MOVES[move.effect]
     and move.effect ~= BattleEngine.EFFECT_SPLASH
     and move.effect ~= BattleEngine.EFFECT_HAZE
     and move.effect ~= BattleEngine.EFFECT_BELLY_DRUM
@@ -2303,6 +2371,37 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
       end
       local beforeHP = attacker.hp
       local requested = math.max(1, math.floor(attacker.maxHP / 2))
+      attacker.hp = math.min(attacker.maxHP, attacker.hp + requested)
+      events[#events + 1] = {
+        type = "restoreHP", side = attackerSide, beforeHP = beforeHP,
+        hpRemaining = attacker.hp, amount = attacker.hp - beforeHP,
+      }
+      return
+    end
+    if BattleEngine.SUNLIGHT_HEAL_MOVES[move.effect] then
+      -- BattleScript_EffectMorningSun/Synthesis/Moonlight (data/battle_scripts_1.s
+      -- :1726-1733): attackcanceler/attackstring/ppreduce (already spent),
+      -- then Cmd_recoverbasedonsunlight (src/battle_script_commands.c
+      -- :8478-8501). Full HP -> BattleScript_AlreadyAtFullHp ("X's HP is
+      -- full!"). Otherwise maxHP/2 with no weather or !WEATHER_HAS_EFFECT,
+      -- 20*maxHP/30 in sun, maxHP/4 in any other weather; 0 -> 1; then
+      -- BattleScript_PresentHealTarget (datahpupdate clamps, "regained
+      -- health!"). No RNG.
+      if attacker.hp == attacker.maxHP then
+        events[#events + 1] = { type = "restoreHPFull", side = attackerSide }
+        return
+      end
+      local weather = self:activeWeather()
+      local requested
+      if not weather then
+        requested = math.floor(attacker.maxHP / 2)
+      elseif weather == "sun" then
+        requested = math.floor(20 * attacker.maxHP / 30)
+      else
+        requested = math.floor(attacker.maxHP / 4)
+      end
+      if requested == 0 then requested = 1 end
+      local beforeHP = attacker.hp
       attacker.hp = math.min(attacker.maxHP, attacker.hp + requested)
       events[#events + 1] = {
         type = "restoreHP", side = attackerSide, beforeHP = beforeHP,
@@ -2540,8 +2639,13 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
   -- Facade doubles when the user has PSN/BRN/PAR/TOX (burn halving still
   -- applies inside the base damage); Smelling Salt doubles against a
   -- paralyzed target (Substitute not represented).
+  -- Weather Ball's dmgMultiplier 2 (Cmd_setweatherballtype) multiplies the
+  -- finished CalculateBaseDamage result, +2 included; STAB, effectiveness
+  -- and the random factor follow. Never combined with the arms below.
   local st = attacker.status or 0
-  if move.effect == BattleEngine.EFFECT_FACADE
+  if move.weatherBallDoubled then
+    damage = damage * 2
+  elseif move.effect == BattleEngine.EFFECT_FACADE
       and (StatusConditions.isPoisoned(st) or StatusConditions.isBurned(st)
         or StatusConditions.isParalyzed(st) or StatusConditions.isBadlyPoisoned(st)) then
     damage = damage * 2

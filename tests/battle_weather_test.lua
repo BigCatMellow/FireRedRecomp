@@ -549,8 +549,8 @@ do
       and hit and hit.amount == row[2], hit and hit.amount)
     check("Solar Beam release in " .. row[1] .. ": three draws", b.rng.draws == 3, b.rng.draws)
   end
-  -- (Sun's charge/PP path is W2: in source a charged Solar Beam released in
-  -- sun also spends a second PP; only the damage is asserted here.)
+  -- (The sun release takes the W2 sun path and spends a second PP; that is
+  -- asserted in tests/battle_weather_w2_test.lua. Only damage and draws here.)
 end
 
 ---------------------------------------------------------------------------

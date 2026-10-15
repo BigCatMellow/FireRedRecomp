@@ -141,9 +141,9 @@ local inventory = {
   [129] = {"blocked_on_state", true, 1, {229}}, -- EFFECT_RAPID_SPIN
   [130] = {"represented", true, 1, {49}}, -- EFFECT_SONICBOOM
   [131] = {"unused", false, -1, {}}, -- EFFECT_UNUSED_83
-  [132] = {"blocked_on_state", false, 0, {234}}, -- EFFECT_MORNING_SUN
-  [133] = {"blocked_on_state", false, 0, {235}}, -- EFFECT_SYNTHESIS
-  [134] = {"blocked_on_state", false, 0, {236}}, -- EFFECT_MOONLIGHT
+  [132] = {"represented", true, 0, {234}}, -- EFFECT_MORNING_SUN: ROM fixture pending (phase4_weather_w2_effect_rom_test)
+  [133] = {"represented", true, 0, {235}}, -- EFFECT_SYNTHESIS: ROM fixture pending (phase4_weather_w2_effect_rom_test)
+  [134] = {"represented", true, 0, {236}}, -- EFFECT_MOONLIGHT: ROM fixture pending (phase4_weather_w2_effect_rom_test)
   [135] = {"blocked_on_state", true, 1, {237}}, -- EFFECT_HIDDEN_POWER
   [136] = {"represented", true, 0, {240}}, -- EFFECT_RAIN_DANCE: ROM fixture pending (phase4_weather_effect_rom_test)
   [137] = {"represented", true, 0, {241}}, -- EFFECT_SUNNY_DAY: ROM fixture pending (phase4_weather_effect_rom_test)
@@ -212,7 +212,7 @@ local inventory = {
   [200] = {"represented", true, 1, {299}}, -- EFFECT_BLAZE_KICK: ROM fixture pending (phase4_status_leftovers_effect_rom_test)
   [201] = {"blocked_on_state", false, 0, {300}}, -- EFFECT_MUD_SPORT
   [202] = {"represented", true, 1, {305}}, -- EFFECT_POISON_FANG: ROM fixture pending (phase4_status_hit_effect_rom_test)
-  [203] = {"blocked_on_state", true, 1, {311}}, -- EFFECT_WEATHER_BALL
+  [203] = {"represented", true, 1, {311}}, -- EFFECT_WEATHER_BALL: ROM fixture pending (phase4_weather_w2_effect_rom_test)
   [204] = {"represented", true, 1, {315,354}}, -- EFFECT_OVERHEAT: ROM fixture pending (phase4_self_drop_tickle_effect_rom_test)
   [205] = {"represented", true, 0, {321}}, -- EFFECT_TICKLE: ROM fixture pending (phase4_self_drop_tickle_effect_rom_test)
   [206] = {"represented", true, 0, {322}}, -- EFFECT_COSMIC_POWER: ROM fixture pending (phase4_dual_stat_up_effect_rom_test)
@@ -227,13 +227,13 @@ local inventory = {
 
 local expectedTotals = {
   moves = 354, defined = 214, used = 198, unused = 16,
-  positive = 216, zero = 138, admitted = 289, rejected = 65,
-  admitted_uncovered_positive = 34,
+  positive = 216, zero = 138, admitted = 292, rejected = 62,
+  admitted_uncovered_positive = 33,
 }
 local expectedClasses = {
-  represented = {families = 114, moves = 255, positive = 181, zero = 74},
+  represented = {families = 118, moves = 259, positive = 182, zero = 77},
   candidate = {families = 0, moves = 0, positive = 0, zero = 0},
-  blocked_on_state = {families = 83, moves = 98, positive = 34, zero = 64},
+  blocked_on_state = {families = 79, moves = 94, positive = 33, zero = 61},
   intentionally_rejected = {families = 1, moves = 1, positive = 1, zero = 0},
   unused = {families = 16, moves = 0, positive = 0, zero = 0},
 }
