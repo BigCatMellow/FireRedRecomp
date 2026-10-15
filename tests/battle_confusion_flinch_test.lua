@@ -114,7 +114,7 @@ do
   local b = battle({ MISS, MISS })
   local events = b:runTurn(MOVE, MOVE)
   b.player.flinched = true
-  b:resolveEndTurn(events, { "player", "foe" })
+  b:resolveEndTurn(events, nil, nil)
   check("the end-of-turn phase clears flinch", b.player.flinched == false)
 end
 

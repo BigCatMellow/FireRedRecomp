@@ -341,7 +341,7 @@ do
   b:runTurn(MOVE, MOVE)
   b.player.status = S.withSleepTurns(0, 1)
   b.rng = scriptedRng({})
-  b:resolveEndTurn({}, { "player", "foe" })
+  b:resolveEndTurn({}, nil, nil)
   check("end-of-turn sleep cancel clears the rampage", b.player.rampageTurns == 0 and not b:isLocked("player"))
 end
 

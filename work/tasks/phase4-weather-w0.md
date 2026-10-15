@@ -1,7 +1,8 @@
 # Task: weather slice W0 — source end-of-turn order (`ENDTURN_ORDER`)
 
 - Task ID: `P4-WEATHER-W0`
-- Status: `IMPLEMENTED — awaiting independent review`
+- Status: `DONE — independently reviewed PASS WITH CORRECTIONS (applied)`
+- Review: [implementation](../reviews/2026-10-15-weather-w0-implementation-review.md)
 - Lane: full relay (weather design, decision D1)
 - Spec: [weather design proposal](../reports/phase4-weather-design-proposal.md)
   ("End-of-turn order (W0, implemented)", R1, R2), with the
@@ -68,7 +69,10 @@
 
 - `src/core/BattleEngine.lua` (end-of-turn order only)
 - `tests/battle_end_turn_order_test.lua` (new), `tests/battle_engine_test.lua`,
-  `tests/battle_status_engine_test.lua` (deliberate draw-count updates only)
+  `tests/battle_status_engine_test.lua` (deliberate draw-count updates only),
+  `tests/battle_confusion_flinch_test.lua`, `tests/battle_rampage_test.lua`
+  (direct `resolveEndTurn` calls updated to the new signature)
+- `work/reports/phase4-status-conditions-design-proposal.md` (supersession note)
 - `work/reports/phase4-weather-design-proposal.md` (fold in the review)
 - `work/reviews/2026-10-14-status-conditions-design-review.md` (supersession
   note on correction (b)), `work/reviews/2026-10-14-status-s1-review.md`
@@ -120,7 +124,7 @@ changes.
     the order uses staged/paralyzed speed;
   - 0-HP battler (move KO and hoisted KO, replacement pending): the other
     battler still ticks, no recompute and no draw.
-- Old-engine check: 18 of the new checks fail against `43d2d52`. Removing
+- Old-engine check: 20 of the 42 new checks fail against `43d2d52`. Removing
   the 0-HP guard fails 2; passing `nil` for the foe at each hoisted site
   fails 2, 2 and 1.
 - `bash scripts/test_all.sh` and `lua5.1 scripts/check_repository.lua` pass.
@@ -137,3 +141,15 @@ changes.
   slot is at 0 PP and the chosen slot holds a priority move.
 - Replays: any recorded battle with a tied end of turn now consumes one
   more draw from that point on.
+
+## Review corrections (2026-10-15)
+
+- F1: `tests/battle_confusion_flinch_test.lua:117` and
+  `tests/battle_rampage_test.lua:344` called `resolveEndTurn` with the old
+  order-list argument (silently read as the player's move record); now
+  `(events, nil, nil)`.
+- F2: supersession notes added to the status-conditions proposal (rule (b))
+  and the S1 review (end-of-turn order bullet).
+- F3: old-engine failure count corrected to 20 of 42.
+- F4-F6 informational; the ROM tests and runtime replays still need a run
+  with a verified ROM (a tied end of turn now draws one more `Random()`).

@@ -71,6 +71,8 @@
 - Field effects run before battler effects.
 - Battler order is the action order. Hoisted switch, item and run actions put the player first,
   which matches `SetActionsAndBattlersTurnOrder:3559-3592`.
+  *(Superseded by weather slice W0: end-of-turn order is now recomputed as
+  `ENDTURN_ORDER` does; see `work/tasks/phase4-weather-w0.md`.)*
 - All six former `decaySideTimers` call sites now call `resolveEndTurn`, and no other caller
   remains.
 - A faint that decides the battle stops the phase, because `BattleTurnPassed` re-tests
