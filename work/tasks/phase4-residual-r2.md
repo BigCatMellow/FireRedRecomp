@@ -125,7 +125,13 @@ Abbreviations: `bsc.c` `src/battle_script_commands.c`, `bs1.s`
 - `AICheckBadMove`: new handlers `cantEscape` (target `escapePrevented`
   −10) and `ingrain` (user `rooted` −10); dispatch rows 106 and 181 now
   point at them. Nothing else in the file changed.
-- Run Away escape (separate commit, D4): see "Run Away" below.
+- Run Away escape (separate commit, D4): in `runTurn`'s run branch, a
+  player with ability 50 escapes before `BattleFormulas.tryRunFromBattle`
+  is consulted: `run{side, success=true, ability=true}` then
+  `battleEnd{outcome="ran"}`, no draw, `runTries` unchanged, the foe never
+  moves. The controller prints "X fled\nusing RUN AWAY!" for that event
+  (`gAbilityNames[ABILITY_RUN_AWAY]`, `src/data/text/abilities.h:214`).
+  `BattleFormulas.lua` is not touched.
 
 ## File ownership
 
@@ -154,7 +160,8 @@ Abbreviations: `bsc.c` `src/battle_script_commands.c`, `bs1.s`
 
 ## Acceptance
 
-- `tests/battle_residual_r2_test.lua`, exact `scriptedRng` draw counts:
+- `tests/battle_residual_r2_test.lua`: 102 checks (94 in the core commit,
+  8 added with Run Away), exact `scriptedRng` draw counts:
   - Admission and defaults.
   - Queries: rooted / escape prevention / a wrap counter each block run
     and switch; Run Away bypasses only the run; per side.
@@ -179,6 +186,12 @@ Abbreviations: `bsc.c` `src/battle_script_commands.c`, `bs1.s`
     keeps the seed; a trapped foe never blocks the player.
   - AI rows: Mean Look 0 / −10 (all three moves), no ROOTED test, reads
     the target; Ingrain 0 / −10, reads the user; the live engine battlers.
+  - Run Away (D4 commit): a slower holder escapes with 0 draws and
+    `runTries` 0, `turnStart,run,battleEnd`, "PLAYER fled\nusing RUN
+    AWAY!"; the same battler without Run Away draws once and fails; a
+    rooted or escape-prevented holder bypasses the controller veto and
+    flees with no draw; a trainer battle still shows the trainer text; a
+    rooted holder still can't be switched out.
   - Controller through the real engine: wild RUN while rooted or
     escape-prevented → "Can't escape!", no turn, no RNG, `runTries` 0, one
     message, back to ACTION; an untrapped RUN reaches the engine; a trainer
@@ -199,7 +212,11 @@ Abbreviations: `bsc.c` `src/battle_script_commands.c`, `bs1.s`
   on faint fails 3; no `runTurn` asserts fails 6; no controller RUN veto
   errors (the engine assert surfaces, Risk R5); no PARTY A-press veto fails
   1 (the wrapper still blocks); no wrapper fails 2; AI row 106 reverted
-  fails 2; AI row 181 reverted fails 2.
+  fails 2; AI row 181 reverted fails 2; no Run Away escape branch fails 5;
+  no Run Away text fails 3.
+- `bash scripts/test_all.sh` (189 files) and `lua5.1
+  scripts/check_repository.lua` pass; `main.lua` is unchanged
+  (`git diff 8f5e6d3 -- main.lua` is empty).
 
 ## Deviations from the design
 

@@ -659,5 +659,62 @@ do
   check("stub engine: RUN reaches runTurn", ran == 1 and c:message() == "Got away safely!", c:message())
 end
 
+---------------------------------------------------------------------------
+-- Run Away (decision D4): TryRunFromBattle src/battle_main.c:4246-4251 (no
+-- Random(), no ++runTries), sText_PkmnFledUsing src/battle_message.c:322
+---------------------------------------------------------------------------
+do
+  -- A slower holder (10 vs 20) escapes with no draw and no runTries.
+  local e = battle({ 255 }, { playerSpeed = 10, playerAbility = RUN_AWAY })
+  local events = e:runTurn({ action = "run" }, MOVE)
+  local run = find(events, "run")
+  check("Run Away: escapes, 0 draws, runTries 0", run and run.success and run.ability
+    and e.outcome == "ran" and e.rng.draws == 0 and e.runTries == 0, types(events))
+  check("Run Away: run then battleEnd, the foe never moves", types(events) == "turnStart,run,battleEnd", types(events))
+  check("Run Away text", joined(texts(e, events)) == "PLAYER fled\nusing RUN AWAY!", joined(texts(e, events)))
+
+  -- Contrast: the same slower battler without Run Away draws once.
+  -- speedVar = 10*128/20 + 0 = 64; (255 & 0xFF) = 255 >= 64 -> fails.
+  e = battle({ 255 }, { playerSpeed = 10 })
+  events = e:runTurn({ action = "run" }, MOVE)
+  check("no Run Away: one draw, runTries 1, a failed run", e.rng.draws == 1 and e.runTries == 1
+    and not find(events, "run").success and not find(events, "run").ability)
+
+  -- A trapped holder: the run veto is bypassed (bm.c:3013-3016) and the
+  -- escape draws nothing.
+  for _, flag in ipairs({ "rooted", "escapePrevented" }) do
+    e = battle({}, { playerSpeed = 10, playerAbility = RUN_AWAY })
+    e.player[flag] = true
+    local c = controllerFor(e)
+    local draws = e.rng.draws
+    c:_runTurn({ action = "run" })
+    local shown = drain(c)
+    check("Run Away while " .. flag .. ": the veto is bypassed and the holder flees",
+      joined(shown) == "TANGELA fled\nusing RUN AWAY!" and e.outcome == "ran" and e.rng.draws == draws
+        and e.runTries == 0 and c.state == BattleSceneController.COMPLETE, joined(shown))
+  end
+
+  -- Trainer battle: the trainer text still comes first.
+  e = battle({}, { playerAbility = RUN_AWAY })
+  local c = controllerFor(e, { runDisabledMessage = "No! There's no running\nfrom a TRAINER battle!" })
+  c:_runTurn({ action = "run" })
+  check("Run Away in a trainer battle: the trainer text, no turn",
+    joined(drain(c)) == "No! There's no running\nfrom a TRAINER battle!" and e.turn == 0 and not e:isOver())
+
+  -- Run Away does not bypass the switch veto (bm.c:3196-3200).
+  e = battle({}, { playerAbility = RUN_AWAY })
+  e.player.rooted = true
+  local calls = 0
+  c = controllerFor(e, {
+    voluntarySwitchChoices = function() return { { slot = 2, name = "BENCH" } } end,
+    onVoluntarySwitchChoice = function() calls = calls + 1 end,
+  })
+  press(c, InputState.DPAD_DOWN)
+  press(c, InputState.A_BUTTON)
+  press(c, InputState.A_BUTTON)
+  check("Run Away: a rooted holder still can't be switched out",
+    c:message() == "TANGELA can't be switched\nout!" and calls == 0 and e.turn == 0, c:message())
+end
+
 print(("battle_residual_r2_test: %d passed, %d failed"):format(passed, failed))
 os.exit(failed == 0 and 0 or 1)

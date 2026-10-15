@@ -418,7 +418,14 @@ function BattleSceneController:_eventMessages(events)
         add("OAK: Lowering the foe's stats\nwill put you at an advantage.")
       end
     elseif event.type == "run" then
-      add(event.success and "Got away safely!" or "Can't escape!")
+      if event.success and event.ability then
+        -- BattleScript_RanAwayUsingMonAbility (bs1.s:3009-3012):
+        -- sText_PkmnFledUsing (src/battle_message.c:322) with
+        -- B_ATK_ABILITY = gAbilityNames[ABILITY_RUN_AWAY].
+        add(name(event.side) .. " fled\nusing RUN AWAY!")
+      else
+        add(event.success and "Got away safely!" or "Can't escape!")
+      end
     elseif event.type == "throwBall" then
       add(self.playerName .. " threw a POKé BALL!")
     elseif event.type == "screenSet" then

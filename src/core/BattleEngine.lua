@@ -55,7 +55,8 @@
 --   {type="screenFailed", side=, screen="reflect"|"lightScreen"} -- already active
 --   {type="screenExpired", side=, screen="reflect"|"lightScreen"} -- real 5-turn timer hit 0
 --   {type="tutorialTip", kind="damage"|"stat"}  -- Oak first-battle text
---   {type="run", side=, success=}
+--   {type="run", side=, success=, ability=} -- ability: escaped with Run
+--    Away (no draw, no runTries; residual R2, decision D4)
 --   {type="switch", side=}                         -- voluntary switch resolved
 --   {type="throwBall", side=, target=, ball=}     -- rules-only item use
 --   {type="capture", side=, target=, ball=, shakes=, success=,
@@ -4187,6 +4188,18 @@ function BattleEngine:runTurn(playerAction, foeAction)
   -- Real SetActionsAndBattlersTurnOrder: a run action is hoisted to the
   -- front of the turn order, ahead of any move.
   if playerAction.action == "run" then
+    if self.player.ability == BattleEngine.ABILITY_RUN_AWAY then
+      -- TryRunFromBattle's Run Away branch (src/battle_main.c:4246-4251,
+      -- decision D4): fleeType = FLEE_ABILITY and an escape, with no
+      -- Random() and no ++runTries (that increment is only in the final
+      -- else, :4272). HandleEndTurn_RanFromBattle (:3798-3812) prints
+      -- sText_PkmnFledUsing (src/battle_message.c:322). Smoke Ball is not
+      -- modeled.
+      events[#events + 1] = { type = "run", side = BattleEngine.SIDE_PLAYER, success = true, ability = true }
+      self.outcome = "ran"
+      events[#events + 1] = { type = "battleEnd", outcome = self.outcome }
+      return events
+    end
     local success = BattleFormulas.tryRunFromBattle(
       self.player.speed,
       self.foe.speed,
