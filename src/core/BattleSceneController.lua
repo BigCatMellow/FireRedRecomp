@@ -113,6 +113,18 @@ function BattleSceneController.new(opts)
       foe = opts.engine.foe.hp,
     },
   }, BattleSceneController)
+  -- Residual slice R2 (review F4): the voluntary-switch callback is stored
+  -- wrapped, so no caller can reach the owner's party mutation while the
+  -- player is trapped (src/battle_main.c:3196-3200). The PARTY A-press below
+  -- shows the source text first; this is the backstop for any direct call.
+  -- Nil-guarded for stub engines without switchBlocked (review F5). The
+  -- forced-replacement callback is never wrapped: a fainted battler's bits
+  -- are already clear.
+  local onVoluntary = opts.onVoluntarySwitchChoice
+  self.onVoluntarySwitchChoice = onVoluntary and function(choice)
+    if self.engine.switchBlocked and self.engine:switchBlocked("player") then return nil end
+    return onVoluntary(choice)
+  end
   local intro = opts.introMessages or {
     "Wild " .. self.foeName .. " appeared!",
     "Go! " .. self.playerName .. "!",
@@ -591,6 +603,14 @@ function BattleSceneController:_eventMessages(events)
       -- BattleScript_CurseTurnDmg (bs1.s:3797-3801): text, then HP.
       add(name(event.side) .. " is afflicted\nby the CURSE!") -- :201
       entries[#entries + 1] = { hpSide = event.side, hp = event.hpRemaining }
+    elseif event.type == "rootsPlanted" then
+      add(name(event.side) .. " planted its roots!") -- sText_PkmnPlantedRoots :234
+    elseif event.type == "ingrainHeal" then
+      -- BattleScript_IngrainTurnHeal (bs1.s:3553-3560): text, then HP.
+      add(name(event.side) .. " absorbed\nnutrients with its roots!") -- :235
+      entries[#entries + 1] = { hpSide = event.side, hp = event.hpRemaining }
+    elseif event.type == "escapePrevented" then
+      add(name(event.target) .. " can't\nescape now!") -- sText_TargetCantEscapeNow :197
     elseif event.type == "weatherAbility" then
       -- BattleScript_DrizzleActivates/SandstreamActivates/DroughtActivates
       -- (data/battle_scripts_1.s:3918-3924, :3946-3952, :4013-4019);
@@ -624,6 +644,16 @@ end
 function BattleSceneController:_runTurn(playerAction)
   if playerAction.action == "run" and self.runDisabledMessage then
     self:_setMessages({ { text=self.runDisabledMessage } }, BattleSceneController.ACTION)
+    return
+  end
+  -- Residual slice R2: HandleTurnActionSelectionState tests the trainer
+  -- battle first, then IsRunningFromBattleImpossible (src/battle_main.c
+  -- :3239-3253): BattleScript_PrintCantEscapeFromBattle is a selection
+  -- script, "Can't escape!" (src/battle_message.c:333), back to action
+  -- selection. No turn, no RNG, no runTries change. Nil-guarded for stub
+  -- engines (review F5).
+  if playerAction.action == "run" and self.engine.runBlocked and self.engine:runBlocked("player") then
+    self:_setMessages({ { text = "Can't escape!" } }, BattleSceneController.ACTION)
     return
   end
   if playerAction.action == "move" then
@@ -753,6 +783,20 @@ function BattleSceneController:processInput(input)
     -- B/CANCEL intentionally does nothing for a forced replacement. A
     -- forced replacement may not cancel into ACTION or player loss.
     if input:isNewlyPressed(InputState.A_BUTTON) then
+      -- Residual slice R2: B_ACTION_SWITCH while WRAPPED/ESCAPE_PREVENTION/
+      -- ROOTED opens the menu with PARTY_ACTION_CANT_SWITCH
+      -- (src/battle_main.c:3196-3200); TrySwitchInPokemon then prints
+      -- gText_PkmnCantSwitchOut with the active mon's name
+      -- (src/party_menu.c:5960-5966, src/strings.c:256) and the player stays
+      -- in the menu, where B still cancels. The listed choices are already
+      -- the legal ones, so every pick gets this text. Never for a forced
+      -- replacement. Nil-guarded for stub engines (review F5).
+      if self.partyMode == "voluntary" and self.engine.switchBlocked
+          and self.engine:switchBlocked("player") then
+        self:_setMessages({ { text = self.playerName .. " can't be switched\nout!" } },
+          BattleSceneController.PARTY)
+        return
+      end
       local callback = self.partyMode == "forced" and self.onForcedSwitchChoice
         or self.partyMode == "voluntary" and self.onVoluntarySwitchChoice
       if callback then

@@ -113,6 +113,11 @@
 --   {type="curseLaid", side=<attacker>, target=, amount=, hpRemaining=}
 --    -- Ghost Curse: the user's HP cost, then the text
 --   {type="curseDamage", side=, amount=, hpRemaining=} -- end of turn
+--   {type="rootsPlanted", side=<attacker>}    -- Ingrain (residual R2)
+--   {type="ingrainHeal", side=, amount=, hpRemaining=} -- end of turn,
+--    "absorbed nutrients" text before the HP change
+--   {type="escapePrevented", side=<attacker>, target=} -- Mean Look/Spider
+--    Web/Block: "X can't escape now!" (residual R2)
 --   {type="weatherAbility", side=, ability=, kind=} -- Drizzle (2)/Sand
 --    Stream (45)/Drought (70) switch-in set permanent "rain"|"sandstorm"|
 --    "sun" (weather W3b); from resolveBattleStart, runTurn's switch branch
@@ -298,7 +303,8 @@
 --     the Drizzle/Sand Stream/Drought switch-in weather and Liquid Ooze on
 --     the Leech Seed drain);
 --     no held items,
---     multi-turn/charging moves, trapping, forced switching, OHKO moves,
+--     multi-turn/charging moves, trapping moves (Bind/Wrap: residual R3;
+--     the Mean Look/Ingrain escape lock is residual R2), forced switching, OHKO moves,
 --     double battles, trainer AI, or EXP/level-up on victory.
 --   * Weather slice W1 (work/tasks/phase4-weather-w1.md): battle weather
 --     state and its shared 5-turn counter, the four weather moves, the
@@ -320,9 +326,14 @@
 --   * Residual slice R1 (work/tasks/phase4-residual-r1.md): Leech Seed
 --     (with Liquid Ooze on the drain), Nightmare, both Curse paths, Rapid
 --     Spin's seed arm, the extended per-battler end-of-turn order and the
---     deferred team check (resolveStatusEndTurn). Not yet: Ingrain, Mean
---     Look/Spider Web/Block and the escape veto (R2), the trapping moves
---     and Rapid Spin's wrap arm (R3).
+--     deferred team check (resolveStatusEndTurn). Not yet: the trapping
+--     moves and Rapid Spin's wrap arm (R3).
+--   * Residual slice R2 (work/tasks/phase4-residual-r2.md): Ingrain (with
+--     its end-of-turn heal) and Mean Look/Spider Web/Block; the escape
+--     queries runBlocked/switchBlocked (the controller vetoes RUN and a
+--     voluntary switch at selection; runTurn asserts); clearHeldBy on the
+--     preventer's faint or switch. Escape prevention is tracked for the
+--     foe too but gates nothing (no foe run or switch is modeled).
 --   * Pure single-stat stage-change moves (Growl/Tail Whip's full real
 --     family) ARE supported -- see BattleEngine.STAT_STAGE_MOVES and the
 --     move.power == 0 branch of resolveMove.
@@ -900,6 +911,10 @@ BattleEngine.EFFECT_RAPID_SPIN = 129  -- BattleScript_EffectRapidSpin (bs1.s:171
 BattleEngine.ABILITY_LIQUID_OOZE = 64 -- include/constants/abilities.h
 BattleEngine.TYPE_GHOST = 7           -- include/constants/pokemon.h
 BattleEngine.TYPE_GRASS = 12
+-- Residual slice R2 (work/tasks/phase4-residual-r2.md).
+BattleEngine.EFFECT_MEAN_LOOK = 106   -- BattleScript_EffectMeanLook (bs1.s:1440-1453)
+BattleEngine.EFFECT_INGRAIN = 181     -- BattleScript_EffectIngrain (bs1.s:2372-2380)
+BattleEngine.ABILITY_RUN_AWAY = 50    -- include/constants/abilities.h
 BattleEngine.EFFECT_FOCUS_ENERGY = 47
 BattleEngine.MOVE_REST = 156
 -- SetMoveEffect ability guards (include/constants/abilities.h ids).
@@ -1120,6 +1135,16 @@ function BattleEngine.makeBattler(opts)
     seeded = false,
     nightmare = false,
     cursed = false,
+    -- Residual slice R2, battle-only, never persisted:
+    --   rooted          STATUS3_ROOTED (battle.h:143), Ingrain.
+    --   escapePrevented STATUS2_ESCAPE_PREVENTION (battle.h:126), Mean
+    --                   Look/Spider Web/Block. The preventer
+    --                   (gDisableStructs[].battlerPreventingEscape,
+    --                   bsc.c:2674-2675) is always the opposing slot in
+    --                   singles; clearHeldBy clears it when that slot
+    --                   faints or switches out.
+    rooted = false,
+    escapePrevented = false,
     moves = {},
     statStages = {
       attack = BattleFormulas.DEFAULT_STAT_STAGE,
@@ -1301,12 +1326,49 @@ function BattleEngine:recordFaint(side, events)
   -- while this slot is at 0 HP (src/battle_util.c:791) and heals the
   -- replacement afterwards.
   battler.seeded, battler.nightmare, battler.cursed = false, false, false
+  battler.rooted, battler.escapePrevented = false, false
+  -- FaintClearSetData also clears the escape prevention ANOTHER battler
+  -- holds from this slot (src/battle_main.c:2444-2452).
+  self:clearHeldBy(side)
   for _, recorded in ipairs(self.faintSequence) do
     if recorded == side then return false end
   end
   self.faintSequence[#self.faintSequence + 1] = side
   events[#events + 1] = { type = "faint", side = side }
   return true
+end
+
+-- Residual slice R2. Clears the state the OTHER battler holds from `side`'s
+-- slot when that slot's battler faints (FaintClearSetData,
+-- src/battle_main.c:2444-2452) or switches out (SwitchInClearSetData,
+-- :2339-2343): every battler whose battlerPreventingEscape is this slot loses
+-- STATUS2_ESCAPE_PREVENTION. In singles that is the opposing battler. A seed
+-- whose receiver is this slot is NOT cleared (residual R1). Residual R3 adds
+-- the wrap fields (:2371-2377, :2444-2452).
+function BattleEngine:clearHeldBy(side)
+  local other = self:battler(otherSide(side))
+  other.escapePrevented = false
+end
+
+-- Residual slice R2. IsRunningFromBattleImpossible's trap clause
+-- (src/battle_main.c:3002-3058): Run Away returns BATTLE_RUN_SUCCESS first
+-- (:3013-3016; Smoke Ball and link battles are not modeled), then
+-- STATUS2_ESCAPE_PREVENTION | STATUS2_WRAPPED or STATUS3_ROOTED ->
+-- BATTLE_RUN_FORBIDDEN (:3047-3052). Shadow Tag, Arena Trap and Magnet Pull
+-- (:3018-3046) are not modeled; this is the single place to add them.
+-- `wrapTurns` is residual R3's STATUS2_WRAPPED counter (always 0 before R3).
+function BattleEngine:runBlocked(side)
+  local b = self:battler(side)
+  if b.ability == BattleEngine.ABILITY_RUN_AWAY then return false end
+  return b.escapePrevented == true or b.rooted == true or (b.wrapTurns or 0) > 0
+end
+
+-- The B_ACTION_SWITCH selection test (src/battle_main.c:3196-3200): WRAPPED
+-- | ESCAPE_PREVENTION or ROOTED opens the party menu with
+-- PARTY_ACTION_CANT_SWITCH. No Run Away bypass applies to switching.
+function BattleEngine:switchBlocked(side)
+  local b = self:battler(side)
+  return b.escapePrevented == true or b.rooted == true or (b.wrapTurns or 0) > 0
 end
 
 function BattleEngine:finalizeFaintSequence(events)
@@ -1416,6 +1478,12 @@ function BattleEngine:supportsMove(move, moveId)
   if move.effect == BattleEngine.EFFECT_LEECH_SEED or move.effect == BattleEngine.EFFECT_NIGHTMARE
       or move.effect == BattleEngine.EFFECT_CURSE then
     return move.power == 0 and move.target == 0 -- MOVE_TARGET_SELECTED
+  end
+  if move.effect == BattleEngine.EFFECT_MEAN_LOOK then
+    return move.power == 0 and move.target == 0 -- MOVE_TARGET_SELECTED
+  end
+  if move.effect == BattleEngine.EFFECT_INGRAIN then
+    return move.power == 0 and move.target == MOVE_TARGET_USER
   end
   return move.power > 0 or BattleEngine.STAT_STAGE_MOVES[move.effect] ~= nil
     or BattleEngine.SCREEN_MOVES[move.effect] ~= nil
@@ -2244,6 +2312,43 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
       amount = cost, hpRemaining = attacker.hp,
     }
     self:checkFaint(attackerSide, events)
+    return
+  end
+
+  if move.effect == BattleEngine.EFFECT_INGRAIN then
+    -- BattleScript_EffectIngrain (data/battle_scripts_1.s:2372-2380):
+    -- attackcanceler/attackstring/ppreduce, then Cmd_trysetroots
+    -- (src/battle_script_commands.c:8933-8944): already ROOTED -> But it
+    -- failed; otherwise set STATUS3_ROOTED, "X planted its roots!"
+    -- (src/battle_message.c:234). No accuracycheck, no RNG.
+    if slot then slot.pp = slot.pp - 1 end
+    if attacker.rooted then
+      events[#events + 1] = { type = "moveFailed", side = attackerSide }
+      return
+    end
+    attacker.rooted = true
+    events[#events + 1] = { type = "rootsPlanted", side = attackerSide }
+    return
+  end
+
+  if move.effect == BattleEngine.EFFECT_MEAN_LOOK then
+    -- BattleScript_EffectMeanLook (data/battle_scripts_1.s:1440-1453):
+    -- attackcanceler/attackstring/ppreduce, then `accuracycheck
+    -- BattleScript_ButItFailed, NO_ACC_CALC`: no draw, but an ON_AIR/
+    -- UNDERGROUND/UNDERWATER target jumps to But it failed
+    -- (src/battle_script_commands.c:1020-1025; Protect not modeled). Then
+    -- already ESCAPE_PREVENTION -> But it failed (Substitute: not modeled).
+    -- MOVE_EFFECT_PREVENT_ESCAPE (bsc.c:2673-2677) sets the bit with the
+    -- attacker's slot as preventer (always the opposing slot in singles);
+    -- "X can't\nescape now!" (src/battle_message.c:197). A wrapped target
+    -- is not escape-prevented, so it still succeeds.
+    if slot then slot.pp = slot.pp - 1 end
+    if defender.semiInvulnerable or defender.escapePrevented then
+      events[#events + 1] = { type = "moveFailed", side = attackerSide }
+      return
+    end
+    defender.escapePrevented = true
+    events[#events + 1] = { type = "escapePrevented", side = attackerSide, target = defenderSide }
     return
   end
 
@@ -3749,7 +3854,10 @@ end
 -- battler's whole list before the next (:749-757, :1051-1054). Battlers at
 -- 0 HP are skipped (every represented case tests the battler's own
 -- hp != 0). In source order:
---   1. ENDTURN_INGRAIN (residual slice R2; not yet).
+--   1. ENDTURN_INGRAIN (residual R2, :760-773): ROOTED, hp != maxHP and
+--      hp != 0 -> heal max(1, maxHP/16). BattleScript_IngrainTurnHeal
+--      (bs1.s:3553-3560) prints "absorbed nutrients" before datahpupdate,
+--      which clamps at maxHP. No faint, no team check. No RNG.
 --   2. ENDTURN_ABILITIES: Rain Dish (weather W3a). Every field case,
 --      weather damage included, already ran for both battlers.
 --      AbilityBattleEffects(ABILITYEFFECT_ENDTURN) (:1817-1831): hp != 0,
@@ -3819,6 +3927,11 @@ function BattleEngine:resolveStatusEndTurn(events, sides)
   for _, side in ipairs(sides) do
     if self:isOver() then break end
     local battler = self:battler(side)
+    if battler.hp > 0 and battler.rooted and battler.hp < battler.maxHP then
+      local amount = math.min(battler.maxHP - battler.hp, math.max(1, math.floor(battler.maxHP / 16)))
+      battler.hp = battler.hp + amount
+      events[#events + 1] = { type = "ingrainHeal", side = side, amount = amount, hpRemaining = battler.hp }
+    end
     if battler.hp > 0 and battler.ability == BattleEngine.ABILITY_RAIN_DISH
         and self:activeWeather() == "rain" and battler.hp < battler.maxHP then
       local amount = math.max(1, math.floor(battler.maxHP / 16))
@@ -3931,6 +4044,17 @@ function BattleEngine:runTurn(playerAction, foeAction)
   -- header's forced-switch paragraph.
   assert(not self.awaitingForcedSwitch,
     "a forced switch is pending; call resolveForcedSwitch first")
+  -- Residual slice R2: source never produces a blocked RUN or switch
+  -- action, because HandleTurnActionSelectionState vetoes it at selection
+  -- (src/battle_main.c:3196-3200, :3239-3253); the controller does the same.
+  -- A locked player's chosen action is replaced by its locked move below,
+  -- so the veto applies only to an unlocked player.
+  if not self:isLocked(BattleEngine.SIDE_PLAYER) then
+    assert(not (playerAction.action == "run" and self:runBlocked(BattleEngine.SIDE_PLAYER)),
+      "the player cannot run: escape is prevented (check runBlocked first)")
+    assert(not (playerAction.action == "switch" and self:switchBlocked(BattleEngine.SIDE_PLAYER)),
+      "the player cannot switch: escape is prevented (check switchBlocked first)")
+  end
   local events = {}
   -- A forced switch is always resolved (and presented) before the next turn.
   self.forcedSwitchEvents = {}
@@ -3984,6 +4108,10 @@ function BattleEngine:runTurn(playerAction, foeAction)
   if playerAction.action == "switch" then
     assert(playerAction.battler and playerAction.battler.hp > 0,
       "switch needs a caller-supplied, already-eligible battler")
+    -- SwitchInClearSetData (src/battle_main.c:2339-2343): the foe loses the
+    -- escape prevention the outgoing player held. The incoming battler is
+    -- fresh, so its own bits start clear (:2365-2368).
+    self:clearHeldBy(BattleEngine.SIDE_PLAYER)
     self.player = playerAction.battler
     events[#events + 1] = { type = "switch", side = BattleEngine.SIDE_PLAYER }
     -- BattleScript_ActionSwitch (data/battle_scripts_1.s:3046-3078) ends
