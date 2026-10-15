@@ -288,10 +288,12 @@ local function dreamEater(user, target, move, typeChart)
   return 0
 end
 
--- AI_CBM_Nightmare (data/battle_ai_scripts.s:237-240): the first branch
--- (status2 nightmare already set) is a confirmed no-op (status2 is not
--- modeled); then `if_not_status AI_TARGET STATUS1_SLEEP, Score_Minus8`.
+-- AI_CBM_Nightmare (data/battle_ai_scripts.s:237-240): `if_status2
+-- AI_TARGET, STATUS2_NIGHTMARE, Score_Minus10` reads the battler's
+-- nightmare flag (residual slice R1); then `if_not_status AI_TARGET
+-- STATUS1_SLEEP, Score_Minus8`.
 local function nightmare(user, target, move, typeChart)
+  if target.nightmare then return -10 end
   if not StatusConditions.isAsleep(target.status) then return -8 end
   return 0
 end
@@ -357,10 +359,11 @@ local function substitute(user, target, move, typeChart)
   return 0
 end
 
--- AI_CBM_LeechSeed (data/battle_ai_scripts.s:414-420). Real
--- `if_status3 AI_TARGET STATUS3_LEECHSEED` (already seeded) is a confirmed
--- no-op.
+-- AI_CBM_LeechSeed (data/battle_ai_scripts.s:414-420): `if_status3
+-- AI_TARGET, STATUS3_LEECHSEED, Score_Minus10` reads the battler's seeded
+-- flag (residual slice R1); then Grass in type1 or type2 -> -10.
 local function leechSeed(user, target, move, typeChart)
+  if target.seeded then return -10 end
   if target.types[1] == TYPE_GRASS or target.types[2] == TYPE_GRASS then return -10 end
   return 0
 end

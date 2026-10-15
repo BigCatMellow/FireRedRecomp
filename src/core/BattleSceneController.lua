@@ -551,6 +551,46 @@ function BattleSceneController:_eventMessages(events)
       -- (data/battle_scripts_1.s:3938-3944).
       add(possessive(name(event.side)) .. " RAIN DISH\nrestored its HP a little!")
       entries[#entries + 1] = { hpSide = event.side, hp = event.hpRemaining }
+    elseif event.type == "leechSeed" then
+      -- gLeechSeedStringIds (c75f352 src/battle_message.c:964-971); every
+      -- string names the target (B_DEF_NAME_WITH_PREFIX).
+      local n = name(event.target)
+      if event.result == "seeded" then
+        add(n .. " was seeded!") -- sText_PkmnSeeded :159
+      elseif event.result == "evaded" then
+        add(n .. " evaded\nthe attack!") -- sText_PkmnEvadedAttack :160
+      else
+        -- sText_ItDoesntAffect :70, in the same form as the generic
+        -- noEffect text above.
+        add("It doesn't affect " .. n .. "...")
+      end
+    elseif event.type == "leechSeedDrain" then
+      -- BattleScript_LeechSeedTurnDrain (data/battle_scripts_1.s:3223-3243):
+      -- seeded HP, then receiver HP, then the text. B_ATK_NAME_WITH_PREFIX
+      -- is the seeded battler (src/battle_util.c:794).
+      entries[#entries + 1] = { hpSide = event.side, hp = event.hpRemaining }
+      entries[#entries + 1] = { hpSide = event.receiver, hp = event.receiverHpRemaining }
+      if event.ooze then
+        add("It sucked up the\nLIQUID OOZE!") -- sText_ItSuckedLiquidOoze :290
+      else
+        add(possessive(name(event.side)) .. " health is\nsapped by LEECH SEED!") -- :161
+      end
+    elseif event.type == "leechSeedFreed" then
+      add(name(event.side) .. " shed\nLEECH SEED!") -- sText_PkmnShedLeechSeed :212
+    elseif event.type == "nightmare" then
+      add(name(event.target) .. " fell into\na NIGHTMARE!") -- sText_PkmnFellIntoNightmare :198
+    elseif event.type == "nightmareDamage" then
+      -- BattleScript_NightmareTurnDmg (bs1.s:3791-3795): text, then HP.
+      add(name(event.side) .. " is locked\nin a NIGHTMARE!") -- :199
+      entries[#entries + 1] = { hpSide = event.side, hp = event.hpRemaining }
+    elseif event.type == "curseLaid" then
+      -- BattleScript_GhostCurse (bs1.s:1521-1525): the user's HP, then text.
+      entries[#entries + 1] = { hpSide = event.side, hp = event.hpRemaining }
+      add(name(event.side) .. " cut its own HP and\nlaid a CURSE on " .. name(event.target) .. "!") -- :200
+    elseif event.type == "curseDamage" then
+      -- BattleScript_CurseTurnDmg (bs1.s:3797-3801): text, then HP.
+      add(name(event.side) .. " is afflicted\nby the CURSE!") -- :201
+      entries[#entries + 1] = { hpSide = event.side, hp = event.hpRemaining }
     elseif event.type == "weatherAbility" then
       -- BattleScript_DrizzleActivates/SandstreamActivates/DroughtActivates
       -- (data/battle_scripts_1.s:3918-3924, :3946-3952, :4013-4019);
