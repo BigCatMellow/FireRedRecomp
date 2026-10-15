@@ -1,11 +1,31 @@
 # FireRedRecomp Coordination Handoff
 
-- Status: `READY_FOR_WORKER — actual PR6 Party SUMMARY code alignment`
+- Status: `READY_FOR_REVIEWER — published PR6 SUMMARY implementation cb2a2de`
 - Task ID: `P6-04-PARTY-SUMMARY`
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
 - Current plan: [`../roadmaps/RECALIBRATED_DELIVERY_PLAN.md`](../roadmaps/RECALIBRATED_DELIVERY_PLAN.md)
 
-## Current relay — 2026-10-14
+## Current relay — 2026-10-15
+
+Exact next action: assigned independent Reviewer verifies published PR6
+`cb2a2dee735834148d226a5ae44d5d408b2014a2` under authority `6ff4464` and
+accepted design. Public CI `38720555643` / `38720556716` both SUCCESS.
+Worker integrated main `8f5e6d3` normally and changed only six allowed paths.
+Clean implementation worktree: `/tmp/firered-party-summary-align.8vCZJo`.
+
+Worker evidence: full188 no-ROM files, Party33/0, flow162/0, cursor14/0 and
+checker PASS. Actual production function bodies execute with synthetic state;
+old-code assertions fail13, injected list-input leak fails24 and injected
+HP write fails48. These are not independent acceptance or ROM/LÖVE replay.
+Root must route only a named correction or merge exact green head after PASS.
+
+New owner battle changes throughPR39 were preserved, with no overlap in the
+six Party paths or AGENTS. Their own evidence gates remain; no broad re-review
+or new guarded evidence is implied here. PR3/5 remain closed. A proposed next
+first-corridor read-only check was usage-limited before producing work; it is
+not an active implementation or accepted source lock.
+
+## Historical relay — 2026-10-14
 
 ### Latest dispatch — PR6 implementation
 
