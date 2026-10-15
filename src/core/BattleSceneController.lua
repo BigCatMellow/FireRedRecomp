@@ -504,6 +504,13 @@ function BattleSceneController:_eventMessages(events)
         add(name(event.side) .. " is pelted\nby HAIL!")
       end
       entries[#entries + 1] = { hpSide = event.side, hp = event.hpRemaining }
+    elseif event.type == "rainDish" then
+      -- STRINGID_PKMNSXRESTOREDHPALITTLE2 (c75f352 src/battle_message.c:283)
+      -- with B_ATK_ABILITY = RAIN DISH (gBattlerAttacker is the holder,
+      -- src/battle_util.c:1819), printed before datahpupdate
+      -- (data/battle_scripts_1.s:3938-3944).
+      add(possessive(name(event.side)) .. " RAIN DISH\nrestored its HP a little!")
+      entries[#entries + 1] = { hpSide = event.side, hp = event.hpRemaining }
     elseif event.type == "statusDamage" then
       -- Message before the HP update (printstring, then datahpupdate).
       if event.kind == "burn" then
