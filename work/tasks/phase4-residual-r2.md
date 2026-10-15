@@ -1,7 +1,7 @@
 # Task: residual slice R2 — escape prevention, Ingrain, Mean Look / Spider Web / Block, Run Away
 
 - Task ID: `P4-RESIDUAL-R2`
-- Status: `IMPLEMENTED — awaiting independent review`
+- Status: `DONE — independently reviewed PASS`
 - Lane: full relay (new cross-turn battle state, an action veto that reaches
   the controller)
 - Spec: [residual effects design proposal](../reports/phase4-residual-effects-design-proposal.md)
@@ -246,3 +246,11 @@ Abbreviations: `bsc.c` `src/battle_script_commands.c`, `bs1.s`
   no change"): a belt-and-braces `switchBlocked` guard at the top of
   `onVoluntarySwitchChoice` is possible but not needed.
 - ROM fixture pending for the four records.
+
+## Review (2026-10-15)
+
+[Implementation review](../reviews/2026-10-15-residual-r2-implementation-review.md):
+PASS. main.lua unchanged and its real flow cannot bypass the vetoes (all input
+goes through the controller; the voluntary callback is held only by the
+controller). 37/38 mutants caught; the survivor (the locked-player assert skip)
+is correct but untested (F1, optional). F2-F6 informational.
