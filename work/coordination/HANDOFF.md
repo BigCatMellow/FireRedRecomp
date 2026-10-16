@@ -7,6 +7,17 @@
 
 ## Current relay — 2026-10-15
 
+### Resume checkpoint — 2026-10-16 02:39 UTC
+
+Elevation research/review preparation hit a usage limit before writing the
+report. User resumed; remote main remains `d9c6318`. Continue existing clean
+worktree `/tmp/firered-elevation-source.dmCXLH`, branch
+`work/p5-player-elevation-source-20261015`, base `d9c6318`. Worker and separate
+Reviewer resumed retained findings. No elevation report PR exists yet; do not
+create another worktree or repeat the terminal northbound/tutorial discovery.
+Exact next action remains finish/publish the bounded lifecycle report, then
+independently review its exact head under the existing two-path contract.
+
 ### Latest closure and dispatch — 21:45 UTC
 
 PR42 source report `684f69c` independently PASS in `ba86377`; final public
