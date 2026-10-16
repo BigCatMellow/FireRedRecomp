@@ -1,7 +1,7 @@
 # P5-05 — player elevation input lifecycle source lock
 
 - Task ID: `P5-05-PLAYER-ELEVATION-INPUT-SOURCE-LOCK`
-- Status: `READY_FOR_REVIEWER` — bounded research submitted; independent acceptance pending
+- Status: `CLOSED — REVIEWED PASS` — source/proposal only, no runtime acceptance
 - Type: `RESEARCH`; source-only, no implementation authority
 - Parent capability gate: [Phase 5/7 scripted traversal](../roadmaps/CAPABILITY_CHECKLIST.md)
 - Assigned role: `WORKER` acting as bounded researcher
@@ -103,6 +103,11 @@ findings; do not guess or recursively invent a new research project. No
 runtime edits until a separate bounded implementation contract is adopted.
 
 ## Completion and handoff
+
+Orchestrator closure: exact `7e0cb02` independently PASS in [review `ce387cb`](../reviews/2026-10-16-player-elevation-input-source-lock-review.md).
+PR43 merged `871f3f1` after final public CI `38842293132` / `38842296655` PASS.
+The [five-path implementation task](phase5-player-elevation-input.md) explicitly
+adopts the accepted proposal; do not repeat this source investigation.
 
 Worker publishes the two-path report PR and records revision, changed paths,
 commands/results, UNKNOWNs and one next-leaf proposal. Reviewer decides

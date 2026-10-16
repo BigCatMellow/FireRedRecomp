@@ -1,11 +1,29 @@
 # FireRedRecomp Coordination Handoff
 
-- Status: `READY_FOR_WORKER — player elevation lifecycle source lock`
-- Task ID: `P5-05-PLAYER-ELEVATION-INPUT-SOURCE-LOCK`
+- Status: `READY_FOR_WORKER — live player elevation ownership implementation`
+- Task ID: `P5-05-PLAYER-ELEVATION-INPUT`
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
 - Current plan: [`../roadmaps/RECALIBRATED_DELIVERY_PLAN.md`](../roadmaps/RECALIBRATED_DELIVERY_PLAN.md)
 
-## Current relay — 2026-10-15
+## Current relay — 2026-10-16
+
+### Source closure and code dispatch — 02:48 UTC
+
+PR43 exact report/proposal `7e0cb02` independently PASS in `ce387cb`; final
+CI `38842293132` / `38842296655` passed, merged `871f3f1`. Bootstrap and normal
+walk timing are resolved. Source/design research is terminal; no repeat round.
+
+Exact next action: Worker executes the adopted [five-path implementation](../tasks/phase5-player-elevation-input.md)
+in a fresh worktree from this authority checkpoint: live PlayerMovement C/E
+and validity/provenance, actual bootstrap/input/tick/relocation owners, literal
+unit and actual production-path tests, negative witness, full no-ROM/checker/
+public CI, then independent exact review. No current gameplay consumer uses
+this new state; no story predicate/save/collision/order change or tutorial/
+traversal/phase proof. No bridge request or guarded-evidence waiver.
+
+Source worktree `/tmp/firered-elevation-source.dmCXLH` and review
+`/tmp/firered-elevation-review-H6BedJ` are preserved and complete.
+Older next-action paragraphs below are historical.
 
 ### Resume checkpoint — 2026-10-16 02:39 UTC
 

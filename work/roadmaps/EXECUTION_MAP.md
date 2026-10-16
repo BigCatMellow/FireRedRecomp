@@ -31,7 +31,7 @@ strategic phase
 
 Default to one critical-path Worker package at a time.
 
-## Current critical path — reconciled 2026-10-15
+## Current critical path — reconciled 2026-10-16
 
 [Effect45 outcome PASS](../reviews/2026-10-13-recoil-if-miss-implementation-outcome-review.md)
 closes `cfdbb96` and guarded run `38434551595`; do not repeat its consumed
@@ -55,10 +55,13 @@ PR3 Party design merged `239c25f`; PR6 SUMMARY is independently PASS and merged
 is accepted. [P5-05 Viridian northbound source discovery](../tasks/phase5-viridian-northbound-gate-discovery.md)
 independently passed and merged PR42 `ae3d559`. It source-locks Old Man
 C0/C2/C3 predicates/tutorial ownership and actual runtime gaps, not gameplay.
-Current leaf is the [player elevation lifecycle source lock](../tasks/phase5-player-elevation-input-source-lock.md):
-bootstrap and ordinary-step producer/observation timing must be established
-before proposing live elevation integration. No tutorial/traversal or generic
-VM implementation is authorized yet; do not repeat accepted tutorial discovery.
+[Player elevation lifecycle source lock](../tasks/phase5-player-elevation-input-source-lock.md)
+also passed and merged PR43 `871f3f1`, resolving bootstrap/ordinary-step timing
+and the five-path integration proposal. Current leaf is the adopted
+[live elevation ownership implementation](../tasks/phase5-player-elevation-input.md),
+with transient state, explicit unsupported-relocation invalidation and production
+tests. No story predicate/handler, tutorial/traversal or generic VM implementation
+is included. Do not repeat accepted discovery or claim a gameplay consumer exists.
 Read-only Memento AI feasibility found an existing
 replacement callback; this is not implementation authority and must be checked
 against later battle changes before a separate task.
