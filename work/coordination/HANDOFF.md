@@ -7,6 +7,16 @@
 
 ## Current relay — 2026-10-16
 
+### Active implementation worktree
+
+Continue `/tmp/firered-elevation-implementation.zEwYNr`, branch
+`work/p5-player-elevation-input-20261016`, base
+`9ea26858e2764ad02f5ef073935054b2660128f8`. Worker is editing the authorized
+PlayerMovement/main runtime paths; tests, publication and independent review
+remain outstanding. Do not create another worktree, redo source research,
+discard these edits or claim them accepted. Exact next action is finish the
+five-path implementation and required evidence, then publish for review.
+
 ### Source closure and code dispatch — 02:48 UTC
 
 PR43 exact report/proposal `7e0cb02` independently PASS in `ce387cb`; final
