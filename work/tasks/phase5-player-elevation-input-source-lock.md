@@ -1,7 +1,7 @@
 # P5-05 — player elevation input lifecycle source lock
 
 - Task ID: `P5-05-PLAYER-ELEVATION-INPUT-SOURCE-LOCK`
-- Status: `READY_FOR_WORKER`
+- Status: `READY_FOR_REVIEWER` — bounded research submitted; independent acceptance pending
 - Type: `RESEARCH`; source-only, no implementation authority
 - Parent capability gate: [Phase 5/7 scripted traversal](../roadmaps/CAPABILITY_CHECKLIST.md)
 - Assigned role: `WORKER` acting as bounded researcher
@@ -111,3 +111,33 @@ then compiles the smallest evidenced successor without another broad inventory.
 Canonical phase statuses and outstanding guarded battle/replay gates remain
 unchanged. A source-known integration proposal should include its bounded
 design/allowlist/oracles so the next task can use it without repeating research.
+
+## Worker evidence / handoff — 2026-10-16
+
+- [Source lifecycle and bounded implementation proposal](../reports/phase5-player-elevation-input-source-lock.md).
+- Fresh isolated branch `work/p5-player-elevation-source-20261015`, dispatch
+  base `d9c6318176efeff5f4a403e7eaa521430a89bf88`; runtime unchanged from
+  `ba669fb420d68f54c8dab362c21bc0faf874f372`. Clean public source checkout
+  verified at `c75f352304d529f6ba92d4f74b9cf8b5c3810788`.
+- Resolved actual spawn producer, begin/finish coordinate sampling and
+  CB1-before-CB2 completed-step observation. Origin15 suppresses begin, not
+  finish after both coords become a nonzero destination. Standing/blocked
+  pending-spawn sampling explicitly distinguished from no-flag behavior.
+- Exactly one proposed successor: live elevation ownership in PlayerMovement
+  and existing main bootstrap/step/relocation paths, five literal allowed
+  paths and source-derived unit/production oracles. No throwaway selector,
+  ignored argument, gate handler or tutorial implementation. Existing gameplay
+  consumer is absent; future C0 handler must read state and reject unknown.
+- Unsupported relocations invalidate; bootstrap or ordinary finish on1–14
+  can establish known state. History-dependent 0/15 remains unknown. No save
+  schema or collision expansion, no retail/traversal/phase completion claim.
+- Actual source scheduler/caller/assignment reads, runtime ownership search,
+  and synthetic tick16/missing-elevation observation PASS. Baseline checker
+  PASS (320 Lua, 365 Markdown, 1216 local targets). Final repository checker
+  PASS (320 Lua, 366 Markdown, 1219 targets); working/index whitespace PASS.
+  Fresh origin/main `4d9fb2f24f2d85d788c9cadc0d7121bbaccb32a4` differs only
+  in STATE/HANDOFF; runtime, task and AGENTS have no intervening changes.
+  Parent 192-file no-ROM and PR42 CI evidence carried, not rerun. No ROM,
+  private runner, replay, runtime or test changes.
+- Independent Reviewer to verify exact published head, source timing,
+  bounded exclusions/proposal and two-file research scope before acceptance.
