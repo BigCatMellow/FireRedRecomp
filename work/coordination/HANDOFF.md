@@ -5,7 +5,16 @@
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
 - Current plan: [`../roadmaps/RECALIBRATED_DELIVERY_PLAN.md`](../roadmaps/RECALIBRATED_DELIVERY_PLAN.md)
 
-## Current relay — 2026-10-16
+## Current relay — 2026-10-17
+
+### Resume checkpoint — 18:28 UTC
+
+User resumed after usage interruption. Remote main unchanged `58e4961`;
+same implementation worktree below retains edits in `main.lua`,
+`src/core/PlayerMovement.lua` and `tests/player_movement_test.lua` (254 added,
+8 removed lines at recovery). No implementation PR yet. Worker resumed existing
+context to finish production test, verification and publication; do not discard
+edits or redo accepted source research. Independent review remains outstanding.
 
 ### Active implementation worktree
 
