@@ -7,6 +7,17 @@
 
 ## Current relay — 2026-10-17
 
+### Active C0 design worktree — 22:11 UTC
+
+Continue `/tmp/firered-roadblock-design.Uvt4EL`, branch
+`work/p5-viridian-roadblock-design-20261017`, base
+`d59f28f844ec9a45abec0f307bae92525c932501`. Worker is resolving narrow
+message/input/forced-step integration and evidence plan; no report PR yet.
+Independent review prep found new-A/B acknowledgement, non-instant speedup,
+scripted walk bypass of ordinary admission and termination-owned input unlock.
+Retain these as preliminary design inputs, not a completed source/design gate.
+Do not restart accepted elevation implementation or create a replacement worktree.
+
 ### Latest code closure and next dispatch — 22:07 UTC
 
 PR44 implementation `4b1ac5f` independently PASS in `6de803d`; final-head
