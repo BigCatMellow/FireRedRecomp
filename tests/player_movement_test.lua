@@ -125,5 +125,140 @@ do
   check("non-matching direction moves at normal px/frame", p.moveDx == 1, p.moveDx)
 end
 
+-- c75f352 event_object_movement.c:8400–8411, 5110–5121, 5309–5346:
+-- literal expectations below are source-derived, not computed by a second
+-- copy of the implementation. These test admitted normal motion, not terrain
+-- elevation collision admission (which this project still does not port).
+local function elevationPlayer(heights, fresh)
+  local p, generation = PlayerMovement.new(0, 0, PlayerMovement.RIGHT), { value=1 }
+  local reads = {}
+  p:bindElevationSource(function(x, y)
+    reads[#reads+1] = {x, y}
+    if y == 0 then return heights[x] end
+  end, function() return generation.value end)
+  if fresh then p:bootstrapElevation() end
+  return p, generation, reads
+end
+local function state(name, p, current, effective, valid)
+  local value, reason = p:getEffectiveElevation()
+  check(name, p.currentElevation == current and p.previousElevation == effective
+    and p.elevationValid == valid and value == effective
+    and (valid and reason == nil or not valid and type(reason) == "string"))
+end
+local function start(p)
+  p:tryMove(PlayerMovement.RIGHT, neverBlocked, nil, "normal")
+end
+local function finish(p, ticks)
+  for _=1,ticks or 16 do p:tick() end
+end
+for _, case in ipairs({
+  -- spawn, destination, C/E after begin, C/E after finish
+  {3,4,4,4,4,4}, {0,3,3,3,3,3}, {15,3,0,0,3,3},
+  {3,0,0,3,0,3}, {3,15,3,3,3,3},
+}) do
+  local p, _, reads = elevationPlayer({[0]=case[1], [1]=case[2]}, true)
+  state("raw fresh avatar is known zero", p, 0, 0, true)
+  start(p)
+  check("no premature begin sampling in tryMove", #reads == 0)
+  p:tick()
+  state("literal begin " .. case[1] .. "->" .. case[2], p, case[3], case[4], true)
+  check("spawn precedes destination/origin begin sample", #reads == 4
+    and reads[1][1] == 0 and reads[2][1] == 0 and reads[3][1] == 1 and reads[4][1] == 0)
+  finish(p, 14)
+  check("frame15 retains origin/pixels and does not resample", p.moving and p.tileX == 0
+    and p:pixelX() == 15 and #reads == 4)
+  p:tick()
+  state("literal finish " .. case[1] .. "->" .. case[2], p, case[5], case[6], true)
+  check("frame16 samples destination twice after arrival", not p.moving and p.tileX == 1
+    and p:pixelX() == 16 and #reads == 6 and reads[5][1] == 1 and reads[6][1] == 1)
+end
+for _, case in ipairs({{15,4,3,3,4,4}, {15,0,3,3,0,3}, {0,4,4,4,4,4}}) do
+  local p = elevationPlayer({[0]=3, [1]=case[1], [2]=case[2]}, true)
+  start(p); finish(p); start(p); p:tick()
+  state("later step begin " .. case[1] .. "->" .. case[2], p, case[3], case[4], true)
+  finish(p, 15)
+  state("later step finish " .. case[1] .. "->" .. case[2], p, case[5], case[6], true)
+end
+for _, blocked in ipairs({false, true}) do
+  local heights = {[0]=3, [1]=4}
+  local p, _, reads = elevationPlayer(heights, true)
+  if blocked then p:tryMove(PlayerMovement.RIGHT, function() return true end, nil, "normal") end
+  p:tick()
+  state("pending spawn samples while standing/blocked " .. tostring(blocked), p, 3, 3, true)
+  check("no displaced step from blocked/standing spawn", not p.moving and p.tileX == 0 and #reads == 2)
+  heights[0] = 4
+  if blocked then p:tryMove(PlayerMovement.RIGHT, function() return true end, nil, "normal") end
+  p:tick()
+  state("no pending flag does not resample " .. tostring(blocked), p, 3, 3, true)
+  check("stationary sample count unchanged", #reads == 2)
+end
+for _, destination in ipairs({0, 15, 4}) do
+  local p = elevationPlayer({[0]=3, [1]=destination}, false)
+  check("debug constructor unknown", p:getEffectiveElevation() == nil)
+  start(p); p:tick()
+  check("unknown never recovers at begin " .. destination, p:getEffectiveElevation() == nil)
+  finish(p, 15)
+  if destination == 4 then state("ordinary finish converges", p, 4, 4, true)
+  else check("finish0/15 cannot recover", p:getEffectiveElevation() == nil and not p.elevationValid) end
+end
+do
+  local p = elevationPlayer({[0]=0}, true)
+  p:tick(); state("known E0 distinct from unknown", p, 0, 0, true)
+end
+for _, invalid in ipairs({false, "3", -1, 16, 1.5, math.huge, 0/0}) do
+  local p = elevationPlayer({[0]=invalid}, true)
+  p:tick()
+  check("malformed height is unknown " .. tostring(invalid), p:getEffectiveElevation() == nil
+    and p.elevationReason == "missing_elevation_sample")
+end
+do
+  local p = elevationPlayer({}, true)
+  p:tick(); check("missing height is unknown", p:getEffectiveElevation() == nil)
+  local unwired = PlayerMovement.new(0,0)
+  unwired:bootstrapElevation()
+  check("bootstrap without production reader is unknown", unwired:getEffectiveElevation() == nil)
+  local missingGeneration = elevationPlayer({[0]=3}, true)
+  missingGeneration.readElevationGeneration=function() return nil end
+  missingGeneration:tick()
+  check("missing map generation refuses bootstrap provenance", missingGeneration:getEffectiveElevation()==nil
+    and missingGeneration.elevationProvenance==nil)
+end
+for _, mode in ipairs({"script", "developer", "normal"}) do
+  local p = elevationPlayer({[0]=3, [1]=4, [2]=4}, true)
+  p:tick()
+  p:tryMove(PlayerMovement.RIGHT, neverBlocked,
+    mode == "normal" and function() return PlayerMovement.RIGHT end or nil, mode)
+  finish(p)
+  check("unqualified/ledge does not converge " .. mode, p:getEffectiveElevation() == nil)
+end
+for _, mode in ipairs({"script", "developer"}) do
+  local p = elevationPlayer({[0]=3, [1]=4}, true)
+  start(p); p:tick()
+  p:tryMove(PlayerMovement.DOWN, neverBlocked, nil, mode)
+  finish(p,15)
+  check("unqualified takeover cannot inherit active normal step "..mode,
+    p.tileX==1 and p.tileY==0 and p:getEffectiveElevation()==nil)
+end
+do
+  local p, generation = elevationPlayer({[0]=3, [1]=4, [2]=3}, true)
+  p:tick(); start(p); p:tick()
+  generation.value = 2
+  finish(p, 15)
+  check("map mismatch cancels pending finish", p:getEffectiveElevation() == nil and p.elevationStep == nil)
+  start(p); finish(p)
+  state("next ordinary finish may converge in new map", p, 3, 3, true)
+  check("normal finish records live provenance", p.elevationProvenance=="normal_finish")
+  p:invalidateElevation("same_position_relocation")
+  check("same tile explicit invalidation", p:getEffectiveElevation() == nil)
+end
+do
+  local p = elevationPlayer({[0]=3, [1]=4, [2]=3}, true)
+  p:tick(); p.tileX = 1
+  check("direct coordinate mutation invalidates", p:getEffectiveElevation() == nil
+    and p.elevationReason == "coordinate_changed")
+  start(p); p.destTileX = 0; finish(p)
+  check("destination mutation cancels elevation work", p:getEffectiveElevation() == nil)
+end
+
 print(("%d passed, %d failed"):format(passed, failed))
 os.exit(failed == 0 and 0 or 1)
