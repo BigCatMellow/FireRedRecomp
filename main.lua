@@ -507,6 +507,19 @@ local loadMap, tryWarpAt, startWildBattle, syncSessionLocation, bootstrapFreshSe
 -- 200-local-per-chunk limit as world.walkMapConnections above.
 local WALK_CAMERA_WIDTH, WALK_CAMERA_HEIGHT = 240, 160 -- real GBA screen resolution
 
+-- Transient player elevation input; no current story predicate consumes it.
+-- A generation changes on every load, including reloads of the same map ID.
+world.playerElevationGeneration = 0
+function world.readPlayerElevationGeneration()
+  return world.playerElevationGeneration
+end
+function world.readPlayerElevationHeight(x, y)
+  if not walkMapBlockData or x < 0 or y < 0 or x >= walkMapWidth or y >= walkMapHeight
+      or x % 1 ~= 0 or y % 1 ~= 0 then return nil end
+  local block = walkMapBlockData[y * walkMapWidth + x]
+  return type(block) == "table" and block.elevation or nil
+end
+
 -- Keep the field camera calculation shared between normal rendering and the
 -- deterministic runtime proof.  PlayerMovement remains the sole owner of
 -- world position; this only converts its current composited pixel position
@@ -553,7 +566,7 @@ function world.runPhase2CameraViewportReplay()
       end
     end
     if not chosen then break end
-    playerMovement:tryMove(chosen.direction, world.isPlayerWalkTileBlocked, getLedgeJumpDirection)
+    playerMovement:tryMove(chosen.direction, world.isPlayerWalkTileBlocked, getLedgeJumpDirection, "developer")
     if not playerMovement.moving then break end
     for _ = 1, 8 do love.update(1 / 60) end
     local cameraDuring = sampleCamera()
@@ -1893,6 +1906,7 @@ local function loadWalkAssets(dbg)
     return
   end
   playerMovement = PlayerMovement.new(x, y, PlayerMovement.DOWN)
+  playerMovement:bindElevationSource(world.readPlayerElevationHeight, world.readPlayerElevationGeneration)
   scheduler:createTask(playerMovementTask, 0)
   scheduler:createTask(npcMovementTask, 0)
   scheduler:createTask(dialogueTask, 0)
@@ -2274,6 +2288,8 @@ end
 -- map transitions (tryWarpAt below), so a warp doesn't need its own
 -- separate copy of this pipeline.
 function loadMap(data, addrs, mapId, dbg)
+  if playerMovement then playerMovement:invalidateElevation("map_load") end
+  world.playerElevationGeneration = world.playerElevationGeneration + 1
   local header = MapHeader.resolve(data, addrs.gMapGroups, mapId)
   dbg("header resolved")
   world.regionMapSectionId = header.regionMapSectionId
@@ -2332,6 +2348,7 @@ function tryWarpAt(x, y)
         playerMovement.tileX, playerMovement.tileY = destX, destY
         playerMovement.moving = false
         playerMovement.stepFrame = 0
+        playerMovement:invalidateElevation("warp_placement")
         syncSessionLocation()
         -- MAP_SCRIPT_ON_FRAME_TABLE is evaluated only after the completed
         -- warp has supplied this destination tile, never during loadMap.
@@ -2378,6 +2395,7 @@ world.tryConnectionAt = function(x, y)
     playerMovement.tileX, playerMovement.tileY = destX, destY
     playerMovement.moving = false
     playerMovement.stepFrame = 0
+    playerMovement:invalidateElevation("connection_placement")
     syncSessionLocation()
   end
   return true
@@ -2426,6 +2444,7 @@ bootstrapFreshSession = function()
   playerMovement.tileX, playerMovement.tileY = start.x, start.y
   playerMovement.facingDirection = PlayerMovement.UP
   playerMovement.moving, playerMovement.stepFrame = false, 0
+  playerMovement:bootstrapElevation()
   syncSessionLocation()
   newGame.active = false
   walkActive = true
@@ -2487,6 +2506,7 @@ function loadGameFile()
     playerMovement.tileX, playerMovement.tileY = newGame.session.location.x, newGame.session.location.y
     playerMovement.facingDirection = PlayerMovement.DOWN
     playerMovement.moving, playerMovement.stepFrame = false, 0
+    playerMovement:invalidateElevation("save_restore")
   end
   world.clearViews()
   walkActive = true
@@ -2511,18 +2531,21 @@ tryEarlyStoryTriggerAt = function(x, y)
     playerMovement.tileX, playerMovement.tileY = action.x, action.y
     playerMovement.facingDirection = PlayerMovement.UP
     playerMovement.moving, playerMovement.stepFrame = false, 0
+    playerMovement:invalidateElevation("story_placement")
     syncSessionLocation()
     addLine("Oak escorted you to his lab. Movement/dialogue timing is abbreviated; real scene state is now 2. Choose one of the three balls with A.")
   elseif action.kind == "stayForStarter" then
     playerMovement.tileX, playerMovement.tileY = action.x, action.y
     playerMovement.facingDirection = PlayerMovement.UP
     playerMovement.moving, playerMovement.stepFrame = false, 0
+    playerMovement:invalidateElevation("story_placement")
     syncSessionLocation()
     addLine("Oak stops you: choose a Pokemon before leaving the lab.")
   elseif action.kind == "rivalBattle" then
     playerMovement.tileX, playerMovement.tileY = action.x, action.y
     playerMovement.facingDirection = PlayerMovement.UP
     playerMovement.moving, playerMovement.stepFrame = false, 0
+    playerMovement:invalidateElevation("story_placement")
     syncSessionLocation()
     if not world.startRivalBattle(action) then
       addLine("The mandatory rival encounter remains at lab scene 3 and can be retried; no progression flag was set.")
@@ -2668,13 +2691,16 @@ world.martParcelPresentationTask = function(taskId)
       return
     end
     if motion.kind == "approach_counter" then
+      -- A presenter taking over an already-moving player must not inherit
+      -- ordinary-input elevation provenance through its direct tick calls.
+      if playerMovement then playerMovement:invalidateElevation("script_motion") end
       local clerk = world.martParcelClerk
       if motion.clerkTicks > 0 then
         motion.clerkTicks = motion.clerkTicks - 1
         if motion.clerkTicks == 0 and clerk then clerk.facingDirection = PlayerMovement.RIGHT end
       end
       if playerMovement and not playerMovement.moving and motion.playerSteps < 4 then
-        playerMovement:tryMove(PlayerMovement.UP, world.isPlayerWalkTileBlocked, getLedgeJumpDirection)
+        playerMovement:tryMove(PlayerMovement.UP, world.isPlayerWalkTileBlocked, getLedgeJumpDirection, "script")
         if not playerMovement.moving then
           world.handleMartParcelPresentationCommand({ kind="unlock", failed=true, reason="approach_blocked" })
           presenter.state = presenter.FAILED
@@ -3531,7 +3557,7 @@ function love.load()
     local moves = os.getenv("POKEPORT_WALK_MOVES")
     if moves and playerMovement then
       for dir in moves:gmatch("[^,]+") do
-        playerMovement:tryMove(dir, world.isPlayerWalkTileBlocked, getLedgeJumpDirection)
+        playerMovement:tryMove(dir, world.isPlayerWalkTileBlocked, getLedgeJumpDirection, "developer")
         for i = 1, 16 do playerMovement:tick() end
         syncSessionLocation()
         if not tryEarlyStoryTriggerAt(playerMovement.tileX, playerMovement.tileY)
@@ -4454,6 +4480,7 @@ world.finishTrainerBattle = function(battle)
       playerMovement.tileX, playerMovement.tileY = respawn.x, respawn.y
       playerMovement.facingDirection = PlayerMovement.DOWN
       playerMovement.moving, playerMovement.stepFrame = false, 0
+      playerMovement:invalidateElevation("whiteout_placement")
     end
     syncSessionLocation()
     addLine(("Lost to %s. Whiteout: lost $%d, party healed, respawned at %d,%d (%d,%d)."):format(
@@ -4531,6 +4558,7 @@ function love.update(dt)
             playerMovement.tileX, playerMovement.tileY = respawn.x, respawn.y
             playerMovement.facingDirection = PlayerMovement.DOWN
             playerMovement.moving, playerMovement.stepFrame = false, 0
+            playerMovement:invalidateElevation("whiteout_placement")
           end
           syncSessionLocation()
           addLine(("Whiteout: lost $%d, party healed, respawned at %d,%d (%d,%d)."):format(
@@ -4687,10 +4715,10 @@ function love.update(dt)
       -- every frame (not the menu-style repeat-with-delay system --
       -- that's specific to menu cursors, see InputState.lua/MenuCursor.lua),
       -- so the next tile starts immediately once the current step finishes.
-      if inputState:isHeld(InputState.DPAD_DOWN) then playerMovement:tryMove(PlayerMovement.DOWN, world.isPlayerWalkTileBlocked, getLedgeJumpDirection)
-      elseif inputState:isHeld(InputState.DPAD_UP) then playerMovement:tryMove(PlayerMovement.UP, world.isPlayerWalkTileBlocked, getLedgeJumpDirection)
-      elseif inputState:isHeld(InputState.DPAD_LEFT) then playerMovement:tryMove(PlayerMovement.LEFT, world.isPlayerWalkTileBlocked, getLedgeJumpDirection)
-      elseif inputState:isHeld(InputState.DPAD_RIGHT) then playerMovement:tryMove(PlayerMovement.RIGHT, world.isPlayerWalkTileBlocked, getLedgeJumpDirection)
+      if inputState:isHeld(InputState.DPAD_DOWN) then playerMovement:tryMove(PlayerMovement.DOWN, world.isPlayerWalkTileBlocked, getLedgeJumpDirection, "normal")
+      elseif inputState:isHeld(InputState.DPAD_UP) then playerMovement:tryMove(PlayerMovement.UP, world.isPlayerWalkTileBlocked, getLedgeJumpDirection, "normal")
+      elseif inputState:isHeld(InputState.DPAD_LEFT) then playerMovement:tryMove(PlayerMovement.LEFT, world.isPlayerWalkTileBlocked, getLedgeJumpDirection, "normal")
+      elseif inputState:isHeld(InputState.DPAD_RIGHT) then playerMovement:tryMove(PlayerMovement.RIGHT, world.isPlayerWalkTileBlocked, getLedgeJumpDirection, "normal")
       end
     end
     if yesNoActive and yesNoCursor and not yesNoResult then

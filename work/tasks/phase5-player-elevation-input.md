@@ -1,7 +1,7 @@
 # P5-05 — live player elevation input ownership
 
 - Task ID: `P5-05-PLAYER-ELEVATION-INPUT`
-- Status: `READY_FOR_WORKER`
+- Status: `READY_FOR_REVIEWER` — implementation submitted; independent acceptance pending
 - Type: `IMPLEMENTATION`
 - Parent capability gate: [Phase 5/7 scripted traversal](../roadmaps/CAPABILITY_CHECKLIST.md), effective elevation prerequisite for future Viridian coordinate eligibility
 - Assigned role: `WORKER`
@@ -141,3 +141,76 @@ Reviewer independently verifies against this contract. Orchestrator merges
 only after PASS and green final head, reconciles this ownership prerequisite,
 then selects the next unmet Viridian gate dependency. Do not repeat accepted
 source discovery or mark Phase5/7 or the northbound gate complete.
+
+## Worker implementation and evidence — 2026-10-17
+
+- Isolated branch `work/p5-player-elevation-input-20261016`, authority/base
+  `9ea26858e2764ad02f5ef073935054b2660128f8`. Source hash verified
+  `c75f352304d529f6ba92d4f74b9cf8b5c3810788`. Exactly the five allowed paths
+  changed; no source-report, coordination, workflow, saved schema or consumer
+  changes. No ROM/private runner/replay action.
+- PlayerMovement now owns transient C/E, validity/reason, fresh-avatar or
+  normal-finish provenance, map/coordinate ownership and pending spawn/step.
+  Production decoded-height/generation readers are bound at construction;
+  debug construction remains unknown. Fresh-session bootstrap qualifies only
+  at its final starting tile. Begin/finish sampling preserves existing public
+  positions, pixels, collision and 16-frame timing.
+- Actual field input explicitly marks normal provenance. Map loads (including
+  same-ID loads), warp/connection/save/story/whiteout placements, script/
+  developer calls and ledges invalidate. Mart's direct ticking also invalidates
+  an already-moving player, preventing takeover of pending normal provenance.
+  Missing/malformed samples, missing generation and stale coordinates/steps
+  fail closed. Unknown history recovers only at qualified ordinary finish1–14
+  or fresh bootstrap; known E0 and unknown remain distinct.
+- Production tests execute actual main functions/closures with synthetic map
+  services: debug/fresh bootstrap, all four input directions, first/later
+  step dispatch, map-loader invalidation before decode, same-position placement
+  classes with a pending normal step, both whiteout owners, Mart takeover,
+  ledges, developer walking and automated camera-helper ownership. They inspect
+  C/E immediately before the existing story call, not an ignored extra argument.
+  Serialized session comparison permits only the existing location update;
+  elevation ownership changes no vars/flags/party/bag/save fields. No gameplay
+  handler consumes E yet; the future gate remains unimplemented.
+
+### Executed checks (not carried evidence)
+
+- Own pre-edit baseline on 2026-10-16 at `9ea2685`, clean isolated worktree:
+  `bash scripts/test_all.sh` **192 files PASS, no-ROM mode**; receipt
+  `/tmp/firered-elevation-baseline-20261016.log`. Then
+  `lua5.1 scripts/check_repository.lua` PASS (320 Lua, 368 Markdown,
+  1230 targets). This was run before the first runtime patch, not borrowed
+  from the earlier parent 192-file receipt.
+- Focused final checks: `lua5.1 tests/player_movement_test.lua` **105 PASS**;
+  `lua5.1 tests/phase5_player_elevation_input_test.lua` **78 PASS**;
+  `lua5.1 tests/early_story_test.lua` **25 PASS**;
+  `lua5.1 tests/fresh_save_bootstrap_test.lua` **12 PASS**;
+  `lua5.1 tests/map_connections_test.lua` **4 PASS**.
+- Full after-change command:
+  `env -u POKEPORT_ROM -u POKEPORT_RUNTIME_REPLAY bash scripts/test_all.sh`
+  **193 files PASS**, ROM-dependent checks skipped; receipt
+  `/tmp/firered-elevation-final-20261017.log`. No guarded evidence claimed.
+- Negative witness 1: temporarily changed the PlayerMovement finish guard from
+  `if step and self.elevationStep == step then` to
+  `if false and step and self.elevationStep == step then`. Production suite
+  then reported **63 PASS / 7 FAIL**, including
+  `PRODUCTION finish sampling precedes dispatch`; restored the guard and
+  verified identical pre/post SHA-256 before continuing. Receipt
+  `/tmp/firered-elevation-negative-witness-20261017.log`.
+- Negative witness 2: temporarily removed main's explicit
+  `invalidateElevation("warp_placement")`. The actual warp caller test stubs
+  common loadMap and uses an unchanged position, so neither generation nor
+  coordinate mismatch hides the missing owner. It reported **71 PASS / 1 FAIL**:
+  `PRODUCTION same-position warp invalidates`. Restored the line and verified
+  identical main SHA-256. Receipt
+  `/tmp/firered-elevation-relocation-witness-20261017.log`. Counts reflect the
+  suites at witness time; six later pending-work assertions explain final78.
+- Both deliberately faulty mutations are absent from the final diff. Working
+  and staged whitespace checks PASS; final repository checker PASS (321 Lua,
+  368 Markdown, 1230 targets). Fresh pre-publication origin/main
+  `c5e22355921bc098bb615a21745dbffd85298710` differs from the authority base
+  only in STATE/HANDOFF; runtime, task and AGENTS unchanged. Exact public
+  head/CI are handed to the separate Reviewer.
+
+Independent Reviewer must verify the exact implementation/source limits,
+production ownership and five-path scope. Worker does not self-approve this
+prerequisite or claim C0/C2/C3, tutorial, traversal, save parity or phase closure.
