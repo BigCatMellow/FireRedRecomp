@@ -1,11 +1,26 @@
 # FireRedRecomp Coordination Handoff
 
-- Status: `READY_FOR_WORKER — live player elevation ownership implementation`
+- Status: `READY_FOR_REVIEWER — PR44 live elevation ownership implementation`
 - Task ID: `P5-05-PLAYER-ELEVATION-INPUT`
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
 - Current plan: [`../roadmaps/RECALIBRATED_DELIVERY_PLAN.md`](../roadmaps/RECALIBRATED_DELIVERY_PLAN.md)
 
 ## Current relay — 2026-10-17
+
+### Implementation published — exact review action
+
+PR44 head `4b1ac5fd37b96aa00c659e464eca609a0a22b235` contains the five authorized
+paths. Worker clean worktree `/tmp/firered-elevation-implementation.zEwYNr`.
+Own pre-edit192-file baseline and final193-file no-ROM suite PASS; focused
+movement105/production78/story25/bootstrap12/connections4 PASS; checker PASS.
+Two restored fault witnesses caught missing finish sampling and same-position
+warp invalidation. These are Worker receipts, not independent acceptance.
+
+Exact next action: independent Reviewer verifies source/code/assertions/scope
+and reruns evidence. Public CI `39058678397` / `39058676358` pending at dispatch.
+Route only a named correction, or merge after independent PASS and final green
+head. No gameplay consumer, tutorial, traversal, ROM or phase claim. Older
+in-progress/research instructions below are history; do not restart them.
 
 ### Resume checkpoint — 18:28 UTC
 
