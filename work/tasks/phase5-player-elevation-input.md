@@ -1,7 +1,7 @@
 # P5-05 — live player elevation input ownership
 
 - Task ID: `P5-05-PLAYER-ELEVATION-INPUT`
-- Status: `READY_FOR_REVIEWER` — implementation submitted; independent acceptance pending
+- Status: `CLOSED — REVIEWED PASS` — bounded transient ownership only
 - Type: `IMPLEMENTATION`
 - Parent capability gate: [Phase 5/7 scripted traversal](../roadmaps/CAPABILITY_CHECKLIST.md), effective elevation prerequisite for future Viridian coordinate eligibility
 - Assigned role: `WORKER`
@@ -134,6 +134,12 @@ five paths, report exact need before expanding. Do not disable unrelated
 gameplay merely because elevation is unknown; no current handler consumes it.
 
 ## Completion and handoff
+
+Orchestrator closure: exact implementation `4b1ac5f` independently PASS in
+[review `6de803d`](../reviews/2026-10-17-player-elevation-input-review.md).
+Final review-head CI `39073717228` / `39073714122` PASS; PR44 merged `75b49f3`.
+Post-merge193-file no-ROM suite and checker PASS. No elevation-sensitive story
+consumer or traversal/ROM/phase claim. Next: [bounded C0 RoadBlocked design](phase5-viridian-roadblock-design.md).
 
 Worker publishes a bounded PR and records exact commits, paths, baseline/final
 commands/results, production coverage, negative witness and exclusions here.

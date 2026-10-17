@@ -1,11 +1,30 @@
 # FireRedRecomp Coordination Handoff
 
-- Status: `READY_FOR_REVIEWER — PR44 live elevation ownership implementation`
-- Task ID: `P5-05-PLAYER-ELEVATION-INPUT`
+- Status: `READY_FOR_WORKER — bounded C0 RoadBlocked integration design`
+- Task ID: `P5-06-VIRIDIAN-ROADBLOCK-DESIGN`
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
 - Current plan: [`../roadmaps/RECALIBRATED_DELIVERY_PLAN.md`](../roadmaps/RECALIBRATED_DELIVERY_PLAN.md)
 
 ## Current relay — 2026-10-17
+
+### Latest code closure and next dispatch — 22:07 UTC
+
+PR44 implementation `4b1ac5f` independently PASS in `6de803d`; final-head
+CI `39073717228` / `39073714122` passed. Merged `75b49f3`; post-merge193-file
+no-ROM suite/checker PASS. Live transient elevation ownership is accepted.
+No story consumer, tutorial/traversal, ROM or phase completion is implied.
+Do not redo completed source discovery or this implementation/review.
+
+Exact next action: Worker executes the [two-path C0 RoadBlocked design](../tasks/phase5-viridian-roadblock-design.md)
+from this authority checkpoint in a fresh worktree. Scope is scene0 admission,
+message/close, one forced down step, wait/release; source-backed input/priority
+and production ownership; exact code/test allowlist and guarded evidence/route
+proposal together. No runtime/runner actions yet. Separate independent review
+precedes any implementation/evidence authority. C2/C3/tutorial remain excluded.
+
+Completed worktrees `/tmp/firered-elevation-implementation.zEwYNr` and
+`/tmp/firered-elevation-implementation-review-gKHlRn` remain preserved.
+Older in-progress/review actions below are historical.
 
 ### Implementation published — exact review action
 

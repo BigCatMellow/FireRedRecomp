@@ -1,4 +1,4 @@
-# Recalibrated delivery plan — routing reconciled 2026-10-16
+# Recalibrated delivery plan — routing reconciled 2026-10-17
 
 This is the concise current routing view. The capability checklist remains the
 canonical phase-status authority; task contracts and independent reviews remain
@@ -43,10 +43,12 @@ rule or traversal work without an evidenced dependency.
    [P5-05 northbound source discovery](../tasks/phase5-viridian-northbound-gate-discovery.md)
    independently passed and merged PR42 `ae3d559`; its selected
    [elevation lifecycle source lock](../tasks/phase5-player-elevation-input-source-lock.md)
-   also passed and merged PR43 `871f3f1`. Execute the adopted five-path
-   [live elevation ownership implementation](../tasks/phase5-player-elevation-input.md),
-   with production tests and explicit invalidation of unsupported histories.
-   No gameplay handler or predicate change is included. No rendered Pokédex,
+   also passed and merged PR43 `871f3f1`. [Live elevation ownership](../tasks/phase5-player-elevation-input.md)
+   passed and merged PR44 `75b49f3` (post-merge193-file no-ROM PASS).
+   Next, [design the bounded C0 roadblock](../tasks/phase5-viridian-roadblock-design.md),
+   including its live message/forced-step/release, implementation paths and
+   guarded evidence plan. Elevation ownership alone adds no gameplay handler.
+   No rendered Pokédex,
    full Party UI or normal traversal proof is implied. Memento's trainer-AI
    reserve-count gap is separately under read-only feasibility inspection;
    engine acceptance does not establish AI support.
