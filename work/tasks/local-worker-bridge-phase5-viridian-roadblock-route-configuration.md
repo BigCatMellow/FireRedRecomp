@@ -10,7 +10,7 @@
 - Prerequisites: independent `PASS` for
   `P5-06-VIRIDIAN-ROADBLOCK-DESIGN` at `1199a74db8dbbeb1528b171159096bd7d90767c5` and merged
   design PR `6006ab6fbc7b9f1dd60a88dcbf6a8b0a08692947`. No probe, request, ROM, or
-  guarded ROM/LÖVE replay authority is supplied by this draft; the required
+  guarded ROM/LÖVE replay authority is supplied by this contract; the required
   local no-ROM test suite and repository checker remain permitted.
 - Risk: `MEDIUM` — an overly broad route could apply or publish an unauthorized
   patch on the private runner; a too-narrow route must fail closed.

@@ -39,6 +39,9 @@ rejected, so PR46 provides reviewable publication. Initial PR45 merge approval
 saw stale pending checks; a direct fresh query proved final-head SUCCESS and
 the authorized merge then proceeded. Keep direct final CI evidence visible
 before merge approval. No complete model cost/token telemetry is available.
+PR46 reconciliation sanity review requested one adoption-wording correction,
+"this draft" to "this contract"; applied without scope change. This is separate
+from the design's first-review PASS and zero design corrections.
 
 ### Independent design PASS — 2026-10-18
 
