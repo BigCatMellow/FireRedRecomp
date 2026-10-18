@@ -1,7 +1,7 @@
 # P5-06 — bounded Viridian scene-0 roadblock integration design
 
 - Task ID: `P5-06-VIRIDIAN-ROADBLOCK-DESIGN`
-- Status: `READY_FOR_WORKER`
+- Status: `READY_FOR_REVIEWER` — design submitted; independent acceptance pending
 - Type: `DESIGN / bounded necessary source checks`; no runtime authority
 - Parent capability gate: [Phase 5/7 first-corridor progression](../roadmaps/CAPABILITY_CHECKLIST.md)
 - Assigned role: `WORKER` acting as bounded designer
@@ -127,3 +127,28 @@ Orchestrator adopts only the accepted bounded design and dispatches its next
 required implementation/evidence prerequisite; do not invent another redundant
 planning layer. Canonical Phase5/7 and the complete northbound/tutorial gate
 remain open. No code or guarded request is authorized by this task itself.
+
+## Worker evidence and handoff — 2026-10-17
+
+- [C0 design, nine-path implementation and guarded-route proposal](../reports/phase5-viridian-roadblock-design.md).
+- Isolated branch `work/p5-viridian-roadblock-design-20261017`, base
+  `d59f28f844ec9a45abec0f307bae92525c932501`; tracked runtime unchanged from
+  `75b49f3a3cbeb877137372a40a0b92973172fad1`. Clean public source verified at
+  `c75f352304d529f6ba92d4f74b9cf8b5c3810788`.
+- Narrow source checks resolved two-page/NEW A/B acknowledgment, non-reveal-all
+  speedup, close-before-movement, collision/ledge bypass, wait/release order and
+  release-frame input isolation. Existing normal-glyph/style limits explicitly
+  excluded from visual parity; no guessed pointers or shared renderer expansion.
+- One cohesive implementation proposal and complete guarded fixture/replay/
+  selector/allowlist plan supplied together. Existing projection/shared replay
+  routes do not cover it; no consumed probe/request reused. No runtime/test,
+  workflow, ROM, private runner or replay action taken.
+- Own baseline checker PASS (321 Lua, 370 Markdown, 1242 local targets);
+  clean revisions/runtime comparison and documented source/current-owner reads.
+  Parent193-file baseline attributed, not rerun. Final checker PASS (321 Lua,
+  371 Markdown, 1246 local targets); working and staged `git diff --check` PASS.
+  Fresh `origin/main` at `53de0780842ce9c6d4dee94e68d760805d601b7d` changes
+  only coordination STATE/HANDOFF since dispatch; task/runtime authority is
+  unchanged. Exact public head/CI handed to separate Reviewer before reconciliation.
+- Review remains independent; no C0/gameplay/traversal/route-readiness or phase
+  acceptance claimed. C1/C2/C3/tutorial and accepted projection remain excluded.
