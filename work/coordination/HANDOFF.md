@@ -13,7 +13,10 @@ Recovered `origin/main`/canonical `72a18e9`; only both preserved drafts are
 untracked. No active/queued jobs or configuration PR. Workflow/bridge are
 unchanged since adopted `6006ab6`. Sol medium Worker
 `01a15040-e8bd-72e2-ac6a-0f1508d6cc06` is assigned the existing four-output
-configuration contract; worktree receipt pending. No duplicate Worker.
+configuration contract in `/tmp/firered-roadblock-route-config.8esU8V`, branch
+`work/p5-viridian-roadblock-route-config-20261018`, base `72a18e9`.
+No duplicate Worker. Terra prepares a conditional probe contract only in
+scratch; it is not dispatched and grants no execution authority.
 
 One next action: finish configuration/offline/no-ROM checks and publish exact
 head for a separate Sol Reviewer. No runtime, probe, request or guarded action.
