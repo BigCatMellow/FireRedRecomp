@@ -9,6 +9,12 @@
 
 ### Active C0 design worktree — 22:11 UTC
 
+Resume checkpoint — 22:20 UTC: Worker hit a usage limit before writing the
+report. The existing clean worktree and branch remain the only active package;
+no design PR exists. Continue from retained findings after quota recovery. Do
+not restart source work, create another worktree or treat preliminary findings
+as accepted design.
+
 Continue `/tmp/firered-roadblock-design.Uvt4EL`, branch
 `work/p5-viridian-roadblock-design-20261017`, base
 `d59f28f844ec9a45abec0f307bae92525c932501`. Worker is resolving narrow
