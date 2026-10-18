@@ -7,6 +7,21 @@
 
 ## Current relay — 2026-10-18
 
+### Single probe prepared; final submission gate
+
+Authority PR49 merged `155a3cb` after independent recheck `cfe6b13` and final
+CI39165410206/39165407589 SUCCESS. Luna low prepared sole-file `9472aec6`
+in `/tmp/firered-roadblock-readiness-probe-20261018`, now PR50. Artifact SHA256
+`edafcd7332caafeac7d4b4b270ae055e3a4fbc697069b1db6400c18895398bef`.
+Branch publication has not dispatched the main-only bridge. One allowance is
+reserved for this exact artifact; no second probe/retry.
+
+One next action: Orchestrator rechecks unchanged merged route/current main,
+online idle firered-local and zero active/queued bridge jobs immediately before
+merging PR50 once. Monitor safe step statuses, then independent outcome review.
+All eight patch-only steps must skip. No gameplay/request authority.
+Canonical checkpoint branch `work/p5-roadblock-probe-relay-20261018`.
+
 ### Configuration closed; one-probe contract adopted
 
 PR48 merged `2eb8fddac1cbb410097c8bcc9e44885e3c395cad`, exact configuration
