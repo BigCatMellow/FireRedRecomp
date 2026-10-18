@@ -62,9 +62,10 @@ independently passed and merged PR44 `75b49f3`; post-merge193-file no-ROM suite
 passes. It supplies transient state and explicit invalidation, not a gameplay
 consumer. [C0 RoadBlocked integration design](../tasks/phase5-viridian-roadblock-design.md)
 passed independent review `1199a74` and merged PR45 `6006ab6` after final CI.
-Current prerequisite is [bounded bridge configuration](../tasks/local-worker-bridge-phase5-viridian-roadblock-route-configuration.md)
-for its nine-path implementation/evidence proposal. Configuration review, a
-fresh readiness probe and separate implementation authority remain required.
+[Bounded bridge configuration](../tasks/local-worker-bridge-phase5-viridian-roadblock-route-configuration.md)
+passed independent review `dbf2b389` and merged PR48 `2eb8fdd` after final CI.
+Current prerequisite is the [single readiness probe](../tasks/local-worker-bridge-phase5-viridian-roadblock-route-probe.md),
+followed by independent outcome review and separate implementation authority.
 Tutorial/C2/C3 and generic VM remain excluded. Do not repeat accepted elevation
 or northbound research, or claim traversal from this prerequisite.
 Read-only Memento AI feasibility found an existing

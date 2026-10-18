@@ -1,11 +1,89 @@
 # FireRedRecomp Coordination Handoff
 
-- Status: `READY_FOR_WORKER — bounded C0 bridge configuration`
-- Task ID: `P5-06-VIRIDIAN-ROADBLOCK-ROUTE-CONFIG`
+- Status: `READY_FOR_WORKER — single guarded readiness probe`
+- Task ID: `P5-06-VIRIDIAN-ROADBLOCK-ROUTE-PROBE`
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
 - Current plan: [`../roadmaps/RECALIBRATED_DELIVERY_PLAN.md`](../roadmaps/RECALIBRATED_DELIVERY_PLAN.md)
 
 ## Current relay — 2026-10-18
+
+### Configuration closed; one-probe contract adopted
+
+PR48 merged `2eb8fddac1cbb410097c8bcc9e44885e3c395cad`, exact configuration
+`569b440` independently PASS `dbf2b389`; final CI39165163719/job117786461463
+and39165161008/job117786452779 SUCCESS. Close configuration only.
+Worker/review worktrees remain preserved at `dbf2b389`; zero corrections,
+one recovered usage interruption, no completed tests repeated.
+
+One next action: finish PR49 verification/publication of the
+[separate one-probe contract](../tasks/local-worker-bridge-phase5-viridian-roadblock-route-probe.md),
+then prepare its literal single-file artifact. Immediately before its one
+publication, Orchestrator must freshly verify merged route, online idle
+`firered-local` and no active/queued bridge job. No probe/request submitted;
+one allowance unused, no retry. All eight patch-only steps must skip.
+Independent outcome review and separately reviewed implementation authority
+remain required before gameplay work. Phase statuses/exclusions unchanged.
+
+### Independent configuration PASS
+
+Exact configuration `569b440` passed in review `dbf2b3896e2993f86da8a0c2bbe251eb0b07db1c`.
+Independent193-file no-ROM suite, checker, YAML/13Bash,9+9 missing-artifact
+negatives and exact selector/target/command/probe predicates PASS. No corrections.
+Same review worktree resumed after one usage interruption; completed tests
+were not repeated. Review file finalized, committed and worktree clean.
+
+One next action: final review-head CI, then exact PR48 merge and configuration
+closure; adopt separate fresh one-probe authority afterward. No readiness,
+runtime, gameplay or phase acceptance follows from this PASS.
+PR49 authority/reconciliation check caught one stale STATE current_phase
+routing sentence; corrected to accepted configuration/next probe. This is one
+coordination correction, distinct from zero configuration corrections. Audit
+all top-level routing summaries when advancing the active task.
+
+### Review resumed after usage interruption — 20:49 UTC
+
+Independent Sol Reviewer hit a usage limit before returning a verdict. User
+continued; exact PR48 remains `569b440`, both original CI runs SUCCESS, no
+active/queued remote jobs. Resume the same Reviewer/context and clean worktree
+`/tmp/firered-roadblock-route-config-review.uziZOl`, branch
+`review/p5-viridian-roadblock-route-config-20261018`, at `569b440`.
+No review artifact yet; recover finished checks rather than rerunning them.
+One next action remains finish the exact independent review. PR49 checkpoint
+is open; no config acceptance, probe/request or runtime action is authorized.
+
+### Configuration published — independent review active
+
+PR48 exact `569b440edaded9d060f7d14e9333bdbe32211b14` (code `38e7d79`)
+changes exactly the four allowed files. Worker worktree
+`/tmp/firered-roadblock-route-config.8esU8V` is clean. Worker baseline/final
+193-file no-ROM, checker321Lua/375Markdown/1259targets, YAML/13Bash,
+all9 pre-evidence and all9 pre-staging missing-artifact negatives, selector/
+target rejection and command wiring PASS. Public CI39154311878/39154329293
+reported SUCCESS. These are Worker receipts pending independent review.
+
+One next action: separate Sol medium Reviewer
+`01a14d28-ca9a-7f62-93f8-d9bc076a12b8` verifies exact PR48 and reruns evidence.
+No implementation self-acceptance or guarded execution. The added artifact
+guard is an eighth patch-only step; future probe must show all eight skipped.
+The earlier publication-status redirect reached Worker after publication;
+only a read-only query was aborted, with no lost changes or duplicated push.
+
+### Configuration Worker assigned — 18:24 UTC
+
+Recovered `origin/main`/canonical `72a18e9`; only both preserved drafts are
+untracked. No active/queued jobs or configuration PR. Workflow/bridge are
+unchanged since adopted `6006ab6`. Sol medium Worker
+`01a15040-e8bd-72e2-ac6a-0f1508d6cc06` is assigned the existing four-output
+configuration contract in `/tmp/firered-roadblock-route-config.8esU8V`, branch
+`work/p5-viridian-roadblock-route-config-20261018`, base `72a18e9`.
+No duplicate Worker. Terra prepares a conditional probe contract only in
+scratch; it is not dispatched and grants no execution authority.
+
+One next action: finish configuration/offline/no-ROM checks and publish exact
+head for a separate Sol Reviewer. No runtime, probe, request or guarded action.
+MediaCenter observed online/idle; that read-only observation supplies no probe
+authority or readiness evidence. Astra owns orchestration; no escalation.
+Canonical coordination branch: `work/p5-roadblock-route-relay-20261018`.
 
 ### Final published authority and one next action
 
