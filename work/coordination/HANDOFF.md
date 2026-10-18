@@ -7,6 +7,23 @@
 
 ## Current relay — 2026-10-18
 
+### Configuration published — independent review active
+
+PR48 exact `569b440edaded9d060f7d14e9333bdbe32211b14` (code `38e7d79`)
+changes exactly the four allowed files. Worker worktree
+`/tmp/firered-roadblock-route-config.8esU8V` is clean. Worker baseline/final
+193-file no-ROM, checker321Lua/375Markdown/1259targets, YAML/13Bash,
+all9 pre-evidence and all9 pre-staging missing-artifact negatives, selector/
+target rejection and command wiring PASS. Public CI39154311878/39154329293
+reported SUCCESS. These are Worker receipts pending independent review.
+
+One next action: separate Sol medium Reviewer
+`01a14d28-ca9a-7f62-93f8-d9bc076a12b8` verifies exact PR48 and reruns evidence.
+No implementation self-acceptance or guarded execution. The added artifact
+guard is an eighth patch-only step; future probe must show all eight skipped.
+The earlier publication-status redirect reached Worker after publication;
+only a read-only query was aborted, with no lost changes or duplicated push.
+
 ### Configuration Worker assigned — 18:24 UTC
 
 Recovered `origin/main`/canonical `72a18e9`; only both preserved drafts are
