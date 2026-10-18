@@ -60,9 +60,11 @@ also passed and merged PR43 `871f3f1`, resolving bootstrap/ordinary-step timing
 and the five-path integration proposal. [Live elevation ownership](../tasks/phase5-player-elevation-input.md)
 independently passed and merged PR44 `75b49f3`; post-merge193-file no-ROM suite
 passes. It supplies transient state and explicit invalidation, not a gameplay
-consumer. Current leaf is [C0 RoadBlocked integration design](../tasks/phase5-viridian-roadblock-design.md):
-message, forced down step, wait/release and source-correct eligibility/input
-ownership, with exact implementation and guarded-evidence proposal together.
+consumer. [C0 RoadBlocked integration design](../tasks/phase5-viridian-roadblock-design.md)
+passed independent review `1199a74` and merged PR45 `6006ab6` after final CI.
+Current prerequisite is [bounded bridge configuration](../tasks/local-worker-bridge-phase5-viridian-roadblock-route-configuration.md)
+for its nine-path implementation/evidence proposal. Configuration review, a
+fresh readiness probe and separate implementation authority remain required.
 Tutorial/C2/C3 and generic VM remain excluded. Do not repeat accepted elevation
 or northbound research, or claim traversal from this prerequisite.
 Read-only Memento AI feasibility found an existing

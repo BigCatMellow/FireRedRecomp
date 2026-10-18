@@ -1,7 +1,7 @@
 # P5-06 — bounded Viridian scene-0 roadblock integration design
 
 - Task ID: `P5-06-VIRIDIAN-ROADBLOCK-DESIGN`
-- Status: `READY_FOR_REVIEWER` — design submitted; independent acceptance pending
+- Status: `CLOSED — REVIEWED PASS` — design only; reconciled after PR45 merge
 - Type: `DESIGN / bounded necessary source checks`; no runtime authority
 - Parent capability gate: [Phase 5/7 first-corridor progression](../roadmaps/CAPABILITY_CHECKLIST.md)
 - Assigned role: `WORKER` acting as bounded designer
@@ -129,6 +129,13 @@ planning layer. Canonical Phase5/7 and the complete northbound/tutorial gate
 remain open. No code or guarded request is authorized by this task itself.
 
 ## Worker evidence and handoff — 2026-10-17
+
+Orchestrator closure — 2026-10-18: exact `a7e12e0` independently PASS in
+[review `1199a74`](../reviews/2026-10-18-viridian-roadblock-design-review.md).
+Final review-head CI `39095715464`/`39095718009` passed; PR45 merged
+`6006ab6fbc7b9f1dd60a88dcbf6a8b0a08692947`. This closes design only.
+Next: [bounded bridge configuration](local-worker-bridge-phase5-viridian-roadblock-route-configuration.md).
+All runtime, guarded evidence, tutorial, presentation and phase exclusions remain.
 
 - [C0 design, nine-path implementation and guarded-route proposal](../reports/phase5-viridian-roadblock-design.md).
 - Isolated branch `work/p5-viridian-roadblock-design-20261017`, base

@@ -1,18 +1,18 @@
 {
   "schema_version": 1,
-  "updated_utc": "2026-10-17T22:20:00Z",
+  "updated_utc": "2026-10-18T04:05:00Z",
   "execution_paused": false,
   "role": "ORCHESTRATOR",
   "status": "READY_FOR_WORKER",
-  "task_id": "P5-06-VIRIDIAN-ROADBLOCK-DESIGN",
-  "current_phase": "Canonical phase statuses unchanged. P6 Dex/Party and P5 elevation ownership accepted. Current leaf designs live Viridian C0 RoadBlocked; tutorial/traversal and guarded battle evidence remain separate.",
+  "task_id": "P5-06-VIRIDIAN-ROADBLOCK-ROUTE-CONFIG",
+  "current_phase": "Canonical phase statuses unchanged. PR45 C0 design accepted only; bridge configuration is next. Runtime handler, guarded evidence, tutorial/traversal and existing battle evidence remain open.",
   "canonical_status_owner": "work/roadmaps/CAPABILITY_CHECKLIST.md",
-  "active_task": "work/tasks/phase5-viridian-roadblock-design.md",
-  "objective": "Design one live C0 scene0 eligibility/message/forced-down-step/wait/release slice, consuming accepted elevation ownership; include exact implementation paths, source oracles and guarded evidence/route proposal.",
+  "active_task": "work/tasks/local-worker-bridge-phase5-viridian-roadblock-route-configuration.md",
+  "objective": "Configure only the accepted fail-closed C0 bridge route with exact nine-artifact validation/staging, six focused commands, existing full suites and dedicated replay wiring; prove it offline.",
   "next_role": "WORKER",
-  "acceptance": "Pinned C0 admission/input/message/forced movement/lock/priority ownership; actual production integration and failure boundaries; one implementation allowlist with no-ROM/verified-ROM/runtime evidence plan; independent exact design review.",
-  "boundaries": "Two design docs only. No runtime/tests/ROM/runner/probes/requests, C1/C2/C3/tutorial/genericVM, save/collision/other-map changes. Do not repeat accepted elevation/projection/source research.",
-  "dependencies": "PR44 exact4b1ac5f independently PASS6de803d, merged75b49f3; finalCI39073717228/39073714122 and postmerge193suite/checker PASS. PR42 northbound and PR43 elevation source/design accepted; publicsourcec75f352.",
+  "acceptance": "Four-output configuration only; exact selectors/allowlists/commands, all nine artifacts before evidence and staging, preserved guards/existing routes, safe positive/negative stub checks, no-ROM checks/public CI and independent exact review.",
+  "boundaries": "Only .github/workflows/local-worker-bridge.yml, work/coordination/LOCAL_RUNNER_BRIDGE.md, own configuration task/report. No runtime/test/replay-wrapper edits, probe/request/workflow dispatch/private ROM or guarded execution. No tutorial/C2/C3/save/renderer/other-map expansion.",
+  "dependencies": "PR45 design exacta7e12e0023a92b1790e3391ac64657f42e54e486 independently PASS1199a74db8dbbeb1528b171159096bd7d90767c5, merged6006ab6fbc7b9f1dd60a88dcbf6a8b0a08692947; finalCI39095715464/39095718009 SUCCESS. Runtime remains accepted75b49f3; sourcec75f352.",
   "runner_blocker": {
     "task_id": "P4-F3-ROUTE",
     "status": "CLOSED — REVIEWED PASS",
@@ -68,19 +68,19 @@
     "phase4_recoil_if_miss_route_probe_status": "CLOSED — REVIEWED PASS at667fd16; run38385071588/job115254712929; work/reviews/2026-10-13-recoil-if-miss-route-probe-outcome-review.md"
   },
   "phase2_external_blocker": "Trusted, user-owned retail-reference captures with provenance/timing/crop/filter details for Oak and Pallet anchors have not been supplied.",
-  "next_after_success": "Independent exact design review, then adopt only the one bounded C0 implementation/evidence prerequisite. No redundant planning layer, old bridge request or P4 fast-lane deferral for this P5 gameplay slice.",
+  "next_after_success": "After independent configuration PASS and final CI, reconcile only configuration then compile distinct fresh readiness probe authority; separate reviewed implementation authority follows successful probe. No consumed requests or P4 deferral.",
   "legal_content_boundary": "Never commit ROMs, BIOS dumps, generated caches, ROM-derived reference screenshots, extracted game assets, or other prohibited content.",
   "phase_completion_rule": "Phase 2 remains IN PROGRESS until the Oak/reference screenshot discrepancy gate is evidenced and independently reviewed.",
   "project_goal": "work/coordination/PROJECT_GOAL.md — ACTIVE; explicitly adopted 2026-10-11; no user-specified token budget",
   "phase0_external_blocker": "P0-04-REVERIFY at 93c4654: missing prerequisites on the verified target and no desktop proof; separate supported-target preparation decision and fresh evidence required. Historical result is not current host readiness.",
   "checkpoint": {
-    "inspection_revision": "75b49f3a3cbeb877137372a40a0b92973172fad1",
-    "pending_jobs": "PR44 merged after independentPASS6de803d and finalCI39073717228/39073714122. No bridge request. C0 RoadBlocked design sole active package.",
+    "inspection_revision": "6006ab6fbc7b9f1dd60a88dcbf6a8b0a08692947",
+    "pending_jobs": "PR45 merged; final design CI39095715464/39095718009 SUCCESS. PR46 carries coordination/next-contract reconciliation; final PR46 CI/review pending. No bridge request/probe.",
     "preserved_drafts": "Unreviewed Brick Break package isolated in named local stash quarantine-unreviewed-brick-break-rerank-2026-10-11; outside active dispatch.",
-    "next_action": "Resume the existing /tmp/firered-roadblock-design.Uvt4EL branch work/p5-viridian-roadblock-design-20261017 based59f28f under phase5-viridian-roadblock-design.md after the Worker usage limit clears. Finish the two-path C0 design/report from retained findings, publish PR for independent review. Do not restart accepted elevation work or create another worktree.",
-    "remaining_acceptance": "C0 design/report/review outstanding; no gameplay handler authorized yet. Full P5/7 traversal/tutorial and P4 guarded evidence remain open.",
+    "next_action": "Finish PR46 coordination/contract verification and merge; then Sol medium Worker executes the four-output P5-06 route-configuration contract from published authority. Design package closed; no runtime code/guarded execution authorized.",
+    "remaining_acceptance": "Route configuration and independent review outstanding; fresh readiness probe and separately reviewed implementation authority remain prerequisites to C0 code/guarded fixture/replay evidence. Full P5/7/tutorial/traversal and existing P4 evidence remain open.",
     "coordination_note": "Historical nested records above are evidence receipts, not pending jobs or permission to repeat completed actions.",
-    "worker_session": "C0 designer usage-limited before report publication. Existing /tmp/firered-roadblock-design.Uvt4EL atd59f28f844ec9a45abec0f307bae92525c932501 remains clean/no report. Retained findings: default msgbox newA/B ack, speedup not reveal-all, scripted walk bypasses ordinary admission, field unlock only on termination, two-page text and current renderer limitation. These are preliminary only. PR44 terminal; oldworktrees preserved.",
+    "worker_session": "Design Worker /tmp/firered-roadblock-design.Uvt4EL at1199a74; independent review /tmp/firered-roadblock-design-review.07jJa1 at1199a74. Both preserved. Canonical /tmp/firered-outcome-reconcile on work/p5-roadblock-review-relay-20261018, PR46. Next configuration Worker not yet started.",
     "accepted_source_findings": "PR42 locks selected predicates/tutorial semantics and missing runtime seams. PR43 resolves lifecycle: fresh0/0 then pending spawn; begin destination/origin; finish destination/destination before completed read; origin15 suppression can end at finish. Unsupported relocations invalidate; only qualified bootstrap or normal finish1-14 restores known state. No gameplay handler/traversal claim.",
     "implementation_authority": {
       "revision": "96b10ceebc96dfc4d40cabae43faecf27abe0ce3",
@@ -126,8 +126,19 @@
       "task": "99a045f0c8a4079dbf822b9e2a778519c77fa42c462c984333a6abb3aa92d587",
       "report": "92b990bf18b91729a468eab599fdced128238a6712c76a5f29ea730db56e4484"
     },
-    "last_review": "PR44 exact4b1ac5f independently PASS6de803d, merged75b49f3. Independent193suite and105/78/25/12/4 focused; negative finish7fail/warp2fail. Final publicCI green; postmerge193/checker PASS. Only transient ownership, not gameplay/traversal.",
+    "last_review": "PR45 exacta7e12e0 independently PASS1199a74; first-review PASS, zero corrections. Source/production/scope, checker and diff checks passed; no local full-suite rerun required by docs contract. Final CI39095715464/job117581611565 and39095718009/job117581619164 SUCCESS at1199a74. Merged6006ab6; no gameplay/phase acceptance.",
     "goal_service_state": "usageLimited observed 2026-10-12; user explicitly requested continuation. Standing instructions persist; user/system owns lifecycle resumption.",
-    "remote_recovery": "Main3adc7e8 owner work preserved. Audit: heal text reviewedcb3cea2/disposition7fff050; status design44fd139 correctedee682f9; module corrected tree published651dcd4; S1 reviewedca39623/disposition3407aa5; S2 reviewed19e15f0/dispositionae05dab; S3 reviewedfa9556a/disposition1848697; ability terms reviewedf73ccf4/closuref300085; S4 reviewed6f3168f/disposition16e4501. Do not claim separate re-review of later disposition commits. PR26 preserved. No policy amendment; full-relay ROM/replay gates remain."
+    "remote_recovery": "Main3adc7e8 owner work preserved. Audit: heal text reviewedcb3cea2/disposition7fff050; status design44fd139 correctedee682f9; module corrected tree published651dcd4; S1 reviewedca39623/disposition3407aa5; S2 reviewed19e15f0/dispositionae05dab; S3 reviewedfa9556a/disposition1848697; ability terms reviewedf73ccf4/closuref300085; S4 reviewed6f3168f/disposition16e4501. Do not claim separate re-review of later disposition commits. PR26 preserved. No policy amendment; full-relay ROM/replay gates remain.",
+    "process_review": "Prior Worker usage interruption recovered without repeated research. Design: Astra orchestration; Sol medium first-review PASS, no corrections/escalations; Terra medium next-contract preparation; Luna low CI receipts. PR46 reconciliation sanity review requested one wording fix (this draft to this contract), applied; no behavior/scope finding. No new usage-limit interruption, no complete token/cost telemetry. Direct-main checkpoint push rejected by auto-review; safer PR46 used. First merge attempt rejected on stale pending CI evidence; direct fresh query proved SUCCESS and authorized exact-head merge proceeded. Lesson: expose final CI directly before merge approval and clear draft labels at contract adoption.",
+    "preserved_local_drafts": [
+      {
+        "path": "work/handoffs/2026-10-11-persistent-project-goal-draft.md",
+        "sha256": "01d2ffc4f6ec8361bbe93936a1913a7db3ef42d66a938582cf55d8c0279e748a"
+      },
+      {
+        "path": "work/handoffs/2026-10-13-recoil-implementation-local-resume.md",
+        "sha256": "8fc205708c8cbad10a117d4495a475cc2c040a1a4865ceea6b2d9af377c69d60"
+      }
+    ]
   }
 }
