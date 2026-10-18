@@ -7,6 +7,17 @@
 
 ## Current relay — 2026-10-18
 
+### Review resumed after usage interruption — 20:49 UTC
+
+Independent Sol Reviewer hit a usage limit before returning a verdict. User
+continued; exact PR48 remains `569b440`, both original CI runs SUCCESS, no
+active/queued remote jobs. Resume the same Reviewer/context and clean worktree
+`/tmp/firered-roadblock-route-config-review.uziZOl`, branch
+`review/p5-viridian-roadblock-route-config-20261018`, at `569b440`.
+No review artifact yet; recover finished checks rather than rerunning them.
+One next action remains finish the exact independent review. PR49 checkpoint
+is open; no config acceptance, probe/request or runtime action is authorized.
+
 ### Configuration published — independent review active
 
 PR48 exact `569b440edaded9d060f7d14e9333bdbe32211b14` (code `38e7d79`)
