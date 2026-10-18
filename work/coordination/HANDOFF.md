@@ -1,11 +1,30 @@
 # FireRedRecomp Coordination Handoff
 
-- Status: `READY_FOR_WORKER — bounded C0 RoadBlocked integration design`
+- Status: `READY_FOR_REVIEWER — bounded C0 RoadBlocked integration design`
 - Task ID: `P5-06-VIRIDIAN-ROADBLOCK-DESIGN`
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
 - Current plan: [`../roadmaps/RECALIBRATED_DELIVERY_PLAN.md`](../roadmaps/RECALIBRATED_DELIVERY_PLAN.md)
 
 ## Current relay — 2026-10-17
+
+### Live recovery — 2026-10-18
+
+PR45 published at `a7e12e0023a92b1790e3391ac64657f42e54e486`, exactly
+the two authorized design docs. Public CI `39094949700`/`39094947560`
+SUCCESS. The usage-limit/no-report checkpoint below is superseded.
+Worker worktree `/tmp/firered-roadblock-design.Uvt4EL` is preserved.
+Canonical checkout `/tmp/firered-outcome-reconcile` at `156338a` retains both
+untracked handoff drafts unchanged. No current bridge request; latest12 runs
+are completed. Open PRs1/2/4/7 are unrelated and unchanged.
+
+Next action: independent GPT-5.6 Sol medium Reviewer checks exact PR45 against
+existing P5-06 criteria and records one verdict. Only its review file may be
+added; Orchestrator owns coordination. PASS still requires final review-head
+CI before merge and design-only closure. No runtime or guarded execution yet.
+Model routing: Astra orchestration, Sol medium review; no escalation.
+Process lesson: recover remote publication after a usage interruption before
+resuming research; Worker completed after the stale checkpoint. Review result
+and correction count remain pending. Prior accepted elevation stays terminal.
 
 ### Active C0 design worktree — 22:11 UTC
 
