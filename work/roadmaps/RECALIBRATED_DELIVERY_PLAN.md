@@ -45,9 +45,12 @@ rule or traversal work without an evidenced dependency.
    [elevation lifecycle source lock](../tasks/phase5-player-elevation-input-source-lock.md)
    also passed and merged PR43 `871f3f1`. [Live elevation ownership](../tasks/phase5-player-elevation-input.md)
    passed and merged PR44 `75b49f3` (post-merge193-file no-ROM PASS).
-   Next, [design the bounded C0 roadblock](../tasks/phase5-viridian-roadblock-design.md),
-   including its live message/forced-step/release, implementation paths and
-   guarded evidence plan. Elevation ownership alone adds no gameplay handler.
+   [C0 roadblock design](../tasks/phase5-viridian-roadblock-design.md) independently
+   passed in `1199a74` and merged PR45 `6006ab6` after final-head CI.
+   Next, [configure its bounded bridge route](../tasks/local-worker-bridge-phase5-viridian-roadblock-route-configuration.md)
+   with the exact nine implementation artifacts and guarded evidence commands;
+   a fresh probe and separate implementation authority follow configuration
+   review. Design acceptance adds no gameplay handler.
    No rendered Pokédex,
    full Party UI or normal traversal proof is implied. Memento's trainer-AI
    reserve-count gap is separately under read-only feasibility inspection;

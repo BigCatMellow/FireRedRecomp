@@ -1,11 +1,44 @@
 # FireRedRecomp Coordination Handoff
 
-- Status: `REVIEWED_PASS — awaiting final PR45 review-head CI`
-- Task ID: `P5-06-VIRIDIAN-ROADBLOCK-DESIGN`
+- Status: `READY_FOR_WORKER — bounded C0 bridge configuration`
+- Task ID: `P5-06-VIRIDIAN-ROADBLOCK-ROUTE-CONFIG`
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
 - Current plan: [`../roadmaps/RECALIBRATED_DELIVERY_PLAN.md`](../roadmaps/RECALIBRATED_DELIVERY_PLAN.md)
 
-## Current relay — 2026-10-17
+## Current relay — 2026-10-18
+
+### Design closed; next prerequisite compiled
+
+PR45 merged `6006ab6fbc7b9f1dd60a88dcbf6a8b0a08692947` after independent
+Sol medium PASS `1199a74` for exact Worker `a7e12e0` and final review-head
+CI `39095715464`/job`117581611565`, `39095718009`/job`117581619164` SUCCESS.
+This closes P5-06 design only. Runtime remains accepted elevation `75b49f3`;
+no C0 gameplay, route readiness, tutorial/traversal or Phase5/7 completion.
+
+Next action: finish PR46 verification/merge, then Sol medium Worker executes
+the [four-output route configuration](../tasks/local-worker-bridge-phase5-viridian-roadblock-route-configuration.md)
+from published authority. It adopts the already reviewed nine-artifact plan,
+six focused commands, both suites and dedicated replay wiring with offline
+negative checks. No further source/route-plan discovery. No probe/request,
+private ROM, guarded replay or runtime edits; successful configuration review
+precedes a distinct fresh readiness probe and separate implementation authority.
+Configuration worktree/Worker is not yet started.
+
+Canonical `/tmp/firered-outcome-reconcile`, branch
+`work/p5-roadblock-review-relay-20261018`, PR46, contains reconciliation.
+Preserved completed design `/tmp/firered-roadblock-design.Uvt4EL` and review
+`/tmp/firered-roadblock-design-review.07jJa1` both at `1199a74`.
+Both untracked handoff drafts remain unchanged; exact hashes are in STATE.
+Historical actions below are superseded; elevation work remains terminal.
+
+Process: first-review PASS, zero corrections/escalations, no new usage limit.
+Astra orchestrated; Sol medium reviewed; Terra medium compiled the next
+contract; Luna low checked CI receipts. Prior interrupted Worker publication
+was recovered without repeating research. Direct-main checkpoint push was
+rejected, so PR46 provides reviewable publication. Initial PR45 merge approval
+saw stale pending checks; a direct fresh query proved final-head SUCCESS and
+the authorized merge then proceeded. Keep direct final CI evidence visible
+before merge approval. No complete model cost/token telemetry is available.
 
 ### Independent design PASS — 2026-10-18
 
