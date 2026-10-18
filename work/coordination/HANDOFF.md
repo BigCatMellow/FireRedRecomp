@@ -7,6 +7,26 @@
 
 ## Current relay — 2026-10-18
 
+### Final published authority and one next action
+
+PR46 merged `933ef72530967cf55d2880780f06deb45cc9a44e`. Independent
+reconciliation recheck PASS at `0a1443a83c51dedd099ed7234a2b0eea251c8ecd`;
+final public CI `39095976108`/job`117582376679` and
+`39095973258`/job`117582368837` SUCCESS, directly verified by Orchestrator.
+Canonical checkout is synchronized through that merge; final receipts are on
+`work/p5-roadblock-closure-receipt-20261018`. Both untracked drafts unchanged.
+
+One next action: assign Sol medium Worker to execute the four-output route
+configuration contract from published authority `933ef72`, after live-state
+recovery. No configuration Worker or bridge request is currently running.
+Design closure is terminal; all runtime/guarded/phase gates remain open.
+
+Late process receipt: Luna low hit a usage limit while checking PR46's final
+CI. Orchestrator completed the read-only receipt directly; no design research
+was repeated and closure was not blocked. This supersedes the earlier
+"no new usage limit" observation below. PR46 verification/merge instructions
+below are historical, not pending actions.
+
 ### Design closed; next prerequisite compiled
 
 PR45 merged `6006ab6fbc7b9f1dd60a88dcbf6a8b0a08692947` after independent
