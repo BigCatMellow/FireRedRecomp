@@ -137,6 +137,9 @@ jobs:
             phase5-viridian-old-man-projection*.patch|phase5-viridian-old-man-projection*.probe)
               route='phase5-viridian-old-man-projection'
               ;;
+            phase5-viridian-roadblock*.patch|phase5-viridian-roadblock*.probe)
+              route='phase5-viridian-roadblock'
+              ;;
             oak-parcel-dex-presentation-north*.patch|oak-parcel-dex-presentation-north*.probe)
               route='oak-parcel-dex-presentation-north'
               ;;
@@ -268,6 +271,8 @@ jobs:
                 ;;
               phase5-viridian-old-man-projection:src/core/ViridianOldManProjection.lua|phase5-viridian-old-man-projection:main.lua|phase5-viridian-old-man-projection:tests/phase5_viridian_old_man_projection_test.lua|phase5-viridian-old-man-projection:work/tasks/phase5-viridian-old-man-projection-implementation.md|phase5-viridian-old-man-projection:work/reports/phase5-viridian-old-man-projection-implementation.md)
                 ;;
+              phase5-viridian-roadblock:src/core/ViridianRoadblock.lua|phase5-viridian-roadblock:src/core/PlayerMovement.lua|phase5-viridian-roadblock:main.lua|phase5-viridian-roadblock:tests/phase5_viridian_roadblock_test.lua|phase5-viridian-roadblock:tests/phase5_viridian_roadblock_integration_test.lua|phase5-viridian-roadblock:tests/phase5_viridian_roadblock_rom_test.lua|phase5-viridian-roadblock:tests/player_movement_test.lua|phase5-viridian-roadblock:scripts/runtime_viridian_roadblock_replay.sh|phase5-viridian-roadblock:work/tasks/phase5-viridian-roadblock-implementation.md)
+                ;;
               *)
                 echo "Patch target is not authorized for explicit route '$ROUTE': $target" >&2
                 exit 1
@@ -285,6 +290,29 @@ jobs:
           set -euo pipefail
           git apply "$PATCH_FILE"
           git diff --check
+
+      - name: Verify Viridian roadblock artifacts before evidence
+        if: steps.request.outputs.mode == 'patch' && steps.route.outputs.route == 'phase5-viridian-roadblock'
+        shell: bash
+        run: |
+          set -euo pipefail
+          required_paths=(
+            src/core/ViridianRoadblock.lua
+            src/core/PlayerMovement.lua
+            main.lua
+            tests/phase5_viridian_roadblock_test.lua
+            tests/phase5_viridian_roadblock_integration_test.lua
+            tests/phase5_viridian_roadblock_rom_test.lua
+            tests/player_movement_test.lua
+            scripts/runtime_viridian_roadblock_replay.sh
+            work/tasks/phase5-viridian-roadblock-implementation.md
+          )
+          for path in "${required_paths[@]}"; do
+            if ! test -f "$path"; then
+              echo "Required Viridian roadblock artifact is missing before evidence: $path" >&2
+              exit 1
+            fi
+          done
 
       - name: Run task-focused test
         if: steps.request.outputs.mode == 'patch'
@@ -412,6 +440,14 @@ jobs:
             phase5-viridian-old-man-projection)
               "$LUA" tests/phase5_viridian_old_man_projection_test.lua
               ;;
+            phase5-viridian-roadblock)
+              "$LUA" tests/phase5_viridian_roadblock_test.lua
+              "$LUA" tests/phase5_viridian_roadblock_integration_test.lua
+              "$LUA" tests/player_movement_test.lua
+              "$LUA" tests/phase5_player_elevation_input_test.lua
+              "$LUA" tests/early_story_test.lua
+              "$LUA" tests/phase5_viridian_roadblock_rom_test.lua
+              ;;
             *)
               echo "Patch execution has no focused-test route for '$ROUTE'." >&2
               exit 1
@@ -530,6 +566,9 @@ jobs:
               ;;
             phase5-viridian-old-man-projection)
               echo "No runtime replay is applicable: this route projects pre-spawn data and excludes traversal, tutorial, rendering, and generic scripts."
+              ;;
+            phase5-viridian-roadblock)
+              bash scripts/runtime_viridian_roadblock_replay.sh
               ;;
             *)
               echo "Patch execution has no runtime-replay route for '$ROUTE'." >&2
@@ -744,6 +783,28 @@ jobs:
                 if [[ -e "$path" ]]; then
                   git add -- "$path"
                 fi
+              done
+              ;;
+            phase5-viridian-roadblock)
+              required_paths=(
+                src/core/ViridianRoadblock.lua
+                src/core/PlayerMovement.lua
+                main.lua
+                tests/phase5_viridian_roadblock_test.lua
+                tests/phase5_viridian_roadblock_integration_test.lua
+                tests/phase5_viridian_roadblock_rom_test.lua
+                tests/player_movement_test.lua
+                scripts/runtime_viridian_roadblock_replay.sh
+                work/tasks/phase5-viridian-roadblock-implementation.md
+              )
+              for path in "${required_paths[@]}"; do
+                if ! test -f "$path"; then
+                  echo "Required Viridian roadblock artifact is missing before staging: $path" >&2
+                  exit 1
+                fi
+              done
+              for path in "${required_paths[@]}"; do
+                git add -- "$path"
               done
               ;;
             *)

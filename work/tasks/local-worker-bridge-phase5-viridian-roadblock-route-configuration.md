@@ -1,7 +1,9 @@
 # Task: configure the guarded Viridian C0 roadblock bridge route
 
 - Task ID: `P5-06-VIRIDIAN-ROADBLOCK-ROUTE-CONFIG`
-- Status: `READY_FOR_WORKER` — adopted after design PASS and PR45 merge; execute from the published coordination authority.
+- Status: `WORKER IMPLEMENTED — INDEPENDENT REVIEW REQUIRED`; exact published
+  head and evidence are recorded in the Worker report. No configuration
+  acceptance, probe, implementation, gameplay, or phase advancement is claimed.
 - Type: `IMPLEMENTATION` (bridge configuration only; no gameplay behavior)
 - Parent capability gate: [Phase 5/7 first-corridor progression](../roadmaps/CAPABILITY_CHECKLIST.md)
 - Assigned role: `WORKER`
@@ -181,3 +183,22 @@ Exactly these four outputs:
 - Eligible successor: a distinct fresh route-readiness probe task, only after
   configuration PASS and live-state reconciliation; implementation remains a
   separate later authority.
+
+## Worker execution record
+
+The Worker executed from
+`72a18e903164f3f2f8532676a94c610a9da241c2` in the isolated worktree
+`/tmp/firered-roadblock-route-config.8esU8V` on branch
+`work/p5-viridian-roadblock-route-config-20261018`. The accepted prerequisite
+remains design `PASS` `1199a74db8dbbeb1528b171159096bd7d90767c5` and merge
+`6006ab6fbc7b9f1dd60a88dcbf6a8b0a08692947`.
+
+The [Worker report](../reports/local-worker-bridge-phase5-viridian-roadblock-route-configuration.md)
+records the exact four changed paths, baseline/final no-ROM and repository
+checks, complete safe offline harness source and command, all nine
+missing-artifact negatives at both gates, selector/target rejection, exact
+wiring checks, syntax validation, exclusions, implementation commit, and exact
+published review head. The configuration is routed to a separate independent
+Reviewer; the Worker does not self-accept it. No probe/request/workflow
+dispatch, private ROM access, guarded replay, or gameplay implementation was
+performed.
