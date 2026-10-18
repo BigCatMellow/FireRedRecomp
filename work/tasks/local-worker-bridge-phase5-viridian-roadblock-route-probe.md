@@ -1,8 +1,7 @@
 # Task: establish Viridian C0 roadblock bridge readiness only
 
 - Task ID: `P5-06-VIRIDIAN-ROADBLOCK-ROUTE-PROBE`
-- Status: `READY_FOR_WORKER` — adopted after configuration PASS and PR48 merge;
-  Orchestrator must freshly recover all dispatch prerequisites before publication.
+- Status: `CLOSED — REVIEWED PASS`; sole allowance consumed by PR50 merge `8c6e4fa`.
 - Type: `GUARDED READINESS PROBE`
 - Parent capability gate: [Phase 5/7 first-corridor progression](../roadmaps/CAPABILITY_CHECKLIST.md)
 - Assigned role: `WORKER`; independent reviewer: separate `REVIEWER`.
@@ -93,3 +92,15 @@ Independent Reviewer records the outcome verdict. Only the Orchestrator
 reconciles the receipt and, after independent `PASS`, may compile a distinct
 implementation authority. No Phase 5/7 completion or gameplay acceptance is
 claimed here.
+
+## Executed outcome
+
+Artifact `9472aec6`, SHA256
+`edafcd7332caafeac7d4b4b270ae055e3a4fbc697069b1db6400c18895398bef`,
+was submitted exactly once through PR50 merge `8c6e4fa90fa4fa49a9fbb17c64e16f37bd1e964b`.
+Run `39165635888` / job `117787881344` passed all readiness gates and skipped
+all eight patch-only steps. Fresh pre-submit main/workflow/runner/job checks
+passed. [Independent outcome PASS](../reviews/2026-10-18-viridian-roadblock-route-probe-outcome-review.md)
+at `da0352d` was adopted unchanged in `2c11211`. No retry or further probe.
+Next is [separate implementation-authority review](phase5-viridian-roadblock-implementation.md),
+not a request or gameplay acceptance.

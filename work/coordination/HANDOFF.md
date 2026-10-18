@@ -1,11 +1,31 @@
 # FireRedRecomp Coordination Handoff
 
-- Status: `READY_FOR_REVIEWER — single readiness probe completed`
-- Task ID: `P5-06-VIRIDIAN-ROADBLOCK-ROUTE-PROBE`
+- Status: `READY_FOR_REVIEWER — implementation authority only`
+- Task ID: `P5-06-VIRIDIAN-ROADBLOCK-IMPLEMENTATION`
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
 - Current plan: [`../roadmaps/RECALIBRATED_DELIVERY_PLAN.md`](../roadmaps/RECALIBRATED_DELIVERY_PLAN.md)
 
 ## Current relay — 2026-10-18
+
+### Probe closed; implementation authority awaiting exact review
+
+Probe merge `8c6e4fa` / run39165635888 / job117787881344 independently PASS
+in `da0352d`, adopted unchanged as `2c11211`. Readiness only; allowance consumed,
+no retry. Outcome review worktree
+`/tmp/firered-roadblock-probe-outcome-review.Sol20261018` remains preserved.
+
+One next action: publish and independently review the
+[nine-path implementation authority](../tasks/phase5-viridian-roadblock-implementation.md).
+It permits no implementation/request until its own exact PASS and adoption.
+The future single guarded request has all accepted C0 behavior, source/no-ROM
+and non-skipped SHA/LÖVE evidence gates; no tenth output or gameplay expansion.
+No implementation Worker assigned or request created.
+
+Process: Luna low artifact preparation, Astra serialized preflight/submission,
+Sol medium outcome review, Terra medium authority compilation. Probe first-
+review PASS, no corrections/retries/new usage interruption. One compressed
+draft timing clause was corrected before publication to preserve close-before-
+motion; retain accepted temporal requirements precisely in compiled contracts.
 
 ### Sole readiness probe succeeded; independent outcome pending
 

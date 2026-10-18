@@ -1,18 +1,18 @@
 {
   "schema_version": 1,
-  "updated_utc": "2026-10-18T20:52:00Z",
+  "updated_utc": "2026-10-18T21:01:00Z",
   "execution_paused": false,
   "role": "ORCHESTRATOR",
   "status": "READY_FOR_REVIEWER",
-  "task_id": "P5-06-VIRIDIAN-ROADBLOCK-ROUTE-PROBE",
-  "current_phase": "Canonical phase statuses unchanged. C0 design and bridge configuration accepted; the single readiness probe is next. Runtime handler, guarded gameplay evidence, tutorial/traversal and existing battle evidence remain open.",
+  "task_id": "P5-06-VIRIDIAN-ROADBLOCK-IMPLEMENTATION",
+  "current_phase": "Canonical phases unchanged. C0 design, bridge configuration and single readiness probe accepted. Current gate is exact independent implementation-authority review; no C0 code/request permission yet. Runtime/guarded gameplay/tutorial/traversal and battle evidence remain open.",
   "canonical_status_owner": "work/roadmaps/CAPABILITY_CHECKLIST.md",
-  "active_task": "work/tasks/local-worker-bridge-phase5-viridian-roadblock-route-probe.md",
-  "objective": "Publish exactly one readiness-only C0 probe after fresh merged-route/online-idle-runner/no-jobs checks; record safe outcomes and independently review them.",
+  "active_task": "work/tasks/phase5-viridian-roadblock-implementation.md",
+  "objective": "Independently review the compiled nine-path C0 implementation authority before allowing isolated construction and one guarded request.",
   "next_role": "REVIEWER",
-  "acceptance": "One literal probe-only triggering commit; trusted checkout/input/route/Lua/supported-ROM SHA/Probe complete PASS; all eight patch-only steps skipped; exact independent outcome review. One publication, no retry.",
-  "boundaries": "Only work/local-runner/probes/phase5-viridian-roadblock-route-20261018.probe in triggering commit. No patch/request, workflow/code/test/replay, runner/ROM configuration, private logs/content or gameplay/phase claims.",
-  "dependencies": "Configuration exact569b440 independently PASSdbf2b389, merged PR48 at2eb8fddac1cbb410097c8bcc9e44885e3c395cad. Final CI39165163719/39165161008 SUCCESS. Probe authority needs published coordination checkpoint before dispatch.",
+  "acceptance": "Authority exactly compiles accepted C0 design and reviewed route/probe: nine outputs, bounded behavior/input/movement, noROM/source assertions, non-skipped SHA fixture and real LÖVE witness, single guarded request/no retry and independent outcome gate; no scope widening.",
+  "boundaries": "Authority review only. No implementation, request, ROM/replay or runner action until independent exact authorization PASS and Orchestrator adoption. Future nine output paths and single request are literal in active contract; no tenth file, generic VM/renderer/save/tutorial/other map.",
+  "dependencies": "Design6006ab6/PASS1199a74; configuration2eb8fdd/PASSdbf2b389; probe8c6e4fa/run39165635888/job117787881344 independently PASSda0352d, adopted unchanged2c11211. Probe allowance consumed; own authority review still required.",
   "runner_blocker": {
     "task_id": "P4-F3-ROUTE",
     "status": "CLOSED — REVIEWED PASS",
@@ -68,19 +68,19 @@
     "phase4_recoil_if_miss_route_probe_status": "CLOSED — REVIEWED PASS at667fd16; run38385071588/job115254712929; work/reviews/2026-10-13-recoil-if-miss-route-probe-outcome-review.md"
   },
   "phase2_external_blocker": "Trusted, user-owned retail-reference captures with provenance/timing/crop/filter details for Oak and Pallet anchors have not been supplied.",
-  "next_after_success": "Independent exact probe-outcome PASS precedes separately reviewed nine-path implementation authority; no implementation request automatically follows readiness success.",
+  "next_after_success": "Adopt exact authority PASS, then dispatch one isolated implementation Worker for nine files and local noROM evidence. Parent serializes sole guarded request after fresh prerequisites; separate exact guarded-outcome review before acceptance.",
   "legal_content_boundary": "Never commit ROMs, BIOS dumps, generated caches, ROM-derived reference screenshots, extracted game assets, or other prohibited content.",
   "phase_completion_rule": "Phase 2 remains IN PROGRESS until the Oak/reference screenshot discrepancy gate is evidenced and independently reviewed.",
   "project_goal": "work/coordination/PROJECT_GOAL.md — ACTIVE; explicitly adopted 2026-10-11; no user-specified token budget",
   "phase0_external_blocker": "P0-04-REVERIFY at 93c4654: missing prerequisites on the verified target and no desktop proof; separate supported-target preparation decision and fresh evidence required. Historical result is not current host readiness.",
   "checkpoint": {
-    "inspection_revision": "2eb8fddac1cbb410097c8bcc9e44885e3c395cad",
-    "pending_jobs": "PR50 merged8c6e4fa, sole guarded probe run39165635888/job117787881344 completed SUCCESS. All eight patch-only steps skipped. Independent outcome review pending; no retry/request.",
+    "inspection_revision": "8c6e4fa90fa4fa49a9fbb17c64e16f37bd1e964b",
+    "pending_jobs": "Probe run39165635888/job117787881344 terminal SUCCESS and independently PASSda0352d. No implementation request. Coordination branch publishes outcome and authority-only task for review.",
     "preserved_drafts": "Unreviewed Brick Break package isolated in named local stash quarantine-unreviewed-brick-break-rerank-2026-10-11; outside active dispatch.",
-    "next_action": "Independent Sol Reviewer verifies exact probe merge8c6e4fa and run39165635888/job117787881344 safe readiness/skip evidence, returns PASS/NEEDS_FIX/BLOCK. Allowance consumed; no rerun or implementation request. After PASS compile separately reviewed implementation authority.",
-    "remaining_acceptance": "Readiness probe and independent outcome review pending; separate reviewed implementation authority and actual C0 code/guarded evidence still required. Phase5/7/tutorial/traversal and existing battle gates remain open.",
+    "next_action": "Publish exact nine-path implementation-authority contract and route to separate Sol Reviewer; no code/request until PASS and adoption. No probe rerun.",
+    "remaining_acceptance": "Implementation-authority review/adoption, local nine-file implementation and tests, sole guarded non-skipped SHA/replay evidence, independent outcome review. Full phase/traversal/tutorial and existing battle gates remain open.",
     "coordination_note": "Historical nested records above are evidence receipts, not pending jobs or permission to repeat completed actions.",
-    "worker_session": "Luna low prepared artifact in /tmp/firered-roadblock-readiness-probe-20261018, branch work/p5-roadblock-readiness-probe-20261018, base155a3cb, sole commit9472aec6fb5cc579541e0aeefa85ef80393b9507. Clean worktree; no tests/guarded action. Canonical coordination branch work/p5-roadblock-probe-relay-20261018. Prior config/review worktrees preserved. No duplicate Worker.",
+    "worker_session": "Probe Luna Worker complete /tmp/firered-roadblock-readiness-probe-20261018 at9472aec6. Outcome Reviewer complete /tmp/firered-roadblock-probe-outcome-review.Sol20261018 atda0352d; unchanged review adopted2c11211. Terra compiled authority scratch; root corrected one close-before-motion wording before publication and made source8/4/1 latch explicit. No implementation Worker assigned. Canonical /tmp/firered-outcome-reconcile on work/p5-roadblock-probe-relay-20261018.",
     "accepted_source_findings": "PR42 locks selected predicates/tutorial semantics and missing runtime seams. PR43 resolves lifecycle: fresh0/0 then pending spawn; begin destination/origin; finish destination/destination before completed read; origin15 suppression can end at finish. Unsupported relocations invalidate; only qualified bootstrap or normal finish1-14 restores known state. No gameplay handler/traversal claim.",
     "implementation_authority": {
       "revision": "96b10ceebc96dfc4d40cabae43faecf27abe0ce3",
@@ -126,13 +126,24 @@
       "task": "99a045f0c8a4079dbf822b9e2a778519c77fa42c462c984333a6abb3aa92d587",
       "report": "92b990bf18b91729a468eab599fdced128238a6712c76a5f29ea730db56e4484"
     },
-    "last_review": "Independent config PASSdbf2b389 at exact569b440;193 noROMfiles/checker/YAML13Bash/9+9negatives PASS. First-review PASS; zero corrections; one usage interruption recovered in same review without repeated completed tests. FinalCI green; merged2eb8fdd. Probe contract sanity check PASS conditional on exact prerequisites.",
+    "last_review": "Independent probe-outcome PASSda0352d for merge8c6e4fa/run39165635888/job117787881344, exact hash/soleattempt/six readinessSUCCESS/eight patch skips checked safely; no logs or ROM access. First-review PASS, no corrections. Own implementation authority still unreviewed.",
     "goal_service_state": "usageLimited observed 2026-10-12; user explicitly requested continuation. Standing instructions persist; user/system owns lifecycle resumption.",
     "remote_recovery": "Main3adc7e8 owner work preserved. Audit: heal text reviewedcb3cea2/disposition7fff050; status design44fd139 correctedee682f9; module corrected tree published651dcd4; S1 reviewedca39623/disposition3407aa5; S2 reviewed19e15f0/dispositionae05dab; S3 reviewedfa9556a/disposition1848697; ability terms reviewedf73ccf4/closuref300085; S4 reviewed6f3168f/disposition16e4501. Do not claim separate re-review of later disposition commits. PR26 preserved. No policy amendment; full-relay ROM/replay gates remain.",
     "process_review": "Prior Worker usage interruption recovered without repeated research. Design: Astra orchestration; Sol medium first-review PASS, no corrections/escalations; Terra medium next-contract preparation; Luna low CI receipts. PR46 reconciliation sanity review requested one wording fix (this draft to this contract), applied; no behavior/scope finding. No new usage-limit interruption, no complete token/cost telemetry. Direct-main checkpoint push rejected by auto-review; safer PR46 used. First merge attempt rejected on stale pending CI evidence; direct fresh query proved SUCCESS and authorized exact-head merge proceeded. Lesson: expose final CI directly before merge approval and clear draft labels at contract adoption.",
     "late_process_receipt": "PR46 independent reconciliation recheck PASS at0a1443a after one wording correction; merged933ef72. Luna low final-CI helper hit usage limit; Orchestrator completed read-only receipt and PR47 checkpoint merged72a18e9. Current resume: Astra orchestration, Sol medium implementation; separate Sol review after publication. Live recovery found no active/queued jobs, unchanged adopted workflow/bridge, MediaCenter online/idle. No new source research or guarded action. Goal service restored ACTIVE under user-adopted standing goal; no budget specified.",
     "configuration_review_interruption": "Reviewer hit usage limit before final verdict; user continued at2026-10-18T20:49Z. Same /tmp/firered-roadblock-route-config-review.uziZOl retained context and finished PASSdbf2b389 for exact569b440 without repeating completed tests. Worktree clean; published review-only descendant. First-review PASS, zero configuration corrections/escalations, one usage interruption. Independent193files/checker/13Bash/YAML/9+9negatives PASS. Separate PR49 coordination review caught one stale current_phase routing sentence; corrected. Lesson: audit all top-level routing summaries when advancing active_task. No guarded action.",
-    "roadblock_probe_preparation": {"artifact_revision":"9472aec6fb5cc579541e0aeefa85ef80393b9507","artifact_sha256":"edafcd7332caafeac7d4b4b270ae055e3a4fbc697069b1db6400c18895398bef","pr":50,"authority_revision":"155a3cb1d82f3b3591204d016700b4fc21e0f817","workflow_sha256":"1087b126d2a8903e9e46f0c6dbfb21016963be0d38b5e45d16c01397598b443f","allowance":"Consumed once by PR50 main merge8c6e4fa; no retry or replacement.","submitted_revision":"8c6e4fa90fa4fa49a9fbb17c64e16f37bd1e964b","run":39165635888,"job":117787881344,"result":"SUCCESS; trusted checkout/input/explicit route/Lua/private supported-SHA/Probe complete PASS; all eight patch-only steps skipped. Only safe metadata read, no logs/private paths copied."},
+    "roadblock_probe_preparation": {
+      "artifact_revision": "9472aec6fb5cc579541e0aeefa85ef80393b9507",
+      "artifact_sha256": "edafcd7332caafeac7d4b4b270ae055e3a4fbc697069b1db6400c18895398bef",
+      "pr": 50,
+      "authority_revision": "155a3cb1d82f3b3591204d016700b4fc21e0f817",
+      "workflow_sha256": "1087b126d2a8903e9e46f0c6dbfb21016963be0d38b5e45d16c01397598b443f",
+      "allowance": "Consumed once by PR50 main merge8c6e4fa; no retry or replacement.",
+      "submitted_revision": "8c6e4fa90fa4fa49a9fbb17c64e16f37bd1e964b",
+      "run": 39165635888,
+      "job": 117787881344,
+      "result": "SUCCESS; trusted checkout/input/explicit route/Lua/private supported-SHA/Probe complete PASS; all eight patch-only steps skipped. Only safe metadata read, no logs/private paths copied."
+    },
     "preserved_local_drafts": [
       {
         "path": "work/handoffs/2026-10-11-persistent-project-goal-draft.md",
@@ -142,6 +153,7 @@
         "path": "work/handoffs/2026-10-13-recoil-implementation-local-resume.md",
         "sha256": "8fc205708c8cbad10a117d4495a475cc2c040a1a4865ceea6b2d9af377c69d60"
       }
-    ]
+    ],
+    "probe_process": "Luna low prepared sole artifact, Astra serialized fresh checks and one submission, Sol medium independently reviewed safe outcome. Zero probe retries/corrections, no new usage interruption in probe. Terra authority compilation required one prepublication wording correction to preserve accepted close-before-motion timing; retain accepted timing precisely when compressing contracts."
   }
 }

@@ -64,8 +64,11 @@ consumer. [C0 RoadBlocked integration design](../tasks/phase5-viridian-roadblock
 passed independent review `1199a74` and merged PR45 `6006ab6` after final CI.
 [Bounded bridge configuration](../tasks/local-worker-bridge-phase5-viridian-roadblock-route-configuration.md)
 passed independent review `dbf2b389` and merged PR48 `2eb8fdd` after final CI.
-Current prerequisite is the [single readiness probe](../tasks/local-worker-bridge-phase5-viridian-roadblock-route-probe.md),
-followed by independent outcome review and separate implementation authority.
+The [single readiness probe](../tasks/local-worker-bridge-phase5-viridian-roadblock-route-probe.md)
+at `8c6e4fa` passed run39165635888 and independent outcome review `da0352d`.
+Current prerequisite is [implementation-authority review](../tasks/phase5-viridian-roadblock-implementation.md)
+for the exact nine-path C0 package. No code/request is authorized until that
+independent gate passes and is adopted; the probe allowance is consumed.
 Tutorial/C2/C3 and generic VM remain excluded. Do not repeat accepted elevation
 or northbound research, or claim traversal from this prerequisite.
 Read-only Memento AI feasibility found an existing
