@@ -5,8 +5,11 @@
 - Base: `72a18e903164f3f2f8532676a94c610a9da241c2` (`origin/main`).
 - Branch: `work/p5-viridian-roadblock-route-config-20261018`.
 - Worktree: `/tmp/firered-roadblock-route-config.8esU8V`.
-- Configuration implementation commit: `PENDING_FIRST_COMMIT`.
-- Exact published review head: `PENDING_PUBLICATION`.
+- Configuration implementation commit:
+  `38e7d79556e54af4b7ee94b965b0f222ee5c30a9`.
+- Exact published review head: the evidence-only descendant containing this
+  receipt, identified in the PR and Worker handoff so the report does not
+  attempt to self-reference its own commit hash.
 
 The accepted design prerequisite is the independent `PASS` at
 `1199a74db8dbbeb1528b171159096bd7d90767c5`; design PR 45 merged as

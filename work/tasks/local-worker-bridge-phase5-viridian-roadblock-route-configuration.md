@@ -198,7 +198,8 @@ records the exact four changed paths, baseline/final no-ROM and repository
 checks, complete safe offline harness source and command, all nine
 missing-artifact negatives at both gates, selector/target rejection, exact
 wiring checks, syntax validation, exclusions, implementation commit, and exact
-published review head. The configuration is routed to a separate independent
-Reviewer; the Worker does not self-accept it. No probe/request/workflow
+published-head handoff policy. The PR and Worker handoff supply the exact head
+without requiring this commit to self-reference. The configuration is routed
+to a separate independent Reviewer; the Worker does not self-accept it. No probe/request/workflow
 dispatch, private ROM access, guarded replay, or gameplay implementation was
 performed.
