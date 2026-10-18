@@ -1,11 +1,25 @@
 # FireRedRecomp Coordination Handoff
 
-- Status: `READY_FOR_WORKER — single guarded readiness probe`
+- Status: `READY_FOR_REVIEWER — single readiness probe completed`
 - Task ID: `P5-06-VIRIDIAN-ROADBLOCK-ROUTE-PROBE`
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
 - Current plan: [`../roadmaps/RECALIBRATED_DELIVERY_PLAN.md`](../roadmaps/RECALIBRATED_DELIVERY_PLAN.md)
 
 ## Current relay — 2026-10-18
+
+### Sole readiness probe succeeded; independent outcome pending
+
+PR50 main merge `8c6e4fa90fa4fa49a9fbb17c64e16f37bd1e964b` changed only
+the authorized probe. Run `39165635888` / job `117787881344` SUCCESS:
+trusted checkout/input/route/Lua/existing supported-ROM SHA/Probe complete
+passed; all eight patch-only steps skipped. Read only safe step metadata;
+no logs or private paths/content copied. Final pre-submit checks confirmed
+unchanged reviewed workflow, main155a3cb, MediaCenter online/idle and no jobs.
+One allowance consumed, no retry/replacement.
+
+One next action: independent Sol outcome review of exact merge/run. Readiness
+does not authorize implementation or establish gameplay. Compile separately
+reviewed implementation authority only after outcome PASS.
 
 ### Single probe prepared; final submission gate
 
