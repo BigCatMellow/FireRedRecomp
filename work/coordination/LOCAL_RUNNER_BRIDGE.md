@@ -133,6 +133,54 @@ design. All accepted exclusions and privacy rules remain. No main, formula,
 party-bridge runtime, save, admission, generic miss, or other-family change is
 admitted, and existing routes/shared guards remain unchanged.
 
+### Viridian C0 roadblock route — configuration only until independent review
+
+`phase5-viridian-roadblock*.patch` and
+`phase5-viridian-roadblock*.probe` select only
+`phase5-viridian-roadblock`. Future patch validation and publication staging
+permit exactly these nine implementation artifacts:
+
+1. `src/core/ViridianRoadblock.lua`
+2. `src/core/PlayerMovement.lua`
+3. `main.lua`
+4. `tests/phase5_viridian_roadblock_test.lua`
+5. `tests/phase5_viridian_roadblock_integration_test.lua`
+6. `tests/phase5_viridian_roadblock_rom_test.lua`
+7. `tests/player_movement_test.lua`
+8. `scripts/runtime_viridian_roadblock_replay.sh`
+9. `work/tasks/phase5-viridian-roadblock-implementation.md`
+
+After patch application, all nine must exist as regular files before focused
+or shared evidence begins. The publish arm independently requires all nine as
+regular files before staging any path, then stages only those literal paths.
+Missing artifacts, empty or targetless patches, unauthorized targets,
+`git apply --check` failures, and `git diff --check` failures fail closed.
+
+The route's focused arm uses the selected `$LUA` and runs exactly:
+
+```bash
+"$LUA" tests/phase5_viridian_roadblock_test.lua
+"$LUA" tests/phase5_viridian_roadblock_integration_test.lua
+"$LUA" tests/player_movement_test.lua
+"$LUA" tests/phase5_player_elevation_input_test.lua
+"$LUA" tests/early_story_test.lua
+"$LUA" tests/phase5_viridian_roadblock_rom_test.lua
+```
+
+The unchanged shared suites then run
+`env -u POKEPORT_ROM bash scripts/test_all.sh` and, in the already-gated
+verified-ROM environment, `bash scripts/test_all.sh`. The dedicated replay arm
+then runs only `bash scripts/runtime_viridian_roadblock_replay.sh`.
+
+This selector is configuration only until this configuration task receives an
+independent `PASS`. Probe mode remains readiness-only and performs no target
+validation or patch application, focused or shared tests, replay, staging, or
+publication. After configuration `PASS`, a later **distinct, fresh** readiness
+probe and separate implementation authority are required. A probe proves no
+gameplay and consumes no implementation authority. This configuration itself
+authorizes no probe, request, workflow dispatch, private-ROM access, guarded
+runtime execution, implementation, gameplay claim, or Phase 5/7 advancement.
+
 Adding a new route requires a bounded task that authorizes bridge maintenance. Do not add a generic fallback route.
 
 ## Security boundary
