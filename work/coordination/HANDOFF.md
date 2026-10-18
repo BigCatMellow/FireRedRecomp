@@ -7,6 +7,20 @@
 
 ## Current relay — 2026-10-18
 
+### Configuration Worker assigned — 18:24 UTC
+
+Recovered `origin/main`/canonical `72a18e9`; only both preserved drafts are
+untracked. No active/queued jobs or configuration PR. Workflow/bridge are
+unchanged since adopted `6006ab6`. Sol medium Worker
+`01a15040-e8bd-72e2-ac6a-0f1508d6cc06` is assigned the existing four-output
+configuration contract; worktree receipt pending. No duplicate Worker.
+
+One next action: finish configuration/offline/no-ROM checks and publish exact
+head for a separate Sol Reviewer. No runtime, probe, request or guarded action.
+MediaCenter observed online/idle; that read-only observation supplies no probe
+authority or readiness evidence. Astra owns orchestration; no escalation.
+Canonical coordination branch: `work/p5-roadblock-route-relay-20261018`.
+
 ### Final published authority and one next action
 
 PR46 merged `933ef72530967cf55d2880780f06deb45cc9a44e`. Independent
