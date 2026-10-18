@@ -1,11 +1,28 @@
 # FireRedRecomp Coordination Handoff
 
-- Status: `REVIEWED_PASS — final PR48 review-head CI pending`
-- Task ID: `P5-06-VIRIDIAN-ROADBLOCK-ROUTE-CONFIG`
+- Status: `READY_FOR_WORKER — single guarded readiness probe`
+- Task ID: `P5-06-VIRIDIAN-ROADBLOCK-ROUTE-PROBE`
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
 - Current plan: [`../roadmaps/RECALIBRATED_DELIVERY_PLAN.md`](../roadmaps/RECALIBRATED_DELIVERY_PLAN.md)
 
 ## Current relay — 2026-10-18
+
+### Configuration closed; one-probe contract adopted
+
+PR48 merged `2eb8fddac1cbb410097c8bcc9e44885e3c395cad`, exact configuration
+`569b440` independently PASS `dbf2b389`; final CI39165163719/job117786461463
+and39165161008/job117786452779 SUCCESS. Close configuration only.
+Worker/review worktrees remain preserved at `dbf2b389`; zero corrections,
+one recovered usage interruption, no completed tests repeated.
+
+One next action: finish PR49 verification/publication of the
+[separate one-probe contract](../tasks/local-worker-bridge-phase5-viridian-roadblock-route-probe.md),
+then prepare its literal single-file artifact. Immediately before its one
+publication, Orchestrator must freshly verify merged route, online idle
+`firered-local` and no active/queued bridge job. No probe/request submitted;
+one allowance unused, no retry. All eight patch-only steps must skip.
+Independent outcome review and separately reviewed implementation authority
+remain required before gameplay work. Phase statuses/exclusions unchanged.
 
 ### Independent configuration PASS
 

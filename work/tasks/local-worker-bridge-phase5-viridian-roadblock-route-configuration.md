@@ -1,9 +1,11 @@
 # Task: configure the guarded Viridian C0 roadblock bridge route
 
 - Task ID: `P5-06-VIRIDIAN-ROADBLOCK-ROUTE-CONFIG`
-- Status: `WORKER IMPLEMENTED — INDEPENDENT REVIEW REQUIRED`; exact published
-  head and evidence are recorded in the Worker report. No configuration
-  acceptance, probe, implementation, gameplay, or phase advancement is claimed.
+- Status: `CLOSED — REVIEWED PASS`; exact `569b440` independently PASS in
+  [review `dbf2b389`](../reviews/2026-10-18-viridian-roadblock-route-configuration-review.md).
+  Final CI `39165163719`/`39165161008` SUCCESS; PR48 merged `2eb8fdd`.
+  Configuration only accepted; [one-probe authority](local-worker-bridge-phase5-viridian-roadblock-route-probe.md)
+  is separate. No implementation, gameplay or phase advancement.
 - Type: `IMPLEMENTATION` (bridge configuration only; no gameplay behavior)
 - Parent capability gate: [Phase 5/7 first-corridor progression](../roadmaps/CAPABILITY_CHECKLIST.md)
 - Assigned role: `WORKER`
