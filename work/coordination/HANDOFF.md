@@ -35,6 +35,10 @@ were not repeated. Review file finalized, committed and worktree clean.
 One next action: final review-head CI, then exact PR48 merge and configuration
 closure; adopt separate fresh one-probe authority afterward. No readiness,
 runtime, gameplay or phase acceptance follows from this PASS.
+PR49 authority/reconciliation check caught one stale STATE current_phase
+routing sentence; corrected to accepted configuration/next probe. This is one
+coordination correction, distinct from zero configuration corrections. Audit
+all top-level routing summaries when advancing the active task.
 
 ### Review resumed after usage interruption — 20:49 UTC
 
