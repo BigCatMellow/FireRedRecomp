@@ -1,6 +1,6 @@
 # FireRedRecomp Coordination Handoff
 
-- Status: `READY_FOR_WORKER — bounded C0 bridge configuration`
+- Status: `READY_FOR_REVIEWER — bounded C0 bridge configuration PR48`
 - Task ID: `P5-06-VIRIDIAN-ROADBLOCK-ROUTE-CONFIG`
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
 - Current plan: [`../roadmaps/RECALIBRATED_DELIVERY_PLAN.md`](../roadmaps/RECALIBRATED_DELIVERY_PLAN.md)
