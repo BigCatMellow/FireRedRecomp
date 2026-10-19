@@ -1,33 +1,41 @@
 # FireRedRecomp Coordination Handoff
 
-- Status: `READY_FOR_WORKER — adopted implementation authority`
+- Status: `IN_PROGRESS — isolated implementation Worker`
 - Task ID: `P5-06-VIRIDIAN-ROADBLOCK-IMPLEMENTATION`
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
 - Current plan: [`../roadmaps/RECALIBRATED_DELIVERY_PLAN.md`](../roadmaps/RECALIBRATED_DELIVERY_PLAN.md)
 
 ## Current relay — 2026-10-19
 
-### Authority adopted; final PR51 CI+merge is the sole next action
+### PR51 merged; isolated Worker is active for local construction only
 
-Independent authority review `354257ed2a7787003fe95258b5390bf313a0ed4d`
-PASSed exact `0a15a5d` and was ff-adopted unchanged. The review recovered one
-quota interruption in the same worktree
-`/tmp/firered-roadblock-implementation-authority-review.Sol20261018`; it was
-first PASS with no corrections. This adopts only the nine-path construction
-authority, not a request, guarded run, gameplay result, or Phase 5/7 claim.
+PR51 merged `b79e31f9daa29a4984499257161c2a8f14525b1e` after final-head
+`c3173ec` CI `39228987341` / job `117982094526` and `39228982200` /
+job `117982077583` SUCCESS. Independent authority review
+`354257ed2a7787003fe95258b5390bf313a0ed4d` PASSed exact `0a15a5d` and was
+ff-adopted unchanged. The review recovered one quota interruption in the same
+worktree `/tmp/firered-roadblock-implementation-authority-review.Sol20261018`;
+it was first PASS with no corrections.
 
-One next action: finish final PR51 CI+merge, then assign one isolated Sol HIGH
-Worker to the [adopted nine-path authority](../tasks/phase5-viridian-roadblock-implementation.md).
-Sol HIGH is planned for cross-file production input ownership, movement, and
-replay complexity. No Worker, request, ROM/replay, runner action, or gameplay
-acceptance exists yet. The parent still must perform fresh serialization,
-runner/job, route, prerequisite, and current-main applicability checks before
-the sole guarded request; its outcome remains independently reviewed.
+Sol HIGH Dirac `01a15375-05f4-7bb2-b2e5-0575b093653f` is dispatched in the
+existing clean isolated worktree
+`/tmp/firered-roadblock-implementation.Sol20261019`, branch
+`work/p5-viridian-roadblock-implementation-20261019`, base `b79e31f`. Scope is
+only the exact nine-path/local-no-ROM package: no request/publication, guarded
+run, ROM/replay, gameplay acceptance, or Phase 5/7 claim.
+
+One next action: collect the exact local package/checks. The parent then makes
+fresh serial request checks (runner/job, route, prerequisites and current-main
+applicability) before the sole guarded request; its outcome remains
+independently reviewed.
 
 Goal service is `usageLimited`; the current user-requested continuation
 authorizes the adopted implementation continuation, while lifecycle resumption
 remains user/system-controlled.
 Both untracked handoff drafts remain unchanged.
+
+Process: one precommit stale-boundaries correction aligned routing to this
+active Worker; no authority scope changed.
 
 Process: Luna low artifact preparation, Astra serialized preflight/submission,
 Sol medium outcome review, Terra medium authority compilation. Probe first-
