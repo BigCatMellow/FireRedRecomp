@@ -68,10 +68,11 @@ The [single readiness probe](../tasks/local-worker-bridge-phase5-viridian-roadbl
 at `8c6e4fa` passed run39165635888 and independent outcome review `da0352d`.
 The [implementation authority](../tasks/phase5-viridian-roadblock-implementation.md)
 for the exact nine-path C0 package independently PASSed at `354257ed` for
-exact `0a15a5d` and is adopted. The sole next action is final PR51 CI+merge,
-then one isolated Sol HIGH Worker for local no-ROM construction; no request is
-authorized before that work and fresh parent checks. The probe allowance is
-consumed. Guarded outcome review remains mandatory before behavior acceptance.
+exact `0a15a5d`; PR51 merged `b79e31f` after final-head CI. One isolated Sol
+HIGH Worker is active for local no-ROM construction only. No request is
+authorized before its exact local evidence and fresh parent checks. The probe
+allowance is consumed. Guarded outcome review remains mandatory before behavior
+acceptance.
 Tutorial/C2/C3 and generic VM remain excluded. Do not repeat accepted elevation
 or northbound research, or claim traversal from this prerequisite.
 Read-only Memento AI feasibility found an existing

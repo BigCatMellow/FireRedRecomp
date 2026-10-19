@@ -52,9 +52,10 @@ rule or traversal work without an evidenced dependency.
    [Readiness probe](../tasks/local-worker-bridge-phase5-viridian-roadblock-route-probe.md)
    `8c6e4fa` passed run39165635888 and independent outcome review `da0352d`.
    The [implementation authority](../tasks/phase5-viridian-roadblock-implementation.md)
-   independently PASSed at `354257ed` for exact `0a15a5d` and is adopted.
-   Next is final PR51 CI+merge, then one isolated Sol HIGH Worker for the exact
-   nine-path local no-ROM package; no request before fresh parent checks.
+   independently PASSed at `354257ed` for exact `0a15a5d`; PR51 merged
+   `b79e31f` after final-head CI. One isolated Sol HIGH Worker is active for
+   the exact nine-path local no-ROM package; no request before its local
+   evidence and fresh parent checks.
    Guarded outcome review remains required before behavior acceptance; readiness
    acceptance adds no gameplay handler and no retry allowance remains.
    No rendered Pokédex,
