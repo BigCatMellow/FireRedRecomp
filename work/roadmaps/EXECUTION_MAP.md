@@ -31,7 +31,7 @@ strategic phase
 
 Default to one critical-path Worker package at a time.
 
-## Current critical path — reconciled 2026-10-17
+## Current critical path — reconciled 2026-10-19
 
 [Effect45 outcome PASS](../reviews/2026-10-13-recoil-if-miss-implementation-outcome-review.md)
 closes `cfdbb96` and guarded run `38434551595`; do not repeat its consumed
@@ -66,9 +66,12 @@ passed independent review `1199a74` and merged PR45 `6006ab6` after final CI.
 passed independent review `dbf2b389` and merged PR48 `2eb8fdd` after final CI.
 The [single readiness probe](../tasks/local-worker-bridge-phase5-viridian-roadblock-route-probe.md)
 at `8c6e4fa` passed run39165635888 and independent outcome review `da0352d`.
-Current prerequisite is [implementation-authority review](../tasks/phase5-viridian-roadblock-implementation.md)
-for the exact nine-path C0 package. No code/request is authorized until that
-independent gate passes and is adopted; the probe allowance is consumed.
+The [implementation authority](../tasks/phase5-viridian-roadblock-implementation.md)
+for the exact nine-path C0 package independently PASSed at `354257ed` for
+exact `0a15a5d` and is adopted. The sole next action is final PR51 CI+merge,
+then one isolated Sol HIGH Worker for local no-ROM construction; no request is
+authorized before that work and fresh parent checks. The probe allowance is
+consumed. Guarded outcome review remains mandatory before behavior acceptance.
 Tutorial/C2/C3 and generic VM remain excluded. Do not repeat accepted elevation
 or northbound research, or claim traversal from this prerequisite.
 Read-only Memento AI feasibility found an existing

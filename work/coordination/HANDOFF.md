@@ -1,25 +1,33 @@
 # FireRedRecomp Coordination Handoff
 
-- Status: `READY_FOR_REVIEWER — implementation authority only`
+- Status: `READY_FOR_WORKER — adopted implementation authority`
 - Task ID: `P5-06-VIRIDIAN-ROADBLOCK-IMPLEMENTATION`
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
 - Current plan: [`../roadmaps/RECALIBRATED_DELIVERY_PLAN.md`](../roadmaps/RECALIBRATED_DELIVERY_PLAN.md)
 
-## Current relay — 2026-10-18
+## Current relay — 2026-10-19
 
-### Probe closed; implementation authority awaiting exact review
+### Authority adopted; final PR51 CI+merge is the sole next action
 
-Probe merge `8c6e4fa` / run39165635888 / job117787881344 independently PASS
-in `da0352d`, adopted unchanged as `2c11211`. Readiness only; allowance consumed,
-no retry. Outcome review worktree
-`/tmp/firered-roadblock-probe-outcome-review.Sol20261018` remains preserved.
+Independent authority review `354257ed2a7787003fe95258b5390bf313a0ed4d`
+PASSed exact `0a15a5d` and was ff-adopted unchanged. The review recovered one
+quota interruption in the same worktree
+`/tmp/firered-roadblock-implementation-authority-review.Sol20261018`; it was
+first PASS with no corrections. This adopts only the nine-path construction
+authority, not a request, guarded run, gameplay result, or Phase 5/7 claim.
 
-One next action: publish and independently review the
-[nine-path implementation authority](../tasks/phase5-viridian-roadblock-implementation.md).
-It permits no implementation/request until its own exact PASS and adoption.
-The future single guarded request has all accepted C0 behavior, source/no-ROM
-and non-skipped SHA/LÖVE evidence gates; no tenth output or gameplay expansion.
-No implementation Worker assigned or request created.
+One next action: finish final PR51 CI+merge, then assign one isolated Sol HIGH
+Worker to the [adopted nine-path authority](../tasks/phase5-viridian-roadblock-implementation.md).
+Sol HIGH is planned for cross-file production input ownership, movement, and
+replay complexity. No Worker, request, ROM/replay, runner action, or gameplay
+acceptance exists yet. The parent still must perform fresh serialization,
+runner/job, route, prerequisite, and current-main applicability checks before
+the sole guarded request; its outcome remains independently reviewed.
+
+Goal service is `usageLimited`; the current user-requested continuation
+authorizes the adopted implementation continuation, while lifecycle resumption
+remains user/system-controlled.
+Both untracked handoff drafts remain unchanged.
 
 Process: Luna low artifact preparation, Astra serialized preflight/submission,
 Sol medium outcome review, Terra medium authority compilation. Probe first-

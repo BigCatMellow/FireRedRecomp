@@ -1,7 +1,9 @@
 # Task: implement bounded Viridian C0 roadblock behavior
 
 - Task ID: `P5-06-VIRIDIAN-ROADBLOCK-IMPLEMENTATION`
-- Status: `READY_FOR_REVIEWER — AUTHORITY ONLY`
+- Status: `READY_FOR_WORKER — AUTHORITY ADOPTED`; Worker construction is
+  authorized only within this exact nine-path contract. Guarded publication,
+  behavior acceptance, and Phase 5/7 advancement remain separately gated.
 - Type: `IMPLEMENTATION AUTHORITY / GUARDED ROUTE`
 - Parent capability gate: [Phase 5/7 first-corridor progression](../roadmaps/CAPABILITY_CHECKLIST.md)
 - Assigned role: `ORCHESTRATOR`; independent authorization reviewer: `REVIEWER`.
@@ -13,19 +15,20 @@
   `work/reviews/2026-10-18-viridian-roadblock-route-probe-outcome-review.md`
   at `da0352d47a2b882b8bf5e147417090769f0b8478`, adopted unchanged through
   canonical coordination cherry-pick `2c11211`; and this authority's exact
-  independent PASS `<AUTHORITY_REVIEW_PATH_AND_PASS_REVISION>` followed by
-  Orchestrator adoption. The authority-review placeholder is the remaining
-  hard gate.
+  independent PASS
+  `work/reviews/2026-10-18-viridian-roadblock-implementation-authority-review.md`
+  at `354257ed2a7787003fe95258b5390bf313a0ed4d` for exact authority
+  `0a15a5d14871a4aeb7d82164cda32b5d3c0f071e`, adopted by Orchestrator.
 - Risk: `HIGH` — incorrect admission, input ownership, forced movement, or
   guarded publication could change field progression or publish an unauthorized
   package.
 
 ## Goal and source of truth
 
-Authorize independent review of one future, bounded C0 implementation request.
-This authority authorizes no implementation, request, test, replay, ROM access,
-or runner action until its own exact independent authorization review is PASS
-and the Orchestrator adopts that PASS.
+This adopted authority permits one Worker to construct the bounded C0 package
+and collect only its local no-ROM evidence. It still authorizes no request,
+ROM access, runner action, guarded replay, behavior acceptance, or phase claim
+until the later gates in this contract are met.
 
 The complete accepted authority is
 `work/reports/phase5-viridian-roadblock-design.md`; compile it, do not retrace
@@ -202,10 +205,11 @@ retry, replacement input, silent approximation, or status advancement.
 
 ## Completion and handoff
 
-First independent Reviewer decides `PASS | NEEDS_FIX | BLOCK` on this exact
-authority. Only after PASS and Orchestrator adoption may Worker construct the
-nine-path isolated package, record its local evidence in path 9, and hand the
-sole request to the parent. The parent performs fresh serial dispatch checks.
+The independent authority Reviewer returned PASS at `354257ed2a7787003fe95258b5390bf313a0ed4d`
+for exact `0a15a5d14871a4aeb7d82164cda32b5d3c0f071e`; Orchestrator adoption
+permits Worker to construct the nine-path isolated package and record its local
+evidence in path 9. The parent performs fresh serial dispatch checks before the
+sole request.
 A failed guarded job stops. A successful guarded job requires a separate,
 independent outcome review before C0 behavior acceptance. Orchestrator
 reconciles only this bounded slice; it does not claim Phase 5/7 completion or
