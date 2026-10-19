@@ -1,11 +1,68 @@
 # FireRedRecomp Coordination Handoff
 
-- Status: `READY_FOR_WORKER — single guarded readiness probe`
-- Task ID: `P5-06-VIRIDIAN-ROADBLOCK-ROUTE-PROBE`
+- Status: `READY_FOR_WORKER — adopted implementation authority`
+- Task ID: `P5-06-VIRIDIAN-ROADBLOCK-IMPLEMENTATION`
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
 - Current plan: [`../roadmaps/RECALIBRATED_DELIVERY_PLAN.md`](../roadmaps/RECALIBRATED_DELIVERY_PLAN.md)
 
-## Current relay — 2026-10-18
+## Current relay — 2026-10-19
+
+### Authority adopted; final PR51 CI+merge is the sole next action
+
+Independent authority review `354257ed2a7787003fe95258b5390bf313a0ed4d`
+PASSed exact `0a15a5d` and was ff-adopted unchanged. The review recovered one
+quota interruption in the same worktree
+`/tmp/firered-roadblock-implementation-authority-review.Sol20261018`; it was
+first PASS with no corrections. This adopts only the nine-path construction
+authority, not a request, guarded run, gameplay result, or Phase 5/7 claim.
+
+One next action: finish final PR51 CI+merge, then assign one isolated Sol HIGH
+Worker to the [adopted nine-path authority](../tasks/phase5-viridian-roadblock-implementation.md).
+Sol HIGH is planned for cross-file production input ownership, movement, and
+replay complexity. No Worker, request, ROM/replay, runner action, or gameplay
+acceptance exists yet. The parent still must perform fresh serialization,
+runner/job, route, prerequisite, and current-main applicability checks before
+the sole guarded request; its outcome remains independently reviewed.
+
+Goal service is `usageLimited`; the current user-requested continuation
+authorizes the adopted implementation continuation, while lifecycle resumption
+remains user/system-controlled.
+Both untracked handoff drafts remain unchanged.
+
+Process: Luna low artifact preparation, Astra serialized preflight/submission,
+Sol medium outcome review, Terra medium authority compilation. Probe first-
+review PASS, no corrections/retries/new usage interruption. One compressed
+draft timing clause was corrected before publication to preserve close-before-
+motion; retain accepted temporal requirements precisely in compiled contracts.
+
+### Sole readiness probe succeeded; independent outcome pending
+
+PR50 main merge `8c6e4fa90fa4fa49a9fbb17c64e16f37bd1e964b` changed only
+the authorized probe. Run `39165635888` / job `117787881344` SUCCESS:
+trusted checkout/input/route/Lua/existing supported-ROM SHA/Probe complete
+passed; all eight patch-only steps skipped. Read only safe step metadata;
+no logs or private paths/content copied. Final pre-submit checks confirmed
+unchanged reviewed workflow, main155a3cb, MediaCenter online/idle and no jobs.
+One allowance consumed, no retry/replacement.
+
+One next action: independent Sol outcome review of exact merge/run. Readiness
+does not authorize implementation or establish gameplay. Compile separately
+reviewed implementation authority only after outcome PASS.
+
+### Single probe prepared; final submission gate
+
+Authority PR49 merged `155a3cb` after independent recheck `cfe6b13` and final
+CI39165410206/39165407589 SUCCESS. Luna low prepared sole-file `9472aec6`
+in `/tmp/firered-roadblock-readiness-probe-20261018`, now PR50. Artifact SHA256
+`edafcd7332caafeac7d4b4b270ae055e3a4fbc697069b1db6400c18895398bef`.
+Branch publication has not dispatched the main-only bridge. One allowance is
+reserved for this exact artifact; no second probe/retry.
+
+One next action: Orchestrator rechecks unchanged merged route/current main,
+online idle firered-local and zero active/queued bridge jobs immediately before
+merging PR50 once. Monitor safe step statuses, then independent outcome review.
+All eight patch-only steps must skip. No gameplay/request authority.
+Canonical checkpoint branch `work/p5-roadblock-probe-relay-20261018`.
 
 ### Configuration closed; one-probe contract adopted
 

@@ -49,9 +49,14 @@ rule or traversal work without an evidenced dependency.
    passed in `1199a74` and merged PR45 `6006ab6` after final-head CI.
    [Its bounded bridge route](../tasks/local-worker-bridge-phase5-viridian-roadblock-route-configuration.md)
    passed independent review `dbf2b389` and merged PR48 `2eb8fdd` after final CI.
-   Next is [one fresh readiness probe](../tasks/local-worker-bridge-phase5-viridian-roadblock-route-probe.md),
-   then independent outcome review and separately reviewed implementation
-   authority. Configuration acceptance adds no gameplay handler.
+   [Readiness probe](../tasks/local-worker-bridge-phase5-viridian-roadblock-route-probe.md)
+   `8c6e4fa` passed run39165635888 and independent outcome review `da0352d`.
+   The [implementation authority](../tasks/phase5-viridian-roadblock-implementation.md)
+   independently PASSed at `354257ed` for exact `0a15a5d` and is adopted.
+   Next is final PR51 CI+merge, then one isolated Sol HIGH Worker for the exact
+   nine-path local no-ROM package; no request before fresh parent checks.
+   Guarded outcome review remains required before behavior acceptance; readiness
+   acceptance adds no gameplay handler and no retry allowance remains.
    No rendered Pokédex,
    full Party UI or normal traversal proof is implied. Memento's trainer-AI
    reserve-count gap is separately under read-only feasibility inspection;
