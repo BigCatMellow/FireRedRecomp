@@ -9,6 +9,9 @@
 
 ### PR51 merged; isolated Worker is active for local construction only
 
+PR52 coordination sanity review found one stale checkpoint inspection revision;
+corrected to the PR51 merge. No scope or evidence-gate correction was needed.
+
 PR51 merged `b79e31f9daa29a4984499257161c2a8f14525b1e` after final-head
 `c3173ec` CI `39228987341` / job `117982094526` and `39228982200` /
 job `117982077583` SUCCESS. Independent authority review

@@ -74,7 +74,7 @@
   "project_goal": "work/coordination/PROJECT_GOAL.md — ACTIVE; explicitly adopted 2026-10-11; no user-specified token budget",
   "phase0_external_blocker": "P0-04-REVERIFY at 93c4654: missing prerequisites on the verified target and no desktop proof; separate supported-target preparation decision and fresh evidence required. Historical result is not current host readiness.",
   "checkpoint": {
-    "inspection_revision": "8c6e4fa90fa4fa49a9fbb17c64e16f37bd1e964b",
+    "inspection_revision": "b79e31f9daa29a4984499257161c2a8f14525b1e",
     "pending_jobs": "Probe run39165635888/job117787881344 terminal SUCCESS and independently PASSda0352d; authority exact0a15a5d independently PASS354257ed; PR51 mergedb79e31f after final CI39228987341/job117982094526 and39228982200/job117982077583 SUCCESS. Sol HIGH Worker active locally only; no request or guarded job exists.",
     "preserved_drafts": "Unreviewed Brick Break package isolated in named local stash quarantine-unreviewed-brick-break-rerank-2026-10-11; outside active dispatch.",
     "next_action": "Collect the active Worker's exact local nine-path package/checks, then complete fresh parent serial request checks; no request before both.",
