@@ -108,11 +108,7 @@
 -- an optional per-side `hasReplacement(side)->boolean` callback, not a
 -- count, and TrainerAI has no reference to it at all). EFFECT_ATTRACT (120)
 -- real-branches on `get_gender` (src/battle_ai_script_commands.c:1764),
--- which no battler table in this project populates. EFFECT_FAKE_OUT (158)
--- real-branches on `is_first_turn_for` (src/battle_ai_script_commands.c
--- :1778), a per-battler "turns since this mon was sent out" counter this
--- engine's voluntary/forced-switch support does not track (turn count alone
--- is not equivalent once switching exists). These effects are real,
+-- which no battler table in this project populates. These effects are real,
 -- reachable, and IN the dispatch list -- encountering one is a genuine
 -- unported gap, not a confirmed no-op, so AICheckBadMove.score errors
 -- loudly for them rather than silently returning 0.
@@ -513,6 +509,16 @@ local function ingrain(user, target, move, typeChart)
   return 0
 end
 
+-- AI_CBM_FakeOut (data/battle_ai_scripts.s:510-513): `is_first_turn_for
+-- AI_USER; if_equal 0, Score_Minus10`. Cmd_is_first_turn_for
+-- (src/battle_ai_script_commands.c:1778-1790) returns the raw
+-- gDisableStructs[].isFirstTurn, which the engine mirrors on every battler
+-- (protection slice P4): 1 on the battler's first turn, 0 afterwards.
+local function fakeOut(user, target, move, typeChart)
+  if user.isFirstTurn == 0 then return -10 end
+  return 0
+end
+
 -- AI_CBM_Teleport (data/battle_ai_scripts.s:185): real dispatch entry jumps
 -- straight to Score_Minus10 unconditionally, no sub-label at all.
 local function alwaysMinus10(user, target, move, typeChart)
@@ -637,6 +643,7 @@ local EFFECT_HANDLERS = {
   [148] = alwaysNoPenalty,                         -- EFFECT_FUTURE_SIGHT: side status unmodeled
   [153] = alwaysMinus10,                           -- EFFECT_TELEPORT
   [156] = statUp("defense"),                       -- EFFECT_DEFENSE_CURL -> AI_CBM_DefenseUp
+  [158] = fakeOut,                                 -- EFFECT_FAKE_OUT -> AI_CBM_FakeOut
   [160] = stockpile,                               -- EFFECT_STOCKPILE
   [161] = spitUpAndSwallow,                        -- EFFECT_SPIT_UP
   [162] = spitUpAndSwallow,                        -- EFFECT_SWALLOW
@@ -673,7 +680,6 @@ local UNPORTED_EFFECTS = {
   [28] = "EFFECT_ROAR (AI_CBM_Roar needs count_alive_pokemon, not modeled)",
   [120] = "EFFECT_ATTRACT (AI_CBM_Attract needs get_gender, not modeled)",
   [127] = "EFFECT_BATON_PASS (AI_CBM_BatonPass needs count_alive_pokemon, not modeled)",
-  [158] = "EFFECT_FAKE_OUT (AI_CBM_FakeOut needs is_first_turn_for, not modeled)",
   [168] = "EFFECT_MEMENTO (falls through into AI_CBM_BatonPass's count_alive_pokemon check, not modeled)",
 }
 

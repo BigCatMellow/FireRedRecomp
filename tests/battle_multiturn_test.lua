@@ -575,12 +575,28 @@ end
 
 do
   -- Hi Jump Kick vs a Ghost digger: the semi miss skips the immunity scan,
-  -- so it prints missed and crashes for 1 (random multiplier drawn).
+  -- so it prints missed and the crash text (random multiplier drawn). No HP
+  -- is lost: the crash's own typecalc sets MOVE_RESULT_DOESNT_AFFECT_FOE
+  -- (src/battle_script_commands.c:1246-1250), `bicbyte MISSED`
+  -- (data/battle_scripts_1.s:865) leaves it set, and healthbarupdate/
+  -- datahpupdate skip on MOVE_RESULT_NO_EFFECT (bsc.c:1713, :1758).
+  -- (Before the protection-review F2 fix this asserted a 1-HP crash.)
   local b = semiFoe(DIG, HI_JUMP_KICK, { Data.TYPE_GHOST, Data.TYPE_GHOST })
+  local hpBefore = b.player.hp
   local events = b:runTurn(MOVE, MOVE)
   local crash = find(events, "crash", "player")
-  check("Hi Jump Kick vs a Ghost digger crashes for 1", find(events, "miss", "player")
-    and not find(events, "noEffect") and crash and crash.amount == 1 and b.rng.draws == 1,
+  check("Hi Jump Kick vs a Ghost digger: crash text, no HP lost", find(events, "miss", "player")
+    and not find(events, "noEffect") and crash and crash.amount == 0
+    and crash.hpRemaining == hpBefore and b.player.hp == hpBefore and b.rng.draws == 1,
+    types(events) .. " draws " .. b.rng.draws)
+  -- A non-immune (Normal) digger still takes the normal crash damage:
+  -- floor(6 * 85 * 20/20 / 50) + 2 = 12, Fighting vs Normal x2 = 24, random
+  -- draw 0 -> 24, DMG_RECOIL_FROM_MISS 24/2 = 12 (cap 400/2): 40 -> 28.
+  b = semiFoe(DIG, HI_JUMP_KICK)
+  events = b:runTurn(MOVE, MOVE)
+  crash = find(events, "crash", "player")
+  check("Hi Jump Kick vs a non-immune digger: crash for 12", crash and crash.amount == 12
+    and b.player.hp == 28 and b.rng.draws == 1,
     types(events) .. " draws " .. b.rng.draws)
 end
 

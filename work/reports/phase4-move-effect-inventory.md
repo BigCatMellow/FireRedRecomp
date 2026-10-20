@@ -23,7 +23,7 @@ Existing accepted engine families retain their documented limits.
 A separate source-only invocation of the actual current
 `BattleEngine:supportsMove` on source-derived effect/power metadata returned
 248 admissions and 106 rejections at that refresh (now 299/55 after the status slices,
-fast-lane batches, weather slices W1-W2 and residual slices R1-R3; the test is authoritative). These are source/predicate observations,
+fast-lane batches, weather slices W1-W2, residual slices R1-R3 and protection slices P4-P5; the test is authoritative). These are source/predicate observations,
 **not a local ROM result**. The checked-in [inventory test](../../tests/phase4_move_effect_inventory_test.lua)
 contains literal expected membership, admission and coverage metadata. It does
 not read engine tables to construct expectations. It checks partition integrity
@@ -35,9 +35,9 @@ labels `defined_source=214`; the ROM gate checks member usage and unused IDs.
 
 | Source-confirmed semantic class | Used families | Moves | Positive power | Zero power | Admitted / rejected |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| Represented with stated limits | 125 | 273 | 189 | 84 | 273 / 0 |
+| Represented with stated limits | 127 | 275 | 191 | 84 | 275 / 0 |
 | Candidate for separate discovery | 0 | 0 | 0 | 0 | 0 / 0 |
-| Blocked on additional state or an absent cross-component path | 72 | 80 | 26 | 54 | 26 / 54 |
+| Blocked on additional state or an absent cross-component path | 70 | 78 | 24 | 54 | 24 / 54 |
 | Intentionally rejected | 1 | 1 | 1 | 0 | 0 / 1 |
 | Total used | 198 | 354 | 216 | 138 | 299 / 55 |
 | Defined but unused | 16 | 0 | 0 | 0 | no real-record claim |
@@ -53,12 +53,12 @@ families are unimplemented, not a policy decision that they should never work.
 
 ## Coverage and admission are separate
 
-The **26 admitted, semantically uncovered positive-power records** occupy
-23 effects: `26, 34, 81, 89, 105, 117, 119, 121, 122, 123, 128, 135, 144, 148, 154, 158, 159, 161, 170, 185, 188, 196, 197`.
+The **24 admitted, semantically uncovered positive-power records** occupy
+21 effects: `26, 34, 81, 89, 105, 117, 119, 121, 122, 123, 128, 135, 144, 148, 154, 159, 161, 185, 188, 196, 197`.
 Their precise move members and counts are the `yes / C` and `yes / B` rows
 below. They reach ordinary damage because of the positive-power fallback;
 admission does not implement their effects. None is a candidate record; all
-26 need additional state/path work. This refresh supersedes the older
+24 need additional state/path work. This refresh supersedes the older
 140-fallback positive-only count; accepted intervening leaves account for the
 reduction, while 138 zero-power records are now included explicitly.
 
@@ -261,7 +261,7 @@ body (Protect/Endure, Return/Frustration, sunlight recovery, Mud/Water Sport).
 | 155 `EFFECT_SEMI_INVULNERABLE` | 19, 91, 291, 340 (4; P) | yes | R | [`BattleScript_EffectSemiInvulnerable`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L1969) | Charge turn sets ON_AIR/UNDERGROUND/UNDERWATER (moves with accuracycheck miss it without RNG); turn 2 hit without PP; Bounce 30% paralysis; OHKO/Pain Split against it fail (But it failed); Fly/Dig/Dive turn 2 follow the tracked plain-hit gap (no zero-effect roll draw). Multi-turn slice [M2](../tasks/phase4-multiturn-m2.md); ROM fixture pending. |
 | 156 `EFFECT_DEFENSE_CURL` | 111 (1; Z) | no | B | [`BattleScript_EffectDefenseCurl`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L2010) | Defense Curl adds volatile flag used by Rollout/Ice Ball; interaction/reset absent. |
 | 157 `EFFECT_SOFTBOILED` | 135, 208 (2; Z) | yes | R | [`BattleScript_EffectSoftboiled`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L2023) | Literal #135/#208 heal max(1, maxHP/2), clamped; fails at full HP. Fast-lane batch [P4-FL3](../tasks/phase4-batch3-status-moves.md); ROM fixture pending. |
-| 158 `EFFECT_FAKE_OUT` | 252 (1; P) | yes | B | [`BattleScript_EffectFakeOut`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L2044) | Fake Out needs per-battler first-turn tracking and certain flinch cancellation. |
+| 158 `EFFECT_FAKE_OUT` | 252 (1; P) | yes | R | [`BattleScript_EffectFakeOut`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L2044) | Protection slice [P4](../tasks/phase4-protection-p4.md): the mirrored 2/1/0 `isFirstTurn` counter (leads 1, voluntary switch-in 2, forced replacement 1, decrement as the last end-of-turn step); after the first turn "But it failed!" with PP spent and no RNG; priority +1; certain flinch with no draw, only for a target that has not acted, Shield Dust silent, Inner Focus "prevents flinching!" text, nothing on a KO; a Ghost target takes the discarded `% 100`; `AI_CBM_FakeOut` −10 once `isFirstTurn` is 0. Protect (protected text on both paths) waits for P1; ROM fixture pending. |
 | 159 `EFFECT_UPROAR` | 253 (1; P) | yes | B | [`BattleScript_EffectUproar`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L2068) | Uproar needs repeat lock/duration, wake/sleep suppression and end-turn lifecycle. |
 | 160 `EFFECT_STOCKPILE` | 254 (1; Z) | no | B | [`BattleScript_EffectStockpile`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L2079) | Stockpile count and Spit Up/Swallow damage/heal consumption paths absent. |
 | 161 `EFFECT_SPIT_UP` | 255 (1; P) | yes | B | [`BattleScript_EffectSpitUp`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L2090) | Stockpile count and Spit Up/Swallow damage/heal consumption paths absent. |
@@ -273,7 +273,7 @@ body (Protect/Endure, Return/Frustration, sunlight recovery, Mud/Water Sport).
 | 167 `EFFECT_WILL_O_WISP` | 261 (1; Z) | yes | R | [`BattleScript_EffectWillOWisp`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L2170) | Gates: already burned, Fire, Water Veil, other status; one accuracycheck; seteffectprimary. Status slice [S3](../tasks/phase4-status-s3-primary-status.md); Substitute/Safeguard/Magic Coat/Synchronize/Compound Eyes/Hustle absent; ROM fixture pending. |
 | 168 `EFFECT_MEMENTO` | 262 (1; Z) | yes | R | [`BattleScript_EffectMemento`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L2199) | User HP to 0, target ATK/SP.ATK -2 (each skipped at -6), user faints; fails without fainting if both at -6. Protect/Substitute/Mist/abilities not modeled. Fast-lane batch [P4-FL6](../tasks/phase4-conversion-memento.md); ROM fixture pending. |
 | 169 `EFFECT_FACADE` | 263 (1; P) | yes | R | [`BattleScript_EffectFacade`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L2247) | Hit script with dmgMultiplier 2 while the user has PSN/BRN/PAR/TOX (burn halving still applies). Shares the tracked plain-hit zero-byte seteffectwithchance roll gap. Status slice [S4](../tasks/phase4-status-s4.md); ROM fixture pending. |
-| 170 `EFFECT_FOCUS_PUNCH` | 264 (1; P) | yes | B | [`BattleScript_EffectFocusPunch`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L2255) | Damage-received history with source/category/turn identity absent. |
+| 170 `EFFECT_FOCUS_PUNCH` | 264 (1; P) | yes | R | [`BattleScript_EffectFocusPunch`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L2255) | Protection slice [P5](../tasks/phase4-protection-p5.md): the pre-turn "is tightening its focus!" text heads `runTurn` in battler-id order (chosen move 264, not asleep, not locked, not Struggle; freeze/paralysis/confusion do not suppress it); a failed wild run silences it for the rest of the battle (player-only latch); the per-turn "took move damage" record (nonzero `applyDamage` from the opposing move; Pain Split, misses, no-effect and 0-HP hits excluded); lost focus spends PP with no "used" line and no RNG; priority −3. Truant, Substitute and Protect (P1) absent; ROM fixture pending. |
 | 171 `EFFECT_SMELLINGSALT` | 265 (1; P) | yes | R | [`BattleScript_EffectSmellingsalt`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L2263) | Hit with dmgMultiplier 2 vs a paralyzed target, then certain REMOVE_PARALYSIS (no roll unless no effect); Substitute absent. Status slice [S4](../tasks/phase4-status-s4.md); ROM fixture pending. |
 | 172 `EFFECT_FOLLOW_ME` | 266 (1; Z) | no | B | [`BattleScript_EffectFollowMe`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L2272) | Target redirection/helping-hand needs doubles ally/target model. |
 | 173 `EFFECT_NATURE_POWER` | 267 (1; Z) | no | B | [`BattleScript_EffectNaturePower`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L2283) | Terrain selects called move/secondary/type; terrain input and corresponding dispatch/status changes absent. |
