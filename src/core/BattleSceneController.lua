@@ -302,6 +302,11 @@ function BattleSceneController:_eventMessages(events)
       entries[#entries + 1] = { hpSide = event.side, hp = event.hpRemaining }
     elseif event.type == "moveFailed" then
       add("But it failed!")
+    elseif event.type == "protected" then
+      -- sText_PkmnProtectedItself (battle_message.c:66) via
+      -- gMissStringIds[B_MSG_PROTECTED] (:897); B_DEF_NAME_WITH_PREFIX names
+      -- the protected target (protection slice P1).
+      add(name(event.target) .. "\nprotected itself!")
     elseif event.type == "critical" then
       add("A critical hit!")
     elseif event.type == "damage" then
