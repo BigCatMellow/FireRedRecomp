@@ -799,5 +799,38 @@ do
     texts(t, tev) == "PLAYER used THUNDER WAVE!|It doesn't affect FOE...", texts(t, tev))
 end
 
+---------------------------------------------------------------------------
+-- Review F1: the per-action protected mark does not leak into the next
+-- action. Player Tackle into a protected foe, then the foe's Tackle into the
+-- unprotected player in the same turn hits with its normal 3 draws.
+---------------------------------------------------------------------------
+do
+  local e, ev = protectedAction({ foeMoves = { M.TACKLE } }, { 0, 1, 0 })
+  check("F1: the first action is blocked", sig(ev) == PROTECTED and e.rng.draws == 0, sig(ev))
+  local ev2 = {}
+  e:resolveMove("foe", 1, ev2)
+  check("F1: the next unprotected action hits normally (no leaked protected mark)",
+    find(ev2, "damage", "foe") and not find(ev2, "protected") and e.rng.draws == 3, sig(ev2))
+end
+
+---------------------------------------------------------------------------
+-- Review F2: protect wins over a Ghost's immunity on paths with no prior
+-- type check (Cmd_resultmessage :1937: MISSED without DOESNT_AFFECT_FOE).
+---------------------------------------------------------------------------
+do
+  local GHOST = { T.TYPE_GHOST, T.TYPE_GHOST }
+  local e, ev = protectedAction({ foeTypes = GHOST })
+  check("F2: Tackle into a protected Ghost says protected, not doesn't-affect",
+    sig(ev) == PROTECTED and not find(ev, "noEffect"), sig(ev))
+  local th = battle({ 0, 1, 0, 0, 0 }, { playerMoves = { M.THRASH } })
+  th:runTurn(MOVE, MOVE)
+  th.foe.types = GHOST
+  protectDuring(th, "foe")
+  local tev = th:runTurn(MOVE, MOVE)
+  check("F2: locked Thrash into a protected Ghost: protected, no noEffect, no targetNotAffected",
+    find(tev, "protected", "player") and not find(tev, "noEffect")
+      and not th.player.targetNotAffected, sig(tev))
+end
+
 print(("%d passed, %d failed"):format(passed, failed))
 if failed > 0 then os.exit(1) end

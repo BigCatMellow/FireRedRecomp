@@ -1,7 +1,7 @@
 # Task: protection slice P1 — the protected-target check
 
 - Task ID: `P4-PROTECTION-P1`
-- Status: `IMPLEMENTED — awaiting independent review`
+- Status: `DONE — independently reviewed PASS WITH CORRECTIONS (applied)`
 - Lane: full relay (a gate that touches every admitted move family, new
   per-turn battle state, a new controller text)
 - Spec: [protection design proposal](../reports/phase4-protection-design-proposal.md)
@@ -223,3 +223,14 @@ wrap and Curse damage still tick on a protected battler.
 - Triple Kick's trailing `seteffectwithchance` draw stays absent under the
   tracked gap (inventory row 104, F5).
 - `moveObeyed` is written but unread until P2.
+
+## Review (2026-10-20)
+
+[Implementation review](../reviews/2026-10-20-protection-p1-implementation-review.md):
+PASS WITH CORRECTIONS. F1 applied: a test pins that a blocked action's
+protected mark does not leak into the next action (deleting the per-action
+reset now fails it). F2 applied: Tackle and a locked Thrash into a protected
+Ghost give the protected text, not "doesn't affect". F3 applied: inventory
+rows 27/106/109/152/168/189 no longer call Protect absent. F4 (duplicated
+Jump Kick predicate) and F5 informational.
+`tests/battle_protection_p1_test.lua`: 656 passed.
