@@ -40,6 +40,10 @@
 --    replacement's switch-in ability events follow it (weather W3b).
 --   {type="noPP", side=, move=}                   -- see the Struggle stub
 --   {type="moveFailed", side=}                    -- generic But it failed; distinct from screenFailed
+--   {type="protected", side=<attacker>, target=<defender>} -- the target's
+--    Protect blocked the move: "<target>\nprotected itself!" where the
+--    miss/failure text would be (protection slice P1; nothing sets the
+--    flag until P2)
 --   {type="statChange", side=<target>, stat=, stages=-1, prevented=}
 --    (a prevented event keeps the signed stage delta: > 0 "won't go
 --    higher!", otherwise "won't go lower!")
@@ -1210,6 +1214,16 @@ function BattleEngine.makeBattler(opts)
     -- the damage record; the engine also clears it on faint, which is
     -- unobservable (the per-turn reset precedes any read). Battle-only.
     tookMoveDamage = false,
+    -- Protection slice P1: gProtectStructs[].protected (include/battle.h
+    -- :179), battle-only, never persisted. Set by a successful Protect/
+    -- Detect (Cmd_setprotectlike, src/battle_script_commands.c:6233-6237;
+    -- not represented until P2 -- in P1 only tests set it). Read through
+    -- BattleEngine:protectBlocks at the attackcanceler step. Per turn: reset
+    -- at each runTurn start (TurnValuesCleanUp(TRUE) at the start of
+    -- BattleTurnPassed, src/battle_main.c:2957, :3630-3634; nothing reads it
+    -- between turns or at end of turn) and by recordFaint (FaintClearSetData,
+    -- :2461).
+    protected = false,
     moves = {},
     statStages = {
       attack = BattleFormulas.DEFAULT_STAT_STAGE,
@@ -1414,6 +1428,9 @@ function BattleEngine:recordFaint(side, events)
   -- Clearing here is unobservable (the per-turn reset runs before any read)
   -- and keeps a replacement's record clean (protection slice P5).
   battler.tookMoveDamage = false
+  -- FaintClearSetData clears gProtectStructs[].protected
+  -- (src/battle_main.c:2461; protection slice P1).
+  battler.protected = false
   -- FaintClearSetData also clears the escape prevention and the wrap
   -- ANOTHER battler holds from this slot (src/battle_main.c:2444-2452).
   self:clearHeldBy(side)
@@ -1595,6 +1612,13 @@ end
 function BattleEngine:resolveMove(attackerSide, moveSlot, events)
   self.currentMove = nil
   self.moveDamageDealt = 0
+  -- Protection slice P1: this action's MISS_TYPE == B_MSG_PROTECTED (set at
+  -- the attackcanceler step in resolveMoveCore), and HITMARKER_OBEYS ("the
+  -- move passed attackcanceler", src/battle_script_commands.c:828-864,
+  -- cleared after every action, src/battle_main.c:4444-4462). Nothing reads
+  -- moveObeyed yet; P2's last-resulting-move record will (review F4).
+  self.protectedMove = false
+  self.moveObeyed = false
   self:resolveMoveCore(attackerSide, moveSlot, events)
   local defenderSide = otherSide(attackerSide)
   local defender = self:battler(defenderSide)
@@ -1760,8 +1784,15 @@ function BattleEngine:resolvePrimaryStatusMove(attackerSide, attacker, defenderS
   local function notAffected()
     events[#events + 1] = { type = "noEffect", side = attackerSide, target = defenderSide }
   end
+  -- Protection slice P1: the Substitute / "any status1" gates and the
+  -- final accuracycheck all reach BattleScript_ButItFailed, whose
+  -- resultmessage prints the protected text once attackcanceler set MISSED
+  -- (the accuracycheck re-test draws nothing). The printstring gates
+  -- (already, the ability texts, stayedAwake) and BattleScript_NotAffected
+  -- (DOESNT_AFFECT_FOE wins, bsc.c:1937) keep their text.
+  local protectedMove = self.protectedMove
   local function failed()
-    events[#events + 1] = { type = "moveFailed", side = attackerSide }
+    events[#events + 1] = self:failedOrProtected(attackerSide, defenderSide)
   end
   local poisonOrSteel = isType(S.TYPE_POISON) or isType(S.TYPE_STEEL)
   local anyStatus = S.hasAny(status)
@@ -1783,6 +1814,13 @@ function BattleEngine:resolvePrimaryStatusMove(attackerSide, attacker, defenderS
     if defender.ability == BattleEngine.ABILITY_LIMBER then return prevented(defender.ability) end
     local _, flags = BattleFormulas.typeCalc(1, move.type, attacker.types, defender.types, self.typeChart)
     if flags.noEffect then return notAffected() end
+    -- Review F1: `jumpifmovehadnoeffect BattleScript_ButItFailed`
+    -- (data/battle_scripts_1.s:1011-1012) tests MOVE_RESULT_NO_EFFECT, which
+    -- includes attackcanceler's MISSED, BEFORE the already-paralyzed and
+    -- STATUS1_ANY gates: a protected target gives the protected text even
+    -- when it is already paralyzed (Limber and a typecalc immunity, above,
+    -- still win).
+    if protectedMove then return failed() end
     if S.isParalyzed(status) then return already() end
     if anyStatus then return failed() end
   elseif kind == "toxic" then
@@ -1797,6 +1835,7 @@ function BattleEngine:resolvePrimaryStatusMove(attackerSide, attacker, defenderS
     if anyStatus then return failed() end
   end
 
+  if protectedMove then return failed() end
   if not self:accuracyRoll(attacker, defender, move, nil) then
     events[#events + 1] = { type = "miss", side = attackerSide }
     return
@@ -1900,6 +1939,34 @@ end
 function BattleEngine:isLocked(side)
   local b = self:battler(side)
   return b.charging or (b.rampageTurns or 0) > 0 or (b.recharging and b.rechargeTimer > 1)
+end
+
+-- DEFENDER_IS_PROTECTED (src/battle_script_commands.c:42):
+-- gProtectStructs[gBattlerTarget].protected && (move flags &
+-- FLAG_PROTECT_AFFECTED), bit 1 (include/constants/pokemon.h:239), with the
+-- singles target reduction: a MOVE_TARGET_USER move's gBattlerTarget is the
+-- user (src/battle_controller_player.c:460-466,
+-- src/battle_controller_opponent.c:1370, :1393), which is never protected
+-- while it acts -- so Haze and Hail, which carry the flag, are never blocked.
+-- attackcanceler's Curse clause (:897) is dead code: Curse has flags 0, as
+-- do Psych Up's protect bit (SNATCH only), so both pass through.
+function BattleEngine:protectBlocks(defender, move)
+  if not defender.protected then return false end
+  if math.floor((move.flags or 0) / 2) % 2 ~= 1 then return false end
+  return math.floor((move.target or 0) / MOVE_TARGET_USER) % 2 ~= 1
+end
+
+-- A script failure that reaches BattleScript_ButItFailed (or the
+-- PrintMoveMissed/MoveMissedPause resultmessage) after attackcanceler set
+-- MISSED with MISS_TYPE = B_MSG_PROTECTED: resultmessage prints
+-- gMissStringIds[B_MSG_PROTECTED] (src/battle_script_commands.c:1937;
+-- src/battle_message.c:66, :897) instead of "But it failed!", unless a
+-- typecalc set DOESNT_AFFECT_FOE (callers keep their noEffect event first).
+function BattleEngine:failedOrProtected(attackerSide, defenderSide)
+  if self.protectedMove then
+    return { type = "protected", side = attackerSide, target = defenderSide }
+  end
+  return { type = "moveFailed", side = attackerSide }
 end
 
 -- AccuracyCalcHelper's semi-invulnerable checks: an ON_AIR / UNDERGROUND /
@@ -2088,6 +2155,11 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
     return
   end
   self.noPPDeduct = false
+  -- HITMARKER_OBEYS: set after the cancellers and the no-PP check
+  -- (src/battle_script_commands.c:828-864), so before the charge block -- a
+  -- charging turn 1 returns early from it yet passed attackcanceler (review
+  -- F4). Protection slice P1; read by P2.
+  self.moveObeyed = true
   local chargeKind = BattleEngine.CHARGE_MOVES[move.effect]
   if chargeKind then
     if not attacker.charging then
@@ -2122,6 +2194,32 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
     attacker.semiInvulnerable = nil
     self.noPPDeduct = true
   end
+  -- Rampage PP (data/battle_scripts_1.s:585-593): a locked hit skips
+  -- ppreduce, a locked miss reaches PrintMoveMissed's guarded ppreduce.
+  -- Captured BEFORE the protect step below, whose CancelMultiTurnMoves clears
+  -- the lock: computed after it, a protected locked 0-PP rampage would spend
+  -- PP below 0 (design trap R2).
+  local rampageLocked = move.effect == BattleEngine.EFFECT_RAMPAGE
+    and (attacker.rampageTurns or 0) > 0
+  -- Protection slice P1: Cmd_attackcanceler's protect step
+  -- (src/battle_script_commands.c:896-905), after the cancellers, the no-PP
+  -- check (and Magic Coat/Snatch/Lightning Rod, not represented):
+  -- DEFENDER_IS_PROTECTED && (Curse clause, dead) && (!IsTwoTurnsMove ||
+  -- MULTIPLETURNS) -> CancelMultiTurnMoves(attacker), MOVE_RESULT_MISSED,
+  -- MISS_TYPE = B_MSG_PROTECTED, and the script CONTINUES. Each family below
+  -- reads self.protectedMove where its source script first observes the
+  -- mark (an accuracycheck re-test, jumpifmovehadnoeffect, a
+  -- ButItFailed/resultmessage, setseeded, Memento's MISS_TYPE jump).
+  -- Placed AFTER the charge block (design trap R2): turn 1 of a two-turn
+  -- move (no MULTIPLETURNS yet) returns inside the block and is never
+  -- blocked; turn 2 has already taken its second-turn arm (lock and
+  -- semi-invulnerable bit cleared, NO_PPDEDUCT), so cancelling here cannot
+  -- send it down the turn-1 arm. Solar Beam in sun reaches the arm with
+  -- the lock set, so it is gated, as in source. No RNG.
+  if self:protectBlocks(defender, move) then
+    self.protectedMove = true
+    self:cancelMultiTurnMoves(attacker)
+  end
   if move.effect == BattleEngine.EFFECT_FOCUS_PUNCH and attacker.tookMoveDamage then
     -- BattleScript_EffectFocusPunch (data/battle_scripts_1.s:2255-2261):
     -- attackcanceler, then jumpifnodamage (src/battle_script_commands.c
@@ -2139,10 +2237,11 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
     -- passes iff isFirstTurn != 0; otherwise
     -- BattleScript_ButItFailedAtkStringPpReduce (data/battle_scripts_1.s
     -- :2050-2059): attackstring, ppreduce, "But it failed!". It runs before
-    -- accuracycheck: no RNG. (A protected target would print the protected
-    -- text instead; Protect is not represented yet, protection slice P1.)
+    -- accuracycheck: no RNG. A protected target prints the protected text
+    -- instead (attackcanceler's MISSED drives resultmessage; protection
+    -- slice P1).
     if slot and slot.pp > 0 then slot.pp = slot.pp - 1 end
-    events[#events + 1] = { type = "moveFailed", side = attackerSide }
+    events[#events + 1] = self:failedOrProtected(attackerSide, defenderSide)
     return
   end
   local isMagnitude = moveId == BattleEngine.MOVE_MAGNITUDE
@@ -2197,11 +2296,19 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
     damage, flags = BattleFormulas.typeCalc(
       damage, move.type, attacker.types, defender.types, self.typeChart)
     damage = BattleFormulas.applyRandomDamageMultiplier(damage, self.rng)
-    local hit = self:accuracyRoll(attacker, defender, move, moveId)
+    -- Protection slice P1: the loop's movevaluescleanup clears the
+    -- attackcanceler MISSED, and accuracycheck re-tests protect first
+    -- (JumpIfMoveAffectedByProtect, bsc.c:1040-1041): no accuracy draw; the
+    -- crit and damage draws above are already taken.
+    local protectedHit = self.protectedMove
+    local hit = not protectedHit and self:accuracyRoll(attacker, defender, move, moveId)
     -- A miss after typecalc keeps DOESNT_AFFECT_FOE, so resultmessage
-    -- (bsc.c:1937) prints "It doesn't affect" for an immune target.
+    -- (bsc.c:1937) prints "It doesn't affect" for an immune target -- also
+    -- over the protected text (MISS_TYPE 1 is not > B_MSG_AVOIDED_ATK).
     if not hit and not flags.noEffect then
-      events[#events + 1] = { type = "miss", side = attackerSide }
+      events[#events + 1] = protectedHit
+        and { type = "protected", side = attackerSide, target = defenderSide }
+        or { type = "miss", side = attackerSide }
       settleExplosion(false)
       return
     end
@@ -2223,7 +2330,8 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
   if isEndeavor then
     if slot then slot.pp = slot.pp - 1 end
     if defender.hp <= attacker.hp then
-      events[#events + 1] = { type = "moveFailed", side = attackerSide }
+      -- BattleScript_ButItFailed: the protected text when protected (P1).
+      events[#events + 1] = self:failedOrProtected(attackerSide, defenderSide)
       return
     end
   end
@@ -2240,6 +2348,15 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
     end
     if (defender.confusionTurns or 0) > 0 then
       events[#events + 1] = { type = "alreadyConfused", side = defenderSide }
+      return
+    end
+    -- Protection slice P1: the Own Tempo and already-confused printstrings
+    -- above keep their text; accuracycheck re-tests protect with no draw ->
+    -- ButItFailed (Confuse) / TeeterDanceMissed (whose movevaluescleanup
+    -- cleared the canceller's MISSED; the re-test sets it again), both a
+    -- resultmessage -> the protected text.
+    if self.protectedMove then
+      events[#events + 1] = { type = "protected", side = attackerSide, target = defenderSide }
       return
     end
     if not self:accuracyRoll(attacker, defender, move, moveId) then
@@ -2260,10 +2377,15 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
     -- (already confused: silent).
     local stat, delta = "attack", 2
     if move.effect == BattleEngine.EFFECT_FLATTER then stat, delta = "spAttack", 1 end
-    local hit = self:accuracyRoll(attacker, defender, move, moveId)
+    -- Protection slice P1: accuracycheck PrintMoveMissed re-tests protect
+    -- first, with no draw; PrintMoveMissed spends the PP and prints the
+    -- protected text.
+    local hit = not self.protectedMove and self:accuracyRoll(attacker, defender, move, moveId)
     if slot then slot.pp = slot.pp - 1 end
     if not hit then
-      events[#events + 1] = { type = "miss", side = attackerSide }
+      events[#events + 1] = self.protectedMove
+        and { type = "protected", side = attackerSide, target = defenderSide }
+        or { type = "miss", side = attackerSide }
       return
     end
     local stages = defender.statStages
@@ -2288,9 +2410,10 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
   if move.effect == BattleEngine.EFFECT_SNORE
       and not StatusConditions.isAsleep(attacker.status) then
     -- BattleScript_EffectSnore (:1253-1258): awake (including just woken this
-    -- turn) -> attackstring, ppreduce, But it failed.
+    -- turn) -> attackstring, ppreduce, But it failed (the protected text
+    -- when protected, protection slice P1).
     if slot then slot.pp = slot.pp - 1 end
-    events[#events + 1] = { type = "moveFailed", side = attackerSide }
+    events[#events + 1] = self:failedOrProtected(attackerSide, defenderSide)
     return
   end
 
@@ -2345,8 +2468,12 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
     -- a Grass type in either slot -> B_MSG_LEECH_SEED_FAIL ("It doesn't
     -- affect"), the draw already spent; otherwise seed the target with the
     -- attacker's slot. No typecalc: a Ghost target can be seeded.
+    -- Protection slice P1: accuracycheck re-tests protect first (no draw)
+    -- and its failure pointer is DoLeechSeed too; setseeded's NO_EFFECT test
+    -- comes first, so a protected target is "evaded" -- even a Grass one --
+    -- never the protected text.
     if slot then slot.pp = slot.pp - 1 end
-    local hit = self:accuracyRoll(attacker, defender, move, moveId)
+    local hit = not self.protectedMove and self:accuracyRoll(attacker, defender, move, moveId)
     local result
     if not hit or defender.seeded then
       result = "evaded"
@@ -2367,9 +2494,13 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
     -- it failed. No accuracycheck, no typecalc, no RNG. seteffectprimary
     -- MOVE_EFFECT_NIGHTMARE sets the bit (src/battle_script_commands.c
     -- :2678-2681).
+    -- Protection slice P1 (decision D5): no accuracycheck, so protect only
+    -- changes the ButItFailed text to the protected one; an asleep target
+    -- takes NightmareWorked, whose seteffectprimary ignores MISSED
+    -- (bsc.c:2678-2681): Nightmare lands through Protect.
     if slot then slot.pp = slot.pp - 1 end
     if defender.nightmare or not StatusConditions.isAsleep(defender.status) then
-      events[#events + 1] = { type = "moveFailed", side = attackerSide }
+      events[#events + 1] = self:failedOrProtected(attackerSide, defenderSide)
       return
     end
     defender.nightmare = true
@@ -2393,8 +2524,9 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
       -- Attack +1, Defense +1, each `statbuffchange AFFECTS_USER |
       -- STAT_CHANGE_ALLOW_PTR`: ChangeStatBuffs returns WORKED at a limit
       -- and prints "won't go lower/higher" (bsc.c:6772-6775, :6799-6810).
-      -- Mist, Protect and Clear Body exempt MOVE_CURSE (:6679-6704); none is
-      -- modeled anyway. Prevented events carry the signed stage (review F7).
+      -- Mist, Protect and Clear Body exempt MOVE_CURSE (:6679-6704); Mist and
+      -- Clear Body are not modeled, and Curse's flags are 0 so protectBlocks
+      -- never fires for it (protection slice P1). Prevented events carry the signed stage (review F7).
       local stages = attacker.statStages
       local MIN, MAX = BattleFormulas.MIN_STAT_STAGE, BattleFormulas.MAX_STAT_STAGE
       if stages.speed == MIN and stages.attack == MAX and stages.defense == MAX then
@@ -2421,7 +2553,9 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
     -- modeled), `accuracycheck BattleScript_ButItFailed,
     -- NO_ACC_CALC_CHECK_LOCK_ON`: no draw, but any ON_AIR/UNDERGROUND/
     -- UNDERWATER target jumps to But it failed (bsc.c:1020-1025; Lock-On
-    -- and Protect not modeled). Cmd_cursetarget (bsc.c:8093-8108): already
+    -- not modeled). Curse's flags are 0, so JumpIfMoveAffectedByProtect never
+    -- fires: Ghost Curse lays its curse through Protect (protection slice
+    -- P1, decision D5). Cmd_cursetarget (bsc.c:8093-8108): already
     -- cursed -> But it failed; otherwise set CURSED, damage =
     -- max(1, attacker maxHP / 2); datahpupdate clamps at the user's HP;
     -- printstring after the HP update; then tryfaintmon BS_ATTACKER.
@@ -2461,13 +2595,23 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
     -- attackcanceler/attackstring/ppreduce, then `accuracycheck
     -- BattleScript_ButItFailed, NO_ACC_CALC`: no draw, but an ON_AIR/
     -- UNDERGROUND/UNDERWATER target jumps to But it failed
-    -- (src/battle_script_commands.c:1020-1025; Protect not modeled). Then
+    -- (src/battle_script_commands.c:1020-1025; Protect: protection slice P1,
+    -- below). Then
     -- already ESCAPE_PREVENTION -> But it failed (Substitute: not modeled).
     -- MOVE_EFFECT_PREVENT_ESCAPE (bsc.c:2673-2677) sets the bit with the
     -- attacker's slot as preventer (always the opposing slot in singles);
     -- "X can't\nescape now!" (src/battle_message.c:197). A wrapped target
     -- is not escape-prevented, so it still succeeds.
+    -- Protection slice P1: NO_ACC_CALC's semi-invulnerable jump and the
+    -- already-prevented gate both reach ButItFailed, whose resultmessage
+    -- prints the protected text once attackcanceler set MISSED; otherwise
+    -- JumpIfMoveAffectedByProtect(0) (bsc.c:1026) -> protected. No draw, no
+    -- escape lock.
     if slot then slot.pp = slot.pp - 1 end
+    if self.protectedMove then
+      events[#events + 1] = { type = "protected", side = attackerSide, target = defenderSide }
+      return
+    end
     if defender.semiInvulnerable or defender.escapePrevented then
       events[#events + 1] = { type = "moveFailed", side = attackerSide }
       return
@@ -2597,9 +2741,27 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
     or move.effect == BattleEngine.EFFECT_VITAL_THROW
     or move.effect == BattleEngine.EFFECT_OHKO
     or move.effect == BattleEngine.EFFECT_PAIN_SPLIT
-  local semiMiss = scriptHasAccuracyCheck and self:semiInvulnerableMiss(defender, move, moveId)
+  -- Protection slice P1: accuracycheck re-tests protect FIRST in both
+  -- branches -- before AccuracyCalcHelper in ACC_CURR_MOVE (so before the
+  -- semi-invulnerable miss, Lock-On, EFFECT_ALWAYS_HIT, Vital Throw and
+  -- Thunder in rain, src/battle_script_commands.c:1040-1043), and in
+  -- NO_ACC_CALC(_CHECK_LOCK_ON) where the semi-invulnerable jump also ends
+  -- at a resultmessage that prints the protected text (:1020-1027; a
+  -- protected battler is never mid-Fly anyway). No Random(), and no
+  -- CheckWonderGuardAndLevitate (:1102), so no DOESNT_AFFECT on an immune
+  -- target here. Triple Kick's first in-loop accuracycheck
+  -- (data/battle_scripts_1.s:1393) is the same re-test: 0 hits, the
+  -- protected text. Tickle's both-at-minimum printstring precedes its
+  -- accuracycheck and wins (tickleGateFails is not a scriptHasAccuracyCheck
+  -- path); Memento takes its own MISS_TYPE branch below.
+  local protectedMiss = self.protectedMove
+    and (scriptHasAccuracyCheck or move.effect == BattleEngine.EFFECT_TRIPLE_KICK)
+  local semiMiss = not protectedMiss and scriptHasAccuracyCheck
+    and self:semiInvulnerableMiss(defender, move, moveId)
   local hit
-  if semiMiss then
+  if protectedMiss then
+    hit = false
+  elseif semiMiss then
     hit = false
   elseif needsAccuracyCheck then
     hit = tutorialAccuracy or self:accuracyRoll(attacker, defender, move, moveId)
@@ -2617,8 +2779,8 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
   -- ppreduce (jumpifstatus2 MULTIPLETURNS), but a locked miss reaches
   -- BattleScript_PrintMoveMissed's ppreduce, which spends nothing at 0 PP
   -- (bsc.c:1147; reachable because the 0-PP check is bypassed while locked).
-  local rampageLocked = move.effect == BattleEngine.EFFECT_RAMPAGE
-    and (attacker.rampageTurns or 0) > 0
+  -- rampageLocked was captured before the protect step's cancel (P1).
+  -- A protected charge turn 2 spends nothing (NO_PPDEDUCT).
   if slot and not isEndeavor and not isMagnitude and not self.noPPDeduct then
     if not rampageLocked then
       slot.pp = slot.pp - 1
@@ -2628,6 +2790,27 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
   end
 
   if not hit then
+    if protectedMiss then
+      if BattleEngine.HITS_UNDERGROUND[move.effect] then
+        -- BattleScript_HitAllWithUndergroundBonusMissed runs typecalc: an
+        -- immune (Flying) target's DOESNT_AFFECT_FOE wins over the protected
+        -- text (bsc.c:1937). No RNG.
+        local _, immunity = BattleFormulas.typeCalc(
+          1, move.type, attacker.types, defender.types, self.typeChart)
+        events[#events + 1] = immunity.noEffect
+          and { type = "noEffect", side = attackerSide, target = defenderSide }
+          or { type = "protected", side = attackerSide, target = defenderSide }
+        return
+      end
+      -- Every other family: PrintMoveMissed / ButItFailed /
+      -- MoveMissedPause / TripleKickNoMoreHits -> resultmessage -> "<target>
+      -- protected itself!". OHKO and Pain Split give it too (not
+      -- moveFailed); a rampage takes no targetNotAffected query (the
+      -- protect path skips CheckWonderGuardAndLevitate) and its lock is
+      -- already cancelled. Jump Kick falls through to its crash below.
+      events[#events + 1] = { type = "protected", side = attackerSide, target = defenderSide }
+      if not (move.effect == 45 and (moveId == 26 or moveId == 136)) then return end
+    end
     if semiMiss and (move.effect == BattleEngine.EFFECT_OHKO
         or move.effect == BattleEngine.EFFECT_PAIN_SPLIT) then
       -- NO_ACC_CALC(_CHECK_LOCK_ON) against a semi-invulnerable target jumps
@@ -2652,13 +2835,17 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
       -- before resultmessage/the crash guard. This pure query spends no RNG.
       -- AccuracyCalcHelper's semi-invulnerable miss returns before that
       -- scan, so the crash text prints even against an immune target.
+      -- The protect path (P1) skips that scan too: BattleScript_MoveMissedDoDamage
+      -- printed the protected text above and its DOESNT_AFFECT test is false.
       local _, immunity = BattleFormulas.typeCalc(
         1, move.type, attacker.types, defender.types, self.typeChart)
-      if immunity.noEffect and not semiMiss then
+      if immunity.noEffect and not semiMiss and not protectedMiss then
         events[#events + 1] = { type = "noEffect", side = attackerSide, target = defenderSide }
         return
       end
-      events[#events + 1] = { type = "miss", side = attackerSide }
+      if not protectedMiss then
+        events[#events + 1] = { type = "miss", side = attackerSide }
+      end
       -- HandleAction_UseMove resets both multipliers to 1; no critcalc on
       -- this leaf. Preserve base -> STAB/type -> random -> half/min/cap.
       local damage = BattleFormulas.calculateBaseDamage(
@@ -2746,10 +2933,23 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
     end
     if move.effect == BattleEngine.EFFECT_MEMENTO then
       -- Cmd_trymemento (bsc.c:8681): fail only if target ATK and SP.ATK are
-      -- both at -6 (Protect not modeled). Otherwise attacker HP -> 0 first,
+      -- both at -6 and MISS_TYPE is not B_MSG_PROTECTED (the protected path
+      -- is handled first, protection slice P1). Otherwise attacker HP -> 0 first,
       -- then target ATK -2 and SP.ATK -2 (each silently skipped at -6), then
       -- tryfaintmon BS_ATTACKER.
       local stages = defender.statStages
+      if self.protectedMove then
+        -- Protection slice P1: `jumpifbyte cMISS_TYPE == B_MSG_PROTECTED`
+        -- -> BattleScript_MementoTargetProtect (data/battle_scripts_1.s
+        -- :2199-2201, :2234-2244): trymemento cannot fail while protected
+        -- (bsc.c:8683-8685), the user's HP drops to 0, the protected text,
+        -- tryfaintmon BS_ATTACKER. The user faints; no stat drops. No RNG.
+        attacker.hp = 0
+        events[#events + 1] = { type = "mementoHP", side = attackerSide }
+        events[#events + 1] = { type = "protected", side = attackerSide, target = defenderSide }
+        self:checkFaint(attackerSide, events)
+        return
+      end
       if stages.attack == BattleFormulas.MIN_STAT_STAGE
           and stages.spAttack == BattleFormulas.MIN_STAT_STAGE then
         events[#events + 1] = { type = "moveFailed", side = attackerSide }
@@ -4326,6 +4526,11 @@ function BattleEngine:runTurn(playerAction, foeAction)
   -- gProtectStructs[].physicalDmg/specialDmg are per turn (protection slice
   -- P5): TurnValuesCleanUp(FALSE) zeroed them after the previous turn.
   self.player.tookMoveDamage, self.foe.tookMoveDamage = false, false
+  -- gProtectStructs[].protected is per turn (protection slice P1):
+  -- TurnValuesCleanUp(TRUE) clears it at the start of BattleTurnPassed
+  -- (src/battle_main.c:2957, :3630-3634), before any end-of-turn effect.
+  -- No end-of-turn step reads it, so clearing here is equivalent.
+  self.player.protected, self.foe.protected = false, false
   -- A locked side's chosen action is replaced by its locked move.
   self.lockedThisTurn = {
     [BattleEngine.SIDE_PLAYER] = self:isLocked(BattleEngine.SIDE_PLAYER),
