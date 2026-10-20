@@ -1,4 +1,4 @@
-# Recalibrated delivery plan — routing reconciled 2026-10-14
+# Recalibrated delivery plan — routing reconciled 2026-10-17
 
 This is the concise current routing view. The capability checklist remains the
 canonical phase-status authority; task contracts and independent reviews remain
@@ -29,8 +29,9 @@ rule or traversal work without an evidenced dependency.
 2. [Effect45 implementation `cfdbb96` independently passed](../reviews/2026-10-13-recoil-if-miss-implementation-outcome-review.md).
    Its guarded request is terminal. Owner-merged fast-lane batches PR10–15
    add 17 bounded families with final independent PASS records; inventory
-   at `3adc7e8` now has85 represented families including owner-merged status
-   work. Nine new ROM fixtures await guarded evidence. Status S1–S4 are not
+   snapshot `3adc7e8` had85 represented families and nine pending ROM fixtures;
+   newer owner work throughPR41 retains its own records, not those stale totals.
+   Status S1–S4 are not
    fast-lane eligible: the accepted design also requires changed-RNG/turn-order
    guarded replay evidence, absent from the merged records. Retain bounded
    no-ROM PASS results without promoting these missing gates. Scope the
@@ -38,8 +39,26 @@ rule or traversal work without an evidenced dependency.
 3. Recover existing first-corridor integration work before inventing another
    effect batch: normal START Pokédex-count PR5's source-bound correction
    passed independent review and merged `52fbf69`. Party design PR3 also passed
-   and merged `239c25f`; execute actual PR6 alignment under six-path task
-   `6ff4464`, then independently review. No rendered Pokédex,
+   and merged `239c25f`; PR6 SUMMARY independently passed and merged `ba669fb`.
+   [P5-05 northbound source discovery](../tasks/phase5-viridian-northbound-gate-discovery.md)
+   independently passed and merged PR42 `ae3d559`; its selected
+   [elevation lifecycle source lock](../tasks/phase5-player-elevation-input-source-lock.md)
+   also passed and merged PR43 `871f3f1`. [Live elevation ownership](../tasks/phase5-player-elevation-input.md)
+   passed and merged PR44 `75b49f3` (post-merge193-file no-ROM PASS).
+   [C0 roadblock design](../tasks/phase5-viridian-roadblock-design.md) independently
+   passed in `1199a74` and merged PR45 `6006ab6` after final-head CI.
+   [Its bounded bridge route](../tasks/local-worker-bridge-phase5-viridian-roadblock-route-configuration.md)
+   passed independent review `dbf2b389` and merged PR48 `2eb8fdd` after final CI.
+   [Readiness probe](../tasks/local-worker-bridge-phase5-viridian-roadblock-route-probe.md)
+   `8c6e4fa` passed run39165635888 and independent outcome review `da0352d`.
+   The [implementation authority](../tasks/phase5-viridian-roadblock-implementation.md)
+   independently PASSed at `354257ed` for exact `0a15a5d`; PR51 merged
+   `b79e31f` after final-head CI. One isolated Sol HIGH Worker is active for
+   the exact nine-path local no-ROM package; no request before its local
+   evidence and fresh parent checks.
+   Guarded outcome review remains required before behavior acceptance; readiness
+   acceptance adds no gameplay handler and no retry allowance remains.
+   No rendered Pokédex,
    full Party UI or normal traversal proof is implied. Memento's trainer-AI
    reserve-count gap is separately under read-only feasibility inspection;
    engine acceptance does not establish AI support.

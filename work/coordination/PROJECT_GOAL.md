@@ -4,6 +4,7 @@
 - Authority: user-approved outcome, delegation, and continuation instruction.
 - Scope: existing FireRed roadmap; task contracts and independent evidence gates remain required.
 - Mutable checkpoint: [STATE.json](STATE.json), [HANDOFF.md](HANDOFF.md), and [TASK_REGISTER.md](TASK_REGISTER.md).
+- Model/delegation policy: [MODEL_AND_DELEGATION_POLICY.md](MODEL_AND_DELEGATION_POLICY.md).
 
 ## Accepted instruction
 
@@ -60,6 +61,16 @@ independent review. Run required focused, regression, verified-ROM and replay
 checks through the authorized environment; retain exact receipts and label
 missing evidence honestly. Inspect existing jobs before any new submission.
 Source uncertainty goes to bounded discovery rather than invented behavior.
+
+Use the model/delegation policy to route reasoning effort deliberately. Keep
+Astra for difficult orchestration and evidence reconciliation; route bounded
+implementation/review to Sol where suitable, and mechanical research,
+coordination, and receipts to Terra or Luna. Record concrete process lessons,
+usage-limit interruptions, rework, review outcomes, and model escalations in
+durable checkpoints so the next resume can improve the workflow itself. Do not
+infer model superiority from confidence; compare comparable packages by first-
+review outcome, correction cycles, latency/interruptions, evidence quality, and
+cost/usage telemetry when available.
 
 Maintain a durable checkpoint in the existing coordination files after each
 material transition and before a pause or handoff: current revision/worktree,

@@ -1,11 +1,405 @@
 # FireRedRecomp Coordination Handoff
 
-- Status: `READY_FOR_REVIEWER — published PR6 SUMMARY implementation cb2a2de`
-- Task ID: `P6-04-PARTY-SUMMARY`
+- Status: `IN_PROGRESS — isolated implementation Worker`
+- Task ID: `P5-06-VIRIDIAN-ROADBLOCK-IMPLEMENTATION`
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
 - Current plan: [`../roadmaps/RECALIBRATED_DELIVERY_PLAN.md`](../roadmaps/RECALIBRATED_DELIVERY_PLAN.md)
 
-## Current relay — 2026-10-15
+## Current relay — 2026-10-19
+
+### PR51 merged; isolated Worker is active for local construction only
+
+PR52 coordination sanity review found one stale checkpoint inspection revision;
+corrected to the PR51 merge. No scope or evidence-gate correction was needed.
+
+PR51 merged `b79e31f9daa29a4984499257161c2a8f14525b1e` after final-head
+`c3173ec` CI `39228987341` / job `117982094526` and `39228982200` /
+job `117982077583` SUCCESS. Independent authority review
+`354257ed2a7787003fe95258b5390bf313a0ed4d` PASSed exact `0a15a5d` and was
+ff-adopted unchanged. The review recovered one quota interruption in the same
+worktree `/tmp/firered-roadblock-implementation-authority-review.Sol20261018`;
+it was first PASS with no corrections.
+
+Sol HIGH Dirac `01a15375-05f4-7bb2-b2e5-0575b093653f` is dispatched in the
+existing clean isolated worktree
+`/tmp/firered-roadblock-implementation.Sol20261019`, branch
+`work/p5-viridian-roadblock-implementation-20261019`, base `b79e31f`. Scope is
+only the exact nine-path/local-no-ROM package: no request/publication, guarded
+run, ROM/replay, gameplay acceptance, or Phase 5/7 claim.
+
+One next action: collect the exact local package/checks. The parent then makes
+fresh serial request checks (runner/job, route, prerequisites and current-main
+applicability) before the sole guarded request; its outcome remains
+independently reviewed.
+
+Goal service is `usageLimited`; the current user-requested continuation
+authorizes the adopted implementation continuation, while lifecycle resumption
+remains user/system-controlled.
+Both untracked handoff drafts remain unchanged.
+
+Process: one precommit stale-boundaries correction aligned routing to this
+active Worker; no authority scope changed.
+
+Process: Luna low artifact preparation, Astra serialized preflight/submission,
+Sol medium outcome review, Terra medium authority compilation. Probe first-
+review PASS, no corrections/retries/new usage interruption. One compressed
+draft timing clause was corrected before publication to preserve close-before-
+motion; retain accepted temporal requirements precisely in compiled contracts.
+
+### Sole readiness probe succeeded; independent outcome pending
+
+PR50 main merge `8c6e4fa90fa4fa49a9fbb17c64e16f37bd1e964b` changed only
+the authorized probe. Run `39165635888` / job `117787881344` SUCCESS:
+trusted checkout/input/route/Lua/existing supported-ROM SHA/Probe complete
+passed; all eight patch-only steps skipped. Read only safe step metadata;
+no logs or private paths/content copied. Final pre-submit checks confirmed
+unchanged reviewed workflow, main155a3cb, MediaCenter online/idle and no jobs.
+One allowance consumed, no retry/replacement.
+
+One next action: independent Sol outcome review of exact merge/run. Readiness
+does not authorize implementation or establish gameplay. Compile separately
+reviewed implementation authority only after outcome PASS.
+
+### Single probe prepared; final submission gate
+
+Authority PR49 merged `155a3cb` after independent recheck `cfe6b13` and final
+CI39165410206/39165407589 SUCCESS. Luna low prepared sole-file `9472aec6`
+in `/tmp/firered-roadblock-readiness-probe-20261018`, now PR50. Artifact SHA256
+`edafcd7332caafeac7d4b4b270ae055e3a4fbc697069b1db6400c18895398bef`.
+Branch publication has not dispatched the main-only bridge. One allowance is
+reserved for this exact artifact; no second probe/retry.
+
+One next action: Orchestrator rechecks unchanged merged route/current main,
+online idle firered-local and zero active/queued bridge jobs immediately before
+merging PR50 once. Monitor safe step statuses, then independent outcome review.
+All eight patch-only steps must skip. No gameplay/request authority.
+Canonical checkpoint branch `work/p5-roadblock-probe-relay-20261018`.
+
+### Configuration closed; one-probe contract adopted
+
+PR48 merged `2eb8fddac1cbb410097c8bcc9e44885e3c395cad`, exact configuration
+`569b440` independently PASS `dbf2b389`; final CI39165163719/job117786461463
+and39165161008/job117786452779 SUCCESS. Close configuration only.
+Worker/review worktrees remain preserved at `dbf2b389`; zero corrections,
+one recovered usage interruption, no completed tests repeated.
+
+One next action: finish PR49 verification/publication of the
+[separate one-probe contract](../tasks/local-worker-bridge-phase5-viridian-roadblock-route-probe.md),
+then prepare its literal single-file artifact. Immediately before its one
+publication, Orchestrator must freshly verify merged route, online idle
+`firered-local` and no active/queued bridge job. No probe/request submitted;
+one allowance unused, no retry. All eight patch-only steps must skip.
+Independent outcome review and separately reviewed implementation authority
+remain required before gameplay work. Phase statuses/exclusions unchanged.
+
+### Independent configuration PASS
+
+Exact configuration `569b440` passed in review `dbf2b3896e2993f86da8a0c2bbe251eb0b07db1c`.
+Independent193-file no-ROM suite, checker, YAML/13Bash,9+9 missing-artifact
+negatives and exact selector/target/command/probe predicates PASS. No corrections.
+Same review worktree resumed after one usage interruption; completed tests
+were not repeated. Review file finalized, committed and worktree clean.
+
+One next action: final review-head CI, then exact PR48 merge and configuration
+closure; adopt separate fresh one-probe authority afterward. No readiness,
+runtime, gameplay or phase acceptance follows from this PASS.
+PR49 authority/reconciliation check caught one stale STATE current_phase
+routing sentence; corrected to accepted configuration/next probe. This is one
+coordination correction, distinct from zero configuration corrections. Audit
+all top-level routing summaries when advancing the active task.
+
+### Review resumed after usage interruption — 20:49 UTC
+
+Independent Sol Reviewer hit a usage limit before returning a verdict. User
+continued; exact PR48 remains `569b440`, both original CI runs SUCCESS, no
+active/queued remote jobs. Resume the same Reviewer/context and clean worktree
+`/tmp/firered-roadblock-route-config-review.uziZOl`, branch
+`review/p5-viridian-roadblock-route-config-20261018`, at `569b440`.
+No review artifact yet; recover finished checks rather than rerunning them.
+One next action remains finish the exact independent review. PR49 checkpoint
+is open; no config acceptance, probe/request or runtime action is authorized.
+
+### Configuration published — independent review active
+
+PR48 exact `569b440edaded9d060f7d14e9333bdbe32211b14` (code `38e7d79`)
+changes exactly the four allowed files. Worker worktree
+`/tmp/firered-roadblock-route-config.8esU8V` is clean. Worker baseline/final
+193-file no-ROM, checker321Lua/375Markdown/1259targets, YAML/13Bash,
+all9 pre-evidence and all9 pre-staging missing-artifact negatives, selector/
+target rejection and command wiring PASS. Public CI39154311878/39154329293
+reported SUCCESS. These are Worker receipts pending independent review.
+
+One next action: separate Sol medium Reviewer
+`01a14d28-ca9a-7f62-93f8-d9bc076a12b8` verifies exact PR48 and reruns evidence.
+No implementation self-acceptance or guarded execution. The added artifact
+guard is an eighth patch-only step; future probe must show all eight skipped.
+The earlier publication-status redirect reached Worker after publication;
+only a read-only query was aborted, with no lost changes or duplicated push.
+
+### Configuration Worker assigned — 18:24 UTC
+
+Recovered `origin/main`/canonical `72a18e9`; only both preserved drafts are
+untracked. No active/queued jobs or configuration PR. Workflow/bridge are
+unchanged since adopted `6006ab6`. Sol medium Worker
+`01a15040-e8bd-72e2-ac6a-0f1508d6cc06` is assigned the existing four-output
+configuration contract in `/tmp/firered-roadblock-route-config.8esU8V`, branch
+`work/p5-viridian-roadblock-route-config-20261018`, base `72a18e9`.
+No duplicate Worker. Terra prepares a conditional probe contract only in
+scratch; it is not dispatched and grants no execution authority.
+
+One next action: finish configuration/offline/no-ROM checks and publish exact
+head for a separate Sol Reviewer. No runtime, probe, request or guarded action.
+MediaCenter observed online/idle; that read-only observation supplies no probe
+authority or readiness evidence. Astra owns orchestration; no escalation.
+Canonical coordination branch: `work/p5-roadblock-route-relay-20261018`.
+
+### Final published authority and one next action
+
+PR46 merged `933ef72530967cf55d2880780f06deb45cc9a44e`. Independent
+reconciliation recheck PASS at `0a1443a83c51dedd099ed7234a2b0eea251c8ecd`;
+final public CI `39095976108`/job`117582376679` and
+`39095973258`/job`117582368837` SUCCESS, directly verified by Orchestrator.
+Canonical checkout is synchronized through that merge; final receipts are on
+`work/p5-roadblock-closure-receipt-20261018`. Both untracked drafts unchanged.
+
+One next action: assign Sol medium Worker to execute the four-output route
+configuration contract from published authority `933ef72`, after live-state
+recovery. No configuration Worker or bridge request is currently running.
+Design closure is terminal; all runtime/guarded/phase gates remain open.
+
+Late process receipt: Luna low hit a usage limit while checking PR46's final
+CI. Orchestrator completed the read-only receipt directly; no design research
+was repeated and closure was not blocked. This supersedes the earlier
+"no new usage limit" observation below. PR46 verification/merge instructions
+below are historical, not pending actions.
+
+### Design closed; next prerequisite compiled
+
+PR45 merged `6006ab6fbc7b9f1dd60a88dcbf6a8b0a08692947` after independent
+Sol medium PASS `1199a74` for exact Worker `a7e12e0` and final review-head
+CI `39095715464`/job`117581611565`, `39095718009`/job`117581619164` SUCCESS.
+This closes P5-06 design only. Runtime remains accepted elevation `75b49f3`;
+no C0 gameplay, route readiness, tutorial/traversal or Phase5/7 completion.
+
+Next action: finish PR46 verification/merge, then Sol medium Worker executes
+the [four-output route configuration](../tasks/local-worker-bridge-phase5-viridian-roadblock-route-configuration.md)
+from published authority. It adopts the already reviewed nine-artifact plan,
+six focused commands, both suites and dedicated replay wiring with offline
+negative checks. No further source/route-plan discovery. No probe/request,
+private ROM, guarded replay or runtime edits; successful configuration review
+precedes a distinct fresh readiness probe and separate implementation authority.
+Configuration worktree/Worker is not yet started.
+
+Canonical `/tmp/firered-outcome-reconcile`, branch
+`work/p5-roadblock-review-relay-20261018`, PR46, contains reconciliation.
+Preserved completed design `/tmp/firered-roadblock-design.Uvt4EL` and review
+`/tmp/firered-roadblock-design-review.07jJa1` both at `1199a74`.
+Both untracked handoff drafts remain unchanged; exact hashes are in STATE.
+Historical actions below are superseded; elevation work remains terminal.
+
+Process: first-review PASS, zero corrections/escalations, no new usage limit.
+Astra orchestrated; Sol medium reviewed; Terra medium compiled the next
+contract; Luna low checked CI receipts. Prior interrupted Worker publication
+was recovered without repeating research. Direct-main checkpoint push was
+rejected, so PR46 provides reviewable publication. Initial PR45 merge approval
+saw stale pending checks; a direct fresh query proved final-head SUCCESS and
+the authorized merge then proceeded. Keep direct final CI evidence visible
+before merge approval. No complete model cost/token telemetry is available.
+PR46 reconciliation sanity review requested one adoption-wording correction,
+"this draft" to "this contract"; applied without scope change. This is separate
+from the design's first-review PASS and zero design corrections.
+
+### Independent design PASS — 2026-10-18
+
+Sol medium Reviewer accepted exact `a7e12e0` in review
+`1199a74db8dbbeb1528b171159096bd7d90767c5`, worktree
+`/tmp/firered-roadblock-design-review.07jJa1`. First-review PASS, zero
+corrections, no model escalation; checker/diff checks passed. Final review
+head published to PR45; CI still gates merge. Next: final green CI, exact-head
+merge, design-only closure and bounded bridge configuration contract.
+
+Coordination commit `c1916f9` is on PR46; direct-main publication was rejected
+by automatic approval review, so updates use the reviewable PR instead.
+Both untracked drafts remain byte-identical. No gameplay/phase acceptance.
+
+### Live recovery — 2026-10-18
+
+PR45 published at `a7e12e0023a92b1790e3391ac64657f42e54e486`, exactly
+the two authorized design docs. Public CI `39094949700`/`39094947560`
+SUCCESS. The usage-limit/no-report checkpoint below is superseded.
+Worker worktree `/tmp/firered-roadblock-design.Uvt4EL` is preserved.
+Canonical checkout `/tmp/firered-outcome-reconcile` at `156338a` retains both
+untracked handoff drafts unchanged. No current bridge request; latest12 runs
+are completed. Open PRs1/2/4/7 are unrelated and unchanged.
+
+Next action: independent GPT-5.6 Sol medium Reviewer checks exact PR45 against
+existing P5-06 criteria and records one verdict. Only its review file may be
+added; Orchestrator owns coordination. PASS still requires final review-head
+CI before merge and design-only closure. No runtime or guarded execution yet.
+Model routing: Astra orchestration, Sol medium review; no escalation.
+Process lesson: recover remote publication after a usage interruption before
+resuming research; Worker completed after the stale checkpoint. Review result
+and correction count remain pending. Prior accepted elevation stays terminal.
+
+### Active C0 design worktree — 22:11 UTC
+
+Resume checkpoint — 22:20 UTC: Worker hit a usage limit before writing the
+report. The existing clean worktree and branch remain the only active package;
+no design PR exists. Continue from retained findings after quota recovery. Do
+not restart source work, create another worktree or treat preliminary findings
+as accepted design.
+
+Continue `/tmp/firered-roadblock-design.Uvt4EL`, branch
+`work/p5-viridian-roadblock-design-20261017`, base
+`d59f28f844ec9a45abec0f307bae92525c932501`. Worker is resolving narrow
+message/input/forced-step integration and evidence plan; no report PR yet.
+Independent review prep found new-A/B acknowledgement, non-instant speedup,
+scripted walk bypass of ordinary admission and termination-owned input unlock.
+Retain these as preliminary design inputs, not a completed source/design gate.
+Do not restart accepted elevation implementation or create a replacement worktree.
+
+### Latest code closure and next dispatch — 22:07 UTC
+
+PR44 implementation `4b1ac5f` independently PASS in `6de803d`; final-head
+CI `39073717228` / `39073714122` passed. Merged `75b49f3`; post-merge193-file
+no-ROM suite/checker PASS. Live transient elevation ownership is accepted.
+No story consumer, tutorial/traversal, ROM or phase completion is implied.
+Do not redo completed source discovery or this implementation/review.
+
+Exact next action: Worker executes the [two-path C0 RoadBlocked design](../tasks/phase5-viridian-roadblock-design.md)
+from this authority checkpoint in a fresh worktree. Scope is scene0 admission,
+message/close, one forced down step, wait/release; source-backed input/priority
+and production ownership; exact code/test allowlist and guarded evidence/route
+proposal together. No runtime/runner actions yet. Separate independent review
+precedes any implementation/evidence authority. C2/C3/tutorial remain excluded.
+
+Completed worktrees `/tmp/firered-elevation-implementation.zEwYNr` and
+`/tmp/firered-elevation-implementation-review-gKHlRn` remain preserved.
+Older in-progress/review actions below are historical.
+
+### Implementation published — exact review action
+
+PR44 head `4b1ac5fd37b96aa00c659e464eca609a0a22b235` contains the five authorized
+paths. Worker clean worktree `/tmp/firered-elevation-implementation.zEwYNr`.
+Own pre-edit192-file baseline and final193-file no-ROM suite PASS; focused
+movement105/production78/story25/bootstrap12/connections4 PASS; checker PASS.
+Two restored fault witnesses caught missing finish sampling and same-position
+warp invalidation. These are Worker receipts, not independent acceptance.
+
+Exact next action: independent Reviewer verifies source/code/assertions/scope
+and reruns evidence. Public CI `39058678397` / `39058676358` pending at dispatch.
+Route only a named correction, or merge after independent PASS and final green
+head. No gameplay consumer, tutorial, traversal, ROM or phase claim. Older
+in-progress/research instructions below are history; do not restart them.
+
+### Resume checkpoint — 18:28 UTC
+
+User resumed after usage interruption. Remote main unchanged `58e4961`;
+same implementation worktree below retains edits in `main.lua`,
+`src/core/PlayerMovement.lua` and `tests/player_movement_test.lua` (254 added,
+8 removed lines at recovery). No implementation PR yet. Worker resumed existing
+context to finish production test, verification and publication; do not discard
+edits or redo accepted source research. Independent review remains outstanding.
+
+### Active implementation worktree
+
+Continue `/tmp/firered-elevation-implementation.zEwYNr`, branch
+`work/p5-player-elevation-input-20261016`, base
+`9ea26858e2764ad02f5ef073935054b2660128f8`. Worker is editing the authorized
+PlayerMovement/main runtime paths; tests, publication and independent review
+remain outstanding. Do not create another worktree, redo source research,
+discard these edits or claim them accepted. Exact next action is finish the
+five-path implementation and required evidence, then publish for review.
+
+### Source closure and code dispatch — 02:48 UTC
+
+PR43 exact report/proposal `7e0cb02` independently PASS in `ce387cb`; final
+CI `38842293132` / `38842296655` passed, merged `871f3f1`. Bootstrap and normal
+walk timing are resolved. Source/design research is terminal; no repeat round.
+
+Exact next action: Worker executes the adopted [five-path implementation](../tasks/phase5-player-elevation-input.md)
+in a fresh worktree from this authority checkpoint: live PlayerMovement C/E
+and validity/provenance, actual bootstrap/input/tick/relocation owners, literal
+unit and actual production-path tests, negative witness, full no-ROM/checker/
+public CI, then independent exact review. No current gameplay consumer uses
+this new state; no story predicate/save/collision/order change or tutorial/
+traversal/phase proof. No bridge request or guarded-evidence waiver.
+
+Source worktree `/tmp/firered-elevation-source.dmCXLH` and review
+`/tmp/firered-elevation-review-H6BedJ` are preserved and complete.
+Older next-action paragraphs below are historical.
+
+### Resume checkpoint — 2026-10-16 02:39 UTC
+
+Elevation research/review preparation hit a usage limit before writing the
+report. User resumed; remote main remains `d9c6318`. Continue existing clean
+worktree `/tmp/firered-elevation-source.dmCXLH`, branch
+`work/p5-player-elevation-source-20261015`, base `d9c6318`. Worker and separate
+Reviewer resumed retained findings. No elevation report PR exists yet; do not
+create another worktree or repeat the terminal northbound/tutorial discovery.
+Exact next action remains finish/publish the bounded lifecycle report, then
+independently review its exact head under the existing two-path contract.
+
+### Latest closure and dispatch — 21:45 UTC
+
+PR42 source report `684f69c` independently PASS in `ba86377`; final public
+CI `38812239244` / `38812232691` passed. Merged `ae3d559`. This closes only
+northbound discovery, not gameplay. Do not repeat tutorial tracing or accepted
+projection/Party/Dex work. Runtime remains `ba669fb` (parent192-file PASS).
+
+Exact next action: Worker executes the [two-path elevation lifecycle task](../tasks/phase5-player-elevation-input-source-lock.md)
+in a fresh isolated worktree from this authority checkpoint. Resolve avatar
+bootstrap and ordinary-step elevation producer/observation timing; classify
+load/reposition boundaries; propose one minimal live integration with exact
+paths, literal oracles and stops. No runtime/test/ROM/runner changes yet.
+Independent exact report review and final public CI precede reconciliation.
+No new bridge allowance or phase-status advancement is implied.
+
+Previous northbound worktree `/tmp/firered-northbound-discovery.aOKINv` and
+review `/tmp/firered-northbound-review-PqwDjK` are preserved, not pending work.
+Older resume/next-action paragraphs below are historical.
+
+### Resume checkpoint — 21:38 UTC
+
+P5-05 Worker source tracing was usage-limited before producing a report;
+resume the existing clean worktree `/tmp/firered-northbound-discovery.aOKINv`,
+branch `work/p5-viridian-northbound-discovery-20261015`, baseline `86bf0ac`.
+Remote main was unchanged. Exact next action is to finish the bounded report
+from retained findings, preserving unresolved questions as UNKNOWN, then
+publish the two-path PR for independent review. Do not restart broad tracing.
+
+Important preliminary finding, not accepted source-lock completion: pinned
+`field_control_avatar.c:345–348` reads PlayerGetElevation;
+`field_player_avatar.c:1092–1094` returns **previousElevation**.
+`event_object_movement.c:8400–8411` retains state for grid15 and retains
+previousElevation on current0. Root reread these anchors. The current player
+movement has no corresponding state; raw block height must not be substituted
+or hardcoded to3. Worker should name the smallest explicit elevation-owner/
+lifecycle prerequisite if it cannot yet ground production wiring. Completed
+Party/Dex/projection leaves remain terminal.
+
+### Latest closure and next action — 16:16 UTC
+
+PR6 is CLOSED: exact `cb2a2de` independently PASS in `6389960`; final public
+CI `38720916074` / `38720909470` passed and exact-head merge produced
+`ba669fb`. Independent source/assertion review and188-file no-ROM evidence
+accepted only reduced read-only SUMMARY. Post-merge192 no-ROM files and
+checker PASS. No ROM/LÖVE replay, save/reload or full retail/Phase6 claim.
+
+Next active package is the [two-path P5-05 source task](../tasks/phase5-viridian-northbound-gate-discovery.md):
+Viridian Old Man coordinate C0/C2/C3 eligibility, movement/input lock, tutorial
+return and scene/item continuation. The accepted projection `d280751` is
+terminal and does not execute these paths. Worker must source-lock the actual
+missing seam, compare live/component/evidence coverage, and propose exactly
+one smallest next leaf. Publish one report PR, then separate independent
+review; no implementation/ROM/runner/generic-VM work is authorized here.
+
+Runtime baseline `ba669fb`, public source `c75f352`. Owner battle PR40/41 was
+preserved without overlap in Party paths; its own evidence gates remain.
+Do not repeat accepted PR3/5/6 or the projection, and do not revive exhausted
+bridge requests. Older next-action paragraphs below are historical.
+
+### Previous implementation-review checkpoint
 
 Exact next action: assigned independent Reviewer verifies published PR6
 `cb2a2dee735834148d226a5ae44d5d408b2014a2` under authority `6ff4464` and

@@ -11,6 +11,7 @@ local PartyModel = require("src.core.PartyModel")
 local InputState = require("src.core.InputState")
 local WildPokemonFactory = require("src.core.WildPokemonFactory")
 local Rng = require("src.core.Rng")
+local BoxPokemonCodec = require("src.core.BoxPokemonCodec")
 
 local passed, failed = 0, 0
 local function check(name, condition, detail)
@@ -147,6 +148,80 @@ local soloScreen = PartyScreen.new(soloParty)
 check("solo party has 1 mon row + CANCEL", soloScreen.cursor.maxCursorPos == 1)
 tap(soloScreen, InputState.buildMask({ DPAD_UP = true }))
 check("Up from the only mon wraps to CANCEL in a 1-mon party", soloScreen:cursorRow() == 1)
+
+-- 9. SUMMARY projection reads the actual decoded save-compatible record
+-- without modifying it, and cancelling its action menu returns the cursor
+-- to the exact selected party slot rather than a new list at slot 1.
+local summaryScreen = PartyScreen.new(party)
+tap(summaryScreen, InputState.buildMask({ DPAD_DOWN = true })) -- slot 2
+tap(summaryScreen, InputState.buildMask({ A_BUTTON = true }))
+local before = party:get(2).box
+local stats = summaryScreen:summaryData(2)
+check("summary uses selected valid slot and cached battle stats",
+  stats.slot == 2 and stats.level == 5
+    and stats.attack == party:get(2).attack
+    and stats.defense == party:get(2).defense
+    and stats.speed == party:get(2).speed
+    and stats.spAttack == party:get(2).spAttack
+    and stats.spDefense == party:get(2).spDefense)
+check("summary includes decoded EXP and original trainer name",
+  type(stats.experience) == "number" and stats.experience >= 0
+    and type(stats.otName) == "string" and #stats.otName > 0)
+check("summary is read-only", party:get(2).box == before)
+check("confirmed list can resume at selected row",
+  summaryScreen:resumeBrowsing() == true
+    and summaryScreen.state == PartyScreen.BROWSING
+    and summaryScreen.confirmedSlot == nil
+    and summaryScreen:cursorRow() == 1)
+check("cannot resume an already browsing list", summaryScreen:resumeBrowsing() == false)
+tap(summaryScreen, InputState.buildMask({ B_BUTTON = true }))
+check("list B after returning from summary closes to START",
+  summaryScreen.state == PartyScreen.CLOSED)
+check("cannot resume a closed list", summaryScreen:resumeBrowsing() == false)
+
+-- Distinct source-shaped saved values, not expected values read back from
+-- the projection. Egg eligibility is party_menu.c:2996-3001 and
+-- data/party_menu.h:1093,1127 at c75f352. This is saved-data inspection,
+-- explicitly not retail Egg-stat/page parity.
+local eggRecord = makeRecord(23)
+local eggBox = BoxPokemonCodec.decode(eggRecord.box)
+eggBox.isEgg, eggBox.substructs[3].isEgg = true, true
+eggBox.substructs[0].experience = 4321
+eggBox.substructs[1].pp = { 3, 9, 0, 0 }
+eggRecord.box = BoxPokemonCodec.encode(eggBox)
+eggRecord.level, eggRecord.hp, eggRecord.maxHP, eggRecord.status = 13, 0, 59, 16
+eggRecord.attack, eggRecord.defense, eggRecord.speed = 61, 67, 71
+eggRecord.spAttack, eggRecord.spDefense = 73, 79
+local eggParty = PartyModel.new()
+eggParty:add(makeRecord(24)); eggParty:add(eggRecord)
+local snapshots = {}
+for slot = 1, 2 do
+  snapshots[slot] = {}
+  for k, v in pairs(eggParty:get(slot)) do snapshots[slot][k] = v end
+end
+local eggScreen = PartyScreen.new(eggParty)
+tap(eggScreen, InputState.DPAD_DOWN)
+tap(eggScreen, InputState.A_BUTTON)
+check("valid saved Egg may be selected even with zero cached HP", eggScreen.confirmedSlot == 2)
+local eggInfo = eggScreen:summaryData(2)
+check("Egg saved projection retains literal identity and cached fields",
+  eggInfo.slot == 2 and eggInfo.isEgg == true and eggInfo.species == 19
+    and eggInfo.level == 13 and eggInfo.hp == 0 and eggInfo.maxHp == 59 and eggInfo.status == 16
+    and eggInfo.attack == 61 and eggInfo.defense == 67 and eggInfo.speed == 71
+    and eggInfo.spAttack == 73 and eggInfo.spDefense == 79 and eggInfo.experience == 4321)
+eggInfo.hp, eggInfo.experience = -1, -1
+check("Egg return preserves confirmed cursor", eggScreen:resumeBrowsing()
+  and eggScreen:cursorRow() == 1 and eggScreen.confirmedSlot == nil)
+local intact = eggParty:size() == 2 and eggParty:get(2) == eggRecord
+for slot = 1, 2 do
+  for k, v in pairs(eggParty:get(slot)) do intact = intact and snapshots[slot][k] == v end
+  for k, v in pairs(snapshots[slot]) do intact = intact and eggParty:get(slot)[k] == v end
+end
+check("Egg projection/resume preserves all selected and nonselected saved fields", intact)
+local stillEgg = BoxPokemonCodec.decode(eggRecord.box)
+check("Egg projection neither repairs nor consumes PP", stillEgg.checksumValid
+  and stillEgg.isEgg and stillEgg.substructs[3].isEgg
+  and stillEgg.substructs[1].pp[1] == 3 and stillEgg.substructs[1].pp[2] == 9)
 
 print(("%d passed, %d failed"):format(passed, failed))
 os.exit(failed == 0 and 0 or 1)

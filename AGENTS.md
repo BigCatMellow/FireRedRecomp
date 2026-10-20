@@ -20,6 +20,11 @@ Recover live GitHub state first. Then use, in order:
 4. current `work/coordination/STATE.json`, `work/coordination/HANDOFF.md`, and `work/coordination/TASK_REGISTER.md` for coordination state and task lifecycle;
 5. `docs/roadmap.md` and `docs/handoffs/firered-recomp-checklist.md` for deeper roadmap/history.
 
+Model routing, delegation, and process-improvement guidance is maintained in
+[`work/coordination/MODEL_AND_DELEGATION_POLICY.md`](work/coordination/MODEL_AND_DELEGATION_POLICY.md).
+It is subordinate to this contract and the active task, but every Orchestrator,
+Worker, and Reviewer should apply it when selecting effort and handing off work.
+
 Do not let README prose or an older handoff override newer direct evidence.
 
 ## Core rules

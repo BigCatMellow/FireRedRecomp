@@ -31,15 +31,16 @@ strategic phase
 
 Default to one critical-path Worker package at a time.
 
-## Current critical path — reconciled 2026-10-14
+## Current critical path — reconciled 2026-10-19
 
 [Effect45 outcome PASS](../reviews/2026-10-13-recoil-if-miss-implementation-outcome-review.md)
 closes `cfdbb96` and guarded run `38434551595`; do not repeat its consumed
 probe/request or review. Six owner-merged fast-lane batches (PR10–15) have
 final independent PASS records indexed in the task register. The current
-inventory at `3adc7e8` has 85 represented families after additional owner-merged
-status/ability work. Nine new ROM fixtures remain pending (six fast-lane and
-three status). Status S1–S4 are full-relay packages: their design requires
+inventory snapshot at `3adc7e8` had85 represented families and nine pending
+ROM fixtures (six fast-lane and three status); newer owner batches throughPR41
+have their own records, so those figures are not current totals.
+Status S1–S4 are full-relay packages: their design requires
 guarded evidence for changed RNG/turn-order replays. Bounded no-ROM PASS
 reviews are retained, but these missing gates are not waived by S3/S4 review
 wording invoking the fast lane. No new request has been authorized here.
@@ -49,9 +50,31 @@ RNG or full Phase 4 parity. Preserve all review exclusions and follow-ups.
 The normal START Pokédex zero-seen guard [PR5](https://github.com/BigCatMellow/FireRedRecomp/pull/5)
 is independently PASS and merged `52fbf69`: source386 replaces erroneous411;
 post-merge178 no-ROM files pass. Only the bounded guard/range fix is accepted.
-PR3 Party design is independently PASS and merged `239c25f`. Current leaf is
-actual PR6 SUMMARY code alignment under amended six-path task `6ff4464`;
-Worker implementation/evidence and independent exact review remain required.
+PR3 Party design merged `239c25f`; PR6 SUMMARY is independently PASS and merged
+`ba669fb`, with post-merge192 no-ROM files passing. Only bounded read-only UI
+is accepted. [P5-05 Viridian northbound source discovery](../tasks/phase5-viridian-northbound-gate-discovery.md)
+independently passed and merged PR42 `ae3d559`. It source-locks Old Man
+C0/C2/C3 predicates/tutorial ownership and actual runtime gaps, not gameplay.
+[Player elevation lifecycle source lock](../tasks/phase5-player-elevation-input-source-lock.md)
+also passed and merged PR43 `871f3f1`, resolving bootstrap/ordinary-step timing
+and the five-path integration proposal. [Live elevation ownership](../tasks/phase5-player-elevation-input.md)
+independently passed and merged PR44 `75b49f3`; post-merge193-file no-ROM suite
+passes. It supplies transient state and explicit invalidation, not a gameplay
+consumer. [C0 RoadBlocked integration design](../tasks/phase5-viridian-roadblock-design.md)
+passed independent review `1199a74` and merged PR45 `6006ab6` after final CI.
+[Bounded bridge configuration](../tasks/local-worker-bridge-phase5-viridian-roadblock-route-configuration.md)
+passed independent review `dbf2b389` and merged PR48 `2eb8fdd` after final CI.
+The [single readiness probe](../tasks/local-worker-bridge-phase5-viridian-roadblock-route-probe.md)
+at `8c6e4fa` passed run39165635888 and independent outcome review `da0352d`.
+The [implementation authority](../tasks/phase5-viridian-roadblock-implementation.md)
+for the exact nine-path C0 package independently PASSed at `354257ed` for
+exact `0a15a5d`; PR51 merged `b79e31f` after final-head CI. One isolated Sol
+HIGH Worker is active for local no-ROM construction only. No request is
+authorized before its exact local evidence and fresh parent checks. The probe
+allowance is consumed. Guarded outcome review remains mandatory before behavior
+acceptance.
+Tutorial/C2/C3 and generic VM remain excluded. Do not repeat accepted elevation
+or northbound research, or claim traversal from this prerequisite.
 Read-only Memento AI feasibility found an existing
 replacement callback; this is not implementation authority and must be checked
 against later battle changes before a separate task.

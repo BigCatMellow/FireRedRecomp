@@ -1,0 +1,23 @@
+P5-06-VIRIDIAN-ROADBLOCK-ROUTE-PROBE
+
+Readiness-only probe for the Viridian C0 roadblock bridge route.
+
+Requested readiness:
+- trusted checkout
+- exact route recognition: phase5-viridian-roadblock
+- Lua toolchain readiness
+- existing supported FireRed US v1.0 ROM SHA-1 gate: 41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc
+
+Patch-only steps explicitly skipped:
+1. bounded target validation
+2. patch application
+3. mandatory pre-evidence artifact gate
+4. route-focused tests
+5. shared no-ROM suite
+6. shared verified-ROM suite
+7. route runtime replay
+8. staging/publication
+
+No gameplay, gameplay request, implementation patch, request, focused test, full
+suite, replay, staging, or publication is requested or authorized by this
+readiness probe.
