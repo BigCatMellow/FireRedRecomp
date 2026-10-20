@@ -222,6 +222,15 @@ do
     types(ev) == "turnStart,useMove,damage,useMove,damage" and ev[4].side == "player"
       and not e.foe.flinched, types(ev))
   check("moving second: 6 draws", e.rng.draws == 6, e.rng.draws)
+  -- Review F2: the field above is cleared by resolveEndTurn, so pin the
+  -- turn-order gate directly: a certain flinch on a target that already
+  -- acted sets nothing and emits nothing.
+  e = battle({}, {})
+  e.flinchTargetPending = false
+  local out = {}
+  e:applySecondaryStatus2("foe", e.foe, "flinch", out, true)
+  check("certain flinch on a target that already acted: no flinch, no event",
+    not e.foe.flinched and #out == 0, #out)
 end
 
 ---------------------------------------------------------------------------

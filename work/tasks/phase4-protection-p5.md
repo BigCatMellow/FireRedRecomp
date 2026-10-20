@@ -1,7 +1,7 @@
 # Task: protection slice P5 — Focus Punch (effect 170)
 
 - Task ID: `P4-PROTECTION-P5`
-- Status: `IMPLEMENTED — awaiting independent review`
+- Status: `DONE — independently reviewed PASS WITH CORRECTIONS (applied)`
 - Lane: full relay (a pre-turn event, per-turn and battle-long battle
   state, new controller texts, an RNG change on an already-admitted move)
 - Spec: [protection design proposal](../reports/phase4-protection-design-proposal.md)
@@ -46,9 +46,10 @@ Abbreviations: `bsc.c` `src/battle_script_commands.c`, `bs1.s`
 - **Damage record** `Cmd_datahpupdate` (`bsc.c:1822-1854`): `gHpDealt` into
   `physicalDmg`/`specialDmg` for HP loss without `HITMARKER_PASSIVE_DAMAGE`;
   Pain Split excluded (`gCurrentMove != MOVE_PAIN_SPLIT`, and it is Normal
-  so neither arm fires); a 0-HP hit records 0. `gProtectStructs` is cleared
-  by `TurnValuesCleanUp(FALSE)` (`bm.c:3637-3639`) and `FaintClearSetData`
-  (`:2461`).
+  so neither arm fires); a 0-HP hit records 0. The damage record is cleared
+  by `TurnValuesCleanUp(FALSE)` (`bm.c:3637-3639`); `FaintClearSetData`
+  (`:2461-2479`) clears only named protect flags, so the engine's extra clear
+  on faint is not a source clear (unobservable; review F1).
 
 ## Design (as implemented)
 
@@ -166,3 +167,10 @@ Abbreviations: `bsc.c` `src/battle_script_commands.c`, `bs1.s`
 - Seeded replays containing a Focus Punch user hit earlier in the turn
   diverge from that use (design Risk R3); none exists in the repository.
 - ROM fixture pending for move 264.
+
+## Review (2026-10-20)
+
+[Implementation review](../reviews/2026-10-20-protection-p4-p5-implementation-review.md):
+PASS WITH CORRECTIONS. F1 applied (comments no longer claim FaintClearSetData
+clears the damage record). F4: the multi-hit last-hit deviation can only be
+exposed by Focus Band (not modeled), not by P3 Endure.

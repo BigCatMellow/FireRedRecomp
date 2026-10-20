@@ -1205,8 +1205,10 @@ function BattleEngine.makeBattler(opts)
     -- Set by applyDamage for nonzero damage from the opposing battler's move
     -- (Cmd_datahpupdate, :1822-1854: not passive damage, not Pain Split);
     -- reset at each runTurn start (TurnValuesCleanUp(FALSE) clears the
-    -- whole struct after the previous turn, src/battle_main.c:3637-3639) and
-    -- on faint (FaintClearSetData, :2461). Battle-only, never persisted.
+    -- whole struct after the previous turn, src/battle_main.c:3637-3639).
+    -- FaintClearSetData (:2461-2479) clears only named protect flags, not
+    -- the damage record; the engine also clears it on faint, which is
+    -- unobservable (the per-turn reset precedes any read). Battle-only.
     tookMoveDamage = false,
     moves = {},
     statStages = {
@@ -1407,7 +1409,10 @@ function BattleEngine:recordFaint(side, events)
   -- FaintClearSetData zeroes gDisableStructs and sets isFirstTurn = 2
   -- (src/battle_main.c:2458-2459, :2481; protection slice P4).
   battler.isFirstTurn = 2
-  -- ...and gProtectStructs (src/battle_main.c:2461; protection slice P5).
+  -- Not a source clear: FaintClearSetData (src/battle_main.c:2461-2479)
+  -- clears only named gProtectStructs flags, never physicalDmg/specialDmg.
+  -- Clearing here is unobservable (the per-turn reset runs before any read)
+  -- and keeps a replacement's record clean (protection slice P5).
   battler.tookMoveDamage = false
   -- FaintClearSetData also clears the escape prevention and the wrap
   -- ANOTHER battler holds from this slot (src/battle_main.c:2444-2452).

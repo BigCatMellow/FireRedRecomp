@@ -1,7 +1,7 @@
 # Task: protection slice P4 — Fake Out (effect 158)
 
 - Task ID: `P4-PROTECTION-P4`
-- Status: `IMPLEMENTED — awaiting independent review`
+- Status: `DONE — independently reviewed PASS WITH CORRECTIONS (applied)`
 - Lane: full relay (new per-battler cross-turn state, an RNG change on an
   already-admitted move, a new AI row)
 - Spec: [protection design proposal](../reports/phase4-protection-design-proposal.md)
@@ -160,3 +160,9 @@ Abbreviations: `bsc.c` `src/battle_script_commands.c`, `bs1.s`
   the user's first turn, diverge from that use (design Risk R3); none exists
   in the repository.
 - ROM fixture pending for move 252.
+
+## Review (2026-10-20)
+
+[Implementation review](../reviews/2026-10-20-protection-p4-p5-implementation-review.md):
+PASS WITH CORRECTIONS. F2 applied: a direct check pins the turn-order flinch
+gate (the post-turn field check could not fail). F3/F5/F6 informational.

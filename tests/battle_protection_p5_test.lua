@@ -348,7 +348,7 @@ do
   e.player.hp = 0
   e:beginFaintSequence()
   e:recordFaint("player", {})
-  check("recordFaint clears the record (FaintClearSetData)", e.player.tookMoveDamage == false)
+  check("recordFaint clears the record (engine-only, unobservable; review F1)", e.player.tookMoveDamage == false)
 end
 
 ---------------------------------------------------------------------------
