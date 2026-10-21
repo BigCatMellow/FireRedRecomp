@@ -1,6 +1,9 @@
 # Phase 4 proposal: variable-power and data-derived moves (Present, Fury Cutter, Rollout/Defense Curl, Return/Frustration, Hidden Power, Low Kick)
 
-- Status: `PROPOSAL — awaiting design review`
+- Status: `PROPOSAL — independently reviewed PASS WITH CORRECTIONS (applied)`
+- Review: [2026-10-21 variable-power design review](../reviews/2026-10-21-variable-power-design-review.md).
+  Findings F1-F13 and the decisions D1-D4 are folded in below; "Review
+  corrections applied" at the end maps each one to the section it changed.
 - Date: 2026-10-21
 - Source pin: pret/pokefirered `c75f352304d529f6ba92d4f74b9cf8b5c3810788`
 - Engine baseline: working tree at `67f6453` (after protection P1/P4/P5,
@@ -11,13 +14,15 @@
   `self.protectedMove`), the Flail/Eruption/Weather Ball local move copy, and
   the Restore HP `restoreHP`/`restoreHPFull` events and texts.
 - Lane: mixed, per slice (see "Slices"). Present and the friendship/IV
-  formulas fit the fast lane. Fury Cutter and Rollout add cross-turn battle
-  state, so they take the full relay.
+  formulas (V4a) fit the fast lane. Fury Cutter and Rollout add cross-turn
+  battle state, so they take the full relay, as separate packages (D3).
 - Ownership: `main.lua` and the party/Dex code belong to another agent. **No
-  slice edits `main.lua`.** Two families (V4, V5) need data that the battle
-  inputs do not carry today. "Data availability" says exactly which field is
-  missing and where it would come from, and the hand-off notes are at the
-  end.
+  slice edits `main.lua`.** `BattlePartyBridge.lua` and the Pokémon
+  factories are party code too (D1). Two families (V4, V5) need data that
+  the battle inputs do not carry today. "Data availability" says exactly
+  which field is missing and where it would come from, and the hand-off
+  notes are at the end (H1 is also a self-contained note:
+  [`work/handoffs/2026-10-21-battle-friendship-ivs-handoff.md`](../handoffs/2026-10-21-battle-friendship-ivs-handoff.md)).
 
 The [move-effect inventory](phase4-move-effect-inventory.md) marks every
 family here `B`. All the damaging ones are admitted today through the
@@ -56,21 +61,27 @@ is `src/battle_util.c`, `pkmn.c` is `src/pokemon.c`, `ai.s` is
    **heals the target** by `maxHP/4`, or prints "HP is full!". No new state.
 2. **V2, Fury Cutter (full relay, engine only):** a per-battler counter from
    0 to 5, so power is 10, 20, 40, 80, then 160 from the fifth hit on. It
-   resets on a miss or no-effect, at every `CancelMultiTurnMoves` call, on a
-   ball throw and on a failed run. **It does not reset when the user uses a
+   resets on a miss or no-effect, at every `CancelMultiTurnMoves` call, on
+   any item action (only the ball throw is represented, F5), on a failed run,
+   and at faint and switch-in. **It does not reset when the user uses a
    different move.**
 3. **V3, Rollout/Ice Ball plus Defense Curl (full relay, engine only):** a
    5-hit lock that uses `STATUS2_MULTIPLETURNS`, with power 30, 60, 120, 240,
    480. The power doubles again after Defense Curl, which sets a sticky
    status2 bit. Any miss, no-effect or protected hit cancels the lock.
    Locked turns spend no PP, **except a protected locked turn, which spends
-   one**.
-4. **V4, Return/Frustration/Hidden Power (fast lane formulas; needs battler
-   input):** the formulas are pure. **No battler that the engine receives
+   one** (as Rampage's protected locked turn does; the families differ only
+   on an unprotected locked miss, F2).
+4. **V4, Return/Frustration/Hidden Power, split as V4a / H1 / V4b (F4,
+   D1, D2):** the formulas are pure. **No battler that the engine receives
    carries friendship or IVs today.** The save record and the generated
-   instances do hold them, but `BattlePartyBridge` drops them. V4 needs a
-   few lines in the bridge and the two factories (hand-off H1), or
-   coordinator authority to make that change inside the V4 package.
+   instances do hold them, but `BattlePartyBridge` drops them.
+   - **V4a (engine only, fast lane):** optional `friendship`/`ivs` battler
+     opts, the formulas, the Hidden Power defrost exclusion (F1), and a
+     battler-aware unsupported gate when an attacker lacks the data.
+   - **H1 (party/Dex owner):** the bridge and factory lines that fill those
+     opts. Not a prerequisite for anything except V4b.
+   - **V4b (after H1):** bridge tests and the final inventory flip.
 5. **V5, Low Kick (deferred):** it needs the target's Pokédex weight
    (`gPokedexEntries[].weight`). **No weight data exists anywhere in the
    project**: there is no importer, no ROM address and no catalog field. It
@@ -89,7 +100,7 @@ today:
 | --- | --- | --- | --- |
 | Present | target `hp`, `maxHP` | yes | n/a |
 | Fury Cutter, Rollout, Defense Curl | battle-only counters and bits | new battle-only fields | n/a (no save data) |
-| Return/Frustration | attacker `gBattleMons[].friendship` | **no** | player party: `decoded.substructs[0].friendship` (`BoxPokemonCodec.lua:161`). Wild/temporary: `instance.boxData.substructs[0].friendship` (`WildPokemonFactory.lua:244`). Trainer: **not in the instance**; source value is `gSpeciesInfo[species].friendship` (`pkmn.c:1815`), which is `catalog.species[s].friendship` (`import/SpeciesInfo.lua:75`) |
+| Return/Frustration | attacker `gBattleMons[].friendship` | **no** | player party: `decoded.substructs[0].friendship` (`BoxPokemonCodec.lua:161`). Wild/temporary: `instance.boxData.substructs[0].friendship` (`WildPokemonFactory.lua:169-172`, written at `:244`; the bridge can read it there, F13). Trainer: **not in the instance**; source value is `gSpeciesInfo[species].friendship` (`pkmn.c:1815`), which is `catalog.species[s].friendship` (`import/SpeciesInfo.lua:75`) |
 | Hidden Power | attacker's six IVs | **no** | player party: `decoded.substructs[3].ivs` (`BoxPokemonCodec.lua:210-217`). Wild/temporary: `instance.ivs` (`WildPokemonFactory.lua:257`). Trainer: `instance.ivs` (`TrainerPokemonFactory.lua:123`, all six = `iv*31/255`) |
 | Low Kick | target `gPokedexEntries[SpeciesToNationalPokedexNum(species)].weight` | **no** | **nowhere.** Only the species-to-national map exists (`import/PokedexOrder.lua:45`, `import/RomAddresses.lua:71`) |
 
@@ -101,6 +112,12 @@ the refresh that follows rewrites only level, HP and stats
 (`bsc.c:3316-3329`), so `gBattleMons[].friendship` keeps the switch-in
 value. **A snapshot taken when the battler is built is therefore exact**,
 including the snapshot from main.lua's rebuild on a switch.
+
+Precondition (F12): this holds because the project applies level-up
+friendship after the battle (`EarlyRivalRewards.lua:121-127`), so the party
+value cannot drift during a battle today. When in-battle EXP lands, a
+mid-battle switch-in rebuild must read the battle-time party friendship:
+source re-copies the updated party value at that switch-in.
 
 How the values are lost today:
 
@@ -135,9 +152,10 @@ D1.
   the IVs. Rejected.
 - Weight: no default exists. The bands give power 20 to 120. Rejected.
 
-So option (b), a hand-off, applies to V4 and V5. V4 is small enough that
-the coordinator may instead authorize the bridge and factory lines inside
-the V4 package (D1).
+So option (b), a hand-off, applies to V4 and V5. **D1 is settled: the
+bridge and the factories are party code**, so H1 goes to the party/Dex
+owner and no V4 package lists those lines in its MAY CHANGE. V4a lands
+without them (see "V4a" under Design).
 
 ## Other blocked families checked against "only battler data is missing"
 
@@ -159,7 +177,7 @@ the V4 package (D1).
 
 - `Cmd_damagecalc` (`bsc.c:1209-1216`) passes `gDynamicBasePower` and
   `gBattleStruct->dynamicMoveType` to `CalculateBaseDamage`.
-- `CalculateBaseDamage` (`pkmn.c:2385`) checks `if (!powerOverride)` and
+- `CalculateBaseDamage` (`pkmn.c:2383`, F11) checks `if (!powerOverride)` and
   then uses `gBattleMoves[move].power` (`:2398-2401`). It uses the record
   type unless `typeOverride` is set (`:2403-2406`). The physical/special
   split follows that type (`IS_TYPE_PHYSICAL`, `battle.h:475`).
@@ -206,15 +224,29 @@ the V4 package (D1).
   Grass 42-46, Electric 47-50, Psychic 51-54,
   Ice 55-58, Dragon 59-62, **Dark only at 63** (every IV odd). Never Normal
   or `???`.
-- The dynamic type reaches every reader through `GET_MOVE_TYPE`
+- The dynamic type reaches these readers through `GET_MOVE_TYPE`
   (`battle.h:469-470`):
   - Hustle's accuracy term (`bsc.c:1038`, `:1073`);
   - the physical/special split, Thick Fat and the pinch abilities in
     `CalculateBaseDamage`;
   - the weather terms;
-  - STAB and effectiveness in `typecalc` (`bsc.c:1285`);
-  - the move-end defrost (`moveType` from `bsc.c:4080`, read at `:4103-4116`).
-  This is the same reader set as Weather Ball.
+  - STAB and effectiveness in `typecalc` (`bsc.c:1285`).
+- **It does not reach the `datahpupdate` damage record or, through it, the
+  move-end defrost (F1).** `Cmd_datahpupdate` picks its own `moveType`
+  (`bsc.c:1751-1756`): the record type when `dynamicMoveType == 0`, the
+  dynamic type only when `F_DYNAMIC_TYPE_1` is clear, and **the record type
+  otherwise**. Hidden Power sets `F_DYNAMIC_TYPE_1 | F_DYNAMIC_TYPE_2`
+  (`bsc.c:8527`); Weather Ball sets only `F_DYNAMIC_TYPE_2`
+  (`bsc.c:9352-9360`). So `datahpupdate` sees Normal (physical,
+  `battle.h:475`) and records `physicalDmg`, never `specialDmg`
+  (`bsc.c:1823-1843`). `MOVEEND_DEFROST` needs `specialDmg` **and**
+  `moveType == TYPE_FIRE` (`bsc.c:4103-4109`), so **a Fire Hidden Power
+  never thaws a frozen target**, while a Fire Weather Ball does. This is
+  **not** the Weather Ball reader set: V4a must exclude Hidden Power from
+  the engine's move-end defrost (`BattleEngine.lua:1625-1631`, which tests
+  only `currentMove.type == TYPE_FIRE` and damage dealt).
+- Known limit for later Counter/Mirror Coat work: Hidden Power always
+  records physical damage, whatever its type.
 - Trainer oracles: party `iv` 0 makes every IV 0, so Fighting at 30 power.
   `iv` 255 makes every IV 31, so Dark at 70 power. The scaled IV is
   `iv * 31 / 255` (`bm.c:1576`, `:1588`, `:1606`, `:1620`).
@@ -265,11 +297,18 @@ the V4 package (D1).
   - Wonder Guard in that typecalc would leave `MISSED` set, so the heal text
     prints with no HP change. Wonder Guard is not modeled in the engine;
     record it as a limit.
+  - Recorded limits (D4): the heal ignores Substitute (unmodeled); Wonder
+    Guard's leftover `MISSED`; and the pre-roll typecalc's
+    `targetNotAffected` mark on a Ghost target, which is unobservable for a
+    non-locking move, so the engine does not set it.
 - RNG:
   - damage branch: accuracy, Present, crit, damage random, plus the tracked
     plain-hit `seteffectwithchance` gap (see "RNG notes");
   - heal or full HP: accuracy and Present only;
   - miss: accuracy only;
+  - semi-invulnerable (Fly/Dig) target: **nothing** (F7).
+    `AccuracyCalcHelper` jumps to `PrintMoveMissed` before `Random()`
+    (`bsc.c:1040-1043`); the text is "missed" and PP is spent;
   - protected (P1 gate): nothing, and the protected text, because
     accuracycheck re-tests protect first.
 - Record (`moves.h:2824`): Normal, power 1, accuracy 90, protect-affected,
@@ -294,9 +333,12 @@ the V4 package (D1).
   1. `furycuttercalc`, the increment, and the reset on `NO_EFFECT`;
   2. `CancelMultiTurnMoves` (`bu.c:203-214`, `:213`);
   3. `ClearFuryCutterDestinyBondGrudge` (`bu.c:3041-3046`), called by
-     `HandleAction_UseItem` (`bm.c:4155`, every ball throw) and by a failed
-     run (`bm.c:4311`);
-  4. the disable-struct clears above.
+     `HandleAction_UseItem` (`bm.c:4155`) **before it branches on the item**
+     (`bm.c:4150-4157`), so on every item action: balls, Poké Doll/Fluffy
+     Tail, Poké Flute, player bag items and trainer AI items (F5; only the
+     capture action is represented today), and by a failed run
+     (`bm.c:4311`);
+  4. the disable-struct clears above (`bm.c:2382-2384`, `:2457-2459`, F11).
 - **Using a different move does not reset the counter.** Fury Cutter,
   Tackle, Fury Cutter gives 10, then 20.
 - Reset through `CancelMultiTurnMoves`, for any user and whether or not it
@@ -313,6 +355,11 @@ the V4 package (D1).
     Yawn `:1040`, Spite `bsc.c:7982`.
   - The end-of-turn sleep cancel (`bm.c:2941-2942`) needs `MULTIPLETURNS`,
     so it does not touch a Fury Cutter user.
+  - Two modeled callers were missing from this list (F9): the engine's
+    end-of-turn sleep cancel (`BattleEngine.lua:4166`) and the Rampage
+    `WasUnableToUseMove` cancel (`:4434`, mirroring `bu.c:958`). Both reset
+    the counter once V2 edits `cancelMultiTurnMoves`. `bsc.c:6071` is the
+    `cancelmultiturnmoves` script command itself.
 - The counter survives the target fainting and a replacement coming in.
 - RNG: hit draws accuracy, crit, damage. A miss draws accuracy only. A
   protected or semi-invulnerable miss draws nothing. Bug has no 0x matchup,
@@ -350,9 +397,19 @@ the V4 package (D1).
     protect step cancels the lock (`bsc.c:898-900`) **before** the script's
     `jumpifstatus2`.
   - A protected **locked** turn therefore reaches ppreduce and **spends one
-    PP**. `Cmd_ppreduce` deducts only while PP is above 0, `bsc.c:1146`.
-    This is the opposite of Rampage, whose `rampageLocked` the engine
-    captures before the protect step (`BattleEngine.lua:2202`).
+    PP**. `Cmd_ppreduce` deducts only while PP is above 0 (`bsc.c:1147`,
+    F11).
+  - **This is the same as Rampage on a protected locked turn (F2).**
+    Rampage's lock is also cancelled by the protect step, and its
+    accuracycheck re-test jumps to `PrintMoveMissed`, which runs the
+    guarded ppreduce (`bs1.s:276-278`; engine
+    `rampageLocked and not hit and slot.pp > 0`, `BattleEngine.lua
+    :2785-2788`).
+  - The real difference is the **unprotected locked miss** (an accuracy
+    miss or a semi-invulnerable miss): Rampage spends one PP through
+    `PrintMoveMissed`; Rollout spends **none**, because `MULTIPLETURNS` is
+    still set at `jumpifstatus2` (`bs1.s:1595`) and the miss jumps straight
+    to `RolloutHit`.
   - Accuracycheck then re-tests protect: `MISSED`, `RolloutHit`, cancel
     again (a no-op), and the protected text.
 - **Semi-invulnerable target:** `AccuracyCalcHelper` misses, the miss jumps
@@ -373,6 +430,11 @@ the V4 package (D1).
   **`setdefensecurlbit`** (`bsc.c:8472-8476`), then DEF +1 through
   `statbuffchange`. It follows the ordinary stat-up path, `StatUpDoAnim` /
   `StatUpPrintString` (`bs1.s:503-510`), including "won't go higher!" at +6.
+  At +6 `ChangeStatBuffs` returns WORKED with `B_MSG_STAT_WONT_INCREASE` and
+  sets `MISSED` (`bsc.c:6796-6815`); Defense Curl's `jumpifbyte` goes to
+  `StatUpPrintString` **without** the `pause B_WAIT_TIME_SHORT` that effect
+  11 runs first (`bs1.s:2016` vs `:493-495`). The text is identical and the
+  `MISSED` flag is unobservable in the engine (F10).
 - **The bit is set even at +6.** `STATUS2_DEFENSE_CURL` (`cb.h:130`) has no
   other writer or reader except Rollout (grep of the pin). It persists until
   faint (`bm.c:2441`) or switch-out (`bm.c:2367`; Baton Pass's mask at
@@ -403,8 +465,17 @@ No new strings.
   The AI always types Hidden Power as Normal (`aisc.c:981`, `:1205`).
 - **All of these rows are already ported** (`AICheckBadMove.lua:631-633`,
   `:645`, `:664`, plus the power gate at `:702`). No AI change is needed.
-  `AI_CheckViability` terms (`ai.s:2846`, `:2891`, `:3203`) stay out of
-  scope, as in earlier slices.
+  The other script references stay out of scope, as in earlier slices
+  (labels corrected, F6): `ai.s:2846` is
+  `AI_SetupFirstTurn_SetupEffectsToEncourage` (Defense Curl), `:2891` is
+  `AI_Risky_EffectsToEncourage` (Present) and `:3203` is
+  `AI_HPAware_DiscouragedEffectsWhenTargetLowHP` (Fury Cutter). Defense
+  Curl's `AI_CheckViability` references are `AI_CV_Protect` (`:2024`) and
+  `AI_CV_Snatch` (`:2681`). None of these scripts is ported for general
+  trainers: `TrainerAI.choose` accepts only flags 0, 0x1 and the Oak-lab
+  0x7 (`TrainerAI.lua:137-150`), and `EarlyRivalAI` accepts only Tackle,
+  Scratch, Growl and Tail Whip (`EarlyRivalAI.lua:1-6`, `:79`). So "no AI
+  change needed" stands.
 
 ## Engine today (fit points)
 
@@ -416,13 +487,16 @@ No new strings.
 - `cancelMultiTurnMoves` (`:1926-1931`): also clear `rolloutTimer` and
   `furyCutterCounter`. It is already called at flinch, full paralysis,
   confusion self-hit, recharge, sleep/freeze application and the protect
-  step (`:1684`, `:1691`, `:1713`, `:1760`, `:1844`, `:1862`, `:2221`).
+  step (`:1684`, `:1691`, `:1713`, `:1760`, `:1844`, `:1862`, `:2221`), and
+  at the end-of-turn sleep cancel (`:4166`) and the Rampage
+  `WasUnableToUseMove` cancel (`:4434`) (F9).
 - `isLocked` (`:1939-1942`): add `rolloutTimer > 0`. Also update the locked
   0-PP check (`:2150-2156`) and the `lockedTurn` set (`:2034-2044`).
 - End-of-turn sleep cancel (`:4165`): add `rolloutTimer > 0` to the
   `MULTIPLETURNS` test.
 - Local move copy (`:2076-2105`): Return, Frustration and Hidden Power
-  (power plus type) before the cancellers. Rollout and Fury Cutter set
+  (power plus type, with a no-defrost marker for Hidden Power, F1) before
+  the cancellers. Rollout and Fury Cutter set
   their power after accuracy (see below).
 - Ordinary accuracy and PP (`:2757-2790`), then crit (`:3271`): Present's
   roll and branch sit between them. Rollout's PP skip goes here too.
@@ -445,6 +519,11 @@ No new strings.
   - Type immunity is ignored. Crit and damage random are not drawn. This
     does not count as move damage (`tookMoveDamage` unchanged), does not
     advance Oak's tutorial flag, and does not thaw.
+  - A Fly/Dig target misses with no draw at all (F7); PP is spent.
+  - Limits (D4): Substitute, Wonder Guard's leftover `MISSED`, and the
+    unobservable `targetNotAffected` mark on a Ghost target.
+  - The controller comment on `restoreHP` ("the heal target is the user")
+    becomes stale and is updated: the event names the healed side.
 - New event fields: none. A `present` event is not needed, because source
   prints nothing for the roll.
 - Fast lane: one family, no new state.
@@ -460,22 +539,30 @@ No new strings.
   - A post-typecalc `noEffect` (unreachable today) would also reset the
     counter.
 - Resets: `cancelMultiTurnMoves` (all existing callers, including the
-  protect step for **any** move), `recordFaint`, the player's capture
-  action, and a failed run. **No reset when the user uses another move.**
+  protect step for **any** move and the two F9 callers), `recordFaint`, the
+  player's capture action (any item action in source; only capture is
+  represented, F5), and a failed run. A switch-in is a fresh battler, so it
+  starts at 0. **No reset when the user uses another move.**
 - Full relay (cross-turn state).
 
 ### V3: Rollout / Ice Ball (117) and Defense Curl (156)
 
 - State: `rolloutTimer` (0-5; for this family "nonzero" equals
   `MULTIPLETURNS`) and `defenseCurl` (bool), both battle-only.
-- PP: spend one PP unless `rolloutTimer > 0` **after** the protect step.
-  Read it after `cancelMultiTurnMoves`, not captured before, so a protected
-  locked turn spends one PP while above 0.
+- PP (F3): capture **one** value, `rolloutLocked = rolloutTimer > 0`,
+  right after the protect step's `cancelMultiTurnMoves` (unlike
+  `rampageLocked`, which is captured before it) and **before** the hit
+  branch changes the timer. The PP block and the 0-PP bypass both read that
+  value: spend one PP unless `rolloutLocked`. So a protected locked turn
+  spends one PP while above 0, hit 1 spends one, hits 2-5 spend none, and
+  an unprotected locked miss spends none (F2).
 - After accuracy:
   - Miss, protected or semi-invulnerable miss: `cancelMultiTurnMoves`, then
     the miss or protected event.
   - Hit: if `rolloutTimer == 0`, set it to 5 and set `lockedSlot`. Then
-    `rolloutTimer = rolloutTimer - 1`; at 0 the lock clears.
+    `rolloutTimer = rolloutTimer - 1`; at 0 the lock clears: the fifth hit
+    sets `lockedSlot = nil` with the same `not recharging` guard as
+    `cancelMultiTurnMoves` (`:1930`), as Rampage does at `:4436` (F3).
   - Power = `30 * 2^(4 - rolloutTimer)`, times 2 if `defenseCurl`. Then the
     ordinary hit.
 - Lock plumbing: add `rolloutTimer > 0` to `isLocked`, to `lockedTurn` and
@@ -483,27 +570,51 @@ No new strings.
   auto-run needs no change.
 - Defense Curl: admit 156 in `supportsMove` (power 0, `MOVE_TARGET_USER`).
   Set `defenseCurl = true` after PP and before the DEF +1 branch, which
-  reuses the `STAT_STAGE_MOVES` defense +1 path (silent "won't go higher" at
-  +6, as effect 11). Clear it in `recordFaint`.
+  reuses the `STAT_STAGE_MOVES` defense +1 path ("won't go higher!" at +6:
+  the same text as effect 11; source only skips effect 11's short pause,
+  F10). Clear it in `recordFaint`.
 - Full relay (cross-turn state, lock change).
 
-### V4: Return / Frustration / Hidden Power (121/123/135)
+### V4: Return / Frustration / Hidden Power (121/123/135), split V4a / H1 / V4b
 
-- Engine:
-  - `makeBattler` accepts `opts.friendship` (0-255) and `opts.ivs`
-    (`{hp, attack, defense, speed, spAttack, spDefense}`).
+D1 makes the bridge and factories party code, and D2 forbids a silent
+fallback, so V4 splits (F4).
+
+- **V4a (engine only, fast lane):**
+  - `makeBattler` accepts optional `opts.friendship` (0-255) and
+    `opts.ivs` (`{hp, attack, defense, speed, spAttack, spDefense}`). The
+    precedent is `catchRate`, optional and asserted only at use
+    (`BattleEngine.lua:1129-1133`, `:4622`).
   - The local copy sets:
     - Return: `power = floor(10*f/25)`, Frustration
       `floor(10*(255-f)/25)`, with **0 replaced by the record power**
       (`pkmn.c:2398-2399`);
-    - Hidden Power: `power` and `type` as in §3, before accuracy (the
-      Weather Ball pattern).
-  - A missing input raises a clear error at resolution. The engine does not
-    fall back silently (D2).
-- Battle inputs: hand-off H1. V4 lands only together with H1, otherwise a
-  live battle that uses one of these moves would hit the error.
-- Fast lane, if D1 lets the H1 lines ride in the same package. Otherwise
-  the package waits for the party/Dex owner.
+    - Hidden Power: `power` and `type` as in §3, before accuracy, plus a
+      marker that excludes it from the move-end defrost (F1).
+  - Effects 121/123 for an attacker with no `friendship`, and 135 for one
+    with no `ivs`, are **unsupported for that attacker**, through a
+    battler-aware `supportsMove`. The controller already turns an
+    unsupported player move into "That move's effect is not available
+    yet." with no turn and no RNG (`BattleSceneController.lua:715-721`). A
+    foe reaches the existing resolution error (`BattleEngine.lua
+    :2071-2074`), exactly as every other `B` effect does today.
+  - Tests use synthetic battlers that carry the opts, plus one test that
+    shows the unsupported gate when they are absent.
+  - Inventory rows read "represented when the battler carries
+    friendship/IVs; needs H1".
+  - Behavior change to note: these are TM moves (TM27/TM21/TM10), so the
+    live reach is player mons taught them and custom-move trainer parties.
+    V4a turns them from a silently wrong plain hit into a visible "not
+    available yet" (player) or an unsupported-effect error (foe), the same
+    treatment Defense Curl gets today. **Before merging V4a, confirm against
+    the ROM fixture that no trainer reachable in the currently playable
+    area carries 216/218/237 in custom moves.** If one does, V4a waits for
+    H1.
+- **H1 (party/Dex owner):** the hand-off below.
+- **V4b (small, after H1):** bridge tests and the final inventory flip.
+- Keeping today's silent power-1 Normal hit as the fallback is **not**
+  acceptable: it is known-wrong behavior in a row that would be marked
+  represented (AGENTS rules 8 and 9).
 
 ### V5: Low Kick (196), deferred
 
@@ -514,9 +625,12 @@ No new strings.
 
 ## Hand-off notes for the party/Dex owner
 
-### H1: friendship and IVs into battlers (needed by V4)
+### H1: friendship and IVs into battlers (needed by V4b only)
 
-Fields to add to the battler opts. No `main.lua` change; every main.lua
+The self-contained note for the owner is
+[`work/handoffs/2026-10-21-battle-friendship-ivs-handoff.md`](../handoffs/2026-10-21-battle-friendship-ivs-handoff.md).
+H1 is not a prerequisite for V1, V2, V3, V4a or V5. Fields to add to the
+battler opts. No `main.lua` change; every main.lua
 call site (`:1241`, `:1280`, `:1313`, `:1403`, `:1405`, `:1540`, `:1542`,
 `:1553`, `:1634`, `:1690`) keeps working.
 
@@ -525,15 +639,23 @@ call site (`:1241`, `:1280`, `:1313`, `:1403`, `:1405`, `:1540`, `:1542`,
    decoded.substructs[3].ivs` (a copy) to `makeBattler`.
 2. `BattlePartyBridge.battlerFromGenerated` (`:156-174`): pass
    `friendship = instance.friendship` and `ivs = instance.ivs`.
-3. `WildPokemonFactory.generate` return table (`:252-261`): add
-   `friendship = speciesInfo.friendship`. This is the same value already
-   written to `boxData`, `:244`, and covers the developer temporary player
-   too.
+3. Optional (F13): `WildPokemonFactory.generate` return table
+   (`:252-261`) could add `friendship = speciesInfo.friendship`. It is not
+   needed: the bridge can read `instance.boxData.substructs[0].friendship`
+   (`WildPokemonFactory.lua:169-172`, written at `:244`), which also covers
+   the developer temporary player (`main.lua:1280-1281`).
 4. `TrainerPokemonFactory.generate` return table (`:121-128`): add
    `friendship = info.friendship`. Source: `CreateBoxMon`, `pkmn.c:1815`.
-   `CreateNPCTrainerParty` never overrides it.
+   `CreateNPCTrainerParty` never overrides it. `info` is
+   `args.speciesInfo`; `friendship` is imported at
+   `import/SpeciesInfo.lua:75`. A trainer instance has no `boxData`, so this
+   item is needed.
 5. `persistPartyBattler` must **not** write either field back: battle never
    changes them.
+6. The player starter already stores the species friendship in its record
+   (`StarterPokemonFactory.lua:123`), so item 1 covers it.
+7. Precondition (F12): when in-battle EXP lands, a mid-battle switch-in
+   rebuild must read the battle-time party friendship.
 
 ### H2: Pokédex weight (needed by V5)
 
@@ -556,10 +678,13 @@ call site (`:1241`, `:1280`, `:1313`, `:1403`, `:1405`, `:1540`, `:1542`,
 | V1 | Present (122) | fast lane | none |
 | V2 | Fury Cutter (119) | full relay | none |
 | V3 | Rollout/Ice Ball (117) plus Defense Curl (156) | full relay | none |
-| V4 | Return/Frustration/Hidden Power (121/123/135) | fast lane if D1 allows | H1 |
+| V4a | Return/Frustration/Hidden Power (121/123/135), engine only | fast lane | none (synthetic battlers) |
+| H1 | friendship/IVs into battlers | party/Dex owner | n/a |
+| V4b | bridge tests, inventory flip | fast lane | H1 |
 | V5 | Low Kick (196) | deferred | H2 |
 
-Suggested order: V1, V2, V3, then V4 when H1 is settled. V5 waits for H2.
+Order: V1, V2, V3 (separate packages, D3; V3 rebased on V2's
+`cancelMultiTurnMoves` edit), V4a, then V4b once H1 lands. V5 waits for H2.
 V2 before V3 because V3 extends the same `cancelMultiTurnMoves` resets.
 
 ## Verification plan
@@ -569,42 +694,53 @@ oracles and scripted RNG. Each slice's ROM fixture rides along and skips
 without a ROM.
 
 - **V1:**
-  - Roll values 101, 102, 177, 178, 203 and 204 select 40, 80, 120, 120 and
-    heal, with exact damage from the record stats.
+  - Roll values 101, 102, 177, 178, 203 and 204 select 40, 80, 80, 120,
+    120 and heal (F8), with exact damage from the record stats.
   - Heal: `maxHP/4`, minimum 1, clamped. A full-HP target gives
     `restoreHPFull`. A Ghost target is healed. The Ghost damage branch gives
     `noEffect` after the crit and damage draws.
   - Draw counts per branch (see "RNG notes"); a miss draws 1; protected
-    draws 0 and gives the protected text.
+    draws 0 and gives the protected text; a Fly/Dig target draws 0, misses
+    and spends PP (F7).
   - Texts name the target.
 - **V2:**
   - Consecutive hits give 10, 20, 40, 80, 160, 160.
   - A miss, a protected turn or a Fly target resets to 0.
   - Tackle between two Fury Cutters keeps the counter (20 on the second).
   - A protected Tackle resets it. Flinch, full paralysis, confusion
-    self-hit, sleep application, a ball throw and a failed run reset it.
+    self-hit, sleep application, a ball throw (the represented item
+    action, F5) and a failed run reset it; so do the end-of-turn sleep
+    cancel and the Rampage cancel paths (F9).
   - Faint and switch-in start at 0.
 - **V3:**
   - Five-hit sequence 30, 60, 120, 240, 480; the lock is released after
     hit 5; and 960 at hit 5 after Defense Curl.
-  - Locked turns spend no PP. A first-turn miss spends PP with no lock.
+  - Hit 1 spends 1 PP, hits 2-5 spend 0; after hit 5 `isLocked` is false
+    and the next turn offers the menu (F3). A first-turn miss spends PP
+    with no lock. A locked Rollout that misses normally, or misses a Fly
+    target, spends 0 PP (F2).
   - A locked miss cancels and the next use restarts at 30.
   - A protected locked turn spends one PP and cancels. A locked 0-PP slot
     still hits.
   - A Dig/Fly target cancels the lock.
   - The controller skips the menu and AI for a locked side.
   - Sleep at end of turn cancels.
-  - Defense Curl at +6: "won't go higher" and the bit still set.
+  - Defense Curl at +6: "won't go higher!" (same text as effect 11, F10)
+    and the bit still set.
   - The bit is cleared by faint and switch.
-- **V4:**
-  - Friendship oracles 0, 2, 3, 70, 128, 254 and 255 for both moves,
+- **V4a:**
+  - Friendship oracles 0, 2, 3, 70, 128, 253, 254 and 255 for both moves,
     including the power-1 fallback.
+  - A frozen target hit by a Fire Hidden Power stays frozen; a Fire Weather
+    Ball control still thaws (F1).
   - Hidden Power: all-0 IVs give Fighting/30, all-31 give Dark/70. A Steel
     case (typeBits 30) and a Fire case (typeBits 34) check effectiveness,
     STAB and the special split.
-  - A missing input raises an error.
-  - Bridge tests (H1): a party record's friendship and IVs reach the
-    battler, as do wild and trainer instances.
+  - A missing input makes the move unsupported for that attacker: the
+    player gets "not available yet" with no turn and no RNG; a foe hits the
+    existing resolution error (F4).
+- **V4b (after H1):** bridge tests: a party record's friendship and IVs
+  reach the battler, as do wild and trainer instances.
 - **Inventory:** each slice moves its rows to `represented` and updates
   `tests/phase4_move_effect_inventory_test.lua`.
 
@@ -613,6 +749,7 @@ without a ROM.
 - **V1:** Present gains one draw after accuracy on every non-miss,
   non-protected use. The heal branch loses the crit and damage draws.
   **Seeded replays with Present diverge from its first use.**
+- **V1, Fly/Dig target:** no draw at all (F7).
 - **V2, V3, V4:** no new draws. The changed power changes damage and KO
   timing, not the draw count. V3 makes the battler's later turns locked, so
   it skips the AI choice and its `Random()` for a locked foe (as in M1).
@@ -624,29 +761,38 @@ without a ROM.
 
 ## Decisions for review
 
-- **D1:** Does `BattlePartyBridge.lua` (and do the two factory return
-  tables) count as party code owned by the other agent? If yes, H1 goes to
-  that owner and V4 waits. If no, the coordinator can list those exact lines
-  in V4's MAY CHANGE.
-- **D2:** When friendship or IVs are missing, should V4 raise an error
-  (proposed) or keep today's power-1 plain hit? An error is honest, but it
-  needs H1 in the same package.
-- **D3:** Should V2 and V3 be one package? They share the
-  `cancelMultiTurnMoves` edit. Split keeps each review small.
-- **D4:** Present's heal ignores Substitute and Wonder Guard's `MISSED`
-  leftover. Both are unmodeled; record them as inventory limits.
+Settled by the review:
+
+- **D1: party code.** `BattlePartyBridge.lua` and the factory return tables
+  belong to the party/Dex owner. H1 goes to that owner as a hand-off; no V4
+  package lists those lines in its MAY CHANGE.
+- **D2: no silent fallback; split V4** into V4a (engine, optional opts,
+  formulas, the F1 defrost exclusion, a battler-aware unsupported gate,
+  synthetic-battler tests), H1 (owner) and V4b (bridge tests, inventory
+  flip). Confirm the F4 ROM-fixture trainer check before merging V4a.
+- **D3: separate packages** for V2 and V3, in that order, V3 rebased on
+  V2's `cancelMultiTurnMoves` edit.
+- **D4: accepted as recorded limits**, widened: Present's heal ignores
+  Substitute; Wonder Guard's leftover `MISSED` (heal text with no HP
+  change); Present's pre-roll typecalc sets `targetNotAffected` on a Ghost,
+  unobservable for a non-locking move; Hidden Power always records physical
+  damage (F1), for future Counter/Mirror Coat work.
 
 ## Risks
 
 - V3 is the fourth lock family. The `lockedTurn`, 0-PP bypass, end-turn
   sleep and controller paths must all test `rolloutTimer`. Missing one gives
   a menu on a locked turn or Struggle instead of Rollout.
-- Rollout's PP rule is the reverse of Rampage's. Reusing `rampageLocked`
-  would get the protected-turn PP wrong.
+- Rollout's PP rule matches Rampage's on a protected locked turn (both
+  spend one, guarded at 0) and differs on an **unprotected locked miss**
+  (Rampage spends one, Rollout none) (F2). Do not "invert" Rampage; use the
+  single `rolloutLocked` capture (F3). Writing the timer before the PP read
+  would skip hit 1's PP and spend on hit 5.
 - Fury Cutter resets come from many existing call sites. A new
   `cancelMultiTurnMoves` caller added later must keep resetting the counter
   for unlocked battlers too.
-- V4 depends on code another agent owns.
+- V4b depends on code another agent owns (H1). V4a does not.
+- Hidden Power's type must not reach the engine's move-end defrost (F1).
 
 ## Surprising source behaviour (summary)
 
@@ -668,4 +814,27 @@ without a ROM.
 8. **The Defense Curl bit is set even when Defense is already at +6**, and
    it lasts until faint or switch.
 9. **In-battle level-up does not refresh battle friendship**, so a snapshot
-   taken when the battler is built is exact.
+   taken when the battler is built is exact (precondition, F12).
+10. **A Fire Hidden Power never thaws a frozen target** (F1): its
+    `F_DYNAMIC_TYPE_1` flag makes `datahpupdate` record Normal physical
+    damage, so `MOVEEND_DEFROST` never fires. A Fire Weather Ball does
+    thaw.
+
+## Review corrections applied
+
+| Finding | Severity | Where applied |
+| --- | --- | --- |
+| F1 Hidden Power and the move-end defrost | Major | §3 reader list; Engine fit; V4a design; V4a tests; Risks; Surprising 10; D4 limit |
+| F2 Rollout vs Rampage PP rationale | Minor | Summary 3; §7; V3 design; V3 tests; Risks |
+| F3 single `rolloutLocked` capture, fifth-hit release | Minor | V3 design; V3 tests; Risks |
+| F4 V4 split, unsupported gate | Minor | Summary 4; V4 design (V4a/H1/V4b); Slices; tests; D2 |
+| F5 every item action resets Fury Cutter | Minor | Summary 2; §6; V2 design; V2 tests |
+| F6 AI table labels | Minor | §10 |
+| F7 Present against Fly/Dig draws 0 | Minor | §5 RNG; V1 design; V1 tests; RNG notes |
+| F8 V1 test-list typo | Minor | V1 tests (40, 80, 80, 120, 120, heal) |
+| F9 two unlisted `cancelMultiTurnMoves` callers | Info | §6; Engine fit; V2 design; V2 tests |
+| F10 Defense Curl at +6 is not silent | Info | §8; V3 design; V3 tests |
+| F11 citation nits | Info | §1 (`pkmn.c:2383`); §6 (`bm.c:2382-2384`, `:2457-2459`); §7 (`bsc.c:1147`) |
+| F12 friendship snapshot precondition | Info | Data availability; H1 item 7; hand-off note |
+| F13 H1 minimal; wild path via `boxData` | Info | Data availability; H1 items 3, 4, 6; hand-off note |
+| D1-D4 | Decisions | "Decisions for review" (settled) |
