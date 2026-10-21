@@ -23,7 +23,7 @@ Existing accepted engine families retain their documented limits.
 A separate source-only invocation of the actual current
 `BattleEngine:supportsMove` on source-derived effect/power metadata returned
 248 admissions and 106 rejections at that refresh (now 299/55 after the status slices,
-fast-lane batches, weather slices W1-W2, residual slices R1-R3 and protection slices P4-P5; the test is authoritative). These are source/predicate observations,
+fast-lane batches, weather slices W1-W2, residual slices R1-R3, protection slices P4-P5 and variable-power slices V1-V2; the test is authoritative). These are source/predicate observations,
 **not a local ROM result**. The checked-in [inventory test](../../tests/phase4_move_effect_inventory_test.lua)
 contains literal expected membership, admission and coverage metadata. It does
 not read engine tables to construct expectations. It checks partition integrity
@@ -35,9 +35,9 @@ labels `defined_source=214`; the ROM gate checks member usage and unused IDs.
 
 | Source-confirmed semantic class | Used families | Moves | Positive power | Zero power | Admitted / rejected |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| Represented with stated limits | 127 | 275 | 191 | 84 | 275 / 0 |
+| Represented with stated limits | 129 | 277 | 193 | 84 | 277 / 0 |
 | Candidate for separate discovery | 0 | 0 | 0 | 0 | 0 / 0 |
-| Blocked on additional state or an absent cross-component path | 70 | 78 | 24 | 54 | 24 / 54 |
+| Blocked on additional state or an absent cross-component path | 68 | 76 | 22 | 54 | 22 / 54 |
 | Intentionally rejected | 1 | 1 | 1 | 0 | 0 / 1 |
 | Total used | 198 | 354 | 216 | 138 | 299 / 55 |
 | Defined but unused | 16 | 0 | 0 | 0 | no real-record claim |
@@ -53,12 +53,12 @@ families are unimplemented, not a policy decision that they should never work.
 
 ## Coverage and admission are separate
 
-The **24 admitted, semantically uncovered positive-power records** occupy
-21 effects: `26, 34, 81, 89, 105, 117, 119, 121, 122, 123, 128, 135, 144, 148, 154, 159, 161, 185, 188, 196, 197`.
+The **22 admitted, semantically uncovered positive-power records** occupy
+19 effects: `26, 34, 81, 89, 105, 117, 121, 123, 128, 135, 144, 148, 154, 159, 161, 185, 188, 196, 197`.
 Their precise move members and counts are the `yes / C` and `yes / B` rows
 below. They reach ordinary damage because of the positive-power fallback;
 admission does not implement their effects. None is a candidate record; all
-24 need additional state/path work. This refresh supersedes the older
+22 need additional state/path work. This refresh supersedes the older
 140-fallback positive-only count; accepted intervening leaves account for the
 reduction, while 138 zero-power records are now included explicitly.
 
@@ -220,12 +220,12 @@ body (Protect/Endure, Return/Frustration, sunlight recovery, Mud/Water Sport).
 | 114 `EFFECT_PERISH_SONG` | 195 (1; Z) | no | B | [`BattleScript_EffectPerishSong`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L1563) | Perish counters and ordered end-turn faints absent; source visits all battlers/abilities. |
 | 115 `EFFECT_SANDSTORM` | 201 (1; Z) | yes | R | [`BattleScript_EffectSandstorm`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L1585) | Weather slice [W1](../tasks/phase4-weather-w1.md): attackstring/ppreduce, no accuracycheck or RNG; But it failed in its own family (permanent included), else overwrites any family with the temporary bit and the shared 5-turn counter (4 continues, then stopped); sandstorm/hail damage max(1, maxHP/16) on each of those 4 ends of turn in ENDTURN_ORDER, exempt Rock/Steel/Ground or Sand Veil (sand), Ice (hail), Dig/Dive (not Fly/Bounce), 0-HP battlers skipped; Cloud Nine/Air Lock suppress gameplay effects, not the timer or texts; AI -8 with the stale-result quirk. Thunder accuracy/Solar Beam sun path/Weather Ball/heals are weather [W2](../tasks/phase4-weather-w2.md); Swift Swim/Chlorophyll speed, Sand Veil accuracy and Rain Dish are weather [W3a](../tasks/phase4-weather-w3a.md); Drizzle/Sand Stream/Drought permanent weather (the move fails against its own permanent family and overwrites another) is weather [W3b](../tasks/phase4-weather-w3b.md); Forecast absent; ROM fixture pending. |
 | 116 `EFFECT_ENDURE` | 203 (1; Z) | no | B | [`BattleScript_EffectEndure`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L1529) | Shared setprotectlike requires counter/RNG, distinct Protect/Endure interception and turn reset. |
-| 117 `EFFECT_ROLLOUT` | 205, 301 (2; P) | yes | B | [`BattleScript_EffectRollout`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L1592) | Rollout/Fury Cutter need hit-sequence counters and reset; #205/#301 additionally consume Defense Curl. |
+| 117 `EFFECT_ROLLOUT` | 205, 301 (2; P) | yes | B | [`BattleScript_EffectRollout`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L1592) | Rollout needs its hit-sequence lock and resets (variable-power V3; Fury Cutter is [V2](../tasks/phase4-variable-power-v2.md)); #205/#301 additionally consume Defense Curl. |
 | 118 `EFFECT_SWAGGER` | 207 (1; Z) | yes | R | [`BattleScript_EffectSwagger`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L1604) | Accuracy first; confused and ATK +6 fails; ATK +2 (silent at +6); Own Tempo text; confusion (silent if already). Confusion/flinch slice [C2](../tasks/phase4-confusion-flinch-c2.md); ROM fixture pending. |
-| 119 `EFFECT_FURY_CUTTER` | 210 (1; P) | yes | B | [`BattleScript_EffectFuryCutter`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L1627) | Rollout/Fury Cutter need hit-sequence counters and reset; #205/#301 additionally consume Defense Curl. |
+| 119 `EFFECT_FURY_CUTTER` | 210 (1; P) | yes | R | [`BattleScript_EffectFuryCutter`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L1627) | Variable-power slice [V2](../tasks/phase4-variable-power-v2.md): per-battler `furyCutterCounter` 0-5 (power 10/20/40/80/160, then 160), local copy, ordinary crit/damage/typecalc/random (the tracked plain-hit gap applies). Reset by an accuracy, protected or Fly/Dig miss, a no-effect hit (which skips the random draw), every `cancelMultiTurnMoves` caller (flinch, full paralysis, confusion self-hit, recharge, sleep/freeze applied, the protect step for any protected move, the end-of-turn sleep cancel, the rampage `targetNotAffected` cancel), the capture action (every item action in source; only capture is represented), a failed run, faint and switch-in; **not** by using a different move; survives the target's faint and replacement. Unrepresented `CancelMultiTurnMoves` callers (Truant, Disable, Taunt, Imprison, infatuation, Torment, Uproar, Yawn, Spite) and Baton Pass are limits; ROM fixture pending. |
 | 120 `EFFECT_ATTRACT` | 213 (1; Z) | no | B | [`BattleScript_EffectAttract`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L1641) | Infatuation needs gender, owner identity and action cancellation lifecycle. |
 | 121 `EFFECT_RETURN` | 216 (1; P) | yes | B | [`BattleScript_EffectReturn`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L1653) | Friendship formula lacks friendship retained in battler input. |
-| 122 `EFFECT_PRESENT` | 217 (1; P) | yes | B | [`BattleScript_EffectPresent`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L1660) | Random damage versus target-heal sequence and healing events absent. |
+| 122 `EFFECT_PRESENT` | 217 (1; P) | yes | R | [`BattleScript_EffectPresent`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L1660) | Variable-power slice [V1](../tasks/phase4-variable-power-v1.md): one `Random() & 0xFF` after accuracy and PP; below 102/178/204 a 40/80/120 local-copy hit through the ordinary crit/damage/typecalc/random path (a Ghost gets "doesn't affect" after both draws; the tracked plain-hit gap applies); otherwise the target heals maxHP/4 (minimum 1, clamped) with "regained health!", or "HP is full!" at full HP, also for a Ghost target, with no crit or damage draw and no move-damage record. Miss 1 draw; protected and Fly/Dig targets 0 draws. Limits (D4): Substitute (ignored by the heal), Wonder Guard's leftover `MISSED`, the unobservable pre-roll `targetNotAffected` mark on a Ghost; ROM fixture pending. Known text gap (engine-wide): a miss against a type-immune target prints "missed", source "It doesn't affect". |
 | 123 `EFFECT_FRUSTRATION` | 218 (1; P) | yes | B | [`BattleScript_EffectFrustration`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L1654) | Friendship formula lacks friendship retained in battler input. |
 | 124 `EFFECT_SAFEGUARD` | 219 (1; Z) | no | B | [`BattleScript_EffectSafeguard`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L1668) | Safeguard side timer and primary/secondary status-prevention hooks absent. |
 | 125 `EFFECT_THAW_HIT` | 172, 221 (2; P) | yes | R | [`BattleScript_EffectThawHit`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L1675) | Burn Hit script (seteffectwithchance burn) plus the user's canceller thaw (CANCELLER_FROZEN draw, CANCELLER_THAW). Status slice [S4](../tasks/phase4-status-s4.md); ROM fixture pending. |
