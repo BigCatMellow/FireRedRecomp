@@ -365,6 +365,12 @@
 --     ordinary hit, or the target heal (maxHP/4, minimum 1; "HP is full!"
 --     at full HP), which ignores type immunity. Substitute, Wonder Guard and
 --     the pre-roll targetNotAffected mark are not represented.
+--   * Variable-power slice V2 (work/tasks/phase4-variable-power-v2.md):
+--     Fury Cutter's per-battler furyCutterCounter (0-5, power 10 doubled
+--     counter-1 times, so 10/20/40/80/160). Reset by a miss, a protected or
+--     semi-invulnerable miss, a no-effect hit, every cancelMultiTurnMoves
+--     call, the capture action, a failed run and faint; a switch-in is a
+--     fresh battler. Using a different move does not reset it.
 --   * Pure single-stat stage-change moves (Growl/Tail Whip's full real
 --     family) ARE supported -- see BattleEngine.STAT_STAGE_MOVES and the
 --     move.power == 0 branch of resolveMove.
@@ -633,6 +639,8 @@ BattleEngine.EFFECT_MAGNITUDE = 126
 BattleEngine.MOVE_MAGNITUDE = 222
 -- Variable-power slice V1 (work/tasks/phase4-variable-power-v1.md).
 BattleEngine.EFFECT_PRESENT = 122
+-- Variable-power slice V2 (work/tasks/phase4-variable-power-v2.md).
+BattleEngine.EFFECT_FURY_CUTTER = 119
 
 -- Real Cmd_remaininghptopower: scale the attacker's remaining HP to 48,
 -- promote a positive underflow to one, then choose Flail/Reversal's dynamic
@@ -1179,6 +1187,15 @@ function BattleEngine.makeBattler(opts)
     rampageTurns = 0,
     targetNotAffected = false,
     lockedSlot = nil,
+    -- Variable-power slice V2: gDisableStructs[].furyCutterCounter
+    -- (include/battle.h:155), 0-5, battle-only, never persisted. Written
+    -- only by Cmd_furycuttercalc (src/battle_script_commands.c:8205-8226),
+    -- CancelMultiTurnMoves (src/battle_util.c:213),
+    -- ClearFuryCutterDestinyBondGrudge (:3041-3046; every item action and a
+    -- failed run, src/battle_main.c:4155, :4311) and the disable-struct
+    -- clears at switch-in and faint (src/battle_main.c:2382-2384,
+    -- :2457-2459). A switch-in is a fresh battler, so it starts at 0.
+    furyCutterCounter = 0,
     -- Residual slice R1, battle-only, never persisted (a switch-in is a
     -- fresh battler, so its own bits clear for free; bm.c:2365-2368):
     --   seeded    STATUS3_LEECHSEED (include/constants/battle.h:134-135).
@@ -1430,6 +1447,9 @@ function BattleEngine:recordFaint(side, events)
   battler.charging, battler.recharging, battler.rechargeTimer, battler.lockedSlot = false, false, 0, nil
   battler.semiInvulnerable = nil
   battler.rampageTurns = 0
+  -- FaintClearSetData zeroes gDisableStructs (src/battle_main.c:2457-2459),
+  -- the Fury Cutter counter included (variable-power slice V2).
+  battler.furyCutterCounter = 0
   -- FaintClearSetData zeroes the fainted battler's status2/status3
   -- (src/battle_main.c:2441-2442). Nothing clears ANOTHER battler's seed
   -- whose receiver is this slot (bm.c:2433-2452): its drain is skipped
@@ -1939,12 +1959,19 @@ function BattleEngine:applySecondaryStatus2(targetSide, target, kind, events, ce
 end
 
 -- CancelMultiTurnMoves (src/battle_util.c:203-214), reduced to the
--- represented multi-turn state: the two-turn charge lock and the rampage
--- lock (MULTIPLETURNS + LOCK_CONFUSE; no fatigue confusion follows).
+-- represented multi-turn state: the two-turn charge lock, the rampage
+-- lock (MULTIPLETURNS + LOCK_CONFUSE; no fatigue confusion follows) and the
+-- Fury Cutter counter (:213, variable-power slice V2). Every caller resets
+-- the counter, whether or not the battler is locked: flinch, full
+-- paralysis, the confusion self-hit, recharge, sleep/freeze applied, the
+-- attackcanceler protect step for ANY protected move, the end-of-turn
+-- sleep cancel and the rampage targetNotAffected cancel. A new caller must
+-- keep this reset.
 function BattleEngine:cancelMultiTurnMoves(battler)
   battler.charging = false
   battler.semiInvulnerable = nil
   battler.rampageTurns = 0
+  battler.furyCutterCounter = 0
   if not battler.recharging then battler.lockedSlot = nil end
 end
 
@@ -2808,6 +2835,15 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
   end
 
   if not hit then
+    if move.effect == BattleEngine.EFFECT_FURY_CUTTER then
+      -- BattleScript_EffectFuryCutter (data/battle_scripts_1.s:1627-1639):
+      -- the hit and the miss both go to FuryCutterHit; furycuttercalc sees
+      -- NO_EFFECT (an accuracy miss, a protected target or a
+      -- semi-invulnerable miss), zeroes the counter and jumps to
+      -- MoveMissedPause: "missed" or the protected text below, PP already
+      -- spent (ppreduce precedes accuracycheck), no further draw.
+      attacker.furyCutterCounter = 0
+    end
     if protectedMiss then
       if BattleEngine.HITS_UNDERGROUND[move.effect] then
         -- BattleScript_HitAllWithUndergroundBonusMissed runs typecalc: an
@@ -2906,6 +2942,21 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
     end
     events[#events + 1] = { type = "miss", side = attackerSide }
     return
+  end
+
+  if move.effect == BattleEngine.EFFECT_FURY_CUTTER then
+    -- Cmd_furycuttercalc (src/battle_script_commands.c:8205-8226) on a
+    -- landed accuracycheck: `if (counter != 5) counter++`, then
+    -- gDynamicBasePower = record power doubled counter-1 times (10, 20,
+    -- 40, 80, 160, 160). Then critcalc, damagecalc, typecalc below on a
+    -- local copy; the shared record keeps power 10 (the AI reads it).
+    if attacker.furyCutterCounter ~= 5 then
+      attacker.furyCutterCounter = attacker.furyCutterCounter + 1
+    end
+    local cutterMove = {}
+    for k, v in pairs(move) do cutterMove[k] = v end
+    for _ = 2, attacker.furyCutterCounter do cutterMove.power = cutterMove.power * 2 end
+    move = cutterMove
   end
 
   if move.effect == BattleEngine.EFFECT_PRESENT then
@@ -3397,7 +3448,19 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
   -- 6. adjustnormaldamage always calls ApplyRandomDmgMultiplier, even
   -- for MOVE_RESULT_DOESNT_AFFECT_FOE; its Random() call happens before
   -- the real helper checks whether damage is zero.
-  damage = BattleFormulas.applyRandomDamageMultiplier(damage, self.rng)
+  -- Fury Cutter is the exception: its script runs `jumpifmovehadnoeffect
+  -- BattleScript_FuryCutterHit` between typecalc and adjustnormaldamage
+  -- (data/battle_scripts_1.s:1635-1636), so a no-effect hit skips the
+  -- random draw, and furycuttercalc zeroes the counter and goes to
+  -- MoveMissedPause ("It doesn't affect", resultmessage). The crit draw
+  -- above was spent. Unreachable with the real type chart (Bug has no 0x
+  -- row) while Wonder Guard is unrepresented; kept for source shape.
+  local furyCutterNoEffect = move.effect == BattleEngine.EFFECT_FURY_CUTTER and flags.noEffect
+  if furyCutterNoEffect then
+    attacker.furyCutterCounter = 0
+  else
+    damage = BattleFormulas.applyRandomDamageMultiplier(damage, self.rng)
+  end
 
   if flags.noEffect then
     -- No HP changes for an immunity, but its exact RNG consumption above
@@ -4686,6 +4749,11 @@ function BattleEngine:runTurn(playerAction, foeAction)
   if playerAction.action == "capture" then
     assert(self.foe.catchRate ~= nil,
       "capture needs foe.catchRate from gSpeciesInfo")
+    -- HandleAction_UseItem calls ClearFuryCutterDestinyBondGrudge on the
+    -- item user before it branches on the item (src/battle_main.c
+    -- :4150-4157), so every item action resets the counter; the capture
+    -- action is the only one represented (variable-power V2, review F5).
+    self.player.furyCutterCounter = 0
     events[#events + 1] = {
       type = "throwBall",
       side = BattleEngine.SIDE_PLAYER,
@@ -4753,6 +4821,11 @@ function BattleEngine:runTurn(playerAction, foeAction)
       return events
     end
     -- Failed run: the player loses the action, the foe still attacks.
+    -- HandleAction_Run's failed-run branch calls
+    -- ClearFuryCutterDestinyBondGrudge (src/battle_main.c:4309-4311): the
+    -- runner's Fury Cutter counter resets (variable-power slice V2). A
+    -- successful run (Run Away included) ends the battle without it.
+    self.player.furyCutterCounter = 0
     self:resolveMove(BattleEngine.SIDE_FOE, foeAction.moveSlot, events)
     if not self:isOver() then
       self:checkFaint(BattleEngine.SIDE_PLAYER, events)
