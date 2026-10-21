@@ -322,11 +322,14 @@ function BattleSceneController:_eventMessages(events)
       add("The battlers\nshared their pain!")
     elseif event.type == "restoreHP" then
       entries[#entries + 1] = { hpSide = event.side, hp = event.hpRemaining }
-      -- sText_PkmnRegainedHealth (c75f352 battle_message.c:124); the heal
-      -- target is the user, so B_DEF_NAME names this side.
+      -- sText_PkmnRegainedHealth (c75f352 battle_message.c:124) names
+      -- B_DEF_NAME_WITH_PREFIX, the healed battler: the user for the
+      -- self-heals (gBattlerTarget is the user), the target for Present's
+      -- heal (variable-power V1). event.side is that battler either way.
       add(name(event.side) .. " regained\nhealth!")
     elseif event.type == "restoreHPFull" then
-      -- sText_PkmnHPFull (battle_message.c:125), via BattleScript_AlreadyAtFullHp.
+      -- sText_PkmnHPFull (battle_message.c:125), via BattleScript_AlreadyAtFullHp;
+      -- event.side is B_DEF_NAME's battler (Present's target, V1).
       add(possessive(name(event.side)) .. "\nHP is full!")
     elseif event.type == "noEffect" then
       add("It doesn't affect " .. name(event.target) .. "...")

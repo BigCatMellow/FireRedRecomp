@@ -360,6 +360,11 @@
 --     counter, per-move texts), the end-of-turn wrap damage/release, the
 --     wrap cleared with clearHeldBy on the wrapper's faint or switch,
 --     Whirlpool hitting a Dive user for x2, and Rapid Spin's wrap arm.
+--   * Variable-power slice V1 (work/tasks/phase4-variable-power-v1.md):
+--     Present's `& 0xFF` roll after accuracy and PP; 40/80/120 through the
+--     ordinary hit, or the target heal (maxHP/4, minimum 1; "HP is full!"
+--     at full HP), which ignores type immunity. Substitute, Wonder Guard and
+--     the pre-roll targetNotAffected mark are not represented.
 --   * Pure single-stat stage-change moves (Growl/Tail Whip's full real
 --     family) ARE supported -- see BattleEngine.STAT_STAGE_MOVES and the
 --     move.power == 0 branch of resolveMove.
@@ -626,6 +631,8 @@ BattleEngine.EFFECT_CONVERSION = 30  -- EffectConversion :658, tryconversiontype
 BattleEngine.EFFECT_MEMENTO = 168    -- EffectMemento :2199, trymemento/setatkhptozero
 BattleEngine.EFFECT_MAGNITUDE = 126
 BattleEngine.MOVE_MAGNITUDE = 222
+-- Variable-power slice V1 (work/tasks/phase4-variable-power-v1.md).
+BattleEngine.EFFECT_PRESENT = 122
 
 -- Real Cmd_remaininghptopower: scale the attacker's remaining HP to 48,
 -- promote a positive underflow to one, then choose Flail/Reversal's dynamic
@@ -660,6 +667,17 @@ function BattleEngine.magnitudeResultFromRoll(roll)
   if roll <= 84 then return 8, 90 end
   if roll <= 94 then return 9, 110 end
   return 10, 150
+end
+
+-- Real Cmd_presentdamagecalculation (src/battle_script_commands.c
+-- :8238-8264): one `Random() & 0xFF`. Below 204 it returns the dynamic base
+-- power (40 / 80 / 120); 204 and above returns nil, the target-heal branch.
+function BattleEngine.presentPowerFromRoll(roll)
+  assert(roll >= 0 and roll < 256, "Present roll must be a byte 0..255")
+  if roll < 102 then return 40 end
+  if roll < 178 then return 80 end
+  if roll < 204 then return 120 end
+  return nil
 end
 
 -- Real Cmd_psywavedamageeffect: discard 11..15 from Random() % 16, then
@@ -2888,6 +2906,54 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
     end
     events[#events + 1] = { type = "miss", side = attackerSide }
     return
+  end
+
+  if move.effect == BattleEngine.EFFECT_PRESENT then
+    -- BattleScript_EffectPresent (data/battle_scripts_1.s:1660-1666):
+    -- attackcanceler, accuracycheck PrintMoveMissed (a miss, a protected
+    -- target and a semi-invulnerable target all ended above: one, zero and
+    -- zero draws), attackstring, ppreduce (spent above), typecalc, then
+    -- presentdamagecalculation's one `Random() & 0xFF`
+    -- (src/battle_script_commands.c:8238-8264). The pre-roll typecalc's
+    -- damage is overwritten and its result flags are set again by the
+    -- second typecalc (damage branch) or cleared (heal branch); its
+    -- targetNotAffected mark on a Ghost is unobservable for this
+    -- non-locking move (design D4), so it is not modeled.
+    local roll = self.rng:next16() % 256
+    local power = BattleEngine.presentPowerFromRoll(roll)
+    if power then
+      -- BattleScript_HitFromCritCalc: the ordinary crit, damage, typecalc
+      -- (a Ghost target gets noEffect after the crit and damage draws),
+      -- random and hit below, on a local copy (the shared record keeps
+      -- power 1, which is what the AI reads).
+      local presentMove = {}
+      for k, v in pairs(move) do presentMove[k] = v end
+      presentMove.power = power
+      move = presentMove
+    else
+      -- maxHP/4, minimum 1, negated. Full HP: BattleScript_AlreadyAtFullHp
+      -- (bs1.s:2038-2042), "<target>'s HP is full!". Otherwise
+      -- DOESNT_AFFECT_FOE is cleared (so a Ghost IS healed) and
+      -- BattleScript_PresentHealTarget (bs1.s:2028-2036) heals through
+      -- datahpupdate, clamped at maxHP, "<target> regained health!". No
+      -- crit or damage draw; not move damage (tookMoveDamage, Oak's
+      -- tutorial flag and the move-end defrost are untouched). Substitute
+      -- (ignored by the heal) and Wonder Guard's leftover MISSED are not
+      -- represented (design D4).
+      if defender.hp == defender.maxHP then
+        events[#events + 1] = { type = "restoreHPFull", side = defenderSide }
+        return
+      end
+      local amount = math.floor(defender.maxHP / 4)
+      if amount == 0 then amount = 1 end
+      local beforeHP = defender.hp
+      defender.hp = math.min(defender.maxHP, defender.hp + amount)
+      events[#events + 1] = {
+        type = "restoreHP", side = defenderSide, beforeHP = beforeHP,
+        hpRemaining = defender.hp, amount = defender.hp - beforeHP,
+      }
+      return
+    end
   end
 
   if move.power == 0 then
