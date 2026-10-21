@@ -1,7 +1,7 @@
 # Task: variable-power slice V2 — Fury Cutter
 
 - Task ID: `P4-VARIABLE-POWER-V2`
-- Status: `IMPLEMENTED — awaiting independent review`
+- Status: `DONE — independently reviewed PASS WITH CORRECTIONS (applied)`
 - Lane: full relay (new cross-turn battle state: a per-battler counter)
 - Spec: [variable-power design proposal](../reports/phase4-variable-power-design-proposal.md)
   (§6 "Fury Cutter", "V2: Fury Cutter", verification plan V2), status
@@ -72,7 +72,7 @@ Abbreviations: `bsc.c` `src/battle_script_commands.c`, `bs1.s`
     existing `noEffect` event. Unreachable with the real type chart (Bug has
     no 0x row; Wonder Guard is unrepresented); tested with a synthetic row.
 - `cancelMultiTurnMoves` clears the counter, so every existing caller resets
-  it (the list above), locked or not.
+  it (the list above), even when no lock is held (the end-of-turn sleep caller only runs for a locked battler).
 - `recordFaint` clears it. A switch-in (voluntary or forced) installs a fresh
   battler, so its counter starts at 0; the other battler's counter is kept.
 - `runTurn`: the capture action clears the player's counter before the throw
@@ -170,3 +170,10 @@ Abbreviations: `bsc.c` `src/battle_script_commands.c`, `bs1.s`
   implemented with the source's draw shape (crit drawn, random not) and
   tested through a synthetic type-chart row, so a future Wonder Guard or
   chart change inherits the right behavior.
+
+## Review (2026-10-21)
+
+[Implementation review](../reviews/2026-10-21-variable-power-v1-v2-implementation-review.md):
+PASS WITH CORRECTIONS. F4 applied: the reset wording no longer says every
+caller runs whether or not the battler is locked (the end-of-turn sleep
+caller runs only for a locked battler).

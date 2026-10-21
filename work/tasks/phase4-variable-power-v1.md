@@ -1,7 +1,7 @@
 # Task: variable-power slice V1 — Present
 
 - Task ID: `P4-VARIABLE-POWER-V1`
-- Status: `IMPLEMENTED — awaiting independent review`
+- Status: `DONE — independently reviewed PASS WITH CORRECTIONS (applied)`
 - Lane: fast lane (one family, engine only, no new state)
 - Spec: [variable-power design proposal](../reports/phase4-variable-power-design-proposal.md)
   (§5 "Present", "V1: Present", verification plan V1, RNG notes), status
@@ -30,7 +30,7 @@ Abbreviations: `bsc.c` `src/battle_script_commands.c`, `bs1.s`
   ~MOVE_RESULT_DOESNT_AFFECT_FOE` and `BattleScript_PresentHealTarget`.
 - **`BattleScript_PresentHealTarget`** (`bs1.s:2028-2036`): ignores
   Substitute, `healthbarupdate`/`datahpupdate` (negative damage clamps at
-  maxHP, `bsc.c:1781-1786`; no physical/special damage record), "regained
+  maxHP, `bsc.c:1789-1794`; no physical/special damage record), "regained
   health!". **`BattleScript_AlreadyAtFullHp`** (`bs1.s:2038-2042`): "HP is
   full!".
 - **Texts** (`msg.c:124-125`): `"{B_DEF_NAME_WITH_PREFIX} regained\nhealth!"`,
@@ -147,3 +147,19 @@ Abbreviations: `bsc.c` `src/battle_script_commands.c`, `bs1.s`
 ## Deviations from the design
 
 None.
+
+## Known limit added by review (F3)
+
+A damaging move that misses a type-immune target prints "missed" in the
+engine; source prints "It doesn't affect..." (`bsc.c:1102`, `:1345-1390`,
+`:1937`). Draws and PP match; only the text differs. This is a pre-existing
+engine-wide gap (Tackle shows it too) that Present inherits; tracked as its
+own follow-up.
+
+## Review (2026-10-21)
+
+[Implementation review](../reviews/2026-10-21-variable-power-v1-v2-implementation-review.md):
+PASS WITH CORRECTIONS (documentation only). 26/26 mutations caught across V1
+and V2. F1 (league friendship raise) and F2 (wild friendship source) applied
+to the hand-off and proposal; F3 recorded above and on inventory row 122;
+F4/F5 wording and citations fixed.

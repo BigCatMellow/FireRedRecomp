@@ -1961,8 +1961,9 @@ end
 -- CancelMultiTurnMoves (src/battle_util.c:203-214), reduced to the
 -- represented multi-turn state: the two-turn charge lock, the rampage
 -- lock (MULTIPLETURNS + LOCK_CONFUSE; no fatigue confusion follows) and the
--- Fury Cutter counter (:213, variable-power slice V2). Every caller resets
--- the counter, whether or not the battler is locked: flinch, full
+-- Fury Cutter counter (:213, variable-power slice V2). Every call resets
+-- the counter, even when the battler holds no lock (the end-of-turn sleep
+-- caller itself runs only for a locked battler, as in source): flinch, full
 -- paralysis, the confusion self-hit, recharge, sleep/freeze applied, the
 -- attackcanceler protect step for ANY protected move, the end-of-turn
 -- sleep cancel and the rampage targetNotAffected cancel. A new caller must

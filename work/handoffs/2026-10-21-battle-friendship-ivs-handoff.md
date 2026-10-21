@@ -80,10 +80,21 @@ right (`iv * 31 / 255`, `src/battle_main.c:1576`).
 
 ### 4. No write-back
 
-`persistPartyBattler` must **not** write either field back. Battle never
-changes them: an in-battle level-up adjusts the party friendship only
-(`src/battle_script_commands.c:3314`), and the refresh after it rewrites only
-level, HP and stats (`:3316-3329`).
+`persistPartyBattler` must **not** write either field back from the battler.
+The battle-time battler fields are snapshots: an in-battle level-up adjusts
+the party friendship only (`src/battle_script_commands.c:3314`), and the
+refresh after it rewrites only level, HP and stats (`:3316-3329`).
+
+**Battle-setup friendship raise (implementation review F1).** Before the
+battlers are built, source raises every party member's friendship for
+Leader, Elite Four and Champion battles (`src/battle_main.c:711-713` ->
+`AdjustFriendship(..., FRIENDSHIP_EVENT_LEAGUE_BATTLE)`, `src/pokemon.c:5478-5487`:
++3/+2/+1 by friendship band, `:1623`). The battler must carry the raised
+value (e.g. friendship 70 -> 72 before Return computes its power). A
+friendship drop on faint (`src/battle_script_commands.c:2878`) is applied to
+the party, not the battler. Neither applies yet (no gym battles), but the
+party side must apply the league raise before building the battler once
+they exist.
 
 ### 5. Precondition to keep in mind (review F12)
 

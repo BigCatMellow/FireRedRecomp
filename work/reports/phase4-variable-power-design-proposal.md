@@ -638,7 +638,10 @@ call site (`:1241`, `:1280`, `:1313`, `:1403`, `:1405`, `:1540`, `:1542`,
    `friendship = decoded.substructs[0].friendship` and `ivs =
    decoded.substructs[3].ivs` (a copy) to `makeBattler`.
 2. `BattlePartyBridge.battlerFromGenerated` (`:156-174`): pass
-   `friendship = instance.friendship` and `ivs = instance.ivs`.
+   `friendship` (a wild instance has no top-level field: read
+   `instance.boxData.substructs[0].friendship`; a trainer instance gets the
+   species base friendship from its factory) and `ivs = instance.ivs`
+   (implementation review F2; the hand-off note has the exact form).
 3. Optional (F13): `WildPokemonFactory.generate` return table
    (`:252-261`) could add `friendship = speciesInfo.friendship`. It is not
    needed: the bridge can read `instance.boxData.substructs[0].friendship`
