@@ -1,0 +1,1337 @@
+diff --git a/main.lua b/main.lua
+index fda67054b6ade8d3596e2e9e6b7e4665c998b261..5fdb6fa12e7d72820b434feab0594d016b012d63 100644
+--- a/main.lua
++++ b/main.lua
+@@ -819,20 +819,270 @@ world.tryTrainerSightlineAt = function(x, y)
+   return true
+ end
+ 
++-- Viridian City C0 roadblock (src/core/ViridianRoadblock.lua). C0 owns only
++-- its presenter, the field input/NPC lock and its one forced step; it is
++-- never a shared script lock and never releases another owner.
++world.roadblockHasOtherOwner = function()
++  return world.battle or world.starterChoice or world.trainerApproach
++    or (world.dialogue and world.dialogue:isActive())
++    or (world.martParcelPresentation and world.martParcelPresentation:isInputLocked())
++    or (world.oakParcelDexPresentation and world.oakParcelDexPresentation:isInputLocked())
++    or world.martActive or world.startMenuActive or world.partyScreenActive or world.bagScreenActive
++end
++
++world.teardownRoadblock = function(reason, refuse)
++  local r = world.viridianRoadblock
++  if not r then return end
++  if r.forced and playerMovement == r.player and playerMovement.moving
++      and playerMovement.destTileX == 22 and playerMovement.destTileY == 12
++      and playerMovement.moveDx == 0 and playerMovement.moveDy == 1 then
++    playerMovement.moving, playerMovement.stepFrame = false, 0
++    playerMovement.moveDx, playerMovement.moveDy = 0, 0
++    playerMovement.destTileX, playerMovement.destTileY = playerMovement.tileX, playerMovement.tileY
++  end
++  if playerMovement then playerMovement:invalidateElevation(reason) end
++  r:cancel(reason)
++  world.viridianRoadblock = refuse and require("src.core.ViridianRoadblock").refused(reason) or nil
++  world.dialogueTextImage, world.dialogueBuiltTokenIndex, world.dialogueBuiltPrinter = nil, -1, nil
++  if refuse then addLine("Viridian C0 refused: " .. tostring(reason)) end
++end
++
++-- Called at the completed ordinary step boundary before EarlyStory,
++-- connection, warp, trainer and wild dispatch. Returns not_selected (legacy
++-- fallthrough unchanged), owned (trainer or C0 consumed this step) or
++-- refused (selected but unsupported; a C0-owned suppression until teardown).
++world.tryViridianRoadblockAt = function(step)
++  local R = require("src.core.ViridianRoadblock")
++  local session = newGame.session
++  local vars = session and session.state and session.state.saveBlock1 and session.state.saveBlock1.vars
++  local status, event = R.classify({mapId=walkMapId, x=playerMovement.tileX, y=playerMovement.tileY,
++    normalStep=step ~= nil, moving=playerMovement.moving,
++    generation=world.playerElevationGeneration, stepGeneration=step and step.generation,
++    -- The raw saved entry, so missing storage is refused rather than read as 0.
++    scene=type(vars)=="table" and vars[0x4051-GameSession.VARS_START+1],
++    events=world.coordEvents, elevation=playerMovement:getEffectiveElevation()})
++  if status == "not_selected" then return status end
++  -- Only the selected boundary changes trainer priority; never call it twice.
++  if world.tryTrainerSightlineAt(playerMovement.tileX, playerMovement.tileY) then return "owned" end
++  local descriptor, reason
++  if status == "refused" then reason = event
++  elseif world.roadblockHasOtherOwner() then reason = "conflicting_owner"
++  else descriptor, reason = R.describe(romData, event.scriptPtr, world.roadblockMapScriptsPtr) end
++  local r
++  if descriptor then
++    local sb2 = session.state.saveBlock2
++    r, reason = R.new(descriptor, sb2 and sb2.options and sb2.options.textSpeed)
++  end
++  if not r then
++    world.viridianRoadblock = R.refused(reason)
++    addLine("Viridian C0 refused: " .. tostring(reason))
++    return "refused"
++  end
++  r.player, r.generation = playerMovement, world.playerElevationGeneration
++  world.viridianRoadblock = r
++  world.dialogueTextImage, world.dialogueBuiltTokenIndex, world.dialogueBuiltPrinter = nil, -1, nil
++  return "owned"
++end
++
++-- Movement/wait/release runs before ordinary scheduler tasks. Text gets NEW
++-- input only after InputState.update below. Each host wait takes a later tick.
++world.viridianRoadblockTask = function()
++  local r = world.viridianRoadblock
++  if not r or not r:isActive() or r.state == "REFUSED" then return end
++  local p = playerMovement
++  local walking = r.state == "WAIT_MOVEMENT_END"
++  local arrived = r.state == "RELEASE_PENDING"
++  if p ~= r.player or r.generation ~= world.playerElevationGeneration or walkMapId ~= 769
++      or world.roadblockHasOtherOwner() or p.tileX ~= 22
++      or p.tileY ~= (arrived and 12 or 11)
++      or (not walking and p.moving)
++      or (walking and (not p.moving or p.destTileX ~= 22 or p.destTileY ~= 12
++        or p.moveDx ~= 0 or p.moveDy ~= 1)) then
++    world.teardownRoadblock("stale_c0_owner", true); return
++  end
++  if r.state == "CLOSE_PENDING" then
++    r.printer = nil
++    world.dialogueTextImage, world.dialogueBuiltTokenIndex, world.dialogueBuiltPrinter = nil, -1, nil
++    r.state = "WALK_DOWN"
++  elseif r.state == "WALK_DOWN" then
++    local ok, reason = p:startScriptedDown(function(x,y)
++      return x >= 0 and y >= 0 and x < walkMapWidth and y < walkMapHeight
++        and type(walkMapBlockData[y*walkMapWidth+x]) == "table"
++    end)
++    if not ok then world.teardownRoadblock(reason, true); return end
++    r.forced, r.state = true, "WAIT_MOVEMENT_END"
++  elseif r.state == "WAIT_MOVEMENT_END" then
++    p:tick()
++    if not p.moving then
++      syncSessionLocation()
++      r.forced, r.state = false, "RELEASE_PENDING"
++    end
++  elseif r.state == "RELEASE_PENDING" then
++    r.state = "DONE"
++    world.viridianRoadblock = nil
++  end
++end
++
++-- Deterministic guarded C0 witness: POKEPORT_RUNTIME_REPLAY=viridian_roadblock
++-- (scripts/runtime_viridian_roadblock_replay.sh). The explicit fixture only
++-- builds a temporary fresh session on verified Viridian data at (22,12) with
++-- scene 0; admission then comes from an actual ordinary UP step and every
++-- later state from love.update. No revealAll, teleport-to-completion or
++-- injected eligibility. Fixture-backed C0 execution, not a fresh-save walk
++-- or northbound traversal proof. Prints no dialogue or private path.
++world.runViridianRoadblockReplay = function()
++  local I, MAP = InputState, 3 * 256 + 1
++  local failures, counts, npcTicks = {}, { c0=0, trainer=0, connection=0 }, 0
++  local function expect(name, ok) if not ok then failures[#failures + 1] = name end end
++  local function tick(mask) world.replayInputMask = mask; love.update(1 / 60) end
++  local LEAK = I.DPAD_RIGHT + I.START_BUTTON + I.SELECT_BUTTON + I.A_BUTTON + I.B_BUTTON
++  local originals = {
++    c0=world.tryViridianRoadblockAt, trainer=world.tryTrainerSightlineAt, connection=world.tryConnectionAt,
++  }
++  local function restore()
++    world.tryViridianRoadblockAt = originals.c0
++    world.tryTrainerSightlineAt = originals.trainer
++    world.tryConnectionAt = originals.connection
++    world.replayInputMask = nil
++  end
++  local function unlocked()
++    return not world.startMenuActive and not world.martActive and not world.battle
++      and not world.trainerApproach and not (world.dialogue and world.dialogue:isActive())
++  end
++
++  local function run()
++    newGame.session = GameSession.fromNewGame({ playerGender=0,
++      playerName=NewGameFlow.encodeName("RED"), rivalName=NewGameFlow.encodeName("GREEN") })
++    local session = newGame.session
++    session:setVar(0x4051, 0)
++    session:setLocation(MAP, 22, 12, "north")
++    world.clearViews()
++    loadMap(romData, romAddrs, MAP, function() end)
++    walkActive = true
++    local p = playerMovement
++    expect("fixture_map", p and walkMapId == MAP)
++    if not p or walkMapId ~= MAP then return end
++    p.tileX, p.tileY, p.destTileX, p.destTileY = 22, 12, 22, 12
++    p.facingDirection, p.moving, p.stepFrame, p.moveDx, p.moveDy = PlayerMovement.UP, false, 0, 0, 0
++    p:invalidateElevation("replay_fixture")
++    syncSessionLocation()
++    local before = SaveFileCodec.encode(session.state)
++    for _, npc in ipairs(world.npcs or {}) do
++      local npcTick = npc.tick
++      npc.tick = function(self) npcTicks = npcTicks + 1; return npcTick(self) end
++    end
++    for name, original in pairs(originals) do
++      local key = name == "c0" and "tryViridianRoadblockAt"
++        or name == "trainer" and "tryTrainerSightlineAt" or "tryConnectionAt"
++      world[key] = function(...) counts[name] = counts[name] + 1; return original(...) end
++    end
++
++    local function printUntil(r, label, state)
++      for _ = 1, 4000 do
++        if r.state == state then return end
++        local printer, index = r.printer, r.printer and r.printer.tokenIndex
++        tick(0)
++        expect(label .. "no_reveal_all", not r.printer or r.printer ~= printer or r.printer.tokenIndex <= index + 1)
++        expect(label .. "print_lock", not p.moving and unlocked())
++      end
++      expect(label .. "reached_" .. state, false)
++    end
++
++    -- pageButton clears page 1; finalButton acknowledges the final page.
++    local function pass(label, pageButton, finalButton)
++      local passIndex = counts.c0
++      tick(I.DPAD_UP) -- ordinary held direction; on pass 2 also the release+1 tick
++      expect(label .. "ordinary_step", p.moving and p.destTileX == 22 and p.destTileY == 11
++        and not world.viridianRoadblock)
++      for _ = 1, 15 do tick(0) end
++      expect(label .. "no_premature_c0", p.moving and not world.viridianRoadblock)
++      tick(0)
++      local r = world.viridianRoadblock
++      expect(label .. "selected_e3", r and r.state == "PRINT_PAGE1" and p.tileX == 22 and p.tileY == 11
++        and p:getEffectiveElevation() == 3 and counts.c0 == passIndex + 1)
++      if not r or r.state ~= "PRINT_PAGE1" then return end
++      local npcLocked, rng = npcTicks, world.globalRng and world.globalRng.value
++      local trainerCalls, connectionCalls = counts.trainer, counts.connection
++
++      tick(I.DPAD_RIGHT + I.START_BUTTON + I.SELECT_BUTTON); tick(0)
++      expect(label .. "page1_lock", r.page == 1 and not p.moving and p.tileY == 11 and unlocked())
++      printUntil(r, label .. "page1_", "WAIT_PAGE")
++      tick(0); tick(0)
++      expect(label .. "page_waits_for_new_press", r.state == "WAIT_PAGE" and r.page == 1)
++      local page1 = r.printer
++      tick(pageButton)
++      expect(label .. "page_clear", r.state == "PRINT_PAGE2" and r.page == 2 and r.printer ~= nil
++        and r.printer ~= page1 and r.printer.tokenIndex == 0)
++      tick(0)
++      printUntil(r, label .. "page2_", "WAIT_FINAL")
++      tick(0)
++      tick(finalButton)
++      expect(label .. "final_ack", r.state == "CLOSE_PENDING" and r.printer ~= nil and not p.moving
++        and r.acknowledgedBy == (finalButton == I.A_BUTTON and "A" or "B"))
++      tick(I.DPAD_RIGHT + I.START_BUTTON)
++      expect(label .. "closed_before_motion", r.state == "WALK_DOWN" and r.printer == nil and not p.moving)
++      tick(I.DPAD_RIGHT + I.START_BUTTON)
++      expect(label .. "forced_start", r.state == "WAIT_MOVEMENT_END" and p.moving and p.destTileX == 22
++        and p.destTileY == 12 and p.facingDirection == PlayerMovement.DOWN and p:pixelY() == 11 * 16)
++      local pixels = true
++      for i = 1, 16 do
++        -- Alternate so A/B/START/SELECT/direction are NEW presses while owned.
++        tick(i % 2 == 1 and LEAK or 0)
++        pixels = pixels and p:pixelX() == 22 * 16 and p:pixelY() == 11 * 16 + i and p.moving == (i < 16)
++          and unlocked()
++      end
++      expect(label .. "sixteen_forced_pixels", pixels)
++      expect(label .. "wait_before_release", world.viridianRoadblock == r and r.state == "RELEASE_PENDING"
++        and p.tileX == 22 and p.tileY == 12 and session.location.x == 22 and session.location.y == 12
++        and session.location.facing == "south" and p:getEffectiveElevation() == nil)
++      tick(I.DPAD_RIGHT + I.START_BUTTON + I.A_BUTTON) -- fresh presses on the release tick
++      expect(label .. "release_barrier", world.viridianRoadblock == nil and not p.moving
++        and p.tileX == 22 and p.tileY == 12 and unlocked())
++      expect(label .. "npc_lock", npcTicks == npcLocked)
++      expect(label .. "no_nested_dispatch", counts.c0 == passIndex + 1 and counts.trainer == trainerCalls
++        and counts.connection == connectionCalls and walkMapId == MAP
++        and (world.globalRng and world.globalRng.value) == rng)
++    end
++
++    pass("pass1_", I.B_BUTTON, I.A_BUTTON)
++    pass("reentry_", I.A_BUTTON, I.B_BUTTON)
++    expect("trainer_single_call", counts.c0 == 2 and counts.trainer == 2 and counts.connection == 0)
++    local expected = GameSession.fromSavedState(assert(SaveFileCodec.decode(before)))
++    expected:setLocation(MAP, 22, 12, "south")
++    expect("state_location_facing_only", SaveFileCodec.encode(expected.state) == SaveFileCodec.encode(session.state)
++      and session:getVar(0x4051) == 0)
++  end
++
++  local ok, err = pcall(run)
++  restore()
++  if not ok then failures[#failures + 1] = "error:" .. tostring(err):gsub("%s+", "_") end
++  local p = playerMovement
++  print(("RUNTIME_REPLAY viridian_roadblock %s map=%s pos=%s,%s c0=%d trainer=%d connection=%d failures=%s"):format(
++    #failures == 0 and "PASS" or "FAIL", tostring(walkMapId), tostring(p and p.tileX), tostring(p and p.tileY),
++    counts.c0, counts.trainer, counts.connection, #failures == 0 and "none" or table.concat(failures, ",")))
++  if #failures == 0 then love.event.quit() else love.event.quit(1) end
++end
++
+ local function playerMovementTask(taskId)
+   -- A real `lock`/`lockall` (and just having a message box up at all)
+   -- freezes the player -- mirrored by not ticking movement at all while a
+   -- dialogue script owns the screen. A pending trainer approach sequence
+   -- freezes it the same real way (the real game locks field input the
+   -- instant CheckForTrainersWantingBattle succeeds).
++  -- C0 (including its whole release tick) freezes ordinary movement; its
++  -- own task ticks the forced step without completed-step dispatch.
++  if world.roadblockTickOwned or (world.viridianRoadblock and world.viridianRoadblock:isActive()) then return end
+   if not walkActive or world.battle or world.starterChoice or world.trainerApproach
+       or (world.dialogue and world.dialogue:isActive())
+       or (world.martParcelPresentation and world.martParcelPresentation:isInputLocked())
+       or (world.oakParcelDexPresentation and world.oakParcelDexPresentation:isInputLocked()) then return end
+   local wasMoving = playerMovement.moving
++  local normalStep = playerMovement.elevationStep
+   playerMovement:tick()
+   if wasMoving and not playerMovement.moving then
+     syncSessionLocation()
++    if world.tryViridianRoadblockAt
++        and world.tryViridianRoadblockAt(normalStep) ~= "not_selected" then return end
+     -- A warp loads/repositions into a different map. The completed step
+     -- belongs to the source map, so don't incorrectly roll the destination
+     -- tile's encounter table during that same step.
+@@ -874,6 +1124,7 @@ end
+ -- per-NPC so one such NPC disables ITSELF with a visible note instead of
+ -- taking the whole game down.
+ local function npcMovementTask(taskId)
++  if world.roadblockTickOwned or (world.viridianRoadblock and world.viridianRoadblock:isActive()) then return end
+   if not walkActive or world.battle or world.starterChoice or world.trainerApproach
+       or (world.dialogue and world.dialogue:isActive())
+       or (world.martParcelPresentation and world.martParcelPresentation:isInputLocked())
+@@ -2288,10 +2539,12 @@ end
+ -- map transitions (tryWarpAt below), so a warp doesn't need its own
+ -- separate copy of this pipeline.
+ function loadMap(data, addrs, mapId, dbg)
++  if world.teardownRoadblock then world.teardownRoadblock("map_load") end
+   if playerMovement then playerMovement:invalidateElevation("map_load") end
+   world.playerElevationGeneration = world.playerElevationGeneration + 1
+   local header = MapHeader.resolve(data, addrs.gMapGroups, mapId)
+   dbg("header resolved")
++  world.roadblockMapScriptsPtr = header.mapScriptsPtr
+   world.regionMapSectionId = header.regionMapSectionId
+   local layout = MapLayout.resolve(data, header.mapLayoutPtr)
+   dbg("layout resolved " .. layout.width .. "x" .. layout.height)
+@@ -3137,9 +3390,11 @@ local function ensureDialogueImagesCurrent()
+   end
+ 
+   local runner = world.dialogue
+-  local printer = (runner and runner.printer) or world.martParcelPrinter or world.oakParcelDexPrinter
++  local printer = (world.viridianRoadblock and world.viridianRoadblock.printer)
++    or (runner and runner.printer) or world.martParcelPrinter or world.oakParcelDexPrinter
+   local tokenIndex = printer and printer.tokenIndex or -1
+-  if tokenIndex == world.dialogueBuiltTokenIndex then return end
++  if tokenIndex == world.dialogueBuiltTokenIndex and printer == world.dialogueBuiltPrinter then return end
++  world.dialogueBuiltPrinter = printer
+   world.dialogueBuiltTokenIndex = tokenIndex
+   if tokenIndex <= 0 then
+     world.dialogueTextImage = nil
+@@ -3150,7 +3405,10 @@ local function ensureDialogueImagesCurrent()
+   -- injected as the same kind of color token a real EXT_CTRL_CODE_COLOR
+   -- byte would produce, since TextRenderer's own default is the
+   -- white-on-transparent pair the F view wants instead.
+-  local tokens = { { type = "color", fg = 2, shadow = 3 } }
++  -- C0's textcolor 0 selects blue (8) foreground only; source male glyphs
++  -- and light-blue shadow are not represented by this renderer.
++  local c0 = world.viridianRoadblock and printer == world.viridianRoadblock.printer
++  local tokens = { { type = "color", fg = c0 and 8 or 2, shadow = 3 } }
+   for _, token in ipairs(printer:revealedTokens()) do tokens[#tokens + 1] = token end
+   local ok, composited = pcall(TextRenderer.renderTokens, fontData, fontAddrs, tokens, fontPalette)
+   if ok then
+@@ -3659,6 +3917,8 @@ function love.load()
+     or runtimeReplay == "natural_capture_save"
+   if runtimeReplay == "phase2_camera_viewport" then
+     world.runPhase2CameraViewportReplay()
++  elseif runtimeReplay == "viridian_roadblock" then
++    world.runViridianRoadblockReplay()
+   elseif runtimeReplay == "restart_load" then
+     -- This is intentionally a separate process from the save replay.  L is
+     -- the normal hotkey callback, and the outer script supplies a fresh,
+@@ -4498,6 +4758,10 @@ function love.update(dt)
+   tickAccumulator = tickAccumulator + dt
+   while tickAccumulator >= FIXED_TICK do
+     tickAccumulator = tickAccumulator - FIXED_TICK
++    -- C0 ownership is captured at tick start: even when its task releases
++    -- during this tick, this whole tick's ordinary input stays suppressed.
++    world.roadblockTickOwned = world.viridianRoadblock and world.viridianRoadblock:isActive() or false
++    if world.roadblockTickOwned then world.viridianRoadblockTask() end
+     scheduler:runTasks()
+ 
+     inputState:update(world.replayInputMask or InputState.buildMask({
+@@ -4510,6 +4774,12 @@ function love.update(dt)
+       SELECT_BUTTON = love.keyboard.isDown("rshift"),
+       START_BUTTON = love.keyboard.isDown("space"),
+     }))
++    -- C0 message NEW A/B uses this tick's freshly updated input. While C0
++    -- owns the tick, the ordinary block below (not re-indented) is skipped.
++    if world.viridianRoadblock and world.viridianRoadblock:isActive() then
++      world.viridianRoadblock:update(inputState)
++    end
++    if not world.roadblockTickOwned and not (world.viridianRoadblock and world.viridianRoadblock:isActive()) then
+     if viewerActive then
+       if inputState:isPressedOrRepeated(InputState.DPAD_DOWN) then viewerStep(1) end
+       if inputState:isPressedOrRepeated(InputState.DPAD_UP) then viewerStep(-1) end
+@@ -4721,7 +4991,9 @@ function love.update(dt)
+       elseif inputState:isHeld(InputState.DPAD_RIGHT) then playerMovement:tryMove(PlayerMovement.RIGHT, world.isPlayerWalkTileBlocked, getLedgeJumpDirection, "normal")
+       end
+     end
+-    if yesNoActive and yesNoCursor and not yesNoResult then
++    end -- C0 owns all input, including the complete release tick.
++    if not world.roadblockTickOwned and not (world.viridianRoadblock and world.viridianRoadblock:isActive())
++        and yesNoActive and yesNoCursor and not yesNoResult then
+       local outcome = yesNoCursor:processInput(inputState)
+       if outcome == "confirm" or outcome == "cancel" then yesNoResult = outcome end
+     end
+@@ -5036,7 +5308,8 @@ function love.draw()
+ 
+     -- Real message box (DialogueRunner), drawn over the field like the
+     -- real bg0 dialogue window sitting in front of the map/OBJ layers.
+-    if ((world.dialogue and world.dialogue.printer) or world.martParcelPrinter or world.oakParcelDexPrinter) and world.dialogueWindowImage then
++    if ((world.viridianRoadblock and world.viridianRoadblock.printer)
++        or (world.dialogue and world.dialogue.printer) or world.martParcelPrinter or world.oakParcelDexPrinter) and world.dialogueWindowImage then
+       local boxX = baseX + 8 * viewport.scale
+       local boxY = baseY + (WALK_CAMERA_HEIGHT - world.dialogueWindowImage:getHeight() - 8) * viewport.scale
+       if world.dialogueFillColor then
+@@ -5160,6 +5433,8 @@ end
+ function love.keypressed(key)
+   if key == "escape" then
+     love.event.quit()
++  elseif world.roadblockTickOwned or (world.viridianRoadblock and world.viridianRoadblock:isActive()) then
++    return
+   elseif world.battle then
+     -- StartWildBattle locks field controls and freezes object events in
+     -- the real game. Battle input is polled through InputState in
+diff --git a/scripts/runtime_viridian_roadblock_replay.sh b/scripts/runtime_viridian_roadblock_replay.sh
+new file mode 100755
+index 0000000000000000000000000000000000000000..154ba8bd7ce5fa1730b9561486400d78b45ce6fd
+--- /dev/null
++++ b/scripts/runtime_viridian_roadblock_replay.sh
+@@ -0,0 +1,39 @@
++#!/usr/bin/env bash
++# Guarded deterministic runtime witness for the bounded Viridian City C0
++# roadblock (work/tasks/phase5-viridian-roadblock-implementation.md). Runs
++# main.lua's viridian_roadblock case headlessly against the verified ROM:
++# fixture-backed C0 execution, not a fresh-save walk or northbound proof.
++set -euo pipefail
++
++repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
++cd "$repo_root"
++
++: "${POKEPORT_ROM:?error: set POKEPORT_ROM to a verified FireRed US v1.0 ROM}"
++for command in love xvfb-run timeout mktemp; do
++  command -v "$command" >/dev/null 2>&1 || {
++    echo "error: ${command} is required for the Viridian roadblock runtime replay" >&2
++    exit 127
++  }
++done
++
++sandbox_root=$(mktemp -d "${TMPDIR:-/tmp}/firered-recomp-viridian-roadblock.XXXXXX")
++trap 'rm -rf -- "$sandbox_root"' EXIT
++mkdir -p "$sandbox_root/data" "$sandbox_root/config" "$sandbox_root/cache"
++
++output=""
++status=0
++if output=$(timeout 60s xvfb-run -a env ALSOFT_DRIVERS=null \
++  XDG_DATA_HOME="$sandbox_root/data" XDG_CONFIG_HOME="$sandbox_root/config" \
++  XDG_CACHE_HOME="$sandbox_root/cache" POKEPORT_ROM="$POKEPORT_ROM" \
++  POKEPORT_MAP=3,1 POKEPORT_WALK=1 \
++  POKEPORT_RUNTIME_REPLAY=viridian_roadblock love . 2>&1); then
++  :
++else
++  status=$?
++fi
++printf '%s\n' "$output"
++if [[ "$status" -ne 0 || "$output" != *"RUNTIME_REPLAY viridian_roadblock PASS"* ]]; then
++  echo "error: Viridian roadblock runtime replay failed (exit ${status})" >&2
++  exit 1
++fi
++echo "PASS: fixture-backed Viridian C0 roadblock runtime replay"
+diff --git a/src/core/PlayerMovement.lua b/src/core/PlayerMovement.lua
+index 9b5a3f51297ad11f7b317440b0ed40a4b54c28cc..afa711558c8fca5eee8df306afc0dd29718a9dea 100644
+--- a/src/core/PlayerMovement.lua
++++ b/src/core/PlayerMovement.lua
+@@ -201,6 +201,27 @@ function PlayerMovement:tryMove(direction, isBlocked, getLedgeJumpDirection, ele
+   end
+ end
+ 
++-- Viridian C0's held walk_normal_down (script_movement.c:202-225 and
++-- ObjectEventSetHeldMovement): a stationary player starts one normal
++-- 16-frame step down without ordinary collision/ledge admission or
++-- normal-step elevation provenance. hasDestination(x, y) is the caller's
++-- loaded-map availability check only, never a collision oracle.
++function PlayerMovement:startScriptedDown(hasDestination)
++  if self.moving then return false, "player_moving" end
++  local delta = DIRECTION_DELTA[DIRECTION_DOWN]
++  local destX, destY = self.tileX + delta.dx, self.tileY + delta.dy
++  if type(hasDestination) ~= "function" or not hasDestination(destX, destY) then
++    return false, "unavailable_destination"
++  end
++  self:invalidateElevation("script_motion")
++  self.facingDirection = DIRECTION_DOWN
++  self.moving = true
++  self.stepFrame = 0
++  self.moveDx, self.moveDy = delta.dx * TILE_SIZE / WALK_FRAMES_PER_TILE, delta.dy * TILE_SIZE / WALK_FRAMES_PER_TILE
++  self.destTileX, self.destTileY = destX, destY
++  return true
++end
++
+ -- Advances the walk animation by one real frame (1px of the real
+ -- Step1-based normal speed). Call once per 60Hz tick.
+ function PlayerMovement:tick()
+diff --git a/src/core/ViridianRoadblock.lua b/src/core/ViridianRoadblock.lua
+new file mode 100644
+index 0000000000000000000000000000000000000000..ee96bed337006e99fb1ff2878fa1a9f4c2917f97
+--- /dev/null
++++ b/src/core/ViridianRoadblock.lua
+@@ -0,0 +1,233 @@
++-- Bounded Viridian City C0 roadblock adapter: one coordinate event, its
++-- fixed-layout script descriptor, and its two-page message presenter.
++-- Source: pokefirered c75f352304d529f6ba92d4f74b9cf8b5c3810788,
++-- data/maps/ViridianCity/scripts.inc:1-3,188-201 (map-script table and
++-- the RoadBlocked script), text.inc:39-42 (two pages), asm/macros/event.inc
++-- (opcode/operand layout), src/text.c:550-585,639-650 (paragraph wait and
++-- A/B speedup latch), src/new_menu_helpers.c:27-32 (delays 8/4/1) and
++-- src/scrcmd.c:1313-1318 (final NEW A before NEW B).
++--
++-- This module never writes session state, never executes generic bytecode
++-- and makes no source male-glyph/arrow/audio/cycle-exact parity claim. The
++-- host (main.lua) owns admission timing, input locks and forced movement.
++local ViridianRoadblock = {}
++
++local Charmap = require("import.Charmap")
++local InputState = require("src.core.InputState")
++
++local ROM_BASE = 0x08000000
++local ROM_LIMIT = 0x02000000 -- 32MiB cartridge address window
++local MAP_VIRIDIAN_CITY = 3 * 256 + 1
++local C0_X, C0_Y = 22, 11
++local VAR_MAP_SCENE_VIRIDIAN_CITY_OLD_MAN = 0x4051
++local MAP_SCRIPT_ON_TRANSITION = 3
++local MOVEMENT_WALK_NORMAL_DOWN, MOVEMENT_STEP_END = 0x10, 0xFE
++local CHAR_PROMPT_CLEAR, CHAR_NEWLINE, EOS = 0xFB, 0xFE, 0xFF
++local FIRST_CONTROL_BYTE = 0xF7 -- CHAR_DYNAMIC; F7..FD are controls
++local TEXT_SCAN_LIMIT = 1024 -- conservative bound, not a source constant
++-- Source GetTextSpeedSetting delays for OPTIONS_TEXT_SPEED_SLOW/MID/FAST.
++local TEXT_SPEED_DELAYS = { [0] = 8, [1] = 4, [2] = 1 }
++
++-- lockall / textcolor 0 / loadword 0,text / callstd MSGBOX_DEFAULT /
++-- closemessage / applymovement OBJ_EVENT_ID_PLAYER,movement /
++-- waitmovement 0 / releaseall / end. Byte offset -> required value; the two
++-- u32 operands (text at 5, movement at 15) are resolved, never guessed.
++local SCRIPT_LENGTH = 24
++local SCRIPT_FIXED_BYTES = {
++  [0] = 0x69,                                   -- lockall
++  [1] = 0xC7, [2] = 0x00,                       -- textcolor 0
++  [3] = 0x0F, [4] = 0x00,                       -- loadword 0, <text u32>
++  [9] = 0x09, [10] = 0x04,                      -- callstd MSGBOX_DEFAULT
++  [11] = 0x68,                                  -- closemessage
++  [12] = 0x4F, [13] = 0xFF, [14] = 0x00,        -- applymovement PLAYER, <u32>
++  [19] = 0x51, [20] = 0x00, [21] = 0x00,        -- waitmovement 0
++  [22] = 0x6B,                                  -- releaseall
++  [23] = 0x02,                                  -- end
++}
++local TEXT_OPERAND, MOVEMENT_OPERAND = 5, 15
++
++local function isInteger(value, lo, hi)
++  return type(value) == "number" and value % 1 == 0 and value >= lo and value <= hi
++end
++
++-- Zero-based file offset for `count` readable bytes at ROM address `ptr`.
++local function romOffset(data, ptr, count)
++  if type(data) ~= "string" or not isInteger(ptr, ROM_BASE, ROM_BASE + ROM_LIMIT - 1) then return nil end
++  local offset = ptr - ROM_BASE
++  if offset + count > #data then return nil end
++  return offset
++end
++
++local function u32le(data, offset)
++  local a, b, c, d = data:byte(offset + 1, offset + 4)
++  return a + b * 256 + c * 65536 + d * 16777216
++end
++
++-- Nonmutating admission at an already completed field step. `context`:
++-- mapId, x, y, normalStep (completed ordinary-input step), moving,
++-- generation/stepGeneration, scene (raw saved var entry), events
++-- (MapEvents' zero-based coord events) and elevation (effective E or nil).
++-- Returns "not_selected" (legacy fallthrough), "owned", event (selected
++-- C0) or "refused", reason (selected but unsupported context).
++function ViridianRoadblock.classify(context)
++  local c = context
++  if c.mapId ~= MAP_VIRIDIAN_CITY or c.x ~= C0_X or c.y ~= C0_Y then return "not_selected" end
++  -- Missing storage is not default 0; a valid nonzero scene is not C0.
++  if not isInteger(c.scene, 0, 65535) then return "refused", "invalid_scene" end
++  if c.scene ~= 0 then return "not_selected" end
++  if not c.normalStep or c.moving or c.generation == nil or c.stepGeneration ~= c.generation then
++    return "refused", "unqualified_step"
++  end
++  local event = type(c.events) == "table" and c.events[0]
++  if type(event) ~= "table" or event.x ~= C0_X or event.y ~= C0_Y
++      or event.trigger ~= VAR_MAP_SCENE_VIRIDIAN_CITY_OLD_MAN or event.index ~= 0
++      or not isInteger(event.elevation, 0, 15) then
++    return "refused", "invalid_c0"
++  end
++  for key, other in pairs(c.events) do
++    if key ~= 0 and type(other) == "table" and other.x == C0_X and other.y == C0_Y then
++      return "refused", "conflicting_c0"
++    end
++  end
++  -- field_control_avatar.c:1045-1063: event E0 is a wildcard for any known
++  -- player E; unknown E never qualifies, even for the wildcard.
++  if not isInteger(c.elevation, 0, 15) then return "refused", "unknown_elevation" end
++  if event.elevation ~= 0 and c.elevation ~= event.elevation then return "not_selected" end
++  return "owned", event
++end
++
++-- Validates the selected C0 script, its movement and text from raw bytes.
++-- Returns a descriptor { scriptPtr, textPtr, movementPtr, pages = {tokens,
++-- tokens} } or nil, reason. Charmap.tokenize collapses 0xFB to a newline,
++-- so pages are split here first; the generic decoder is not widened.
++function ViridianRoadblock.describe(data, scriptPtr, mapScriptsPtr)
++  -- Pinned Viridian has exactly one ON_TRANSITION hook and no on-frame
++  -- table: (type u8, script u32) then the 0 terminator.
++  local tableOffset = romOffset(data, mapScriptsPtr, 6)
++  if not tableOffset or data:byte(tableOffset + 1) ~= MAP_SCRIPT_ON_TRANSITION
++      or data:byte(tableOffset + 6) ~= 0
++      or not romOffset(data, u32le(data, tableOffset + 1), 1) then
++    return nil, "unsupported_map_scripts"
++  end
++
++  local script = romOffset(data, scriptPtr, SCRIPT_LENGTH)
++  if not script then return nil, "truncated_script" end
++  for index, value in pairs(SCRIPT_FIXED_BYTES) do
++    if data:byte(script + index + 1) ~= value then return nil, "unsupported_script" end
++  end
++  local textPtr = u32le(data, script + TEXT_OPERAND)
++  local movementPtr = u32le(data, script + MOVEMENT_OPERAND)
++
++  local movement = romOffset(data, movementPtr, 2)
++  if not movement or data:byte(movement + 1) ~= MOVEMENT_WALK_NORMAL_DOWN
++      or data:byte(movement + 2) ~= MOVEMENT_STEP_END then
++    return nil, "unsupported_movement"
++  end
++
++  local text = romOffset(data, textPtr, 1)
++  if not text then return nil, "unavailable_text" end
++  -- Accepted shape: plain glyphs, exactly one newline on page 1, one
++  -- paragraph clear, plain glyphs on page 2, then EOS.
++  local pages, page, newlines = { {}, {} }, 1, 0
++  for i = 1, TEXT_SCAN_LIMIT do
++    local b = data:byte(text + i)
++    if not b then return nil, "truncated_text" end
++    local bytes = pages[page]
++    if b == EOS then
++      if page ~= 2 or newlines ~= 1 or #pages[2] == 0 then return nil, "unsupported_text_shape" end
++      return {
++        scriptPtr = scriptPtr, textPtr = textPtr, movementPtr = movementPtr,
++        pages = { Charmap.tokenize(table.concat(pages[1])), Charmap.tokenize(table.concat(pages[2])) },
++      }
++    elseif b == CHAR_PROMPT_CLEAR then
++      if page ~= 1 or #bytes == 0 or bytes[#bytes] == string.char(CHAR_NEWLINE) then
++        return nil, "unsupported_paragraph"
++      end
++      page = 2
++    elseif b == CHAR_NEWLINE then
++      if page ~= 1 or newlines ~= 0 or #bytes == 0 then return nil, "unsupported_newline" end
++      newlines = 1
++      bytes[#bytes + 1] = string.char(b)
++    elseif b >= FIRST_CONTROL_BYTE then
++      return nil, "unsupported_text_control"
++    else
++      bytes[#bytes + 1] = string.char(b)
++    end
++  end
++  return nil, "unterminated_text"
++end
++
++-- Narrow page-printer view compatible with main's existing dialogue image
++-- path (tokenIndex + revealedTokens). It has no revealAll.
++local function pagePrinter(tokens)
++  return {
++    tokens = tokens, tokenIndex = 0,
++    revealedTokens = function(self)
++      local out = {}
++      for i = 1, self.tokenIndex do out[i] = self.tokens[i] end
++      return out
++    end,
++  }
++end
++
++-- textSpeed: the saved OPTIONS_TEXT_SPEED value. Unsupported values are
++-- refused; saved options are never repaired here.
++function ViridianRoadblock.new(descriptor, textSpeed)
++  local delay = TEXT_SPEED_DELAYS[textSpeed]
++  if not delay then return nil, "unsupported_text_speed" end
++  return setmetatable({
++    state = "PRINT_PAGE1", descriptor = descriptor, delay = delay, remaining = 0,
++    accelerated = false, page = 1, printer = pagePrinter(descriptor.pages[1]),
++  }, { __index = ViridianRoadblock })
++end
++
++-- A C0-owned suppression for a selected but unsupported context. It is
++-- active (locks the field) until the host tears it down on map load.
++function ViridianRoadblock.refused(reason)
++  return setmetatable({ state = "REFUSED", reason = reason }, { __index = ViridianRoadblock })
++end
++
++function ViridianRoadblock:isActive()
++  return self.state ~= "DONE" and self.state ~= "CANCELLED"
++end
++
++function ViridianRoadblock:cancel(reason)
++  self.state, self.reason, self.printer = "CANCELLED", reason, nil
++end
++
++-- Presenter step, called once per fixed tick after InputState.update. Only
++-- PRINT/WAIT states consume input; one call changes at most one state, so
++-- a single NEW press cannot finish a page and acknowledge it. The host
++-- performs CLOSE_PENDING and later states on later ticks.
++function ViridianRoadblock:update(input)
++  local newA = input:isNewlyPressed(InputState.A_BUTTON)
++  local newB = input:isNewlyPressed(InputState.B_BUTTON)
++  local state = self.state
++  if state == "PRINT_PAGE1" or state == "PRINT_PAGE2" then
++    -- text.c RENDER_STATE_HANDLE_CHAR: a latched speedup clears the delay
++    -- while A/B is held; otherwise a pending delay counts down, and a NEW
++    -- A/B latches the speedup on a frame that prints nothing.
++    if self.accelerated and (input:isHeld(InputState.A_BUTTON) or input:isHeld(InputState.B_BUTTON)) then
++      self.remaining = 0
++    end
++    if self.remaining > 0 then
++      self.remaining = self.remaining - 1
++      if newA or newB then self.accelerated, self.remaining = true, 0 end
++      return
++    end
++    self.remaining = self.delay
++    self.printer.tokenIndex = self.printer.tokenIndex + 1
++    if self.printer.tokenIndex >= #self.printer.tokens then
++      self.state = self.page == 1 and "WAIT_PAGE" or "WAIT_FINAL"
++    end
++  elseif state == "WAIT_PAGE" and (newA or newB) then
++    -- Paragraph clear: new window contents, cursor reset, latch retained.
++    self.page, self.printer, self.remaining = 2, pagePrinter(self.descriptor.pages[2]), 0
++    self.state = "PRINT_PAGE2"
++  elseif state == "WAIT_FINAL" and (newA or newB) then
++    self.acknowledgedBy = newA and "A" or "B"
++    self.state = "CLOSE_PENDING"
++  end
++end
++
++return ViridianRoadblock
+diff --git a/tests/phase5_viridian_roadblock_integration_test.lua b/tests/phase5_viridian_roadblock_integration_test.lua
+new file mode 100644
+index 0000000000000000000000000000000000000000..65e58cdf290fda34d8363426198a469b91c9aeab
+--- /dev/null
++++ b/tests/phase5_viridian_roadblock_integration_test.lua
+@@ -0,0 +1,304 @@
++-- Executes production main.lua fragments: completed-step dispatch, fixed
++-- ticks through love.update/InputState, the C0 presenter task, dialogue
++-- image selection, forced movement, map teardown and the replay case.
++-- Fixtures contain synthetic bytes and service stubs only; no ROM, no LÖVE
++-- process and no helper-only returned action.
++package.path=package.path..";./?.lua"
++love={}
++local App=require("main")
++local P=require("src.core.PlayerMovement")
++local Input=require("src.core.InputState")
++local Flow=require("src.core.NewGameFlow")
++local Codec=require("src.core.SaveFileCodec")
++local F=assert(loadfile("tests/phase5_viridian_roadblock_test.lua"))("fixtures")
++local file=assert(io.open("main.lua","rb"));local source=file:read("*a");file:close()
++local passed,failed=0,0
++local function check(name,ok) if ok then passed=passed+1 else failed=failed+1;print("FAIL: "..name) end end
++local function noop() end
++local LEAK=Input.DPAD_RIGHT+Input.START_BUTTON+Input.SELECT_BUTTON+Input.A_BUTTON+Input.B_BUTTON
++
++-- Plain-text mutation of one installed production fragment.
++local function replaceOnce(old,new)
++  return function(text)
++    local a,b=text:find(old,1,true);assert(a,"mutation anchor missing: "..old)
++    assert(not text:find(old,b+1,true),"mutation anchor repeated: "..old)
++    return text:sub(1,a-1)..new..text:sub(b+1)
++  end
++end
++local function install(env,first,last,name,transform)
++  local a=assert(source:find(first,1,true),first);local b=assert(source:find(last,a+#first,true),last)
++  local text=source:sub(a,b-1)
++  if transform then text=transform(text) end
++  local chunk=assert(loadstring(text.."\nreturn "..name,"@main.lua:"..name));setfenv(chunk,env)
++  local value=chunk();if not name:find(".",1,true) then env[name]=value end;return value
++end
++local SECTIONS={
++  {"elevation","-- Transient player elevation input","-- Keep the field camera","world.readPlayerElevationHeight"},
++  {"c0","-- Viridian City C0 roadblock (src/core","-- Deterministic guarded C0 witness","world.viridianRoadblockTask"},
++  {"replay","-- Deterministic guarded C0 witness","local function playerMovementTask(","world.runViridianRoadblockReplay"},
++  {"playerTask","local function playerMovementTask(","-- Ticks a pending TrainerApproach","playerMovementTask"},
++  {"npcTask","local function npcMovementTask(","local function dialogueTask(","npcMovementTask"},
++  {"loadMap","function loadMap(data, addrs, mapId, dbg)","-- Real warp transition","loadMap"},
++  {"sync","syncSessionLocation = function","-- The real naming screen seeds","syncSessionLocation"},
++  {"images","local function ensureDialogueImagesCurrent(","local FLAME_TILE_WIDTH","ensureDialogueImagesCurrent"},
++  {"update","function love.update(dt)","local function drawNewGameFlow(","love.update"},
++  {"keypressed","function love.keypressed(key)","-- Keep the live LÖVE entrypoint unchanged","love.keypressed"},
++}
++local function harness(mutations)
++  mutations=mutations or {}
++  local blocks={};for i=0,1023 do blocks[i]={elevation=3,collision=0} end
++  local session=App.GameSession.fromNewGame({playerGender=0,playerName=Flow.encodeName("RED"),rivalName=Flow.encodeName("GREEN")})
++  session:setVar(0x4051,0);session:setLocation(769,22,12,"north")
++  local counts={trainer=0,early=0,connection=0,warp=0,wild=0,npc=0,interaction=0,menu=0,collision=0,ledge=0,sync=0}
++  local env=setmetatable({world={},newGame={session=session,active=false},PlayerMovement=P,InputState=Input,
++    NewGameFlow=Flow,SaveFileCodec=Codec,
++    inputState=Input.new(),scheduler=require("src.core.TaskScheduler").new(),
++    FIXED_TICK=1/60,tickAccumulator=0,walkActive=true,walkMapId=769,
++    walkMapWidth=32,walkMapHeight=32,walkMapBlockData=blocks,romData=F.bytes(),romAddrs={gMapGroups=0},
++    love={keyboard={isDown=function() return false end},event={}},
++    addLine=noop,counts=counts,GameSession=App.GameSession,printed={},
++    DIALOGUE_CONTENT_TILES_W=26,DIALOGUE_CONTENT_TILES_H=4,
++    fontData="synthetic",fontAddrs={},fontPalette={[1]={r=255,g=255,b=255}},
++    TextWindow={decodeFrameTiles=noop,decodePalette=noop,compositeFrame=function() return {} end},
++    buildImage=function() return {setFilter=noop} end,
++    MapHeader={resolve=function() return {mapScriptsPtr=0x08000010,mapLayoutPtr=1,eventsPtr=1,connectionsPtr=0} end},
++    MapLayout={resolve=function() return {width=32,height=32,mapPtr=1,primaryTilesetPtr=1,secondaryTilesetPtr=2,borderPtr=1,borderWidth=1,borderHeight=1} end},
++    MapBlockData={resolve=function() return blocks end},
++    MapEvents={resolve=function() return {warps={},coordEvents=F.context().events} end},
++    Tileset={resolve=function() return {metatileAttributesPtr=1} end},
++    MapBorder={resolve=function() return {} end},
++    MapCompositor={loadTilesetData=function() return {tiles={}} end,compositeWithBorder=function() return {width=512,height=512} end},
++    loadMapObjectEvents=function() end,
++  },{__index=_G})
++  env.print=function(line) env.printed[#env.printed+1]=line end
++  env.love.event.quit=function(code) env.quitCode=code or 0 end
++  env.TextRenderer={renderTokens=function(_,_,tokens) env.rendered=tokens;return {} end}
++  for _,pair in ipairs({{"tryEarlyStoryTriggerAt","early"},{"tryWarpAt","warp"},{"rollWildEncounterAt","wild"},
++    {"tryStartInteraction","interaction"}}) do
++    env[pair[1]]=function() counts[pair[2]]=counts[pair[2]]+1;return false end
++  end
++  env.getLedgeJumpDirection=function() counts.ledge=counts.ledge+1;return env.ledgeDirection end
++  env.world.isPlayerWalkTileBlocked=function() counts.collision=counts.collision+1;return env.blocked or false end
++  env.world.tryTrainerSightlineAt=function() counts.trainer=counts.trainer+1;return env.trainerWins or false end
++  env.world.tryConnectionAt=function() counts.connection=counts.connection+1;return false end
++  env.world.openStartMenu=function() counts.menu=counts.menu+1 end
++  env.world.clearViews=function() env.walkActive=false;env.newGame.active=false end
++  env.world.npcs={{tick=function() counts.npc=counts.npc+1 end}}
++  for _,s in ipairs(SECTIONS) do install(env,s[2],s[3],s[4],mutations[s[1]]) end
++  local sync=env.syncSessionLocation
++  env.syncSessionLocation=function() counts.sync=counts.sync+1;sync() end
++  env.world.roadblockMapScriptsPtr=0x08000010
++  env.world.coordEvents=F.context().events
++  env.playerMovement=P.new(22,12,P.UP)
++  env.playerMovement:bindElevationSource(env.world.readPlayerElevationHeight,env.world.readPlayerElevationGeneration)
++  env.scheduler:createTask(env.playerMovementTask,0)
++  env.scheduler:createTask(env.npcMovementTask,0)
++  return env
++end
++local function tick(e,mask,n)
++  e.world.replayInputMask=mask or 0
++  for _=1,n or 1 do e.love.update(1/60) end
++end
++local function enter(e)
++  tick(e,Input.DPAD_UP);tick(e,0,16)
++  return e.world.viridianRoadblock
++end
++-- Bounded: returns false instead of erroring so mutants keep running.
++local function untilState(e,state,mask,maxStep)
++  for _=1,2000 do
++    local r=e.world.viridianRoadblock
++    if not r then return false end
++    if r.state==state then return true end
++    local printer,index=r.printer,r.printer and r.printer.tokenIndex
++    tick(e,mask or 0)
++    if maxStep and r.printer and r.printer==printer and r.printer.tokenIndex>index+1 then maxStep.revealAll=true end
++  end
++  return false
++end
++local function finishText(e)
++  untilState(e,"WAIT_PAGE",Input.B_BUTTON);tick(e,0);tick(e,Input.B_BUTTON)
++  untilState(e,"WAIT_FINAL",Input.B_BUTTON);tick(e,0);tick(e,Input.A_BUTTON)
++end
++
++-- One full production pass. Every named result must be true for production;
++-- mutation witnesses below require the named invariant to fail.
++local function scenario(e)
++  local res,c,p={},e.counts,e.playerMovement
++  local before=Codec.encode(e.newGame.session.state)
++  tick(e,Input.DPAD_UP);tick(e,0,15)
++  res.no_premature=not e.world.viridianRoadblock and p.moving
++  tick(e,0);local r=e.world.viridianRoadblock
++  res.selected_e3=r~=nil and r.state=="PRINT_PAGE1" and p:getEffectiveElevation()==3
++  if not r then return res end
++  res.trainer_first_once=c.trainer==1 and c.early==0 and c.wild==0 and c.warp==0 and c.connection==0
++  e.ensureDialogueImagesCurrent();res.blue_renderer=e.rendered~=nil and e.rendered[1].fg==8
++  local npc=c.npc
++  for _=1,3 do tick(e,Input.START_BUTTON+Input.SELECT_BUTTON+Input.DPAD_RIGHT);tick(e,0) end
++  e.love.keypressed("v");e.love.keypressed("k")
++  res.print_lock=c.npc==npc and c.interaction==0 and c.menu==0 and not p.moving and r.page==1
++  local step={}
++  tick(e,Input.A_BUTTON);res.activation_no_glyph=r.accelerated and r.remaining==0
++  res.page1_complete=untilState(e,"WAIT_PAGE",Input.A_BUTTON,step)
++  tick(e,Input.A_BUTTON);res.held_no_page_clear=r.state=="WAIT_PAGE" and r.page==1
++  local oldPrinter=r.printer
++  tick(e,0);tick(e,Input.B_BUTTON)
++  res.new_b_page_clear=r.page==2 and r.printer~=nil and r.printer~=oldPrinter and r.printer.tokenIndex==0 and r.accelerated
++  e.ensureDialogueImagesCurrent()
++  res.page_cache_reset=not e.world.dialogueTextImage and e.world.dialogueBuiltPrinter==r.printer
++  res.page2_complete=untilState(e,"WAIT_FINAL",Input.B_BUTTON,step)
++  res.no_reveal_all=not step.revealAll
++  tick(e,Input.B_BUTTON);res.held_no_final=r.state=="WAIT_FINAL"
++  tick(e,0);tick(e,Input.A_BUTTON)
++  res.final_ack_keeps_frame=r.state=="CLOSE_PENDING" and r.acknowledgedBy=="A" and r.printer~=nil and not p.moving
++  tick(e,Input.DPAD_RIGHT+Input.START_BUTTON)
++  res.close_before_move=r.state=="WALK_DOWN" and not r.printer and not e.world.dialogueTextImage and not p.moving
++  -- Ordinary admission would refuse and the ledge would hop two tiles.
++  local collision,ledge=c.collision,c.ledge
++  e.blocked=true;e.ledgeDirection=P.DOWN
++  tick(e,Input.DPAD_RIGHT+Input.START_BUTTON)
++  e.blocked=false;e.ledgeDirection=nil
++  res.no_collision_ledge=c.collision==collision and c.ledge==ledge
++  res.forced_start=r.state=="WAIT_MOVEMENT_END" and p.destTileX==22 and p.destTileY==12
++    and p.facingDirection==P.DOWN and p:pixelY()==11*16
++  local sync,pixels=c.sync,true
++  for i=1,16 do
++    -- Alternating masks make every button/direction a NEW press while owned.
++    tick(e,i%2==1 and LEAK or 0)
++    pixels=pixels and p:pixelX()==22*16 and p:pixelY()==11*16+i and p.moving==(i<16)
++      and c.npc==npc and c.menu==0 and c.interaction==0
++  end
++  res.sixteen_pixels_locked=pixels
++  res.wait_before_release=e.world.viridianRoadblock==r and r.state=="RELEASE_PENDING"
++    and c.sync==sync+1 and p:getEffectiveElevation()==nil
++  tick(e,Input.DPAD_RIGHT+Input.START_BUTTON+Input.A_BUTTON)
++  res.release_barrier=not e.world.viridianRoadblock and not p.moving and p.tileX==22 and p.tileY==12
++    and c.npc==npc and c.menu==0 and c.interaction==0
++  res.no_nested_dispatch=c.trainer==1 and c.early==0 and c.connection==0 and c.warp==0 and c.wild==0
++  local expected=App.GameSession.fromSavedState(assert(Codec.decode(before)))
++  expected:setLocation(769,22,12,"south")
++  res.location_facing_only=Codec.encode(expected.state)==Codec.encode(e.newGame.session.state)
++  tick(e,Input.DPAD_RIGHT)
++  res.resume_next_tick=p.moving and p.destTileX==23 and c.npc==npc+1
++  return res
++end
++
++do
++  local res=scenario(harness())
++  local names={"no_premature","selected_e3","trainer_first_once","blue_renderer","print_lock",
++    "activation_no_glyph","page1_complete","held_no_page_clear","new_b_page_clear","page_cache_reset",
++    "page2_complete","no_reveal_all","held_no_final","final_ack_keeps_frame","close_before_move",
++    "no_collision_ledge","forced_start","sixteen_pixels_locked","wait_before_release","release_barrier",
++    "no_nested_dispatch","location_facing_only","resume_next_tick"}
++  for _,name in ipairs(names) do check("production "..name,res[name]==true) end
++end
++
++-- Production wrong map/scene/E and malformed selected context, not a returned helper.
++for _,case in ipairs({{"scene",1,"fallthrough"},{"map",768,"fallthrough"},{"e",4,"fallthrough"},
++  {"e",0,"fallthrough"},{"e",false,"REFUSED"},{"scene",false,"REFUSED"},{"owner",true,"REFUSED"},
++  {"table",false,"REFUSED"},{"script",false,"REFUSED"},{"speed",3,"REFUSED"},{"event",false,"REFUSED"}}) do
++  local e=harness()
++  if case[1]=="scene" then e.newGame.session.state.saveBlock1.vars[82]=case[2]
++  elseif case[1]=="map" then e.walkMapId=case[2]
++  elseif case[1]=="e" then
++    for _,b in pairs(e.walkMapBlockData) do b.elevation=case[2] end
++    if case[2]==0 then e.playerMovement:bootstrapElevation() end
++  elseif case[1]=="owner" then e.world.startMenuActive=true
++  elseif case[1]=="table" then e.world.roadblockMapScriptsPtr=0
++  elseif case[1]=="script" then e.romData=F.bytes({[64]=0})
++  elseif case[1]=="speed" then e.newGame.session.state.saveBlock2.options.textSpeed=case[2]
++  elseif case[1]=="event" then e.world.coordEvents[0].trigger=0x4052 end
++  local saved=Codec.encode(e.newGame.session.state)
++  local r=enter(e)
++  local label=case[1].."="..tostring(case[2])
++  if case[3]=="fallthrough" then
++    check("production legacy "..label,not r and e.counts.early==1 and e.counts.trainer==1 and e.counts.wild==1)
++  else
++    check("production refusal "..label,r and r.state=="REFUSED" and r.printer==nil
++      and e.counts.wild==0 and e.counts.early==0 and e.counts.warp==0)
++    tick(e,Input.DPAD_DOWN+Input.START_BUTTON+Input.A_BUTTON);tick(e,0);tick(e,Input.DPAD_DOWN+Input.START_BUTTON+Input.A_BUTTON,18)
++    check("refusal suppresses input "..label,not e.playerMovement.moving and e.counts.menu==0 and e.counts.interaction==0)
++    e.world.startMenuActive=nil
++    local state=e.newGame.session.state
++    local expected=App.GameSession.fromSavedState(assert(Codec.decode(saved)))
++    expected:setLocation(769,22,11,"north")
++    check("refusal writes no scene/reward "..label,Codec.encode(expected.state)==Codec.encode(state))
++    e.loadMap(e.romData,e.romAddrs,769,noop)
++    check("same-ID reload recovers refusal "..label,not e.world.viridianRoadblock and e.playerMovement:getEffectiveElevation()==nil)
++  end
++end
++for _,elevation in ipairs({0,4}) do
++  local e=harness();e.world.coordEvents[0].elevation=0
++  for _,b in pairs(e.walkMapBlockData) do b.elevation=elevation end
++  if elevation==0 then e.playerMovement:bootstrapElevation() end
++  local r=enter(e)
++  check("production known wildcard "..elevation,r~=nil and r.state=="PRINT_PAGE1" and e.counts.wild==0)
++end
++do
++  local e=harness();e.trainerWins=true;local r=enter(e)
++  check("trainer wins once before C0",not r and e.counts.trainer==1 and e.counts.wild==0 and e.counts.early==0)
++end
++for _,kind in ipairs({"generation","position","owner","player","reload","destination"}) do
++  local e=harness();enter(e);finishText(e)
++  local old=e.playerMovement
++  if kind=="destination" then e.walkMapBlockData[12*32+22]=nil;tick(e,0,2)
++  else
++    tick(e,0,3)
++    if kind=="generation" then e.world.playerElevationGeneration=e.world.playerElevationGeneration+1
++    elseif kind=="position" then e.playerMovement.tileX=21
++    elseif kind=="owner" then e.world.dialogue={isActive=function() return true end}
++    elseif kind=="player" then e.playerMovement=P.new(22,11,P.DOWN)
++    else e.loadMap(e.romData,e.romAddrs,769,noop) end
++    tick(e,0)
++  end
++  local r=e.world.viridianRoadblock
++  check("teardown/stale "..kind,kind=="reload" and not r or r and r.state=="REFUSED")
++  check("stale motion cancelled "..kind,not old.moving and old.tileY==11 or kind=="player")
++  check("stale E invalid "..kind,old:getEffectiveElevation()==nil)
++  if kind=="owner" then check("never releases other owner",e.world.dialogue:isActive()) end
++end
++do
++  local e=harness();enter(e);finishText(e);tick(e,0,20)
++  check("release completes",not e.world.viridianRoadblock and e.playerMovement.tileY==12)
++  check("ordinary re-entry retriggers",enter(e)~=nil and e.counts.trainer==2 and e.newGame.session:getVar(0x4051)==0)
++end
++
++-- The guarded replay case itself, run against synthetic production paths.
++do
++  local e=harness();e.world.runViridianRoadblockReplay()
++  local line=e.printed[#e.printed] or ""
++  check("replay case passes synthetic witness",line:find("RUNTIME_REPLAY viridian_roadblock PASS",1,true)==1 and e.quitCode==0)
++  check("replay restores dispatch owners",e.world.replayInputMask==nil and e.world.tryConnectionAt~=nil)
++end
++
++-- Negative mutation witnesses: each executes production fragments with one
++-- defect; the same production assertion must detect it.
++local BARRIER=replaceOnce("if not world.roadblockTickOwned and not (world.viridianRoadblock and world.viridianRoadblock:isActive()) then",
++  "if not (world.viridianRoadblock and world.viridianRoadblock:isActive()) then")
++do
++  local res=scenario(harness({update=BARRIER}))
++  check("mutation witness: omitted release barrier leaks",res.release_barrier==false and res.sixteen_pixels_locked==true)
++  local e=harness({update=BARRIER});e.world.runViridianRoadblockReplay()
++  local line=e.printed[#e.printed] or ""
++  check("mutation witness: replay detects release leak",line:find("FAIL",1,true)~=nil
++    and line:find("pass1_release_barrier",1,true)~=nil and e.quitCode==1)
++end
++do
++  local res=scenario(harness({c0=replaceOnce("local ok, reason = p:startScriptedDown(function(x,y)",
++    'p:tryMove(PlayerMovement.DOWN, world.isPlayerWalkTileBlocked, getLedgeJumpDirection, "script")\n'
++    ..'    local ok, reason = p.moving, "blocked"\n    local _ = (function(x,y)')}))
++  check("mutation witness: ordinary collision/ledge admission detected",res.no_collision_ledge==false)
++end
++do
++  local res=scenario(harness({c0=replaceOnce("      syncSessionLocation()\n      r.forced, r.state = false, \"RELEASE_PENDING\"",
++    "      syncSessionLocation()\n      if not tryEarlyStoryTriggerAt(p.tileX, p.tileY) and not world.tryConnectionAt(p.tileX, p.tileY)\n"
++    .."          and not tryWarpAt(p.tileX, p.tileY) and not world.tryTrainerSightlineAt(p.tileX, p.tileY) then\n"
++    .."        rollWildEncounterAt(p.tileX, p.tileY)\n      end\n      r.forced, r.state = false, \"RELEASE_PENDING\"")}))
++  check("mutation witness: nested completed-step dispatch detected",res.no_nested_dispatch==false)
++end
++do
++  local res=scenario(harness({playerTask=replaceOnce(
++    "if world.roadblockTickOwned or (world.viridianRoadblock and world.viridianRoadblock:isActive()) then return end","")}))
++  check("mutation witness: ordinary tick during forced motion detected",res.sixteen_pixels_locked==false)
++end
++print(("phase5_viridian_roadblock_integration_test: %d passed, %d failed"):format(passed,failed))
++os.exit(failed==0 and 0 or 1)
+diff --git a/tests/phase5_viridian_roadblock_rom_test.lua b/tests/phase5_viridian_roadblock_rom_test.lua
+new file mode 100644
+index 0000000000000000000000000000000000000000..83df154288f54322a6adfbf78a7f93ce0dbde5c4
+--- /dev/null
++++ b/tests/phase5_viridian_roadblock_rom_test.lua
+@@ -0,0 +1,107 @@
++-- Opt-in verified-ROM fixture for the bounded Viridian City C0 roadblock.
++-- Run:
++--   POKEPORT_ROM=/path/to/pokefirered.gba lua5.1 tests/phase5_viridian_roadblock_rom_test.lua
++-- Verifies SHA-1 41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc through RomImporter
++-- before any read, then resolves map 3,1 through the existing header/event/
++-- script/layout importers. Every pointer is resolved dynamically; no ROM
++-- bytes, pointer constants or dialogue are stored or printed here.
++package.path = package.path .. ";./?.lua"
++
++local RomImporter = require("import.RomImporter")
++local RomAddresses = require("import.RomAddresses")
++local MapHeader = require("import.MapHeader")
++local MapEvents = require("import.MapEvents")
++local MapScripts = require("import.MapScripts")
++local MapLayout = require("import.MapLayout")
++local MapBlockData = require("import.MapBlockData")
++local ViridianRoadblock = require("src.core.ViridianRoadblock")
++
++local path = os.getenv("POKEPORT_ROM")
++if not path then print("SKIP phase5_viridian_roadblock_rom_test (set POKEPORT_ROM)"); os.exit(0) end
++local ok, info = RomImporter.verify(path)
++if not ok then print("FAIL: ROM verification -- " .. tostring(info)); os.exit(1) end
++local f = assert(io.open(path, "rb")); local rom = f:read("*a"); f:close()
++local addrs = assert(RomAddresses["41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc"])
++
++local passed, failed = 0, 0
++local function check(name, condition, detail)
++  if condition then passed = passed + 1 else
++    failed = failed + 1
++    print("FAIL: " .. name .. (detail and (" -- " .. tostring(detail)) or ""))
++  end
++end
++local function inRom(ptr)
++  return type(ptr) == "number" and ptr >= 0x08000000 and ptr - 0x08000000 < #rom
++end
++
++local MAP_VIRIDIAN_CITY = 3 * 256 + 1
++local header = MapHeader.resolve(rom, addrs.gMapGroups, MAP_VIRIDIAN_CITY)
++local events = MapEvents.resolve(rom, header.eventsPtr)
++local c0 = events.coordEvents[0]
++
++check("C0 is decoded index 0 at (22,11)", c0 ~= nil and c0.x == 22 and c0.y == 11)
++check("C0 trigger is VAR_MAP_SCENE_VIRIDIAN_CITY_OLD_MAN value 0",
++  c0 ~= nil and c0.trigger == 0x4051 and c0.index == 0)
++check("actual selected C0 elevation is 3", c0 ~= nil and c0.elevation == 3, c0 and c0.elevation)
++check("C0 script pointer is inside the ROM", c0 ~= nil and inRom(c0.scriptPtr))
++local others = 0
++for index, event in pairs(events.coordEvents) do
++  if index ~= 0 and event.x == 22 and event.y == 11 then others = others + 1 end
++end
++check("no conflicting coord event shares (22,11)", others == 0, others)
++
++local hooks = MapScripts.resolve(rom, header.mapScriptsPtr)
++check("map-script table is exactly one ON_TRANSITION hook",
++  hooks[0] ~= nil and hooks[0].type == MapScripts.ON_TRANSITION and hooks[1] == nil
++    and inRom(hooks[0].scriptPtr))
++
++local descriptor, reason = ViridianRoadblock.describe(rom, c0 and c0.scriptPtr, header.mapScriptsPtr)
++check("bounded C0 script/movement/text descriptor validates", descriptor ~= nil, reason)
++if descriptor then
++  check("text and movement pointers resolve inside the ROM",
++    inRom(descriptor.textPtr) and inRom(descriptor.movementPtr)
++      and descriptor.textPtr ~= descriptor.movementPtr)
++  local function shape(tokens)
++    local glyphs, newlines, other = 0, 0, 0
++    for _, token in ipairs(tokens) do
++      if token.type == "char" then glyphs = glyphs + 1
++      elseif token.type == "newline" then newlines = newlines + 1
++      else other = other + 1 end
++    end
++    return glyphs, newlines, other
++  end
++  local g1, n1, o1 = shape(descriptor.pages[1])
++  local g2, n2, o2 = shape(descriptor.pages[2])
++  check("two plain pages: one page-1 newline, none on page 2",
++    g1 > 0 and n1 == 1 and o1 == 0 and g2 > 0 and n2 == 0 and o2 == 0)
++  local presenter = ViridianRoadblock.new(descriptor, 1)
++  check("default mid text speed presenter starts on page 1",
++    presenter ~= nil and presenter.state == "PRINT_PAGE1" and presenter.delay == 4)
++end
++
++-- Same admission the runtime uses, on the real decoded events.
++local context = { mapId=MAP_VIRIDIAN_CITY, x=22, y=11, normalStep=true, moving=false,
++  generation=1, stepGeneration=1, scene=0, elevation=3, events=events.coordEvents }
++check("real C0 selects known E3", ViridianRoadblock.classify(context) == "owned")
++context.elevation = 4
++check("real C0 does not select wrong E4", ViridianRoadblock.classify(context) == "not_selected")
++context.elevation = 0
++check("real C0 does not select known E0 (event E is not the wildcard)",
++  ViridianRoadblock.classify(context) == "not_selected")
++context.elevation = nil
++check("real C0 refuses unknown E", ViridianRoadblock.classify(context) == "refused")
++
++-- Replay fixture prerequisites: an ordinary UP step (22,12)->(22,11) can
++-- complete onto height 3, and the forced step's destination is loaded.
++local layout = MapLayout.resolve(rom, header.mapLayoutPtr)
++local blocks = MapBlockData.resolve(rom, layout.mapPtr, layout.width, layout.height)
++local c0Cell = blocks[11 * layout.width + 22]
++local belowCell = blocks[12 * layout.width + 22]
++check("C0 tile is passable at height 3", c0Cell ~= nil and c0Cell.collision == 0 and c0Cell.elevation == 3,
++  c0Cell and (c0Cell.collision .. "/" .. c0Cell.elevation))
++-- The forced step bypasses collision, so only loaded-map presence is needed.
++check("fixture origin/forced destination (22,12) is on the loaded map",
++  belowCell ~= nil and layout.height > 12 and layout.width > 22)
++
++print(("phase5_viridian_roadblock_rom_test: %d passed, %d failed"):format(passed, failed))
++os.exit(failed == 0 and 0 or 1)
+diff --git a/tests/phase5_viridian_roadblock_test.lua b/tests/phase5_viridian_roadblock_test.lua
+new file mode 100644
+index 0000000000000000000000000000000000000000..5f75061b91825bec2e72b55c1c9d52315dd7bdda
+--- /dev/null
++++ b/tests/phase5_viridian_roadblock_test.lua
+@@ -0,0 +1,130 @@
++-- Synthetic bytes only (no ROM content). Source oracle: accepted P5-06 C0
++-- design at pokefirered c75f352 (scripts.inc:188-201, text.c:550-650,
++-- new_menu_helpers.c:27-32, scrcmd.c:1313-1318). `loadfile(...)("fixtures")`
++-- returns the byte/context fixtures for the integration test.
++package.path=package.path..";./?.lua"
++local R=require("src.core.ViridianRoadblock")
++local Input=require("src.core.InputState")
++local F={}
++function F.bytes(changes, text)
++  local b={}; for i=1,512 do b[i]=0xff end
++  local function put(p, values) for i,v in ipairs(values) do b[p+i]=v end end
++  local function ptr(p) return {p%256,math.floor(p/256),0,8} end
++  put(16,{3,200,0,0,8,0})
++  put(64,{0x69,0xc7,0,0x0f,0}); put(69,ptr(128))
++  put(73,{9,4,0x68,0x4f,0xff,0}); put(79,ptr(32))
++  put(83,{0x51,0,0,0x6b,2}); put(32,{0x10,0xfe})
++  put(128,text or {0xbb,0xbc,0xfe,0xbd,0xbe,0xfb,0xbf,0xc0,0xc1,0xff})
++  for p,v in pairs(changes or {}) do b[p+1]=v end
++  local out={}; for i,v in ipairs(b) do out[i]=string.char(v) end
++  return table.concat(out)
++end
++function F.context()
++  return {mapId=769,x=22,y=11,normalStep=true,moving=false,generation=1,stepGeneration=1,
++    scene=0,elevation=3,events={[0]={x=22,y=11,trigger=0x4051,index=0,elevation=3,scriptPtr=0x08000040}}}
++end
++if ...=="fixtures" then return F end
++local passed,failed=0,0
++local function check(name,ok)
++  if ok then passed=passed+1 else failed=failed+1; print("FAIL: "..name) end
++end
++local function describe(data) return R.describe(data,0x08000040,0x08000010) end
++local d=assert(describe(F.bytes()))
++check("dynamic pointers and two independent pages",d.textPtr==0x08000080 and d.movementPtr==0x08000020
++  and #d.pages[1]==5 and d.pages[1][3].type=="newline" and #d.pages[2]==3)
++for _,i in ipairs({0,1,2,3,4,9,10,11,12,13,14,19,20,21,22,23}) do
++  check("reject changed script operand "..i,describe(F.bytes({[64+i]=0x55}))==nil)
++end
++for _,p in ipairs({16,21,32,33,72,82}) do
++  check("reject table/movement/pointer "..p,describe(F.bytes({[p]=0x55}))==nil)
++end
++for n=0,87 do check("range checked script truncation "..n,describe(F.bytes():sub(1,n))==nil) end
++for _,ptr in ipairs({0,1,0x07ffffff,0x08000200,0x09000000,0x08000040+0.5}) do
++  check("invalid script pointer "..ptr,R.describe(F.bytes(),ptr,0x08000010)==nil)
++  check("invalid table pointer "..ptr,R.describe(F.bytes(),0x08000040,ptr)==nil)
++end
++for _,text in ipairs({{0xbb,0xff},{0xfe,0xbb,0xfb,0xbc,0xff},
++  {0xbb,0xfe,0xfb,0xbc,0xff},{0xbb,0xfe,0xbc,0xfb,0xff},
++  {0xbb,0xfe,0xbc,0xfb,0xbd,0xfb,0xbe,0xff},
++  {0xbb,0xfe,0xbc,0xfb,0xbd,0xfe,0xbe,0xff}}) do
++  check("reject malformed page shape",describe(F.bytes(nil,text))==nil)
++end
++for b=0xf7,0xfd do
++  if b~=0xfb then check("reject unexpected control "..b,describe(F.bytes({[129]=b}))==nil) end
++end
++check("truncated text",describe(F.bytes():sub(1,135))==nil)
++check("bounded missing terminator",describe(F.bytes():sub(1,128)..string.rep(string.char(0xbb),1024))==nil)
++check("selected identity",R.classify(F.context())=="owned")
++for _,case in ipairs({{"mapId",768,"not_selected"},{"x",21,"not_selected"},{"y",12,"not_selected"},
++  {"scene",1,"not_selected"},{"scene",65535,"not_selected"},{"scene",false,"refused"},
++  {"scene",-1,"refused"},{"scene",65536,"refused"},{"scene",0.1,"refused"},
++  {"elevation",4,"not_selected"},{"elevation",0,"not_selected"},{"elevation",false,"refused"},
++  {"normalStep",false,"refused"},{"moving",true,"refused"},{"stepGeneration",2,"refused"}}) do
++  local c=F.context(); c[case[1]]=case[2]
++  check("admission "..case[1].."="..tostring(case[2]),R.classify(c)==case[3])
++end
++for _,field in ipairs({"scene","generation","stepGeneration","elevation","events"}) do
++  local c=F.context();c[field]=nil;check("missing "..field,R.classify(c)=="refused")
++end
++for _,field in ipairs({"x","y","trigger","index","elevation"}) do
++  local c=F.context();c.events[0][field]=99;check("C0 identity "..field,R.classify(c)=="refused")
++end
++do
++  local c=F.context();c.events[1]=c.events[0];check("conflicting identity",R.classify(c)=="refused")
++  c=F.context();c.events[0].elevation=0;c.elevation=0
++  check("known player zero matches event wildcard",R.classify(c)=="owned")
++  c.elevation=4;check("wildcard known4",R.classify(c)=="owned")
++  c.elevation=nil;check("wildcard never unknown",R.classify(c)=="refused")
++end
++do
++  local c=F.context();c.scene=1;c.normalStep=false;c.elevation=nil
++  check("valid nonzero scene stays legacy before step qualification",R.classify(c)=="not_selected")
++  c=F.context();check("selected event returned",select(2,R.classify(c))==c.events[0])
++end
++for _,speed in ipairs({-1,3,8,false,"1"}) do check("unsupported speed",R.new(d,speed)==nil) end
++for speed,delay in pairs({[0]=8,[1]=4,[2]=1}) do
++  local r=assert(R.new(d,speed));local input=Input.new()
++  input:update(0);r:update(input)
++  check("first glyph and literal delay "..speed,r.printer.tokenIndex==1 and r.remaining==delay)
++  input:update(Input.A_BUTTON);r:update(input)
++  check("activation returns without glyph "..speed,r.accelerated and r.printer.tokenIndex==1)
++  r:update(input);check("held acceleration one glyph "..speed,r.printer.tokenIndex==2)
++end
++for speed,delay in pairs({[0]=8,[1]=4,[2]=1}) do
++  -- Unaccelerated cadence: one glyph, then `delay` frames that print nothing.
++  local r=assert(R.new(d,speed));local input=Input.new();local cadence=true
++  for frame=0,(#d.pages[1]-1)*(delay+1) do
++    input:update(0);r:update(input)
++    cadence=cadence and r.printer.tokenIndex==math.floor(frame/(delay+1))+1
++  end
++  check("source delay cadence "..speed,cadence and r.state=="WAIT_PAGE")
++  -- Held latched acceleration never reveals more than one glyph per update.
++  r=assert(R.new(d,speed));input=Input.new();input:update(0);r:update(input)
++  local last,oneStep=r.printer.tokenIndex,true
++  for _=1,40 do
++    input:update(Input.B_BUTTON);r:update(input)
++    oneStep=oneStep and r.printer.tokenIndex-last<=1;last=r.printer.tokenIndex
++    if r.state~="PRINT_PAGE1" then break end
++  end
++  check("no reveal-all under held latch "..speed,oneStep and r.state=="WAIT_PAGE")
++end
++for _,button in ipairs({Input.A_BUTTON,Input.B_BUTTON}) do
++  local r=assert(R.new(d,2));local input=Input.new()
++  local function tick(mask) input:update(mask);r:update(input) end
++  tick(0);tick(button)
++  while r.state=="PRINT_PAGE1" do tick(button) end
++  check("printing press cannot acknowledge page",r.state=="WAIT_PAGE")
++  tick(button);check("held never clears page",r.page==1)
++  tick(0);tick(Input.START_BUTTON+Input.SELECT_BUTTON+Input.DPAD_DOWN)
++  check("directions/start/select never acknowledge",r.page==1)
++  tick(0);tick(button)
++  check("new page resets printer, preserves latch",r.page==2 and r.printer.tokenIndex==0 and r.accelerated)
++  while r.state=="PRINT_PAGE2" do tick(button) end
++  tick(button);check("held never final acknowledgment",r.state=="WAIT_FINAL")
++  tick(0);tick(Input.A_BUTTON+Input.B_BUTTON)
++  check("A wins simultaneous final buttons",r.state=="CLOSE_PENDING" and r.acknowledgedBy=="A")
++  check("ack leaves frame open",r.printer~=nil)
++  r:cancel("test");check("separate cancellation",r.state=="CANCELLED" and not r:isActive() and not r.printer)
++end
++print(("phase5_viridian_roadblock_test: %d passed, %d failed"):format(passed,failed))
++os.exit(failed==0 and 0 or 1)
+diff --git a/tests/player_movement_test.lua b/tests/player_movement_test.lua
+index 7f10ebe5b48c951e391fe418c111a9f37108ee83..6448cfd0f328bfbf9ce7ace4fd946bc26e880b11 100644
+--- a/tests/player_movement_test.lua
++++ b/tests/player_movement_test.lua
+@@ -260,5 +260,28 @@ do
+   check("destination mutation cancels elevation work", p:getEffectiveElevation() == nil)
+ end
+ 
++-- Source held-action path: stationary, loaded target, direct down16, no normal
++-- collision/ledge callback or ordinary-step provenance.
++do
++  local p = elevationPlayer({[0]=3},true)
++  p:tick()
++  local calls=0
++  check("script refuses missing destination",not p:startScriptedDown(function() return false end) and not p.moving
++    and p.facingDirection==PlayerMovement.RIGHT and p.destTileY==0)
++  check("script refuses absent availability check",not p:startScriptedDown(nil) and not p.moving)
++  check("script starts loaded target",p:startScriptedDown(function(x,y)
++    calls=calls+1; return x==0 and y==1
++  end))
++  check("script exact direction/destination",p.facingDirection==PlayerMovement.DOWN
++    and p.destTileX==0 and p.destTileY==1 and p.moveDy==1 and p.moveDx==0 and calls==1)
++  check("script immediately invalidates normal history",p:getEffectiveElevation()==nil and p.elevationStep==nil)
++  check("script cannot redirect moving player",not p:startScriptedDown(function() error("must not consult target") end))
++  for i=1,16 do
++    p:tick()
++    check("script pixel "..i,p:pixelY()==i and p.moving==(i<16) and p:getEffectiveElevation()==nil)
++  end
++  check("script stationary destination",p.tileX==0 and p.tileY==1 and not p.moving)
++end
++
+ print(("%d passed, %d failed"):format(passed, failed))
+ os.exit(failed == 0 and 0 or 1)
+diff --git a/work/tasks/phase5-viridian-roadblock-implementation.md b/work/tasks/phase5-viridian-roadblock-implementation.md
+index c1010b88616a0b86d7d5b61961087197af4e4d7c..7c341269857feab0ee41cbbc4715222d0a9ff006 100644
+--- a/work/tasks/phase5-viridian-roadblock-implementation.md
++++ b/work/tasks/phase5-viridian-roadblock-implementation.md
+@@ -214,3 +214,39 @@ A failed guarded job stops. A successful guarded job requires a separate,
+ independent outcome review before C0 behavior acceptance. Orchestrator
+ reconciles only this bounded slice; it does not claim Phase 5/7 completion or
+ normal northbound/traversal proof.
++
++## Local Worker evidence — 2026-10-28 (no ROM, no LÖVE)
++
++Worker constructed the nine-path package on local branch
++`work/p5-roadblock-claude-20261028` from base `77405ec`; not pushed and no
++request file created. This is local no-ROM evidence only: the ROM fixture
++skipped, the replay wrapper was not executed, and no status, guarded,
++behavior or phase gate is advanced. `$LUA` is `lua5.1` (as in
++`scripts/test_all.sh`); POKEPORT_ROM and POKEPORT_RUNTIME_REPLAY unset.
++
++| Command | Result |
++| --- | --- |
++| `"$LUA" tests/phase5_viridian_roadblock_test.lua` | exit 0, 205 passed |
++| `"$LUA" tests/phase5_viridian_roadblock_integration_test.lua` | exit 0, 86 passed |
++| `"$LUA" tests/player_movement_test.lua` | exit 0, 128 passed |
++| `"$LUA" tests/phase5_player_elevation_input_test.lua` | exit 0, 78 passed |
++| `"$LUA" tests/early_story_test.lua` | exit 0, 25 passed |
++| `"$LUA" tests/phase5_viridian_roadblock_rom_test.lua` | exit 0, clean SKIP (no ROM) |
++| `env -u POKEPORT_ROM -u POKEPORT_RUNTIME_REPLAY bash scripts/test_all.sh` | PASS: 205 test files (baseline 202 + 3 new) |
++| `lua5.1 scripts/check_repository.lua` | PASS |
++| `git diff --check 77405ec HEAD` | clean |
++
++Mutation witnesses in the integration test re-run the production scenario
++on one textually mutated main.lua fragment and require the matching
++production assertion to fail: omitted release-tick barrier (also detected by
++the replay case), ordinary collision/ledge admission for the forced step,
++nested completed-step dispatch at forced completion, and an omitted ordinary
++movement-task lock. The `viridian_roadblock` replay function is also executed
++against the synthetic harness (PASS, and FAIL under the barrier mutant).
++
++Worker notes for the Reviewer: the replay wrapper fails closed (nonzero)
++without POKEPORT_ROM, matching the existing runtime wrappers, so a skip can
++never pass for guarded evidence. A valid nonzero scene stays `not_selected`
++before step qualification; a missing/invalid scene or an unqualified step at
++scene 0 is `refused`. ROM fixture and replay correctness against the real
++ROM are unproven until the guarded non-skipped run.
