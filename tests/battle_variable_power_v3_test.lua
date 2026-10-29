@@ -193,15 +193,25 @@ do
     and e.player.defenseCurl == true and draws == 0, draws)
   check("Defense Curl: events", sig(events) == "useMove:player,statChange:player", sig(events))
   check("Defense Curl: PP spent", e.player.moves[1].pp == 39)
-  local hp = 1000
-  for i = 1, 5 do
-    events = use(e, "player", 2, HIT)
-    hp = hp - CURL_DAMAGE[i]
-    check("curled hit " .. i .. ": damage " .. CURL_DAMAGE[i], find(events, "damage").amount == CURL_DAMAGE[i]
-      and e.foe.hp == hp, find(events, "damage").amount)
+  -- Both family members (review F1); Ice Ball against a Normal foe.
+  for _, entry in ipairs({ { ROLLOUT, "Rollout", nil }, { ICE_BALL, "Ice Ball",
+      { Data.TYPE_NORMAL, Data.TYPE_NORMAL } } }) do
+    local id, label = entry[1], entry[2]
+    if id ~= ROLLOUT then
+      e = battle(nil, { playerMoves = { DEFENSE_CURL, id }, foeTypes = entry[3] })
+      use(e, "player", 1, {})
+    end
+    local hp = 1000
+    for i = 1, 5 do
+      events = use(e, "player", 2, HIT)
+      hp = hp - CURL_DAMAGE[i]
+      check(label .. " curled hit " .. i .. ": damage " .. CURL_DAMAGE[i],
+        find(events, "damage").amount == CURL_DAMAGE[i] and e.foe.hp == hp, find(events, "damage").amount)
+    end
+    check(label .. ": the bit outlasts the sequence", e.player.defenseCurl == true
+      and e.player.rolloutTimer == 0)
+    check(label .. ": ROM record keeps power 30 after curled hits", moves[id].power == 30)
   end
-  check("the bit outlasts the sequence", e.player.defenseCurl == true and e.player.rolloutTimer == 0)
-  check("ROM record keeps power 30 after curled hits", moves[ROLLOUT].power == 30)
 
   e = battle(nil, { playerMoves = { DEFENSE_CURL, ROLLOUT } })
   e.player.statStages.defense = 12 -- +6
@@ -386,6 +396,26 @@ do
   e:resolveEndTurn({}, nil, nil)
   check("end-of-turn sleep cancel: cancelled", unlocked(e))
 
+  -- Review F4: the lock is cancelled earlier in the same turn (a faster
+  -- foe's freeze), then a thaw: bm.c:3989-3991 uses gLockedMoves only while
+  -- MULTIPLETURNS is set, so the kept slot runs with no NO_PPDEDUCT and the
+  -- 0-PP check applies (bsc.c:838-839). Draws: thaw % 5 == 0, accuracy,
+  -- crit, random.
+  e = primed()
+  e.lockedThisTurn = { player = true, foe = false }
+  e:applySecondaryStatus("player", "freeze", false, {})
+  events = use(e, "player", 1, { 0, 0, 1, 0 })
+  check("cancelled this turn, thawed: restarts at 30, spends PP",
+    sig(events) == "thawed:player,useMove:player,damage:player" and find(events, "damage").amount == 5
+    and e.player.moves[1].pp == 18 and e.player.rolloutTimer == 4, sig(events))
+  e = primed()
+  e.lockedThisTurn = { player = true, foe = false }
+  e:applySecondaryStatus("player", "freeze", false, {})
+  e.player.moves[1].pp = 0
+  events = use(e, "player", 1, { 0 })
+  check("cancelled this turn, thawed at 0 PP: no PP", sig(events) == "thawed:player,noPP:player"
+    and e.player.moves[1].pp == 0 and unlocked(e), sig(events))
+
   -- Fury Cutter's counter and the Rollout lock share CancelMultiTurnMoves.
   e = battle(nil, { playerMoves = { FURY_CUTTER, ROLLOUT } })
   use(e, "player", 1, { 0, 1, 0 })
@@ -471,7 +501,7 @@ do
     c:advanceMessage(); guard = guard + 1
   end
   check("a rolling player gets no menu: five turns ran", b.turn == 5 and not b:isLocked("player")
-    and aiCalls == 5 and b.rng.draws == 15, b.turn)
+    and aiCalls == 5 and b.rng.draws == 15 and c.state == BattleSceneController.ACTION, b.turn)
 
   local fb = battle(nil, { foeMoves = { ROLLOUT }, foeSpeed = 50, playerMoves = { SPLASH } })
   local foeCalls = 0

@@ -1,7 +1,7 @@
 # Task: variable-power slice V3 — Rollout / Ice Ball and Defense Curl
 
 - Task ID: `P4-VARIABLE-POWER-V3`
-- Status: `IMPLEMENTED — awaiting independent review`
+- Status: `DONE — independently reviewed PASS WITH CORRECTIONS (applied)`
 - Lane: full relay (new cross-turn battle state: a fourth lock family and a
   battle-only status2 bit)
 - Spec: [variable-power design proposal](../reports/phase4-variable-power-design-proposal.md)
@@ -129,8 +129,12 @@ Abbreviations: `bsc.c` `src/battle_script_commands.c`, `bs1.s`
   Defense Curl draws nothing. A locked foe skips the AI choice for turns
   2-5 (as for M1), and the changed power changes damage and KO timing, so
   seeded replays with Rollout, Ice Ball or Defense Curl diverge.
-- **Behavior change:** Defense Curl was rejected before; it is now admitted
-  (Brock's Geodude and Liam's Geodude carry it).
+- **Behavior change:** Defense Curl was rejected before; it is now admitted.
+  Camper Liam's Geodude and Sandshrew (CHECK_BAD_MOVE) previously raised
+  'unsupported move effect 156' when the AI chose it and now follow source
+  (AI scoring and draws unchanged). Brock (aiFlags 7) is unchanged:
+  `EarlyRivalAI.choose` still rejects effect 156 (and Onix's Bind remains
+  blocked).
 - **Changed assertions** (inventory only, the intended flip):
   rows 117 and 156 `blocked_on_state` → `represented` (156 admission false
   → true); admitted/rejected 299/55 → 300/54; `admitted_uncovered_positive`
@@ -141,7 +145,7 @@ Abbreviations: `bsc.c` `src/battle_script_commands.c`, `bs1.s`
 
 ## Acceptance
 
-- `tests/battle_variable_power_v3_test.lua`: 135 checks, exact `scriptedRng`
+- `tests/battle_variable_power_v3_test.lua`: 144 checks, exact `scriptedRng`
   draw counts.
   - Defaults and admission (Rollout, Ice Ball, Defense Curl; Defense Curl
     needs `MOVE_TARGET_USER`).
@@ -192,3 +196,18 @@ Abbreviations: `bsc.c` `src/battle_script_commands.c`, `bs1.s`
   type-chart row, as V2 did for Fury Cutter.
 - `tests/phase4_variable_power_v3_effect_rom_test.lua` was not named in the
   design; it mirrors V1/V2's ROM fixture.
+
+## Review corrections applied (2026-10-28)
+
+[Implementation review](../reviews/2026-10-28-variable-power-v3-implementation-review.md):
+PASS WITH CORRECTIONS.
+
+- F1: the curled five-hit loop runs for Rollout and Ice Ball (Ice Ball
+  against a Normal foe), 9/16/30/59/117 each.
+- F2: the behavior-change note now names Liam's Geodude and Sandshrew, and
+  says Brock is unchanged.
+- F3: the controller test asserts the menu returns (`ACTION`) after hit 5.
+- F4: a lock cancelled earlier in the same turn (freeze, then thaw)
+  restarts at 30 and spends PP; at 0 PP it reports no PP.
+- F5 (design wording) belongs to the design proposal and is not applied
+  here.
