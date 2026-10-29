@@ -5,7 +5,36 @@
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
 - Current plan: [`../roadmaps/RECALIBRATED_DELIVERY_PLAN.md`](../roadmaps/RECALIBRATED_DELIVERY_PLAN.md)
 
-## Current relay — 2026-10-19
+## Current relay — 2026-10-28
+
+Fresh fetch of `origin/main` is `77405ec`. Worker Goodall
+`01a1851a-e35d-7883-a8ee-70b4b4e364c5` (`gpt-6.1-sol`, high) is
+reconstructing the existing P5-06 exact nine-path package in the isolated
+`/home/home/FireRedRecomp-current`, branch `work/resume-20261028`, local and
+no-ROM only. The old `/tmp` worker worktrees are absent/prunable; their
+nine-path package did not survive. The older `/home/home/FireRedRecomp` main
+`dad1274` has uncommitted Restore HP/research work, preserved untouched.
+
+Baseline `env -u POKEPORT_ROM -u POKEPORT_RUNTIME_REPLAY PATH=toolchain:$PATH
+bash scripts/test_all.sh` passed 202 files with ROM skips; log
+`/tmp/firered-baseline-20261028.log`. Fresh main Lua CI `39606314974` and
+`39606259610` succeeded. Open PRs 1, 2, 4 and 7 have no overlap. Owner battle
+PRs 53–55 merged per their records; do not re-review them or infer broader gates.
+
+Accepted route, design and authority review remain unchanged since `b79e31f`
+(the relevant git diff is empty). Runner 24 MediaCenter was observed online and
+idle, and latest bridge `39165635888` succeeded; these are metadata observations
+only, not current readiness. Recheck fresh runner/job, route, prerequisites and
+current-main applicability immediately before the sole request.
+
+Next: collect the Worker's exact local package and checks, then the parent
+performs fresh serial guarded submission and checks followed by independent
+outcome review. No ROM access, request, gameplay acceptance or phase claim has
+occurred in this resume. This coordination package is independent of the runtime
+Worker. The old goal-service `usageLimited` claim is historical and unverified;
+no lifecycle action is taken.
+
+## Historical relay — 2026-10-19 (superseded by current relay)
 
 ### PR51 merged; isolated Worker is active for local construction only
 
@@ -32,9 +61,8 @@ fresh serial request checks (runner/job, route, prerequisites and current-main
 applicability) before the sole guarded request; its outcome remains
 independently reviewed.
 
-Goal service is `usageLimited`; the current user-requested continuation
-authorizes the adopted implementation continuation, while lifecycle resumption
-remains user/system-controlled.
+At that checkpoint goal service was reported `usageLimited`; this historical
+claim is unverified at the 2026-10-28 resume. Lifecycle remains user/system-controlled.
 Both untracked handoff drafts remain unchanged.
 
 Process: one precommit stale-boundaries correction aligned routing to this
