@@ -1,7 +1,7 @@
 # Task: V4b native-input integration and final conditional inventory coverage
 
 - Task ID: `P4-VARIABLE-POWER-V4B`
-- Status: `PREPARED — waits for exact H1 independent local PASS adoption`
+- Status: `READY_FOR_WORKER — H1 bounded local PASS adopted`
 - Base: H1 `c50c097bd5d3db10151398723287cfb547e014a1`, stacked V4a `2139495` and unmerged V3 `9d761f4`.
 - Source: [reviewed variable-power design](../reports/phase4-variable-power-design-proposal.md) V4b/H1/F4/D1/D2 and [H1 handoff](../handoffs/2026-10-21-battle-friendship-ivs-handoff.md), pin `c75f352304d529f6ba92d4f74b9cf8b5c3810788`.
 - Goal: prove authoritative native party/wild/trainer inputs reach Return/Frustration/Hidden Power, then mark their bounded coverage represented without implying ROM/runtime/phase acceptance.
@@ -25,3 +25,7 @@ No production code of any kind, H1 constructor behavior, V4a formulas, saves/sch
 6. Freeze a local commit and exact tests/limits for independent Reviewer. External unmerged V3/base, F4 non-skipped SHA-ROM, public CI and applicable publication approval remain before merge; this task authorizes none of them. League friendship raise/in-battle EXP remain separate H1 constraints.
 
 Stop for required production-code correction, missing data/source uncertainty, unexpected source counts or unlisted file: route smallest fix separately, never widen this evidence-only package. Parent authorizes parallel standalone helper work only because it changes independent new paths with no production entry point or V4b dependency.
+
+## Dispatch receipt
+
+Parent adopted [independent H1 local PASS](../reviews/2026-10-31-battle-input-h1-implementation-review.md) for exact `c50c097`. V4b evidence-only local work may proceed. H1 full207/focused87, bridge32/trainer9/V4a243 and checker PASS; external gates unchanged.
