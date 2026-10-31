@@ -1,0 +1,27 @@
+# Task: V4b native-input integration and final conditional inventory coverage
+
+- Task ID: `P4-VARIABLE-POWER-V4B`
+- Status: `PREPARED — waits for exact H1 independent local PASS adoption`
+- Base: H1 `c50c097bd5d3db10151398723287cfb547e014a1`, stacked V4a `2139495` and unmerged V3 `9d761f4`.
+- Source: [reviewed variable-power design](../reports/phase4-variable-power-design-proposal.md) V4b/H1/F4/D1/D2 and [H1 handoff](../handoffs/2026-10-21-battle-friendship-ivs-handoff.md), pin `c75f352304d529f6ba92d4f74b9cf8b5c3810788`.
+- Goal: prove authoritative native party/wild/trainer inputs reach Return/Frustration/Hidden Power, then mark their bounded coverage represented without implying ROM/runtime/phase acceptance.
+- Risk: medium, metadata must preserve the distinction between valid native inputs and missing-input refusal.
+
+## MAY CHANGE
+
+`tests/battle_variable_power_v4b_test.lua` (new); `tests/phase4_move_effect_inventory_test.lua` (effects121/123/135, explicit populated-versus-absent input admission scope/counts); `work/reports/phase4-move-effect-inventory.md` (those rows and related counts/notes); this task (source/evidence only).
+
+## MUST NOT CHANGE
+
+No production code of any kind, H1 constructor behavior, V4a formulas, saves/schema/importers, main/AI/engine/controller/factories, generic tests beyond literal allowlist, capability/phase/coordination, workflows/runner/requests/probes, ROM search/access, push/merge or guarded execution. Existing V4a all-custom-trainer F4/SHA fixture remains pending and is not waived by H1.
+
+## Acceptance
+
+1. Integration tests drive actual Bridge/factory constructors with known synthetic source-consistent inputs. A saved party record's friendship and all six IVs, wild boxData/IVs and trainer species-base friendship/fixed IVs must reach battlers and actual move computation. Check all three move identities, boundary/type/alias/snapshot cases as needed to prove wiring, rather than duplicating exhaustive V4a formula tests. At least one controller selection/resolution witness demonstrates production-facing valid-input admission after H1; absent data still refuses with no turn/PP/RNG.
+2. Inventory effects121/123/135 become represented with stated source/no-ROM limits, H1/V4b evidence and ROM fixture pending. Expected coverage: represented134families/283moves/198positive/85zero; blocked63/70/17/53. Compute/verify these literal expectations from source partition delta, never derive expected values from implementation predicates.
+3. Make admission scope explicit: native populated friendship/IV inputs permit all three records (live-input aggregate300admitted/54rejected), while explicit missing-input API remains297/57. Do not silently replace missing inputs or hide absent-data checks. Source-derived partition labels and metadata remain separate from SHA-ROM execution. The ROM inventory probe may use an explicitly populated attacker for the native-input aggregate plus separate negative missing-input assertions for these three.
+4. Retain source membership and all unrelated rows/assertions. No broad baseline update. `represented` is bounded native-input coverage, not whole battle RNG/trainer AI/parity or verified ROM output.
+5. Baseline/final no-ROM full suite, new integration focused tests, V4a/H1/controller regressions, inventory source partition and checker/whitespace. With no ROM, inventory/fixture ROM portions must explicitly skip; no fake non-skipped receipt.
+6. Freeze a local commit and exact tests/limits for independent Reviewer. External unmerged V3/base, F4 non-skipped SHA-ROM, public CI and applicable publication approval remain before merge; this task authorizes none of them. League friendship raise/in-battle EXP remain separate H1 constraints.
+
+Stop for required production-code correction, missing data/source uncertainty, unexpected source counts or unlisted file: route smallest fix separately, never widen this evidence-only package. Parent authorizes parallel standalone helper work only because it changes independent new paths with no production entry point or V4b dependency.
