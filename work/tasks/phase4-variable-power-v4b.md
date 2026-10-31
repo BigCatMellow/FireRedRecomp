@@ -29,3 +29,44 @@ Stop for required production-code correction, missing data/source uncertainty, u
 ## Dispatch receipt
 
 Parent adopted [independent H1 local PASS](../reviews/2026-10-31-battle-input-h1-implementation-review.md) for exact `c50c097`. V4b evidence-only local work may proceed. H1 full207/focused87, bridge32/trainer9/V4a243 and checker PASS; external gates unchanged.
+
+## Worker local evidence — 2026-10-31 (independent review pending)
+
+Evidence-only implementation on `work/variable-power-v4b-20261031`, base
+`d7eee4e`. Exactly the four allowlisted paths changed; no production correction
+was needed. New integration covers saved encrypted party data after an actual
+save-codec roundtrip (including stale-cache rejection), wild boxed friendship
+and six IVs, default/custom trainers' species friendship and fixed IVs, isolated
+snapshots, all three actual move computations per origin, a native controller
+Return turn, and missing-input refusal for all three moves. Literal oracles are
+source arithmetic, with Fire70 special, Bug54 physical and Fighting30 physical
+witnesses; the exhaustive V4a formula assertions remain separate.
+
+The source partition delta is precisely effects121/123/135 (moves216/218/237):
+represented134/283/198/85, blocked63/70/17/53. Populated-native-input admission
+is300/54; explicit missing-input admission is297/57. Both are literal independent
+expectations in the inventory test, with separate SHA-ROM checks that skip
+without a ROM. No ROM was searched, accessed or executed.
+
+Commands run with `POKEPORT_ROM` and `POKEPORT_RUNTIME_REPLAY` unset:
+
+- Baseline `bash scripts/test_all.sh`: PASS207 files.
+- Final `bash scripts/test_all.sh`: PASS208 files; ROM portions explicitly skip.
+- `lua5.1 tests/battle_variable_power_v4b_test.lua`: PASS93 assertions.
+- `lua5.1 tests/battle_friendship_ivs_test.lua`: PASS87.
+- `lua5.1 tests/battle_variable_power_v4a_test.lua`: PASS243.
+- `lua5.1 tests/battle_party_bridge_test.lua`: PASS32.
+- `lua5.1 tests/trainer_pokemon_factory_test.lua`: PASS9.
+- `lua5.1 tests/battle_scene_controller_test.lua`: PASS144.
+- `lua5.1 tests/phase4_move_effect_inventory_test.lua`: source partition PASS;
+  SHA-ROM portion SKIP.
+- `lua5.1 tests/phase4_variable_power_v4a_effect_rom_test.lua`: SKIP; F4 unproven.
+- `lua5.1 scripts/check_repository.lua` and `git diff --check`: final receipt
+  recorded with the frozen local commit. Initial checker invocation before
+  staging correctly rejected the untracked new integration-test link.
+
+`gh pr view 58 --json number,state,headRefOid,baseRefName` could not connect to
+api.github.com; parent-provided exact-base receipts remain the dispatch input.
+No push, merge, runner, coordination or phase changes. Independent Reviewer must
+verify the frozen revision. Unmerged V3/base, F4 non-skipped supported-SHA ROM,
+public CI and applicable publication approval remain pending and unchanged.
