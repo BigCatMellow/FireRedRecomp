@@ -1,7 +1,7 @@
 # Task: H1 friendship and IV snapshots at the party boundary
 
 - Task ID: `P4-BATTLE-INPUT-H1`
-- Status: `READY_FOR_REVIEWER — bounded local implementation; no self-acceptance`
+- Status: `LOCALLY_REVIEWED_PASS — authoritative snapshots; external gates pending`
 - Goal: supply authoritative battle-time friendship and IV snapshots to the reviewed V4a battler inputs without changing saves or writing snapshots back.
 - Source: [accepted H1 handoff](../handoffs/2026-10-21-battle-friendship-ivs-handoff.md), [reviewed variable-power design](../reports/phase4-variable-power-design-proposal.md) H1, F4/F12/F13 and D1/D2. Source pin `c75f352304d529f6ba92d4f74b9cf8b5c3810788`.
 - Base: local V4a `2139495897c5def7e0bef8fdcad0fd8e359f4dfd`, stacked on unmerged V3. No remote publication, runtime acceptance or full-relay closure follows.
@@ -99,3 +99,7 @@ V4a `2139495` atop unmerged V3. Required external ROM/F4/runtime/base/publicatio
 gates remain with the parent, as does the separate V4b inventory decision.
 No ROM, guarded runner/request, push, or merge was used. Freeze the local
 commit containing this receipt for independent Reviewer; no self-acceptance.
+
+## Orchestrator local adoption — 2026-10-31
+
+Adopted [independent bounded PASS](../reviews/2026-10-31-battle-input-h1-implementation-review.md) for exact `c50c097`. This task status records local review only; no missing ROM/F4/base/public-CI/publication or runtime/phase gate is waived. Implementation code remains byte-identical to its reviewed revision.
