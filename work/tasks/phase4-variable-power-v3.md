@@ -1,7 +1,7 @@
 # Task: variable-power slice V3 — Rollout / Ice Ball and Defense Curl
 
 - Task ID: `P4-VARIABLE-POWER-V3`
-- Status: `DONE — independently reviewed PASS WITH CORRECTIONS (applied)`
+- Status: `IMPLEMENTED — bounded source/no-ROM review and final corrections PASS; full-relay acceptance unresolved`
 - Lane: full relay (new cross-turn battle state: a fourth lock family and a
   battle-only status2 bit)
 - Spec: [variable-power design proposal](../reports/phase4-variable-power-design-proposal.md)
@@ -211,3 +211,20 @@ PASS WITH CORRECTIONS.
   restarts at 30 and spends PP; at 0 PP it reports no PP.
 - F5 (design wording) belongs to the design proposal and is not applied
   here.
+
+## Orchestrator acceptance reconciliation — 2026-10-30
+
+The [independent final-head review](../reviews/2026-10-30-variable-power-v3-final-head-review.md)
+PASSed the F1–F4 corrections at exact `9d761f4`: focused144/0, full204 no-ROM
+files and checker PASS. The engine is unchanged since the original source
+review. Orchestrator accepts that bounded result; this is no longer labeled
+DONE. Preserve the existing full-relay lane: no fast-lane ROM deferral or
+non-skipped supported-ROM result is established here. The accepted design
+specifies no-ROM engine/controller checks and a skippable ROM fixture; it does
+not specify a V3 runtime replay, so no new witness requirement is added.
+
+Remaining: reconcile the full-relay authority/evidence boundary and obtain any
+required non-skipped evidence through a separately authorized environment
+before full acceptance. Neither local review nor inventory representation
+proves live Brock AI support, whole-battle parity or phase completion. No
+merge, runner request, probe or ROM access is authorized by this correction.
