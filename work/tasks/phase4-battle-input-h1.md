@@ -1,7 +1,7 @@
 # Task: H1 friendship and IV snapshots at the party boundary
 
 - Task ID: `P4-BATTLE-INPUT-H1`
-- Status: `PREPARED — implementation waits for V4a local review PASS`
+- Status: `READY_FOR_WORKER — V4a bounded local review PASS adopted`
 - Goal: supply authoritative battle-time friendship and IV snapshots to the reviewed V4a battler inputs without changing saves or writing snapshots back.
 - Source: [accepted H1 handoff](../handoffs/2026-10-21-battle-friendship-ivs-handoff.md), [reviewed variable-power design](../reports/phase4-variable-power-design-proposal.md) H1, F4/F12/F13 and D1/D2. Source pin `c75f352304d529f6ba92d4f74b9cf8b5c3810788`.
 - Base: local V4a `2139495897c5def7e0bef8fdcad0fd8e359f4dfd`, stacked on unmerged V3. No remote publication, runtime acceptance or full-relay closure follows.
@@ -25,3 +25,7 @@ No engine/controller/formulas, main, wild/starter factories, save/schema/codec/i
 6. Keep V4b inventory flip separate until this exact package independently passes. Record exact source lock, commands, limitations, unmerged dependencies and required external gates. Freeze local commit for independent Reviewer; no self-acceptance.
 
 Stop for source uncertainty, required unlisted path, save or RNG behavior change, failed baseline or needing engine API changes. Return smallest blocker rather than widening. Completion is local implementation plus independent review; no ROM/publication/phase claim.
+
+## Dispatch receipt
+
+Parent adopted [independent V4a local PASS](../reviews/2026-10-30-variable-power-v4a-implementation-review.md) for exact `2139495`. H1 local implementation may proceed under the above allowlist. External V4a F4/ROM/base/publication gates are unchanged.
