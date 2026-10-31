@@ -130,9 +130,9 @@ local inventory = {
   [118] = {"represented", true, 0, {207}}, -- EFFECT_SWAGGER: ROM fixture pending (phase4_confusion_flinch_effect_rom_test)
   [119] = {"represented", true, 1, {210}}, -- EFFECT_FURY_CUTTER: ROM fixture pending (phase4_variable_power_v2_effect_rom_test)
   [120] = {"blocked_on_state", false, 0, {213}}, -- EFFECT_ATTRACT
-  [121] = {"blocked_on_state", true, 1, {216}}, -- EFFECT_RETURN
+  [121] = {"blocked_on_state", false, 1, {216}}, -- EFFECT_RETURN: represented with friendship snapshot; needs H1/V4b; ROM fixture pending
   [122] = {"represented", true, 1, {217}}, -- EFFECT_PRESENT: ROM fixture pending (phase4_variable_power_v1_effect_rom_test)
-  [123] = {"blocked_on_state", true, 1, {218}}, -- EFFECT_FRUSTRATION
+  [123] = {"blocked_on_state", false, 1, {218}}, -- EFFECT_FRUSTRATION: represented with friendship snapshot; needs H1/V4b; ROM fixture pending
   [124] = {"blocked_on_state", false, 0, {219}}, -- EFFECT_SAFEGUARD
   [125] = {"represented", true, 1, {172,221}}, -- EFFECT_THAW_HIT: ROM fixture pending (phase4_status_s4_effect_rom_test)
   [126] = {"represented", true, 1, {222}}, -- EFFECT_MAGNITUDE (Magnitude only)
@@ -144,7 +144,7 @@ local inventory = {
   [132] = {"represented", true, 0, {234}}, -- EFFECT_MORNING_SUN: ROM fixture pending (phase4_weather_w2_effect_rom_test)
   [133] = {"represented", true, 0, {235}}, -- EFFECT_SYNTHESIS: ROM fixture pending (phase4_weather_w2_effect_rom_test)
   [134] = {"represented", true, 0, {236}}, -- EFFECT_MOONLIGHT: ROM fixture pending (phase4_weather_w2_effect_rom_test)
-  [135] = {"blocked_on_state", true, 1, {237}}, -- EFFECT_HIDDEN_POWER
+  [135] = {"blocked_on_state", false, 1, {237}}, -- EFFECT_HIDDEN_POWER: represented with IV snapshot; needs H1/V4b; ROM fixture pending
   [136] = {"represented", true, 0, {240}}, -- EFFECT_RAIN_DANCE: ROM fixture pending (phase4_weather_effect_rom_test)
   [137] = {"represented", true, 0, {241}}, -- EFFECT_SUNNY_DAY: ROM fixture pending (phase4_weather_effect_rom_test)
   [138] = {"represented", true, 1, {211}}, -- EFFECT_DEFENSE_UP_HIT
@@ -227,8 +227,8 @@ local inventory = {
 
 local expectedTotals = {
   moves = 354, defined = 214, used = 198, unused = 16,
-  positive = 216, zero = 138, admitted = 300, rejected = 54,
-  admitted_uncovered_positive = 20,
+  positive = 216, zero = 138, admitted = 297, rejected = 57,
+  admitted_uncovered_positive = 17,
 }
 local expectedClasses = {
   represented = {families = 131, moves = 280, positive = 195, zero = 85},
@@ -316,6 +316,13 @@ check(RomAddresses.COUNTS.MOVES_COUNT==355, "importer_count")
 local moves = BattleMove.parseTable(bytes, address.gBattleMoves, RomAddresses.COUNTS.MOVES_COUNT)
 bytes = nil -- in-memory only; never print or persist parsed records
 local probe = setmetatable({}, {__index=BattleEngine})
+-- Default admission counts above deliberately probe absent live input. V4a
+-- remains blocked_on_state until H1/V4b; populated synthetic inputs admit
+-- these three families, without changing unconditional coverage counts.
+local populated = {friendship=70,ivs={hp=0,attack=0,defense=0,speed=0,spAttack=0,spDefense=0}}
+for _, id in ipairs({216,218,237}) do
+  check(probe:supportsMove(moves[id],id,populated)==true,"v4a_conditional_admission")
+end
 local actual, familyCounts = counts(), {}
 actual.defined = sourceTotals.defined -- definitions are source-only; ROM contains records, not this enum
 for id=1,354 do
