@@ -1,7 +1,7 @@
 # Task: V4a friendship and IV-derived battle formulas
 
 - Task ID: `P4-VARIABLE-POWER-V4A`
-- Status: `READY_FOR_REVIEWER — local implementation frozen; external merge gates pending`
+- Status: `LOCALLY_REVIEWED_PASS — formulas; external merge gates pending`
 - Source of truth: [reviewed variable-power design](../reports/phase4-variable-power-design-proposal.md), V4a, section3, F1/F4 and D1/D2; pinned pret revision `c75f352304d529f6ba92d4f74b9cf8b5c3810788`.
 - Base: PR58 exact `9d761f49488156619c3cf87a49bb1958437083c8` (stacked locally, unmerged). Prior bounded review is preserved; no V3 full-relay acceptance is inferred.
 - Risk: medium; battler-aware admission and dynamic type consumers require careful regression coverage.
@@ -127,3 +127,7 @@ base, independent V4a review/public CI, non-skipped SHA-ROM three-record/F4
 fixture, and parent publication authority. H1 still owns all live input
 plumbing; V4b owns bridge evidence/final inventory flip. No push, merge,
 runner/request, guarded execution, party/AI/main or phase-status change.
+
+## Orchestrator local adoption — 2026-10-31
+
+Adopted [independent bounded PASS](../reviews/2026-10-30-variable-power-v4a-implementation-review.md) for exact `2139495`. This task status records local review only; no missing ROM/F4/base/public-CI/publication or runtime/phase gate is waived. Implementation code remains byte-identical to its reviewed revision.
