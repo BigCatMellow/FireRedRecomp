@@ -1033,6 +1033,9 @@ BattleEngine.SUNLIGHT_HEAL_MOVES = { [132] = true, [133] = true, [134] = true }
 BattleEngine.EFFECT_SOLAR_BEAM = 151
 BattleEngine.EFFECT_THUNDER = 152
 BattleEngine.EFFECT_WEATHER_BALL = 203
+BattleEngine.EFFECT_RETURN = 121
+BattleEngine.EFFECT_FRUSTRATION = 123
+BattleEngine.EFFECT_HIDDEN_POWER = 135
 -- Cmd_setweatherballtype (src/battle_script_commands.c:9345-9364): the
 -- dynamic type per weather family (TYPE_WATER 11, ROCK 5, FIRE 10, ICE 15).
 BattleEngine.WEATHER_BALL_TYPES = { rain = 11, sandstorm = 5, sun = 10, hail = 15 }
@@ -1151,18 +1154,56 @@ BattleEngine.SCREEN_MOVES = {
   [35] = "lightScreen", -- EFFECT_LIGHT_SCREEN (Light Screen)
 }
 
--- Builds a battler table from computed stats. `stats` is a
--- PokemonStats.calculateAll() result (hp/attack/defense/speed/spAttack/
--- spDefense). `types` is {type1, type2} (real gSpeciesInfo.types --
--- mono-type species really do store the same type twice, and this engine
--- relies on that, matching the real `type1 != type2` guard in TypeCalc).
--- `moves` is an ordered list of {move=<id>, pp=<current pp>}.
--- statStages are the real 0..12 encoding, all defaulting to the real
--- neutral 6.
+local IV_FIELDS = { "hp", "attack", "defense", "speed", "spAttack", "spDefense" }
+local function validInteger(value, max)
+  return type(value) == "number" and value >= 0 and value <= max and value % 1 == 0
+end
+
+-- Pure V4a formulas, c75f352 bsc.c:8228-8236, :8503-8530.
+-- CalculateBaseDamage (pokemon.c:2398-2401) uses record power at override 0.
+function BattleEngine.friendshipPower(friendship, frustrated, recordPower)
+  assert(validInteger(friendship, 255), "friendship must be an integer in 0..255")
+  local power = math.floor(10 * (frustrated and (255 - friendship) or friendship) / 25)
+  return power == 0 and recordPower or power
+end
+
+function BattleEngine.hiddenPower(ivs)
+  local powerBits, typeBits = 0, 0
+  for i, field in ipairs(IV_FIELDS) do
+    local iv = ivs[field]
+    assert(validInteger(iv, 31), "IV " .. field .. " must be an integer in 0..31")
+    typeBits = typeBits + (iv % 2) * 2^(i - 1)
+    powerBits = powerBits + (math.floor(iv / 2) % 2) * 2^(i - 1)
+  end
+  local moveType = math.floor(15 * typeBits / 63) + 1
+  if moveType >= 9 then moveType = moveType + 1 end -- skip TYPE_MYSTERY
+  return math.floor(40 * powerBits / 63) + 30, moveType
+end
+
+-- Builds a battler from PokemonStats.calculateAll() stats. `types` is the
+-- real {type1,type2}, including repeated monotypes; `moves` is an ordered
+-- list of {move=<id>,pp=<current pp>}. Stat stages default to neutral6.
+-- Optional friendship (0..255) and all six IVs (0..31) are copied snapshots.
 function BattleEngine.makeBattler(opts)
+  if opts.friendship ~= nil then
+    assert(validInteger(opts.friendship, 255), "friendship must be an integer in 0..255")
+  end
+  local ivs
+  if opts.ivs ~= nil then
+    assert(type(opts.ivs) == "table", "ivs must contain all six IVs")
+    ivs = {}
+    for _, field in ipairs(IV_FIELDS) do
+      assert(validInteger(opts.ivs[field], 31), "IV " .. field .. " must be an integer in 0..31")
+      ivs[field] = opts.ivs[field]
+    end
+  end
   local stats = opts.stats
   local battler = {
     species = opts.species,
+    -- Switch-in snapshots (ctlp.c:1540-1547, ctlo.c:475-482). Never
+    -- refreshed or written back by battle; no species/default data invented.
+    friendship = opts.friendship,
+    ivs = ivs,
     -- Optional until live wild-mon construction is persistent. Required
     -- only when the player selects the bounded capture action; this is the
     -- real gSpeciesInfo[species].catchRate consumed by handleballthrow.
@@ -1595,8 +1636,17 @@ function BattleEngine:finalizeFaintSequence(events)
   return self.awaitingForcedSwitch ~= nil
 end
 
-function BattleEngine:supportsMove(move, moveId)
+function BattleEngine:supportsMove(move, moveId, attacker)
   if not move then return false end
+  -- Existing two-argument admission is the player's menu context. Resolution
+  -- always passes its actual attacker; the other side's inputs cannot admit it.
+  attacker = attacker or self.player
+  if move.effect == BattleEngine.EFFECT_RETURN or move.effect == BattleEngine.EFFECT_FRUSTRATION then
+    return attacker ~= nil and attacker.friendship ~= nil
+  end
+  if move.effect == BattleEngine.EFFECT_HIDDEN_POWER then
+    return attacker ~= nil and attacker.ivs ~= nil
+  end
   if move.effect == BattleEngine.EFFECT_DREAM_EATER then return false end
   if move.effect == BattleEngine.EFFECT_RESTORE_HP then
     return (moveId == 105 or moveId == 303)
@@ -1681,6 +1731,8 @@ end
 -- One move action: the core resolution below, then the move-end defrost
 -- check (real MOVEEND_DEFROST, src/battle_script_commands.c:4103-4116): a
 -- Fire move that dealt damage to a frozen target still above 0 HP thaws it.
+-- Hidden Power is excluded: its damage record uses physical Normal even
+-- when its damage calculation uses Fire (F_DYNAMIC_TYPE_1, :1751-1756).
 function BattleEngine:resolveMove(attackerSide, moveSlot, events)
   self.currentMove = nil
   self.moveDamageDealt = 0
@@ -1695,6 +1747,7 @@ function BattleEngine:resolveMove(attackerSide, moveSlot, events)
   local defenderSide = otherSide(attackerSide)
   local defender = self:battler(defenderSide)
   if self.currentMove and self.currentMove.type == BattleEngine.TYPE_FIRE
+      and self.currentMove.effect ~= BattleEngine.EFFECT_HIDDEN_POWER
       and self.moveDamageDealt > 0 and defender.hp > 0
       and StatusConditions.isFrozen(defender.status)
       and not self:isOver() then
@@ -2155,9 +2208,26 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
   end
 
   local effectiveMoveId = slot and slot.move or BattleEngine.MOVE_STRUGGLE
-  if not self:supportsMove(move, effectiveMoveId) then
+  if not self:supportsMove(move, effectiveMoveId, attacker) then
     error(("unsupported move effect %d for non-damaging move %d")
       :format(move.effect or -1, slot and slot.move or BattleEngine.MOVE_STRUGGLE))
+  end
+
+  if move.effect == BattleEngine.EFFECT_RETURN or move.effect == BattleEngine.EFFECT_FRUSTRATION
+      or move.effect == BattleEngine.EFFECT_HIDDEN_POWER then
+    local dynamicMove = {}
+    for k, v in pairs(move) do dynamicMove[k] = v end
+    if move.effect == BattleEngine.EFFECT_HIDDEN_POWER then
+      -- hiddenpowercalc precedes accuracy (bs1.s:1735-1738). Carry this
+      -- type through Hustle, damage split/abilities/weather and typecalc.
+      -- Its F_DYNAMIC_TYPE_1 damage-record semantics exclude defrost above
+      -- (bsc.c:1751-1756, :1823-1843, :4103-4109, :8527), unlike Weather Ball.
+      dynamicMove.power, dynamicMove.type = BattleEngine.hiddenPower(attacker.ivs)
+    else
+      dynamicMove.power = BattleEngine.friendshipPower(attacker.friendship,
+        move.effect == BattleEngine.EFFECT_FRUSTRATION, move.power)
+    end
+    move = dynamicMove
   end
 
   if move.effect == BattleEngine.EFFECT_FLAIL then
