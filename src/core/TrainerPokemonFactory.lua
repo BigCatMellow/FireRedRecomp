@@ -124,7 +124,7 @@ function TrainerPokemonFactory.generate(args)
     types={info.types[1], info.types[2]}, moves=moveSlots,
     gender=WildPokemonFactory.genderFromPersonality(info.genderRatio, personality),
     abilityNum=abilityNum, ability=(info.abilities or {})[abilityNum + 1] or 0,
-    status=0, catchRate=info.catchRate,
+    status=0, catchRate=info.catchRate, friendship=info.friendship,
   }
 end
 

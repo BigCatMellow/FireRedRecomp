@@ -142,6 +142,8 @@ function BattlePartyBridge.battlerFromParty(record, speciesTable)
     hp=assertCachedStat(record, "hp"),
     types=speciesInfo.types,
     moves=moveSlotsFromBox(decoded),
+    friendship=decoded.substructs[0].friendship,
+    ivs=decoded.substructs[3].ivs, -- makeBattler copies all six IVs.
   })
   battler.personality = decoded.personality
   battler.nature = decoded.personality % 25
@@ -155,6 +157,14 @@ end
 -- already carry their calculated stats and legal move list.
 function BattlePartyBridge.battlerFromGenerated(instance)
   assert(instance and instance.stats and instance.moves, "generated Pokemon instance is required")
+  -- Wild/temporary instances own friendship in boxData; trainers have no
+  -- boxData and expose species friendship directly. Never substitute a
+  -- top-level value for a present boxData owner, or invent absent inputs.
+  local friendship = instance.friendship
+  if instance.boxData then
+    local growth = instance.boxData.substructs and instance.boxData.substructs[0]
+    friendship = growth and growth.friendship
+  end
   local battler = BattleEngine.makeBattler({
     species=instance.species,
     catchRate=instance.catchRate,
@@ -163,6 +173,8 @@ function BattlePartyBridge.battlerFromGenerated(instance)
     hp=instance.hp,
     types=instance.types,
     moves=instance.moves,
+    friendship=friendship,
+    ivs=instance.ivs, -- makeBattler owns the independent switch-in snapshot.
   })
   battler.personality = instance.personality
   battler.nature = instance.nature
