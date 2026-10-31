@@ -1,7 +1,7 @@
 # Task: source-exact trainer ability-history record/query helper
 
 - Task ID: `P4-AI-ABILITY-HISTORY-HELPER`
-- Status: `READY_FOR_WORKER — isolated native helper only`
+- Status: `LOCALLY_REVIEWED_PASS — unattached helper only`
 - Base: current main `49d0f4531ed067370a3024deabcbeb7dc564c597`.
 - Goal: implement the independently reviewed smallest prerequisite for future Brock AI: native record/query semantics and injected species inputs with deterministic tests, without routing live AI or recording battle events.
 - Source: [ability-history design](../reports/phase4-ai-ability-history-design.md), [independent review](../reviews/2026-10-31-ai-ability-history-design-review.md); pret pin `c75f352304d529f6ba92d4f74b9cf8b5c3810788`, BattleHistory/RecordAbilityBattle/Cmd_get_ability.
@@ -80,3 +80,7 @@ Next action: parent routes the frozen local commit to a separate independent
 Reviewer. This evidence is a Worker report, not helper acceptance or live
 AI/Brock/phase parity. Missing ability producers remain the task's stated
 exclusions. No changes to existing code or production call sites.
+
+## Orchestrator local adoption — 2026-10-31
+
+Adopted [independent bounded PASS](../reviews/2026-10-31-trainer-ability-history-implementation-review.md) for exact `72bc55d`. This task status records local review only; no missing ROM/F4/base/public-CI/publication or runtime/phase gate is waived. Implementation code remains byte-identical to its reviewed revision.
