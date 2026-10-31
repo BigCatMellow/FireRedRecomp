@@ -1,7 +1,7 @@
 # Task: V4b native-input integration and final conditional inventory coverage
 
 - Task ID: `P4-VARIABLE-POWER-V4B`
-- Status: `READY_FOR_WORKER — H1 bounded local PASS adopted`
+- Status: `LOCALLY_REVIEWED_PASS — native-input integration and bounded coverage`
 - Base: H1 `c50c097bd5d3db10151398723287cfb547e014a1`, stacked V4a `2139495` and unmerged V3 `9d761f4`.
 - Source: [reviewed variable-power design](../reports/phase4-variable-power-design-proposal.md) V4b/H1/F4/D1/D2 and [H1 handoff](../handoffs/2026-10-21-battle-friendship-ivs-handoff.md), pin `c75f352304d529f6ba92d4f74b9cf8b5c3810788`.
 - Goal: prove authoritative native party/wild/trainer inputs reach Return/Frustration/Hidden Power, then mark their bounded coverage represented without implying ROM/runtime/phase acceptance.
@@ -70,3 +70,7 @@ api.github.com; parent-provided exact-base receipts remain the dispatch input.
 No push, merge, runner, coordination or phase changes. Independent Reviewer must
 verify the frozen revision. Unmerged V3/base, F4 non-skipped supported-SHA ROM,
 public CI and applicable publication approval remain pending and unchanged.
+
+## Orchestrator local adoption — 2026-10-31
+
+Adopted [independent bounded PASS](../reviews/2026-10-31-variable-power-v4b-implementation-review.md) for exact `cbc8a17`. This task status records local review only; no missing ROM/F4/base/public-CI/publication or runtime/phase gate is waived. Implementation code remains byte-identical to its reviewed revision.
