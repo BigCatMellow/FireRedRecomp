@@ -103,9 +103,10 @@
 -- (Thunder's weather accuracy and Weather Ball's dynamic type/x2 live in
 -- BattleEngine since W2), double-battle
 -- spread-damage halving,
--- Helping Hand, Charge, Flash Fire, Levitate and Wonder Guard. Each is a
--- documented gap, not an approximation: the ported code paths above are
--- byte-for-byte the real ones for a plain single-battle direct-damage move
+-- Helping Hand, Charge, Flash Fire and Levitate. Wonder Guard's bounded
+-- represented-route checks live in BattleEngine, using opt-in scans below.
+-- Each remaining term is a documented gap, not an approximation: the ported
+-- code paths above are byte-for-byte the real ones for a plain single-battle direct-damage move
 -- with no items/abilities/status.
 --
 -- 7b. Burn's physical halving (Guts exempt) and paralysis's turn-order
@@ -516,6 +517,31 @@ function BattleFormulas.typeCalc(damage, moveType, attackerTypes, defenderTypes,
   end
 
   return damage, flags
+end
+
+-- Opt-in Wonder Guard queries only. Existing typeCalc/AI callers keep their
+-- semantics. c75f352 bsc.c:1345-1417 scans all rows on a random miss;
+-- :4346-4436 ORs effectiveness but stops at the FIRST zero in typecalc2.
+-- The local super/resist indicators do not contain global NO_EFFECT bits.
+function BattleFormulas.wonderGuardScan(moveType, defenderTypes, rows, stopAtZero)
+  local flags = { superEffective = false, notVeryEffective = false, noEffect = false }
+  local i = 0
+  while rows[i] do
+    local row = rows[i]
+    if row.attackingType == moveType and (row.defendingType == defenderTypes[1]
+        or row.defendingType == defenderTypes[2]) then
+      if row.multiplier == 0 then
+        flags.noEffect = true
+        if stopAtZero then break end
+      elseif row.multiplier == 20 then
+        flags.superEffective = true
+      elseif row.multiplier == 5 then
+        flags.notVeryEffective = true
+      end
+    end
+    i = i + 1
+  end
+  return flags
 end
 
 -- ApplyRandomDmgMultiplier, src/battle_script_commands.c:1557. Consumes
