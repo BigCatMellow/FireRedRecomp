@@ -260,5 +260,28 @@ do
   check("destination mutation cancels elevation work", p:getEffectiveElevation() == nil)
 end
 
+-- Source held-action path: stationary, loaded target, direct down16, no normal
+-- collision/ledge callback or ordinary-step provenance.
+do
+  local p = elevationPlayer({[0]=3},true)
+  p:tick()
+  local calls=0
+  check("script refuses missing destination",not p:startScriptedDown(function() return false end) and not p.moving
+    and p.facingDirection==PlayerMovement.RIGHT and p.destTileY==0)
+  check("script refuses absent availability check",not p:startScriptedDown(nil) and not p.moving)
+  check("script starts loaded target",p:startScriptedDown(function(x,y)
+    calls=calls+1; return x==0 and y==1
+  end))
+  check("script exact direction/destination",p.facingDirection==PlayerMovement.DOWN
+    and p.destTileX==0 and p.destTileY==1 and p.moveDy==1 and p.moveDx==0 and calls==1)
+  check("script immediately invalidates normal history",p:getEffectiveElevation()==nil and p.elevationStep==nil)
+  check("script cannot redirect moving player",not p:startScriptedDown(function() error("must not consult target") end))
+  for i=1,16 do
+    p:tick()
+    check("script pixel "..i,p:pixelY()==i and p.moving==(i<16) and p:getEffectiveElevation()==nil)
+  end
+  check("script stationary destination",p.tileX==0 and p.tileY==1 and not p.moving)
+end
+
 print(("%d passed, %d failed"):format(passed, failed))
 os.exit(failed == 0 and 0 or 1)

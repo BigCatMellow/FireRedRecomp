@@ -201,6 +201,27 @@ function PlayerMovement:tryMove(direction, isBlocked, getLedgeJumpDirection, ele
   end
 end
 
+-- Viridian C0's held walk_normal_down (script_movement.c:202-225 and
+-- ObjectEventSetHeldMovement): a stationary player starts one normal
+-- 16-frame step down without ordinary collision/ledge admission or
+-- normal-step elevation provenance. hasDestination(x, y) is the caller's
+-- loaded-map availability check only, never a collision oracle.
+function PlayerMovement:startScriptedDown(hasDestination)
+  if self.moving then return false, "player_moving" end
+  local delta = DIRECTION_DELTA[DIRECTION_DOWN]
+  local destX, destY = self.tileX + delta.dx, self.tileY + delta.dy
+  if type(hasDestination) ~= "function" or not hasDestination(destX, destY) then
+    return false, "unavailable_destination"
+  end
+  self:invalidateElevation("script_motion")
+  self.facingDirection = DIRECTION_DOWN
+  self.moving = true
+  self.stepFrame = 0
+  self.moveDx, self.moveDy = delta.dx * TILE_SIZE / WALK_FRAMES_PER_TILE, delta.dy * TILE_SIZE / WALK_FRAMES_PER_TILE
+  self.destTileX, self.destTileY = destX, destY
+  return true
+end
+
 -- Advances the walk animation by one real frame (1px of the real
 -- Step1-based normal speed). Call once per 60Hz tick.
 function PlayerMovement:tick()

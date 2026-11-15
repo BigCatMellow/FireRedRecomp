@@ -214,3 +214,39 @@ A failed guarded job stops. A successful guarded job requires a separate,
 independent outcome review before C0 behavior acceptance. Orchestrator
 reconciles only this bounded slice; it does not claim Phase 5/7 completion or
 normal northbound/traversal proof.
+
+## Local Worker evidence — 2026-10-28 (no ROM, no LÖVE)
+
+Worker constructed the nine-path package on local branch
+`work/p5-roadblock-claude-20261028` from base `77405ec`; not pushed and no
+request file created. This is local no-ROM evidence only: the ROM fixture
+skipped, the replay wrapper was not executed, and no status, guarded,
+behavior or phase gate is advanced. `$LUA` is `lua5.1` (as in
+`scripts/test_all.sh`); POKEPORT_ROM and POKEPORT_RUNTIME_REPLAY unset.
+
+| Command | Result |
+| --- | --- |
+| `"$LUA" tests/phase5_viridian_roadblock_test.lua` | exit 0, 205 passed |
+| `"$LUA" tests/phase5_viridian_roadblock_integration_test.lua` | exit 0, 86 passed |
+| `"$LUA" tests/player_movement_test.lua` | exit 0, 128 passed |
+| `"$LUA" tests/phase5_player_elevation_input_test.lua` | exit 0, 78 passed |
+| `"$LUA" tests/early_story_test.lua` | exit 0, 25 passed |
+| `"$LUA" tests/phase5_viridian_roadblock_rom_test.lua` | exit 0, clean SKIP (no ROM) |
+| `env -u POKEPORT_ROM -u POKEPORT_RUNTIME_REPLAY bash scripts/test_all.sh` | PASS: 205 test files (baseline 202 + 3 new) |
+| `lua5.1 scripts/check_repository.lua` | PASS |
+| `git diff --check 77405ec HEAD` | clean |
+
+Mutation witnesses in the integration test re-run the production scenario
+on one textually mutated main.lua fragment and require the matching
+production assertion to fail: omitted release-tick barrier (also detected by
+the replay case), ordinary collision/ledge admission for the forced step,
+nested completed-step dispatch at forced completion, and an omitted ordinary
+movement-task lock. The `viridian_roadblock` replay function is also executed
+against the synthetic harness (PASS, and FAIL under the barrier mutant).
+
+Worker notes for the Reviewer: the replay wrapper fails closed (nonzero)
+without POKEPORT_ROM, matching the existing runtime wrappers, so a skip can
+never pass for guarded evidence. A valid nonzero scene stays `not_selected`
+before step qualification; a missing/invalid scene or an unqualified step at
+scene 0 is `refused`. ROM fixture and replay correctness against the real
+ROM are unproven until the guarded non-skipped run.
