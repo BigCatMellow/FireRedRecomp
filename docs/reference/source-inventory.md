@@ -1,11 +1,29 @@
 # Source Inventory
 
-## FireRed disassembly
+## FireRed decompilation / behavioral reference
 
-**Path:**
-`/home/mellow/Documents/Projects/Pokemon ReComp/Disassembled_Games/Classic/pokefirered-master`
+**Canonical upstream:** https://github.com/pret/pokefirered
 
-**Use it for:** game behavior and data crosswalks.
+**Pinned reference revision:** `037335f4c725d7c9aecdac87066f2002b4bd7e14`
+(pret/pokefirered `master` as observed 2026-09-29).
+
+The decompilation is a **reference**, not a FireRedRecomp build or runtime
+dependency. Do not vendor the decompilation into this repository.
+
+For local source crosswalk work, clone it separately. A sibling checkout is
+the simplest convention:
+
+```text
+Projects/
+├── FireRedRecomp/
+└── pokefirered/
+```
+
+Agents or local tooling that need an explicit locator may use
+`POKEFIRERED_DECOMP=/path/to/pokefirered` as a local convention. No checked-in
+FireRedRecomp script currently requires that variable.
+
+**Use the pinned decomp for:** game behavior and data crosswalks.
 
 - `graphics/` — Pokémon, trainers, tilesets, UI art, region-map tiles, and
   palettes.
@@ -15,8 +33,13 @@
   scripts, field systems, task flows, audio, and rendering effects.
 - `sound/` — music/song assets and audio definitions.
 
-The future public application should still import a player-supplied, verified
-FireRed ROM rather than bundle these game assets.
+When a FireRedRecomp implementation or evidence note depends on decomp source
+behavior, record the relevant upstream path and use the pinned revision above
+unless a deliberate reference-pin update has been reviewed.
+
+The public application must continue to import a player-supplied, verified
+FireRed ROM rather than bundle the decompilation, ROM content, generated
+caches, or extracted game assets.
 
 ## GBA BIOS disassembly
 
