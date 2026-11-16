@@ -71,12 +71,12 @@
   "next_after_success": "Worker Goodall returns the exact local nine-path package and checks; parent freshly serializes guarded submission and checks, then obtains independent exact guarded-outcome review before acceptance.",
   "v3_relay": {
     "task_id": "P4-VARIABLE-POWER-V3-IMPLEMENTATION-AUTHORITY",
-    "status": "READY_FOR_REVIEWER_V3_IMPLEMENTATION_AUTHORITY",
-    "active_task": "work/tasks/local-worker-bridge-phase4-variable-power-v3-implementation-authorization.md — independent authorization review only; no request, runner, ROM, or behavior action yet",
-    "next_role": "REVIEWER",
-    "objective": "V3 (effect 117/156, PR58) full relay: review the literal 8-path, one-request authority before the sole guarded request.",
-    "dependencies": "Plan 3975948/PR67 c435521, PASS a2752f4; config 20d8ba9/PR68 5652093, PASS 8d4c2ff; probe ccae04a/PR70 87578c8/run43780125346/job133015184467 SUCCESS (6 succeed, 9 skip), outcome PASS PR71 c981e0c. Package git diff --full-index 49d0f45 fbe5b6f, SHA-256 9643c37ae974216956d09122e5d7b70d23a097bbe96691325e8a68f1456d94eb.",
-    "next_after_success": "After authority PASS, fresh pre-dispatch checks, then exactly one request work/local-runner/requests/phase4-variable-power-v3-effect-20261115.patch, no retry; independent outcome review quoting non-SKIP verified-ROM V3/inventory/ROM-mode lines, no LÖVE claim.",
+    "status": "P4_VARIABLE_POWER_V3_BOUNDED_CLOSED",
+    "active_task": "NONE — bounded V3 full relay closed; separate task required for any further V3 or effect work",
+    "next_role": "ORCHESTRATOR",
+    "objective": "V3 (effect 117/156, PR58) full relay closed: bounded result accepted via guarded publish b8cede0 and independent outcome PASS 922ee70.",
+    "dependencies": "Plan 3975948/PR67 c435521, PASS a2752f4; config 20d8ba9/PR68 5652093, PASS 8d4c2ff; probe ccae04a/PR70 87578c8/run43780125346 outcome PASS PR71 c981e0c; authority PR72 e0f19ac, PASS 93b30f7; request 4c46db9/PR73 65fceaa (SHA-256 9643c37ae974216956d09122e5d7b70d23a097bbe96691325e8a68f1456d94eb); run43782148986/job133021540905 SUCCESS, published b8cede0; outcome PASS 922ee70, PR74 991518e.",
+    "next_after_success": "Request allowance consumed; no retry. Operator decides whether to close PR58 as superseded. No LÖVE/runtime observation, battle-parity, Brock AI, phase or capability-checklist claim.",
     "coordination_authority": "Operator approved Claude making V3 relay coordination edits 2026-11-15 while Codex is usage-limited; additive only, P5-06 top-level state untouched."
   },
   "legal_content_boundary": "Never commit ROMs, BIOS dumps, generated caches, ROM-derived reference screenshots, extracted game assets, or other prohibited content.",

@@ -1,7 +1,11 @@
 # Task: variable-power slice V3 — Rollout / Ice Ball and Defense Curl
 
 - Task ID: `P4-VARIABLE-POWER-V3`
-- Status: `IMPLEMENTED — bounded source/no-ROM review and final corrections PASS; full-relay acceptance unresolved`
+- Status: `CLOSED — REVIEWED PASS` (bounded V3). The full relay completed via
+  guarded publish `b8cede0` (run `43782148986`), with independent
+  [outcome review](../reviews/2026-11-15-variable-power-v3-guarded-outcome-review.md)
+  PASS `922ee70`. No live LÖVE or runtime observation is claimed, and no phase
+  or capability gate advances.
 - Lane: full relay (new cross-turn battle state: a fourth lock family and a
   battle-only status2 bit)
 - Spec: [variable-power design proposal](../reports/phase4-variable-power-design-proposal.md)

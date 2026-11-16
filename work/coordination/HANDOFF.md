@@ -5,35 +5,35 @@
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
 - Current plan: [`../roadmaps/RECALIBRATED_DELIVERY_PLAN.md`](../roadmaps/RECALIBRATED_DELIVERY_PLAN.md)
 
-## Parallel relay — 2026-11-15: variable-power V3 implementation authority
+## Parallel relay — 2026-11-15: variable-power V3 closed
 
 This section is additive. The P5-06 relay below is unchanged. Claude makes
 this coordination edit under operator approval of 2026-11-15, while Codex is
 usage-limited.
 
 The V3 full relay (Rollout/Ice Ball effect 117, Defense Curl effect 156,
-PR #58) has closed gates 1-3. Each was independently reviewed:
+PR #58) is **closed**. All six gates were independently reviewed:
 
 | Gate | Revision | Review |
 | --- | --- | --- |
 | Route plan | `3975948`, merged `c435521` | delta PASS `a2752f4` |
 | Route configuration | `20d8ba9`, merged `5652093` | PASS `8d4c2ff` |
-| Readiness probe | `ccae04a`, merged `87578c8` | outcome PASS, merged `c981e0c` |
+| Readiness probe | `ccae04a`, merged `87578c8`; run `43780125346` | outcome PASS, merged `c981e0c` |
+| Implementation authority | merged `e0f19ac` | PASS `93b30f7` |
+| Request | `4c46db9`, merged `65fceaa`; SHA-256 `9643c37a…94eb` | — |
+| Guarded outcome | run `43782148986` / job `133021540905` SUCCESS; published `b8cede0` | [outcome PASS](../reviews/2026-11-15-variable-power-v3-guarded-outcome-review.md) `922ee70`, merged `991518e` |
 
-The probe ran as `43780125346`: 6 steps succeeded and 9 patch-only steps
-skipped.
+The verified-ROM step ran both the V3 fixture and the inventory without
+skipping, and ended `PASS: 207 test files (ROM mode: verified ROM supplied)`.
 
-[`P4-VARIABLE-POWER-V3-IMPLEMENTATION-AUTHORITY`](../tasks/local-worker-bridge-phase4-variable-power-v3-implementation-authorization.md)
-is now **READY_FOR_REVIEWER**. It authorizes exactly one future request,
-`work/local-runner/requests/phase4-variable-power-v3-effect-20261115.patch`:
+The request allowance is consumed; there is no retry. This relay makes no
+claim of:
 
-- byte-identical to `git diff --full-index 49d0f45 fbe5b6f`;
-- SHA-256 `9643c37a…94eb`;
-- 8 paths.
+- a live LÖVE or runtime observation;
+- general battle parity or Brock AI behavior;
+- phase completion or any capability-checklist change.
 
-It also sets fresh pre-dispatch checks, no retry, and an outcome review that
-must quote non-SKIP verified-ROM evidence and make no LÖVE claim. No request,
-runner, ROM or behavior action exists yet.
+Next: the operator decides whether to close PR #58 as superseded.
 
 ## Current relay — 2026-10-28
 
