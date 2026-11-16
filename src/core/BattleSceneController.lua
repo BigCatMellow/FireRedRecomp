@@ -331,6 +331,9 @@ function BattleSceneController:_eventMessages(events)
       -- sText_PkmnHPFull (battle_message.c:125), via BattleScript_AlreadyAtFullHp;
       -- event.side is B_DEF_NAME's battler (Present's target, V1).
       add(possessive(name(event.side)) .. "\nHP is full!")
+    elseif event.type == "wonderGuard" then
+      -- c75f352 battle_message.c:67,899: B_DEF_NAME_WITH_PREFIX.
+      add(name(event.target) .. " avoided\ndamage with WONDER GUARD!")
     elseif event.type == "noEffect" then
       add("It doesn't affect " .. name(event.target) .. "...")
     elseif event.type == "faint" then
