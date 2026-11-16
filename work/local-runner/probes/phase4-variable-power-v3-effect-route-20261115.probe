@@ -1,0 +1,24 @@
+P4-VARIABLE-POWER-V3-ROUTE-PROBE
+
+Readiness-only probe for the variable-power V3 bridge route.
+Configuration: 20d8ba9 (merged 5652093), independently reviewed PASS 8d4c2ff.
+
+Requested readiness:
+- trusted checkout
+- exact route recognition: phase4-variable-power-v3-effect
+- Lua toolchain readiness
+- existing supported FireRed US v1.0 ROM SHA-1 gate: 41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc
+
+Patch-only steps explicitly skipped:
+1. bounded target validation
+2. patch application
+3. Viridian roadblock pre-evidence artifact gate (route mismatch)
+4. variable-power V3 pre-evidence artifact gate
+5. route-focused tests
+6. shared no-ROM suite
+7. shared verified-ROM suite
+8. route runtime replay
+9. staging/publication
+
+No gameplay, implementation patch, request, focused test, full suite, replay,
+staging, or publication is requested or authorized by this readiness probe.
