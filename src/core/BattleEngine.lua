@@ -371,6 +371,13 @@
 --     semi-invulnerable miss, a no-effect hit, every cancelMultiTurnMoves
 --     call, the capture action, a failed run and faint; a switch-in is a
 --     fresh battler. Using a different move does not reset it.
+--   * Variable-power slice V3 (work/tasks/phase4-variable-power-v3.md):
+--     Rollout/Ice Ball's 5-hit lock (rolloutTimer 5..0, nonzero exactly
+--     while MULTIPLETURNS is set for this family; power 30 doubled 4-timer
+--     times, so 30/60/120/240/480, doubled again by the Defense Curl bit).
+--     A miss, a protected or semi-invulnerable miss and a no-effect hit
+--     cancel it; locked turns skip ppreduce except a protected one. Defense
+--     Curl (effect 156) sets the battle-only defenseCurl bit, then DEF +1.
 --   * Pure single-stat stage-change moves (Growl/Tail Whip's full real
 --     family) ARE supported -- see BattleEngine.STAT_STAGE_MOVES and the
 --     move.power == 0 branch of resolveMove.
@@ -641,6 +648,9 @@ BattleEngine.MOVE_MAGNITUDE = 222
 BattleEngine.EFFECT_PRESENT = 122
 -- Variable-power slice V2 (work/tasks/phase4-variable-power-v2.md).
 BattleEngine.EFFECT_FURY_CUTTER = 119
+-- Variable-power slice V3 (work/tasks/phase4-variable-power-v3.md).
+BattleEngine.EFFECT_ROLLOUT = 117
+BattleEngine.EFFECT_DEFENSE_CURL = 156
 
 -- Real Cmd_remaininghptopower: scale the attacker's remaining HP to 48,
 -- promote a positive underflow to one, then choose Flail/Reversal's dynamic
@@ -1196,6 +1206,21 @@ function BattleEngine.makeBattler(opts)
     -- clears at switch-in and faint (src/battle_main.c:2382-2384,
     -- :2457-2459). A switch-in is a fresh battler, so it starts at 0.
     furyCutterCounter = 0,
+    -- Variable-power slice V3: gDisableStructs[].rolloutTimer
+    -- (include/battle.h:156), 0-5, battle-only, never persisted. Set to 5 on
+    -- the first hit and decremented on every hit by
+    -- Cmd_rolloutdamagecalculation (src/battle_script_commands.c:8161-8193),
+    -- which also sets/clears STATUS2_MULTIPLETURNS with it, so for this
+    -- family "rolloutTimer > 0" is MULTIPLETURNS. Zeroed by
+    -- CancelMultiTurnMoves (src/battle_util.c:212) and the disable-struct
+    -- clears at switch-in and faint (src/battle_main.c:2382-2384,
+    -- :2457-2459).
+    rolloutTimer = 0,
+    -- STATUS2_DEFENSE_CURL (include/constants/battle.h:130), set by
+    -- Cmd_setdefensecurlbit (src/battle_script_commands.c:8472-8476); its
+    -- only reader is Rollout (:8189). Cleared with status2 at faint
+    -- (src/battle_main.c:2441) and switch-in (:2367; a fresh battler).
+    defenseCurl = false,
     -- Residual slice R1, battle-only, never persisted (a switch-in is a
     -- fresh battler, so its own bits clear for free; bm.c:2365-2368):
     --   seeded    STATUS3_LEECHSEED (include/constants/battle.h:134-135).
@@ -1450,6 +1475,10 @@ function BattleEngine:recordFaint(side, events)
   -- FaintClearSetData zeroes gDisableStructs (src/battle_main.c:2457-2459),
   -- the Fury Cutter counter included (variable-power slice V2).
   battler.furyCutterCounter = 0
+  -- ...and the Rollout timer (variable-power slice V3); its status2 clear
+  -- (:2441) drops STATUS2_DEFENSE_CURL.
+  battler.rolloutTimer = 0
+  battler.defenseCurl = false
   -- FaintClearSetData zeroes the fainted battler's status2/status3
   -- (src/battle_main.c:2441-2442). Nothing clears ANOTHER battler's seed
   -- whose receiver is this slot (bm.c:2433-2452): its drain is skipped
@@ -1627,6 +1656,11 @@ function BattleEngine:supportsMove(move, moveId)
     return move.power == 0 and move.target == 0 -- MOVE_TARGET_SELECTED
   end
   if move.effect == BattleEngine.EFFECT_INGRAIN then
+    return move.power == 0 and move.target == MOVE_TARGET_USER
+  end
+  if move.effect == BattleEngine.EFFECT_DEFENSE_CURL then
+    -- Variable-power slice V3: moves.h:1446 Defense Curl, power 0,
+    -- MOVE_TARGET_USER.
     return move.power == 0 and move.target == MOVE_TARGET_USER
   end
   return move.power > 0 or BattleEngine.STAT_STAGE_MOVES[move.effect] ~= nil
@@ -1960,8 +1994,9 @@ end
 
 -- CancelMultiTurnMoves (src/battle_util.c:203-214), reduced to the
 -- represented multi-turn state: the two-turn charge lock, the rampage
--- lock (MULTIPLETURNS + LOCK_CONFUSE; no fatigue confusion follows) and the
--- Fury Cutter counter (:213, variable-power slice V2). Every call resets
+-- lock (MULTIPLETURNS + LOCK_CONFUSE; no fatigue confusion follows), the
+-- Rollout lock (MULTIPLETURNS + rolloutTimer, :212, variable-power slice
+-- V3) and the Fury Cutter counter (:213, variable-power slice V2). Every call resets
 -- the counter, even when the battler holds no lock (the end-of-turn sleep
 -- caller itself runs only for a locked battler, as in source): flinch, full
 -- paralysis, the confusion self-hit, recharge, sleep/freeze applied, the
@@ -1972,6 +2007,7 @@ function BattleEngine:cancelMultiTurnMoves(battler)
   battler.charging = false
   battler.semiInvulnerable = nil
   battler.rampageTurns = 0
+  battler.rolloutTimer = 0
   battler.furyCutterCounter = 0
   if not battler.recharging then battler.lockedSlot = nil end
 end
@@ -1981,10 +2017,12 @@ end
 -- must not open a menu or run the foe AI, and runTurn uses the locked move.
 -- A recharge whose timer would lapse at this turn's start (timer 1, the
 -- battler did not act last turn) no longer locks. A rampage locks while
--- its LOCK_CONFUSE counter is nonzero.
+-- its LOCK_CONFUSE counter is nonzero; a Rollout while its rolloutTimer is
+-- (MULTIPLETURNS, variable-power slice V3).
 function BattleEngine:isLocked(side)
   local b = self:battler(side)
-  return b.charging or (b.rampageTurns or 0) > 0 or (b.recharging and b.rechargeTimer > 1)
+  return b.charging or (b.rampageTurns or 0) > 0 or (b.rolloutTimer or 0) > 0
+    or (b.recharging and b.rechargeTimer > 1)
 end
 
 -- DEFENDER_IS_PROTECTED (src/battle_script_commands.c:42):
@@ -2080,7 +2118,10 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
   -- foe); source chose that move at selection time.
   local turnLocked = self.lockedThisTurn and self.lockedThisTurn[attackerSide]
   local rampaging = (attacker.rampageTurns or 0) > 0
-  local lockedTurn = attacker.charging or attacker.recharging or rampaging or turnLocked
+  -- A live Rollout lock (MULTIPLETURNS, variable-power slice V3).
+  local rollingOut = (attacker.rolloutTimer or 0) > 0
+  local lockedTurn = attacker.charging or attacker.recharging or rampaging or rollingOut
+    or turnLocked
   if lockedTurn then
     allMovesUnusable = false
     -- runTurn already passed the locked slot; a lock cancelled earlier this
@@ -2193,9 +2234,11 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
   -- Source checks PP after the cancellers (src/battle_script_commands.c
   -- :833-842); a locked action whose lock was cancelled earlier this turn
   -- reaches it with no NO_PPDEDUCT, so a spent move reports no PP here.
-  -- A live rampage (MULTIPLETURNS) bypasses the check (:838-839).
+  -- A live rampage or Rollout (MULTIPLETURNS) bypasses the check
+  -- (:838-839), so a locked 0-PP Rollout still hits.
   if lockedTurn and not attacker.charging and not attacker.recharging
       and (attacker.rampageTurns or 0) == 0
+      and (attacker.rolloutTimer or 0) == 0
       and slot and slot.pp <= 0 then
     events[#events + 1] = { type = "noPP", side = attackerSide, move = slot.move }
     return
@@ -2266,6 +2309,19 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
     self.protectedMove = true
     self:cancelMultiTurnMoves(attacker)
   end
+  -- Rollout PP (variable-power slice V3, design F2/F3): ONE capture, AFTER
+  -- the protect step above and BEFORE the hit branch changes the timer.
+  -- BattleScript_EffectRollout (data/battle_scripts_1.s:1592-1602) runs
+  -- attackcanceler, attackstring, then `jumpifstatus2 BS_ATTACKER,
+  -- STATUS2_MULTIPLETURNS, BattleScript_RolloutCheckAccuracy` over ppreduce.
+  -- Rollout is not in IsTwoTurnsMove (src/battle_script_commands.c
+  -- :7821-7832), so the protect step's CancelMultiTurnMoves (:896-906) has
+  -- already cleared MULTIPLETURNS on a protected locked turn: it reaches
+  -- ppreduce and spends one PP while above 0 (:1147). Hit 1 spends one,
+  -- hits 2-5 spend none, and an unprotected locked miss (accuracy or
+  -- semi-invulnerable) spends none (unlike a rampage's PrintMoveMissed).
+  local isRollout = move.effect == BattleEngine.EFFECT_ROLLOUT
+  local rolloutLocked = isRollout and (attacker.rolloutTimer or 0) > 0
   if move.effect == BattleEngine.EFFECT_FOCUS_PUNCH and attacker.tookMoveDamage then
     -- BattleScript_EffectFocusPunch (data/battle_scripts_1.s:2255-2261):
     -- attackcanceler, then jumpifnodamage (src/battle_script_commands.c
@@ -2742,6 +2798,15 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
   -- field (MOVE_TARGET_USER), not assumed from the UP/DOWN id naming, so
   -- this stays correct-because-derived rather than correct-by-coincidence.
   local statEntry = BattleEngine.STAT_STAGE_MOVES[move.effect]
+  if move.effect == BattleEngine.EFFECT_DEFENSE_CURL then
+    -- BattleScript_EffectDefenseCurl (data/battle_scripts_1.s:2010-2021):
+    -- attackcanceler, attackstring, ppreduce, setdefensecurlbit, then
+    -- `setstatchanger STAT_DEF, 1, FALSE` and statbuffchange: the same
+    -- self-target DEF +1 path as effect 11 (no accuracycheck, no RNG),
+    -- including "won't go higher!" at +6 (StatUpPrintString; source only
+    -- skips effect 11's short pause, design F10). Variable-power slice V3.
+    statEntry = { stat = "defense", delta = 1 }
+  end
   local isSelfTargetStat = statEntry ~= nil
     and math.floor((move.target or 0) / MOVE_TARGET_USER) % 2 == 1
   -- Reflect/Light Screen (BattleEngine.SCREEN_MOVES) share this exact real
@@ -2828,7 +2893,9 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
   -- rampageLocked was captured before the protect step's cancel (P1).
   -- A protected charge turn 2 spends nothing (NO_PPDEDUCT).
   if slot and not isEndeavor and not isMagnitude and not self.noPPDeduct then
-    if not rampageLocked then
+    if isRollout then
+      if not rolloutLocked and slot.pp > 0 then slot.pp = slot.pp - 1 end
+    elseif not rampageLocked then
       slot.pp = slot.pp - 1
     elseif not hit and slot.pp > 0 then
       slot.pp = slot.pp - 1
@@ -2844,6 +2911,17 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
       -- MoveMissedPause: "missed" or the protected text below, PP already
       -- spent (ppreduce precedes accuracycheck), no further draw.
       attacker.furyCutterCounter = 0
+    end
+    if isRollout then
+      -- accuracycheck BattleScript_RolloutHit (data/battle_scripts_1.s
+      -- :1597-1598): the hit and the miss share the label, so typecalc2 and
+      -- Cmd_rolloutdamagecalculation (src/battle_script_commands.c
+      -- :8163-8167) see NO_EFFECT (an accuracy miss, a protected target or
+      -- a semi-invulnerable miss): CancelMultiTurnMoves(attacker), which
+      -- ends the lock (a Fly/Dig target too, unlike a rampage), then
+      -- MoveMissedPause: "missed" or the protected text below. A first-turn
+      -- miss sets no lock. No further draw.
+      self:cancelMultiTurnMoves(attacker)
     end
     if protectedMiss then
       if BattleEngine.HITS_UNDERGROUND[move.effect] then
@@ -2958,6 +3036,45 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
     for k, v in pairs(move) do cutterMove[k] = v end
     for _ = 2, attacker.furyCutterCounter do cutterMove.power = cutterMove.power * 2 end
     move = cutterMove
+  end
+
+  if isRollout then
+    -- BattleScript_RolloutHit (data/battle_scripts_1.s:1599-1602): typecalc2
+    -- first. A no-effect result reaches Cmd_rolloutdamagecalculation's
+    -- NO_EFFECT arm (src/battle_script_commands.c:8163-8167):
+    -- CancelMultiTurnMoves and MoveMissedPause ("It doesn't affect"), before
+    -- HitFromCritCalc, so no crit and no random draw. Unreachable with the
+    -- real chart (Rock and Ice have no 0x row; Levitate stops only Ground;
+    -- Wonder Guard is unrepresented); kept for source shape. Pure query.
+    local _, immunity = BattleFormulas.typeCalc(
+      1, move.type, attacker.types, defender.types, self.typeChart)
+    if immunity.noEffect then
+      self:cancelMultiTurnMoves(attacker)
+      events[#events + 1] = { type = "noEffect", side = attackerSide, target = defenderSide }
+      return
+    end
+    -- Cmd_rolloutdamagecalculation on a landed hit (:8168-8193): the first
+    -- hit (MULTIPLETURNS clear) sets rolloutTimer = 5, MULTIPLETURNS and
+    -- gLockedMoves (:8172-8178); then `--rolloutTimer`, and at 0
+    -- MULTIPLETURNS clears (:8179-8182), so the fifth hit ends the lock (lockedSlot released with
+    -- cancelMultiTurnMoves' `not recharging` guard, as the rampage end does).
+    if attacker.rolloutTimer == 0 then
+      attacker.rolloutTimer = 5
+      attacker.lockedSlot = moveSlot
+    end
+    attacker.rolloutTimer = attacker.rolloutTimer - 1
+    if attacker.rolloutTimer == 0 and not attacker.recharging then
+      attacker.lockedSlot = nil
+    end
+    -- gDynamicBasePower = record power doubled 4 - timer times (`for (i = 1;
+    -- i < 5 - timer; i++)`, :8184-8187): 30, 60, 120, 240, 480; doubled
+    -- once more under STATUS2_DEFENSE_CURL (:8189-8190), up to 960. Then
+    -- HitFromCritCalc below on a local copy; the shared record keeps 30.
+    local rolloutMove = {}
+    for k, v in pairs(move) do rolloutMove[k] = v end
+    for _ = 1, 4 - attacker.rolloutTimer do rolloutMove.power = rolloutMove.power * 2 end
+    if attacker.defenseCurl then rolloutMove.power = rolloutMove.power * 2 end
+    move = rolloutMove
   end
 
   if move.effect == BattleEngine.EFFECT_PRESENT then
@@ -3233,6 +3350,12 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
     if screenStatusKey then
       self:resolveScreenMove(attackerSide, screenStatusKey, events)
       return
+    end
+    if move.effect == BattleEngine.EFFECT_DEFENSE_CURL then
+      -- Cmd_setdefensecurlbit (src/battle_script_commands.c:8472-8476) runs
+      -- after ppreduce and BEFORE statbuffchange, so the bit is set even at
+      -- +6. It lasts until faint or switch-out (design section 8).
+      attacker.defenseCurl = true
     end
     local stat = statEntry.stat
     local delta = statEntry.delta
@@ -4290,9 +4413,11 @@ end
 function BattleEngine:resolveEndTurn(events, playerMove, foeMove)
   -- HandleEndTurn_ContinueBattle clears flinch before end-turn effects.
   self.player.flinched, self.foe.flinched = false, false
-  -- ...and cancels a sleeping battler's multi-turn move (:2941-2942).
+  -- ...and cancels a sleeping battler's multi-turn move (:2941-2942):
+  -- MULTIPLETURNS is a charge, a rampage or a Rollout (variable-power V3).
   for _, b in ipairs({ self.player, self.foe }) do
-    if StatusConditions.isAsleep(b.status) and (b.charging or (b.rampageTurns or 0) > 0) then
+    if StatusConditions.isAsleep(b.status) and (b.charging or (b.rampageTurns or 0) > 0
+        or (b.rolloutTimer or 0) > 0) then
       self:cancelMultiTurnMoves(b)
     end
   end
