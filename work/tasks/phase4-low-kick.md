@@ -1,119 +1,92 @@
-# Task: Low Kick bounded engine/input contract
+# Task: Low Kick bounded injected-weight engine slice
 
 - Task ID: `P4-LOW-KICK`
-- Status: `READY_FOR_REVIEWER — engine/input design only`
-- Type: `DESIGN ONLY — no implementation authority yet`
-- Parent: Phase 4 battle-engine gate in [CAPABILITY_CHECKLIST](../roadmaps/CAPABILITY_CHECKLIST.md), uncovered effect196/move67 and the accepted source report's input/domain/pre-turn blockers.
-- Worker: Sol medium; distinct Sol high Reviewer; parent rina owns integration.
-- Risk: MEDIUM — guessed weight, wrong target/lifetime or late refusal can silently use power1 or consume turn/RNG. Old Unown source-undefined results cannot be invented.
-- Prerequisites: source report SHA-256 `b7604b4e7a5638287ee85640b5c065241d65688a9b3773d5b9a74d0ea390b465`, independently PASS at `48c25e007867da50a022481e42c06d948a67e61f`; corrected secondary-chance four-draw oracle. Published clean WG head `944df72c9742fbf3b192d3908f1627b6004aabf3` independently PASS plus exact-head public CI213; original main df53c77.
+- Status: `READY_FOR_WORKER — bounded local implementation`
+- Type: `IMPLEMENTATION — injected ordinary-species engine slice only`
+- Parent: Phase 4 battle engine in [CAPABILITY_CHECKLIST](../roadmaps/CAPABILITY_CHECKLIST.md), effect196/move67. No native/full-family or phase acceptance.
+- Worker: Sol high — selection/direct-resolution contexts, locks/Struggle, damage/RNG and controller preflight need cross-file care. Distinct Sol high Reviewer follows; parent rina integrates.
+- Risk: MEDIUM/HIGH — wrong target/weight, stale locks or late refusal can silently damage or mutate turn/persistence. Native merge remains blocked.
+- Authority: parent implementation-stage amendment after independent design PASS; no private/ROM/main action.
 
-## Observable outcome / inherited decisions
+## Frozen source and inherited decisions
 
-One standalone source-locked report supplies an AGI-ready proposed engine-only
-API, valid species/input domain, exact admission/mutation boundaries and
-literal tests, or the precise remaining blocker. Resolve the previous report's
-readiness gaps without redoing its passed source facts. Decide whether a bounded
-engine-only slice is eligible for the fast lane; distinguish that from complete
-family/live input delivery. A design PASS alone authorizes no code or merge.
+Follow the [approved engine contract](../reports/phase4-low-kick-engine-contract.md)
+at `036665f6271f90c1e6c4e83af85bf6510c7b2dc7`, SHA-256
+`be0df3a0044ba1d2ada00bf1dd90882f3d2c33f15573f46a66844e5bb622e682`.
+Independent corrected design PASS SHA-256
+`7072c98bc89503ef4a07f7d594e8595025c78213481690dcf47eb50266f8bad9`, canonical
+input `/home/home/FireRedRecomp-integrated/work/reviews/2026-11-16-low-kick-engine-contract-correction-review.md`.
+Original e6633f0 NEEDS_FIX F1/F2 stays historical. Earlier source48c25e0/reportb7604b4e
+and pret `c75f352304d529f6ba92d4f74b9cf8b5c3810788` supply source certainty.
 
-Use only source-defined ordinary species/domain behavior; explicitly refuse
-invalid/source-undefined inputs rather than approximate old Unown C out-of-bounds
-results. Missing or invalid data never silently uses record power1/default
-weight. Weight is hectograms for the current defender species; original-species
-snapshots cannot masquerade as current-species behavior. Existing unsupported
-Transform remains unsupported. No live AI/production input claim from injection.
+Exactly implement optional **opts.lowKickWeights** in unchanged new(opts),
+immutable constructor-copied plain map, ordinary species1..251/277..411,
+current defender lookup, pure u16 power formula, source move67/effect196 record,
+mandatory selection/resolution planner contexts with exact recharge,
+lockedThisTurn/passed-slot/Struggle rules. Do not equate isLocked with direct
+resolution. Preserve existing modeled ability/item/global RNG limits.
+Numeric retail address/provider remains UNKNOWN/unimplemented, never guessed.
 
-## Exact inputs / isolation
+## Outcome and isolation
 
-Read canonical organizer `/home/home/FireRedRecomp-integrated/AGENTS.md`, actual
-`work/coordination/roles/WORKER.md`, and accepted source report/correction review
-there. Its source report is an external input to this isolated tree, not a file
-to copy wholesale. Pinned public source checkout
-`/home/home/FireRedRecomp-reference/pokefirered` MUST remain
-`c75f352304d529f6ba92d4f74b9cf8b5c3810788`.
+One local source-exact code/test package supplies injected Low Kick behavior
+and refusal boundaries; absent data refuses instead of ordinary power1 fallback.
+No production delivery claim. New `/home/home/FireRedRecomp-low-kick`, branch
+`work/low-kick-engine-20261116`, starts at design036665f plus this task only.
+Preserve frozen design/published trees/refs. Product base is clean published
+WG944df72; never copy organizer/control code or separately denied recoil/native
+packages, or move intentionally stale local main. Read canonical organizer
+AGENTS, actual WORKER role and full approved contract before editing.
 
-Analyze actual code at the clean published WG base, not the larger organizer
-runtime (which contains separately denied/unpublished code). New tree
-`/home/home/FireRedRecomp-low-kick-contract`, branch
-`work/low-kick-contract-20261116`, starts at944df72 plus this task only.
+## MAY CHANGE — Worker exactly eight paths
 
-## MAY CHANGE
+- `src/core/BattleEngine.lua`: optional validated immutable weights, pure formula/context planner, Low Kick admission/preflights and action-local power/secondary RNG only.
+- `src/core/BattleSceneController.lua`: narrow selected-player Low Kick pre-chooser arm only, other moves/callers unchanged.
+- NEW `tests/battle_low_kick_test.lua`: engine/controller/source-oracle/adversarial tests.
+- NEW `tests/phase4_low_kick_effect_rom_test.lua`: SHA-first source move67 singleton/record fixture, local SKIP, no weight address guess.
+- `tests/phase4_move_effect_inventory_test.lua`: singleton67 default admission/conditional metadata only, literal source partition.
+- `work/reports/phase4-move-effect-inventory.md`: conditional injected support/input/native gates only; receipt rows117/119/156 byte-identical.
+- This task progress/evidence only, no authority widening.
+- Append-only `work/coordination/FRICTION_LOG.md`.
 
-- NEW `work/reports/phase4-low-kick-engine-contract.md`.
-- This task progress/evidence only.
-- Append-only `work/coordination/FRICTION_LOG.md` (create if absent).
-
-Local commits only. Read source, importer/model, constructor/controller/engine
-call sites and existing tests; no existing source/test edit or scratch executable
-runtime prototype is authorized. No new global policy, data tables or framework.
+Optional scratch receipt `/tmp/firered-low-kick-implementation-20261116.md`;
+canonical evidence stays in own task. Parent alone may add exact independent
+receipt `work/reviews/2026-11-16-low-kick-implementation-review.md` after PASS,
+without code/test changes. Local Worker stage authorizes no publication.
 
 ## MUST NOT CHANGE
 
-No product/test code, inventory classification/counts, main/save/importer/data
-format, AI/chooser/guard behavior, workflows/requests/probes, shared coordination,
-original refs/PRs, publication/main merge, ROM/search/extracted data/private logs/
-jobs/replay or capability status. Do not use control/organizer source as a later
-publication payload or include denied recoil/native-history/Brock packages.
-All existing ROM/F4/full-relay/runtime/phase/main-merge gates remain.
+Approved design report bytes unchanged. No formulas/main/bridge/factory/importer/
+AI/save/history, generic transaction/action framework, new mutable battle state,
+global RNG/item/ability repair, workflow/requests/probes/replay, other effects,
+shared coordination, original refs/PR, ROM/search/assets/private logs/jobs,
+publication/main merge or capability status. No retail weight table/extracted
+record bytes, defaults, undefined IDs or silent power1. Never promise to undo
+prior chooser RNG, main switch writes or capture bag removal.
 
-## Acceptance / required proof
+## Acceptance and evidence
 
-1. Recover passed source lock, exact threshold/equality table, current-defender/national-dex/Transform dependencies and successful ordinary itemless four-draw oracle. Validate the allowed ordinary-species domain from exact constants/mapping and current importer support. Clearly list excluded UNKNOWN IDs without assigning source-undefined results. Cite pinned file/line links for new facts.
-2. Audit actual existing data/provider ownership at944df72. Follow public source header/symbol/record references to establish whether numeric weight acquisition has a known source-only ABI/address path; report UNKNOWN if absent. Distinguish a rank-by-weight table from numeric weight. No ROM lookup/search or guessed addresses. A production provider may remain a separate prerequisite; injection must never imply it exists.
-3. Specify smallest exact engine API for a validated immutable/copy-safe species→weight lookup or demonstrably simpler existing seam. Define domain, integer/range/missing validation, lookup lifetime, current-species changes, attacker/defender isolation and error outcome. Cite literal proposed implementation path allowlist, not permission to edit it.
-4. Trace exact controller menu, foe selection, engine runTurn and resolution entrypoints. State precisely where selected unsupported/missing-input actions are rejected relative to player selection, AI chooser, turn increment, PP, RNG, persistence and events. Player refusal must retain existing no-turn/PP/RNG/AI-call behavior. Do not promise reversal of prior chooser RNG. For foe/engine cases identify a feasible preflight or explicit existing fail-closed boundary; no silent normal damage or repeated terminal loop. Stop if this needs generic architecture or unlisted behavior changes.
-5. Give concrete source-derived test oracles: thresholds±1/equality, u16 bounds/invalid/NaN/missing, no power1/default fallback, four ordinary successful draws plus relevant existing cancel/miss/protect/critical/item exceptions, both sides/current-species/aliasing, immutable move and caller data, modeled type/STAB/ability cases. Specify narrow SHA-first fixture evidence (locally skipped) and any live trainer/default/custom input gate needed before merge; do not assume V4a's absent-custom-move F4 result applies to Low Kick.
-6. Decide source certainty and fast-lane eligibility **for the proposed bounded domain only**, including persistent/cross-turn/main/save/replay conditions. Distinguish missing delivery evidence from UNKNOWN behavior inside scope. State all prerequisite and exclusion gates honestly; no complete-family/represented flip or live acceptance.
-7. Produce compact report, exact changed paths/checks/report digest and clean frozen commit; set task READY_FOR_REVIEWER. Baseline/full product suite N/A: design-only, recover accepted evidence. Stage new link targets, run `lua5.1 scripts/check_repository.lua` and whitespace checks. Distinct Reviewer independently checks source, actual APIs, feasible mutation/refusal guarantees, literal tests and authority at exact frozen head, returning PASS / NEEDS_FIX / BLOCK. Source/design PASS alone is not implementation approval.
+1. Prove product/tests/import/main/scripts identity to944df72 before edits. Recover accepted no-ROM213/public run43930415514 test-job133520991434 baseline rather than repeat for docs-only ancestry. Record commands/proof; useful focused baseline allowed.
+2. Implement all contract APIs/domains/copy/validation/context/refusal clauses and literal cases. Invalid supplied map fails before constructor isFirstTurn writes. Current/prospective target and locked/Struggle action match the actual context without planner mutation. Non-Low-Kick behavior unchanged.
+3. Player refusal before chooser has no turn/PP/HP/RNG/AI call. Direct selected-foe/runTurn/resolve errors preserve engine state/events/RNG at exact entry boundaries. Retain prior chooser draws/main effects honestly, no automatic retry, fake battleEnd or new UI/save transaction.
+4. Source literals cover thresholds±1/equality/u16/bad/NaN/metatable/key/missing inputs, constructor/table/move aliasing, two engines/both sides/current-species/forced/voluntary targets, timer1/timer2/live/saved locks/0PP, accuracy/crit/damage/secondary order, Ghost/WG/modeled interactions and unaffected routes. Expected values source-derived, never implementation readback. Ordinary itemless successful Low Kick has four draws; WG guardTail already supplies secondary, no double draw. Keep excluded interactions explicit.
+5. Inventory remains class B, no represented flip. Only singleton67 default admission true→false: populated friendship/IV/no weights299/55/uncovered16; absent friendship/IV296/58. Separate valid injected weights restores300/54 or297/57. Verify source354 partition/scopes independently, not predicate-built expectations. Preserve all other families and V3/V2 ROM receipts.
+6. Run new focused suite, controller/V4a/H1/V4b/WG/V2/V3 regressions and final foreground `env -u POKEPORT_ROM -u POKEPORT_RUNTIME_REPLAY bash scripts/test_all.sh`. New record fixture SKIPs locally and proves no provider. Stage new targets, repository/whitespace checks. Expected215 Lua files with two new tests; actual result authoritative. No ROM/replay outside authorized no-ROM tests.
+7. Freeze clean head, exact8path diff, code/test/design identities, actual commands/results/limits and one next action in task/scratch receipt; task READY_FOR_REVIEWER. Distinct Reviewer verifies source conformance/assertions/contexts/engine boundaries/inventory and regressions with additional adversarial evidence, returning PASS / NEEDS_FIX / BLOCK. No Worker self-approval/publication.
 
-## Failure / recovery / continuation
+## Native gate, failure and continuation
 
-Stop on missing pin, unresolved in-scope source behavior, required forbidden
-input/action, infeasible preflight or architecture expansion. Record smallest
-blocker, preserve UNKNOWN and append friction before report. On interruption
-checkpoint exact tree/head, changed paths, checks and one next action.
+Native merge requires reviewed numeric provider/delivery and non-skipped ROM proof
+covering admitted party/wild/default/custom/replacement targets, or independently
+proven complete live-scope absence. Neither exists. AI prediction still sees
+record power1. Engine-slice PASS closes no native/full-family/represented/ROM/F4/
+full-relay/runtime/phase/CI/main gate.
 
-Parent receipts independent result in existing coordination. Only after PASS
-may parent amend this same family task with exact implementation MAY CHANGE,
-acceptance and prerequisite gates; no Worker self-expansion. Keep one task owner
-for this effect's future fast-lane package rather than duplicate process files.
-V2 operator policy question and private/ROM/main gates remain independent.
-
-AGI READY: ten criteria explicit; Fresh-Agent, No-Guess, Scope, Authority,
-Completion, Failure and Continuation tests PASS for this design-only stage.
-
-## Worker frozen design checkpoint — 2026-11-16
-
-[Engine/input contract](../reports/phase4-low-kick-engine-contract.md), SHA-256
-`f5ad22beea49a9b79870b28073f4d7510ff36b2110e9528775e65a2071d37d23`,
-resolves ordinary domain, copied lookup/API, exact engine preflight and player
-refusal boundaries; retains chooser RNG and prior main callback side effects
-explicitly. Numeric ABI known, retail address/provider UNKNOWN outside injected
-slice. Native merge/provider-delivery gate remains; no complete-family flip.
-Future literal tests/path allowlist are proposals only. Distinct exact-head
-Sol high design review is next; only parent may amend this same task after PASS.
-Source report hash/pin verified; static mapping check PASS386ordinary/25oldforms.
-Repository check PASS342Lua/432Markdown/1384targets before this link;
-whitespace PASS. Product baseline/full suite N/A for design-only; accepted
-213 no-ROM evidence recovered by unchanged src/tests/main944df72 identity.
-Only own task/new contract/append friction changed; no runtime prototype, code/
-test/inventory/ROM/private/remote action. Final clean commit returned separately.
-
-## Worker F1/F2 design correction checkpoint — 2026-11-16
-
-Independent e6633f0 design review remains NEEDS_FIX history. Input canonical
-`/home/home/FireRedRecomp-integrated/work/reviews/2026-11-16-low-kick-engine-contract-review.md`
-(scratch receipt SHA-256
-`eaebb08822baa63c53c32ad02e4f53ba34f1a3fa1626f4ad4b594fd28c3ba84c`).
-Only F1/F2 corrected: preserve new(opts) plus optional opts.lowKickWeights field
-and full existing-constructor call; one pure action planner with mandatory
-selection/resolution context, exact projected recharge expiry/new turn lock
-versus live core recharging/lockedThisTurn/passed-slot fallback. Literal timer1/
-timer2/all-zero/cleared-lock cases added; no state mutation/prototype.
-Current report SHA-256
-`be0df3a0044ba1d2ada00bf1dd90882f3d2c33f15573f46a66844e5bb622e682`.
-All independently verified domain/provider/ABI/refusal/oracle/native-merge gates
-remain. READY_FOR_REVIEWER for same independent actor's delta review, no Worker
-acceptance or product authority. Product suite remains N/A; staged repository
-and whitespace checks accompany clean correction freeze. Exact three-doc scope.
+Stop for source uncertainty, impossible contract, required unlisted fixture/path/
+architecture or forbidden action; report smallest actual failure/needed amendment,
+never weaken tests/oracles or edit unrelated paths. Append friction before report.
+On interruption checkpoint exact tree/head/paths/checks and one next action.
+Parent receipts/reviews and selects any later bounded draft publication under
+actual authority. Prior recoil denial and all main/private operator gates remain;
+parallel ROM planning grants nothing here. Seven AGI tests and ten criteria PASS
+for this local stage; immutable configuration is not new mutable cross-turn state.
