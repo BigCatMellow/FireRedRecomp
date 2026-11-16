@@ -1,7 +1,7 @@
 # Task: Low Kick bounded engine/input contract
 
 - Task ID: `P4-LOW-KICK`
-- Status: `READY_FOR_WORKER`
+- Status: `READY_FOR_REVIEWER — engine/input design only`
 - Type: `DESIGN ONLY — no implementation authority yet`
 - Parent: Phase 4 battle-engine gate in [CAPABILITY_CHECKLIST](../roadmaps/CAPABILITY_CHECKLIST.md), uncovered effect196/move67 and the accepted source report's input/domain/pre-turn blockers.
 - Worker: Sol medium; distinct Sol high Reviewer; parent rina owns integration.
@@ -82,3 +82,20 @@ V2 operator policy question and private/ROM/main gates remain independent.
 
 AGI READY: ten criteria explicit; Fresh-Agent, No-Guess, Scope, Authority,
 Completion, Failure and Continuation tests PASS for this design-only stage.
+
+## Worker frozen design checkpoint — 2026-11-16
+
+[Engine/input contract](../reports/phase4-low-kick-engine-contract.md), SHA-256
+`f5ad22beea49a9b79870b28073f4d7510ff36b2110e9528775e65a2071d37d23`,
+resolves ordinary domain, copied lookup/API, exact engine preflight and player
+refusal boundaries; retains chooser RNG and prior main callback side effects
+explicitly. Numeric ABI known, retail address/provider UNKNOWN outside injected
+slice. Native merge/provider-delivery gate remains; no complete-family flip.
+Future literal tests/path allowlist are proposals only. Distinct exact-head
+Sol high design review is next; only parent may amend this same task after PASS.
+Source report hash/pin verified; static mapping check PASS386ordinary/25oldforms.
+Repository check PASS342Lua/432Markdown/1384targets before this link;
+whitespace PASS. Product baseline/full suite N/A for design-only; accepted
+213 no-ROM evidence recovered by unchanged src/tests/main944df72 identity.
+Only own task/new contract/append friction changed; no runtime prototype, code/
+test/inventory/ROM/private/remote action. Final clean commit returned separately.
