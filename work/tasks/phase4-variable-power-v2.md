@@ -1,7 +1,7 @@
 # Task: variable-power slice V2 — Fury Cutter
 
 - Task ID: `P4-VARIABLE-POWER-V2`
-- Status: `IMPLEMENTED — bounded source/no-ROM review PASS WITH CORRECTIONS (applied); non-skipped ROM fixture receipt recorded (run 43782148986, review 4819085); full-relay closure NOT ELIGIBLE — gates 1-5, 6a-6c missing per [closure-eligibility audit](../reports/phase4-variable-power-v2-closure-eligibility.md)`
+- Status: `IMPLEMENTED — bounded source/no-ROM review PASS WITH CORRECTIONS (applied); non-skipped ROM fixture receipt recorded (run 43782148986, review 4819085); full-relay closure NOT ELIGIBLE — gates 1-5, 6a-6c missing` per [closure-eligibility audit](../reports/phase4-variable-power-v2-closure-eligibility.md)
 - Lane: full relay (new cross-turn battle state: a per-battler counter)
 - Spec: [variable-power design proposal](../reports/phase4-variable-power-design-proposal.md)
   (§6 "Fury Cutter", "V2: Fury Cutter", verification plan V2), status

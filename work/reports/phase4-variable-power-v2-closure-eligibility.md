@@ -46,7 +46,7 @@ decision by the coordination owner or operator, not more Worker evidence.
 | 3 | Readiness probe | MISSING | No `work/local-runner/probes/phase4-variable-power-v2*` file. | It was never run, because there was no route to probe. |
 | 4 | Implementation authority | MISSING | No V2 authorization task or review. | PR #55 was merged by the owner (`BigCatMellow`) with no recorded GitHub review; the in-repo review was the only gate. |
 | 5 | Request | MISSING | No `work/local-runner/requests/phase4-variable-power-v2*` file. | The code reached main directly, at `0663e1d` and `77405ec`, not through bridge publication. |
-| 6a | Guarded run | MISSING | No V2-selected run. **Substitute evidence exists, but this gate is not closed:** run `43782148986` / job `133021540905` (head `65fceaa`, which contains `0663e1d`; route `phase4-variable-power-v3-effect`). Its verified-ROM step printed `phase4_variable_power_v2_effect_rom_test: 2 passed, 0 failed; exact 1-member source family` and ended `PASS: 207 test files (ROM mode: verified ROM supplied)`. Recorded in inventory row 119 (`work/reports/phase4-move-effect-inventory.md:225`, PR #77). | The ROM-evidence content of a V2 run is present, from the shared suite. A V2 focused arm, V2 target validation and V2 publication never ran. Rule 1 forbids treating this as the gate. |
+| 6a | Guarded run | MISSING | No V2-selected run. **Substitute evidence exists, but this gate is not closed:** run `43782148986` / job `133021540905` (head `65fceaa`, which contains `0663e1d`; route `phase4-variable-power-v3-effect`). Its verified-ROM step printed `phase4_variable_power_v2_effect_rom_test: 2 passed, 0 failed; exact 1-member source family` and ended `PASS: 207 test files (ROM mode: verified ROM supplied)`. Recorded in inventory row 119 (`work/reports/phase4-move-effect-inventory.md:225`, PR #77). Both suites of that run (no-ROM and verified-ROM) printed `PASS: 207 test files`. `scripts/test_all.sh` runs every `tests/*_test.lua` under `set -euo pipefail`, so `tests/battle_variable_power_v2_test.lua`, present at `65fceaa`, passed in both. This is substitute evidence only and closes no gate. | The ROM-evidence content of a V2 run is present, from the shared suite. A V2 focused arm, V2 target validation and V2 publication never ran. Rule 1 forbids treating this as the gate. |
 | 6b | Outcome review | MISSING | `4819085` (`work/reviews/2026-11-15-variable-power-v2-inventory-receipt-review.md`) verifies only that the row-119 line is verbatim from the log. `922ee70` (the V3 outcome review) does not quote V2. | No review has judged V2 acceptance against a relay authority. |
 | 6c | Coordination | MISSING | No V2 entry in `work/coordination/STATE.json`, `TASK_REGISTER.md` or `HANDOFF.md` (grep for `VARIABLE-POWER-V2` or `Fury` returns nothing). | Its status was never reconciled. The task's `DONE` status overstates it, just as V3's premature `DONE` was corrected in `fbe5b6f`. |
 | — | Runtime replay | NOT-APPLICABLE | The design names no V2 replay (engine only). For V3, review `3056bc5` finding 3 PASSed the same no-replay decision. | Engine-only family, matching V3. |
@@ -56,19 +56,34 @@ decision by the coordination owner or operator, not more Worker evidence.
 Gates 1-5 have no Worker-only path for code that is already on main: a V2
 bridge request would be an empty patch. Two options:
 
-- **(a) Recommended: owner ratification.**
-  1. The coordination owner or operator records an explicit decision. It
+- **(a) Recommended: operator ratification.**
+  1. The operator records an explicit decision. It
      ratifies the PR #55 merge in place of gates 1-5 for code already on main.
      It accepts the verified-ROM step of run `43782148986`, as verified by
      `4819085`, as the gate-6a ROM evidence.
-  2. That decision is an authority decision. Only rina or the operator can
-     make it; this audit does not.
+  2. That decision is an authority decision, and only the operator can make
+     it. The coordination owner (rina) may adopt the contract only after the
+     operator ratifies; this audit decides nothing.
   3. Then one independent V2 outcome review (gate 6b). It judges `0663e1d` as
      present on `65fceaa` against that ratification, cites the
      already-verified V2 line and the ROM-mode PASS line, and makes no LÖVE
      claim.
   4. Then gate-6c coordination: the proposal text, drafted separately for
      rina, plus a status advance on the V2 task after that PASS.
+
+  **What (a) waives.** Option (a) waives real safeguards, and they stay
+  MISSING:
+
+  - **Pre-merge authority.** There was no independent pre-merge authority:
+    PR #55 had 0 GitHub reviews and was merged by the owner account.
+  - **V2 route checks.** There was no V2-specific allowlist, no V2 target
+    validation and no V2 focused-test arm.
+  - **Provenance.** V2 did not reach main through bridge publication, and
+    no V2 readiness probe ran.
+  - **Precedent.** There is no repo precedent for a full-relay gate waiver;
+    this would be the first.
+  - **Authority.** It is an operator-only exception to AGENTS.md:116-117. No
+    Orchestrator, Reviewer or coordination owner can grant it.
 - **(b) Not recommended: a full V2 relay.** It would need a V2 route
   (plan, configuration and probe), a request that can actually apply (for
   example, a docs-only receipt edit carried through a V2 route), a guarded
