@@ -1,7 +1,7 @@
 # Task: Low Kick bounded injected-weight engine slice
 
 - Task ID: `P4-LOW-KICK`
-- Status: `READY_FOR_WORKER — bounded local implementation`
+- Status: `READY_FOR_REVIEWER — bounded local implementation frozen; no self-approval`
 - Type: `IMPLEMENTATION — injected ordinary-species engine slice only`
 - Parent: Phase 4 battle engine in [CAPABILITY_CHECKLIST](../roadmaps/CAPABILITY_CHECKLIST.md), effect196/move67. No native/full-family or phase acceptance.
 - Worker: Sol high — selection/direct-resolution contexts, locks/Struggle, damage/RNG and controller preflight need cross-file care. Distinct Sol high Reviewer follows; parent rina integrates.
@@ -90,3 +90,113 @@ Parent receipts/reviews and selects any later bounded draft publication under
 actual authority. Prior recoil denial and all main/private operator gates remain;
 parallel ROM planning grants nothing here. Seven AGI tests and ten criteria PASS
 for this local stage; immutable configuration is not new mutable cross-turn state.
+
+
+## Worker implementation receipt — 2026-11-16
+
+Worker actor `/root/low_kick_engine_worker` implemented the injected slice on
+`work/low-kick-engine-20261116`, isolated worktree
+`/home/home/FireRedRecomp-low-kick`. Product/test freeze is
+`85ec51741cd2e82e33e3d5e82c8b8c04b9606e71`; the final local descendant adds only
+this task receipt. Parent records that exact clean handoff head after freeze.
+This is **READY_FOR_REVIEWER**, not a Worker PASS or broader acceptance.
+
+Recovery: `git rev-parse HEAD` initially returned
+`274cbad9749e069008ac5573992028cf81be1317`. Before edits,
+`git diff --name-only 944df72 -- src tests scripts import main.lua` was empty.
+Thus the accepted no-ROM213 baseline is recovered by complete product/test/
+import/main/script identity rather than repeated. Connected GitHub
+`fetch_workflow_run_jobs(repo_full_name=BigCatMellow/FireRedRecomp,
+run_id=43930415514)` independently returned public `test` job133520991434,
+completed/success, including repository and no-ROM test steps. Local gh network
+failure and all fixture/regression friction are recorded append-only in the
+existing friction log. No private job/log or ROM was accessed.
+
+Implementation: validates/copies optional plain weights before either caller's
+isFirstTurn write, retaining only a closure-private map; pure u16 thresholds;
+current-defender ordinary internal-species lookup and complete singleton67
+source-shape admission guard. One shared pure effective-record planner handles
+mandatory selection/resolution contexts and supplies the existing downstream
+core-lock checks. Selection projects timer1 expiry/new snapshot; resolution
+retains live/saved locks and passed-slot fallback. Both suppress Struggle only
+after the correct lock decision. Controller selected-player refusal precedes
+chooser; runTurn and direct wrappers/core preflight before their own mutations.
+Action-local power preserves the shared record and Fighting type. Ordinary
+Low Kick success/noEffect gains exactly its source secondary draw; WG's existing
+returning guardTail remains the sole draw on its blocked path.
+
+Exactly eight package paths differ from dispatch274cbad: BattleEngine,
+BattleSceneController, new battle_low_kick_test, new phase4_low_kick_effect_rom_test,
+existing inventory test, inventory report, this task, append-only friction log.
+No shared coordination owner or other product path changed. Design report stays
+SHA-256 `be0df3a0044ba1d2ada00bf1dd90882f3d2c33f15573f46a66844e5bb622e682`;
+reference `git rev-parse HEAD` remains exact pret
+`c75f352304d529f6ba92d4f74b9cf8b5c3810788`. Corrected independent design receipt
+hash7072c98b was rechecked from its canonical organizer path.
+
+Actual verification (no ROM/replay environment):
+
+- `lua5.1 tests/battle_low_kick_test.lua`: **400 passed,0 failed**. Literal
+  thresholds/damage/RNG, map/key/species/record validation, constructor/map/move
+  aliasing, both sides/current/replacement targets, selection/direct locks/
+  timer1/timer2/saved snapshot/zeroPP/Struggle, complete immutable snapshots,
+  exact engine refusal boundaries and pre-chooser/retained-chooser-draw cases.
+- `env -u POKEPORT_ROM -u POKEPORT_RUNTIME_REPLAY bash -c 'set -e; for test in
+  ...; do lua5.1 "$test"; done'` ran Low Kick plus controller144/0,
+  V4a243/0,H1 friendship/IV87/0,V4b93/0,WG768/0,V2 80/0,V3 144/0. Corresponding
+  V4a/V2/V3 ROM fixtures, new Low Kick fixture and inventory cleanly SKIP locally.
+  Exact files: battle_scene_controller_test, battle_variable_power_v4a_test,
+  battle_friendship_ivs_test, battle_variable_power_v4b_test,
+  battle_wonder_guard_test, battle_variable_power_v2_test,
+  battle_variable_power_v3_test, phase4_variable_power_v4a_effect_rom_test,
+  phase4_variable_power_v2_effect_rom_test, phase4_variable_power_v3_effect_rom_test,
+  phase4_low_kick_effect_rom_test, phase4_move_effect_inventory_test (all under
+  tests/, with .lua suffix). Log `/tmp/firered-low-kick-focused-20261116.log`,
+  SHA-256 `6372d8585ec4e2df599edc39d6cef64a4cccfa9c520505c2d4a9f87c1dc06879`.
+- Read-only ephemeral `python3` parser joined pinned public source moves.h,
+  battle_move_effects.h,battle.h,battle_moves.h against the literal inventory.
+  Verified354 memberships/power classes,198 used effects and only singleton67
+  default admission true→false, class B unchanged. In-memory Lua predicate
+  probes checked source records against independent literal metadata in all
+  four scopes: no weights299/55; absent friendship/IV296/58; injected weighted
+  target300/54; weighted absent friendship/IV297/57. No expected value was
+  constructed from predicate output. Source/report rows117/119/156 were
+  byte-compared to944df72 and identical. No generated source table persisted.
+  Aggregate log `/tmp/firered-low-kick-source-proof-20261116.log`, SHA-256
+  `44b5776e4f8d09ec964152a24c49417be2cd0694575195efd74628382cd3d13a`.
+- Final foreground `env -u POKEPORT_ROM -u POKEPORT_RUNTIME_REPLAY bash
+  scripts/test_all.sh`: **PASS215 test files**, clean ROM skips, no replay.
+  Log `/tmp/firered-low-kick-full-20261116.log`, SHA-256
+  `fec13252ddf0483ac1d56223c1c14ae86d23c244edde99e23890f0e694f9e13b`.
+- New targets staged before `lua5.1 scripts/check_repository.lua`: PASS344
+  tracked Lua/432 Markdown/1385 local targets. `git diff --cached --check`
+  and `git diff --check` passed. Rechecked after this task-only receipt; same
+  counts/PASS. Repository log SHA-256
+  `29d117d39e1615f07426eb3d4cfa10324ae6aa167d7e00db0e5c3eb04d7887b2`.
+
+Product/test SHA-256 freeze:
+
+| Path | SHA-256 |
+| --- | --- |
+| src/core/BattleEngine.lua | 09f76f4ca266fb346cc8bd74e1f2d313dde9eb2e56fb44b51cad50607369322a |
+| src/core/BattleSceneController.lua | 5dbe993524dd0e9161935617a93947457749230000e880c5de17d59b4c164e1e |
+| tests/battle_low_kick_test.lua | 2095a42a160507f6f79ab4d5ce36bcad62e7572f89275e527a004dec55e65bfa |
+| tests/phase4_low_kick_effect_rom_test.lua | f87c77d96946c0fd97057b74af438cc8964895708ea6dbc204963858e88c1129 |
+| tests/phase4_move_effect_inventory_test.lua | 26ed242428432bb300e522c0767c94c577472cf00e96f3cc0706652f03b47c67 |
+| work/reports/phase4-move-effect-inventory.md | af6aa21b8912c44e57b0e11904805464caad7f4b48b309d703ce7da695cd16d4 |
+
+Limits unchanged: injected engine slice only; numeric provider/address/delivery
+UNKNOWN/unimplemented, native merge blocked, no represented flip or whole-family/
+ROM/F4/AI/runtime/phase acceptance. Four-draw promise is ordinary itemless modeled
+successful/noEffect Low Kick only, with documented inherited ability/item and
+additional producer exclusions. Refusals preserve each engine-entry boundary;
+prior chooser RNG/main switch writes/capture bag removal are not undone. A
+source-unreachable Low Kick-in-Rollout-lock test makes only effective-record/
+damage/RNG assertions; parent explicitly removed its extra unjustified PP
+preservation assertion. Real V3 zeroPP and all required pure-planner witnesses
+remain. No global PP/RNG repair, native/prototype/provider/ROM/replay/main action,
+publication or remote/ref modification occurred.
+
+One next action: parent rina freezes/receipts the exact clean local head and
+routes it to the distinct Sol high implementation Reviewer against this contract.
+Parent alone reconciles canonical state after freeze; review is still required.
