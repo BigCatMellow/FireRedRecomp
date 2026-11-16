@@ -74,12 +74,14 @@ end
 for _,bad in ipairs({0,252,276,412,413,439,440,-1,1.5,"2",false,math.huge,-math.huge}) do
   check("bad map key "..tostring(bad),not pcall(battle,{[bad]=100}))
 end
-for _,bad in ipairs({false,12,"map",function() error("caller invoked") end,
-  setmetatable({[2]=100},{__index=function() error("metamethod invoked") end})}) do
+local callbackCalls=0
+for _,bad in ipairs({false,12,"map",function() callbackCalls=callbackCalls+1;error("caller invoked") end,
+  setmetatable({[2]=100},{__index=function() callbackCalls=callbackCalls+1;error("metamethod invoked") end})}) do
   local p,q=battler(),battler(2); p.isFirstTurn=7;q.isFirstTurn=8
   local ok=pcall(E.new,{player=p,foe=q,moves={},typeChart={},rng={},lowKickWeights=bad})
   check("invalid provider rejected before caller writes",not ok and p.isFirstTurn==7 and q.isFirstTurn==8)
 end
+check("constructor invokes no caller callbacks",callbackCalls==0)
 for _,badmap in ipairs({{[0]=100},{[2]=-1},{[2]=0/0}}) do
   local p,q=battler(),battler(2); p.isFirstTurn=7;q.isFirstTurn=8
   check("invalid entries before caller writes",not pcall(E.new,
@@ -219,6 +221,12 @@ for _,side in ipairs({"player","foe"}) do
     check("context mandatory",not pcall(e.supportsLowKickAction,e,side,moveAction))
     check("nonmove retains admission",e:supportsLowKickAction(side,{action="run"},context))
     check("nonmove pure",same(e,before))
+  end
+  for _,context in ipairs({"selection","resolution"}) do
+    local e=battle();e.moves[67]=nil;local before=copy(e)
+    check("missing effective record loud "..side..context,
+      not pcall(e.supportsLowKickAction,e,side,moveAction,context))
+    check("missing effective record pure "..side..context,same(e,before))
   end
   local e=battle();e:battler(side).charging=true
   local before=copy(e)
