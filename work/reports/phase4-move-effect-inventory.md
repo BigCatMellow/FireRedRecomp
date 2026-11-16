@@ -22,8 +22,8 @@ Existing accepted engine families retain their documented limits.
 
 A separate source-only invocation of the actual current
 `BattleEngine:supportsMove` on source-derived effect/power metadata returned
-248 admissions and 106 rejections at that refresh (now 300/54 with populated native friendship/IV inputs after H1/V4b;
-the explicit missing-input API remains 297/57; the test is authoritative). These are source/predicate observations,
+248 admissions and 106 rejections at that refresh (now 299/55 with populated native friendship/IV inputs and no Low Kick weights;
+the explicit missing-friendship/IV API is 296/58; the test is authoritative). These are source/predicate observations,
 **not a local ROM result**. The checked-in [inventory test](../../tests/phase4_move_effect_inventory_test.lua)
 contains literal expected membership, admission and coverage metadata. It does
 not read engine tables to construct expectations. It checks partition integrity
@@ -37,9 +37,9 @@ labels `defined_source=214`; the ROM gate checks member usage and unused IDs.
 | --- | ---: | ---: | ---: | ---: | ---: |
 | Represented with stated limits | 134 | 283 | 198 | 85 | 283 / 0 |
 | Candidate for separate discovery | 0 | 0 | 0 | 0 | 0 / 0 |
-| Blocked on additional state or an absent cross-component path | 63 | 70 | 17 | 53 | 17 / 53 |
+| Blocked on additional state or an absent cross-component path | 63 | 70 | 17 | 53 | 16 / 54 |
 | Intentionally rejected | 1 | 1 | 1 | 0 | 0 / 1 |
-| Total used | 198 | 354 | 216 | 138 | 300 / 54 |
+| Total used | 198 | 354 | 216 | 138 | 299 / 55 |
 | Defined but unused | 16 | 0 | 0 | 0 | no real-record claim |
 
 `represented` means an existing bounded mechanism plus checked-in tests/source
@@ -47,16 +47,16 @@ evidence; it does not mean unrestricted retail parity. `candidate` means a
 plausible isolated discovery using represented fields; it is not implementation
 authority or proven source parity. `blocked_on_state` includes missing persistent
 state, retained inputs, action interception, or cross-component settlement;
-it does not prevent a later explicit design. Only effect 8 is deliberately
-excluded by the positive-power admission guard. Other rejected zero-power
+it does not prevent a later explicit design. Effect 8 is deliberately excluded by the positive-power admission guard;
+Low Kick also refuses when its injected current-defender weight is absent. Other rejected zero-power
 families are unimplemented, not a policy decision that they should never work.
 H1/V4b effects 121/123/135 have bounded native-input coverage through saved
 party, wild and default/custom trainer constructors, Bridge snapshots and actual
 move damage ([integration tests](../../tests/battle_variable_power_v4b_test.lua)).
 All three positive-power records move from blocked to represented: +3 families,
 +3 moves, +3 positive, +0 zero; all other source membership stays fixed. The table
-uses populated native-input admission (300/54). Explicit absent-input API
-admission remains 297/57; its three rejected represented records are separate
+uses populated native friendship/IV input without Low Kick weights (299/55).
+Explicit absent-friendship/IV API admission is 296/58; its three rejected represented records are separate
 from semantic coverage. Missing player data refuses selection without a
 turn/PP/RNG/AI call; missing foe data follows the existing unsupported-effect
 resolution error. No default friendship/IV substitution is implied.
@@ -66,14 +66,21 @@ applicable publication approval remain external gates. This evidence does not
 prove whole-battle RNG, trainer AI, runtime or phase acceptance; league friendship
 raises and in-battle EXP remain separate H1 constraints.
 
+Low Kick's injected engine slice leaves effect196 class **B**. Only singleton67
+changes default admission true→false. A separate valid weighted ordinary target
+restores300/54 with friendship/IV input, or297/57 without it; the no-weight
+scopes remain299/55 and296/58. Neither weighted scope supplies a native provider.
+The SHA-first Low Kick fixture checks singleton/record shape only, never a guessed
+numeric address, delivery, trainer absence or native/F4/runtime/phase gate.
+
 ## Coverage and admission are separate
 
-The **17 admitted, semantically uncovered positive-power records** occupy
-15 effects: `26, 34, 81, 89, 105, 128, 144, 148, 154, 159, 161, 185, 188, 196, 197`.
+The **16 admitted, semantically uncovered positive-power records** occupy
+14 effects: `26, 34, 81, 89, 105, 128, 144, 148, 154, 159, 161, 185, 188, 197`.
 Their precise move members and counts are the `yes / C` and `yes / B` rows
 below. They reach ordinary damage because of the positive-power fallback;
 admission does not implement their effects. None is a candidate record; all
-17 need additional state/path work. This refresh supersedes the older
+16 need additional state/path work. This refresh supersedes the older
 140-fallback positive-only count; accepted intervening leaves account for the
 reduction, while 138 zero-power records are now included explicitly.
 
@@ -314,7 +321,7 @@ body (Protect/Endure, Return/Frustration, sunlight recovery, Mud/Water Sport).
 | 193 `EFFECT_REFRESH` | 287 (1; Z) | yes | R | [`BattleScript_EffectRefresh`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L2515) | Self-target cure of PSN/BRN/PAR/TOX via cureifburnedparalysedorpoisoned, else But it failed; no RNG. Status slice [S4](../tasks/phase4-status-s4.md); ROM fixture pending. |
 | 194 `EFFECT_GRUDGE` | 288 (1; Z) | no | B | [`BattleScript_EffectGrudge`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L2527) | Destiny Bond/Grudge need volatile lifecycle and faint-time KO/PP response. |
 | 195 `EFFECT_SNATCH` | 289 (1; Z) | no | B | [`BattleScript_EffectSnatch`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L2538) | Magic Coat/Snatch need turn-local owner, action interception/redirection and effect filtering. |
-| 196 `EFFECT_LOW_KICK` | 67 (1; P) | yes | B | [`BattleScript_EffectLowKick`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L2550) | Low Kick needs species-weight input and category formula. |
+| 196 `EFFECT_LOW_KICK` | 67 (1; P) | conditional | B | [`BattleScript_EffectLowKick`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L2550) | Injected ordinary-species current-defender u16 hectogram map only, constructor-copied privately; strict thresholds yield20/40/60/80/100/120. Missing input refuses before engine mutation (selected player before chooser). Numeric retail provider/address and delivery are UNKNOWN/unimplemented; native merge requires separate reviewed provider and non-skipped full admitted-scope proof or complete live-scope absence. AI prediction retains record power1. New record fixture pending; no represented/full-family flip. |
 | 197 `EFFECT_SECRET_POWER` | 290 (1; P) | yes | B | [`BattleScript_EffectSecretPower`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L2558) | Terrain selects called move/secondary/type; terrain input and corresponding dispatch/status changes absent. |
 | 198 `EFFECT_DOUBLE_EDGE` | 38, 344 (2; P) | yes | R / R2 | [`BattleScript_EffectDoubleEdge`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L2562) | Third actual-damage recoil for both #38 and #344; Gen 3 source determines behavior. |
 | 199 `EFFECT_TEETER_DANCE` | 298 (1; Z) | yes | R | [`BattleScript_EffectTeeterDance`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L2566) | Singles: the lone foe; Own Tempo/already confused texts, accuracycheck, confusion. Confusion/flinch slice [C2](../tasks/phase4-confusion-flinch-c2.md); ROM fixture pending. |
