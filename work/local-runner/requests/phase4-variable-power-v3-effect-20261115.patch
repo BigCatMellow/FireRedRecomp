@@ -1,0 +1,1392 @@
+diff --git a/src/core/BattleEngine.lua b/src/core/BattleEngine.lua
+index ab4a95043f35f0a58b4b56978494e05246fd861e..2dc0b9e2bd53fded2cb6645cb8027d80f033d52b 100644
+--- a/src/core/BattleEngine.lua
++++ b/src/core/BattleEngine.lua
+@@ -371,6 +371,13 @@
+ --     semi-invulnerable miss, a no-effect hit, every cancelMultiTurnMoves
+ --     call, the capture action, a failed run and faint; a switch-in is a
+ --     fresh battler. Using a different move does not reset it.
++--   * Variable-power slice V3 (work/tasks/phase4-variable-power-v3.md):
++--     Rollout/Ice Ball's 5-hit lock (rolloutTimer 5..0, nonzero exactly
++--     while MULTIPLETURNS is set for this family; power 30 doubled 4-timer
++--     times, so 30/60/120/240/480, doubled again by the Defense Curl bit).
++--     A miss, a protected or semi-invulnerable miss and a no-effect hit
++--     cancel it; locked turns skip ppreduce except a protected one. Defense
++--     Curl (effect 156) sets the battle-only defenseCurl bit, then DEF +1.
+ --   * Pure single-stat stage-change moves (Growl/Tail Whip's full real
+ --     family) ARE supported -- see BattleEngine.STAT_STAGE_MOVES and the
+ --     move.power == 0 branch of resolveMove.
+@@ -641,6 +648,9 @@ BattleEngine.MOVE_MAGNITUDE = 222
+ BattleEngine.EFFECT_PRESENT = 122
+ -- Variable-power slice V2 (work/tasks/phase4-variable-power-v2.md).
+ BattleEngine.EFFECT_FURY_CUTTER = 119
++-- Variable-power slice V3 (work/tasks/phase4-variable-power-v3.md).
++BattleEngine.EFFECT_ROLLOUT = 117
++BattleEngine.EFFECT_DEFENSE_CURL = 156
+ 
+ -- Real Cmd_remaininghptopower: scale the attacker's remaining HP to 48,
+ -- promote a positive underflow to one, then choose Flail/Reversal's dynamic
+@@ -1196,6 +1206,21 @@ function BattleEngine.makeBattler(opts)
+     -- clears at switch-in and faint (src/battle_main.c:2382-2384,
+     -- :2457-2459). A switch-in is a fresh battler, so it starts at 0.
+     furyCutterCounter = 0,
++    -- Variable-power slice V3: gDisableStructs[].rolloutTimer
++    -- (include/battle.h:156), 0-5, battle-only, never persisted. Set to 5 on
++    -- the first hit and decremented on every hit by
++    -- Cmd_rolloutdamagecalculation (src/battle_script_commands.c:8161-8193),
++    -- which also sets/clears STATUS2_MULTIPLETURNS with it, so for this
++    -- family "rolloutTimer > 0" is MULTIPLETURNS. Zeroed by
++    -- CancelMultiTurnMoves (src/battle_util.c:212) and the disable-struct
++    -- clears at switch-in and faint (src/battle_main.c:2382-2384,
++    -- :2457-2459).
++    rolloutTimer = 0,
++    -- STATUS2_DEFENSE_CURL (include/constants/battle.h:130), set by
++    -- Cmd_setdefensecurlbit (src/battle_script_commands.c:8472-8476); its
++    -- only reader is Rollout (:8189). Cleared with status2 at faint
++    -- (src/battle_main.c:2441) and switch-in (:2367; a fresh battler).
++    defenseCurl = false,
+     -- Residual slice R1, battle-only, never persisted (a switch-in is a
+     -- fresh battler, so its own bits clear for free; bm.c:2365-2368):
+     --   seeded    STATUS3_LEECHSEED (include/constants/battle.h:134-135).
+@@ -1450,6 +1475,10 @@ function BattleEngine:recordFaint(side, events)
+   -- FaintClearSetData zeroes gDisableStructs (src/battle_main.c:2457-2459),
+   -- the Fury Cutter counter included (variable-power slice V2).
+   battler.furyCutterCounter = 0
++  -- ...and the Rollout timer (variable-power slice V3); its status2 clear
++  -- (:2441) drops STATUS2_DEFENSE_CURL.
++  battler.rolloutTimer = 0
++  battler.defenseCurl = false
+   -- FaintClearSetData zeroes the fainted battler's status2/status3
+   -- (src/battle_main.c:2441-2442). Nothing clears ANOTHER battler's seed
+   -- whose receiver is this slot (bm.c:2433-2452): its drain is skipped
+@@ -1629,6 +1658,11 @@ function BattleEngine:supportsMove(move, moveId)
+   if move.effect == BattleEngine.EFFECT_INGRAIN then
+     return move.power == 0 and move.target == MOVE_TARGET_USER
+   end
++  if move.effect == BattleEngine.EFFECT_DEFENSE_CURL then
++    -- Variable-power slice V3: moves.h:1446 Defense Curl, power 0,
++    -- MOVE_TARGET_USER.
++    return move.power == 0 and move.target == MOVE_TARGET_USER
++  end
+   return move.power > 0 or BattleEngine.STAT_STAGE_MOVES[move.effect] ~= nil
+     or BattleEngine.SCREEN_MOVES[move.effect] ~= nil
+     or move.effect == BattleEngine.EFFECT_PAIN_SPLIT
+@@ -1960,8 +1994,9 @@ end
+ 
+ -- CancelMultiTurnMoves (src/battle_util.c:203-214), reduced to the
+ -- represented multi-turn state: the two-turn charge lock, the rampage
+--- lock (MULTIPLETURNS + LOCK_CONFUSE; no fatigue confusion follows) and the
+--- Fury Cutter counter (:213, variable-power slice V2). Every call resets
++-- lock (MULTIPLETURNS + LOCK_CONFUSE; no fatigue confusion follows), the
++-- Rollout lock (MULTIPLETURNS + rolloutTimer, :212, variable-power slice
++-- V3) and the Fury Cutter counter (:213, variable-power slice V2). Every call resets
+ -- the counter, even when the battler holds no lock (the end-of-turn sleep
+ -- caller itself runs only for a locked battler, as in source): flinch, full
+ -- paralysis, the confusion self-hit, recharge, sleep/freeze applied, the
+@@ -1972,6 +2007,7 @@ function BattleEngine:cancelMultiTurnMoves(battler)
+   battler.charging = false
+   battler.semiInvulnerable = nil
+   battler.rampageTurns = 0
++  battler.rolloutTimer = 0
+   battler.furyCutterCounter = 0
+   if not battler.recharging then battler.lockedSlot = nil end
+ end
+@@ -1981,10 +2017,12 @@ end
+ -- must not open a menu or run the foe AI, and runTurn uses the locked move.
+ -- A recharge whose timer would lapse at this turn's start (timer 1, the
+ -- battler did not act last turn) no longer locks. A rampage locks while
+--- its LOCK_CONFUSE counter is nonzero.
++-- its LOCK_CONFUSE counter is nonzero; a Rollout while its rolloutTimer is
++-- (MULTIPLETURNS, variable-power slice V3).
+ function BattleEngine:isLocked(side)
+   local b = self:battler(side)
+-  return b.charging or (b.rampageTurns or 0) > 0 or (b.recharging and b.rechargeTimer > 1)
++  return b.charging or (b.rampageTurns or 0) > 0 or (b.rolloutTimer or 0) > 0
++    or (b.recharging and b.rechargeTimer > 1)
+ end
+ 
+ -- DEFENDER_IS_PROTECTED (src/battle_script_commands.c:42):
+@@ -2080,7 +2118,10 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
+   -- foe); source chose that move at selection time.
+   local turnLocked = self.lockedThisTurn and self.lockedThisTurn[attackerSide]
+   local rampaging = (attacker.rampageTurns or 0) > 0
+-  local lockedTurn = attacker.charging or attacker.recharging or rampaging or turnLocked
++  -- A live Rollout lock (MULTIPLETURNS, variable-power slice V3).
++  local rollingOut = (attacker.rolloutTimer or 0) > 0
++  local lockedTurn = attacker.charging or attacker.recharging or rampaging or rollingOut
++    or turnLocked
+   if lockedTurn then
+     allMovesUnusable = false
+     -- runTurn already passed the locked slot; a lock cancelled earlier this
+@@ -2193,9 +2234,11 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
+   -- Source checks PP after the cancellers (src/battle_script_commands.c
+   -- :833-842); a locked action whose lock was cancelled earlier this turn
+   -- reaches it with no NO_PPDEDUCT, so a spent move reports no PP here.
+-  -- A live rampage (MULTIPLETURNS) bypasses the check (:838-839).
++  -- A live rampage or Rollout (MULTIPLETURNS) bypasses the check
++  -- (:838-839), so a locked 0-PP Rollout still hits.
+   if lockedTurn and not attacker.charging and not attacker.recharging
+       and (attacker.rampageTurns or 0) == 0
++      and (attacker.rolloutTimer or 0) == 0
+       and slot and slot.pp <= 0 then
+     events[#events + 1] = { type = "noPP", side = attackerSide, move = slot.move }
+     return
+@@ -2266,6 +2309,19 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
+     self.protectedMove = true
+     self:cancelMultiTurnMoves(attacker)
+   end
++  -- Rollout PP (variable-power slice V3, design F2/F3): ONE capture, AFTER
++  -- the protect step above and BEFORE the hit branch changes the timer.
++  -- BattleScript_EffectRollout (data/battle_scripts_1.s:1592-1602) runs
++  -- attackcanceler, attackstring, then `jumpifstatus2 BS_ATTACKER,
++  -- STATUS2_MULTIPLETURNS, BattleScript_RolloutCheckAccuracy` over ppreduce.
++  -- Rollout is not in IsTwoTurnsMove (src/battle_script_commands.c
++  -- :7821-7832), so the protect step's CancelMultiTurnMoves (:896-906) has
++  -- already cleared MULTIPLETURNS on a protected locked turn: it reaches
++  -- ppreduce and spends one PP while above 0 (:1147). Hit 1 spends one,
++  -- hits 2-5 spend none, and an unprotected locked miss (accuracy or
++  -- semi-invulnerable) spends none (unlike a rampage's PrintMoveMissed).
++  local isRollout = move.effect == BattleEngine.EFFECT_ROLLOUT
++  local rolloutLocked = isRollout and (attacker.rolloutTimer or 0) > 0
+   if move.effect == BattleEngine.EFFECT_FOCUS_PUNCH and attacker.tookMoveDamage then
+     -- BattleScript_EffectFocusPunch (data/battle_scripts_1.s:2255-2261):
+     -- attackcanceler, then jumpifnodamage (src/battle_script_commands.c
+@@ -2742,6 +2798,15 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
+   -- field (MOVE_TARGET_USER), not assumed from the UP/DOWN id naming, so
+   -- this stays correct-because-derived rather than correct-by-coincidence.
+   local statEntry = BattleEngine.STAT_STAGE_MOVES[move.effect]
++  if move.effect == BattleEngine.EFFECT_DEFENSE_CURL then
++    -- BattleScript_EffectDefenseCurl (data/battle_scripts_1.s:2010-2021):
++    -- attackcanceler, attackstring, ppreduce, setdefensecurlbit, then
++    -- `setstatchanger STAT_DEF, 1, FALSE` and statbuffchange: the same
++    -- self-target DEF +1 path as effect 11 (no accuracycheck, no RNG),
++    -- including "won't go higher!" at +6 (StatUpPrintString; source only
++    -- skips effect 11's short pause, design F10). Variable-power slice V3.
++    statEntry = { stat = "defense", delta = 1 }
++  end
+   local isSelfTargetStat = statEntry ~= nil
+     and math.floor((move.target or 0) / MOVE_TARGET_USER) % 2 == 1
+   -- Reflect/Light Screen (BattleEngine.SCREEN_MOVES) share this exact real
+@@ -2828,7 +2893,9 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
+   -- rampageLocked was captured before the protect step's cancel (P1).
+   -- A protected charge turn 2 spends nothing (NO_PPDEDUCT).
+   if slot and not isEndeavor and not isMagnitude and not self.noPPDeduct then
+-    if not rampageLocked then
++    if isRollout then
++      if not rolloutLocked and slot.pp > 0 then slot.pp = slot.pp - 1 end
++    elseif not rampageLocked then
+       slot.pp = slot.pp - 1
+     elseif not hit and slot.pp > 0 then
+       slot.pp = slot.pp - 1
+@@ -2845,6 +2912,17 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
+       -- spent (ppreduce precedes accuracycheck), no further draw.
+       attacker.furyCutterCounter = 0
+     end
++    if isRollout then
++      -- accuracycheck BattleScript_RolloutHit (data/battle_scripts_1.s
++      -- :1597-1598): the hit and the miss share the label, so typecalc2 and
++      -- Cmd_rolloutdamagecalculation (src/battle_script_commands.c
++      -- :8163-8167) see NO_EFFECT (an accuracy miss, a protected target or
++      -- a semi-invulnerable miss): CancelMultiTurnMoves(attacker), which
++      -- ends the lock (a Fly/Dig target too, unlike a rampage), then
++      -- MoveMissedPause: "missed" or the protected text below. A first-turn
++      -- miss sets no lock. No further draw.
++      self:cancelMultiTurnMoves(attacker)
++    end
+     if protectedMiss then
+       if BattleEngine.HITS_UNDERGROUND[move.effect] then
+         -- BattleScript_HitAllWithUndergroundBonusMissed runs typecalc: an
+@@ -2960,6 +3038,45 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
+     move = cutterMove
+   end
+ 
++  if isRollout then
++    -- BattleScript_RolloutHit (data/battle_scripts_1.s:1599-1602): typecalc2
++    -- first. A no-effect result reaches Cmd_rolloutdamagecalculation's
++    -- NO_EFFECT arm (src/battle_script_commands.c:8163-8167):
++    -- CancelMultiTurnMoves and MoveMissedPause ("It doesn't affect"), before
++    -- HitFromCritCalc, so no crit and no random draw. Unreachable with the
++    -- real chart (Rock and Ice have no 0x row; Levitate stops only Ground;
++    -- Wonder Guard is unrepresented); kept for source shape. Pure query.
++    local _, immunity = BattleFormulas.typeCalc(
++      1, move.type, attacker.types, defender.types, self.typeChart)
++    if immunity.noEffect then
++      self:cancelMultiTurnMoves(attacker)
++      events[#events + 1] = { type = "noEffect", side = attackerSide, target = defenderSide }
++      return
++    end
++    -- Cmd_rolloutdamagecalculation on a landed hit (:8168-8193): the first
++    -- hit (MULTIPLETURNS clear) sets rolloutTimer = 5, MULTIPLETURNS and
++    -- gLockedMoves (:8172-8178); then `--rolloutTimer`, and at 0
++    -- MULTIPLETURNS clears (:8179-8182), so the fifth hit ends the lock (lockedSlot released with
++    -- cancelMultiTurnMoves' `not recharging` guard, as the rampage end does).
++    if attacker.rolloutTimer == 0 then
++      attacker.rolloutTimer = 5
++      attacker.lockedSlot = moveSlot
++    end
++    attacker.rolloutTimer = attacker.rolloutTimer - 1
++    if attacker.rolloutTimer == 0 and not attacker.recharging then
++      attacker.lockedSlot = nil
++    end
++    -- gDynamicBasePower = record power doubled 4 - timer times (`for (i = 1;
++    -- i < 5 - timer; i++)`, :8184-8187): 30, 60, 120, 240, 480; doubled
++    -- once more under STATUS2_DEFENSE_CURL (:8189-8190), up to 960. Then
++    -- HitFromCritCalc below on a local copy; the shared record keeps 30.
++    local rolloutMove = {}
++    for k, v in pairs(move) do rolloutMove[k] = v end
++    for _ = 1, 4 - attacker.rolloutTimer do rolloutMove.power = rolloutMove.power * 2 end
++    if attacker.defenseCurl then rolloutMove.power = rolloutMove.power * 2 end
++    move = rolloutMove
++  end
++
+   if move.effect == BattleEngine.EFFECT_PRESENT then
+     -- BattleScript_EffectPresent (data/battle_scripts_1.s:1660-1666):
+     -- attackcanceler, accuracycheck PrintMoveMissed (a miss, a protected
+@@ -3234,6 +3351,12 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
+       self:resolveScreenMove(attackerSide, screenStatusKey, events)
+       return
+     end
++    if move.effect == BattleEngine.EFFECT_DEFENSE_CURL then
++      -- Cmd_setdefensecurlbit (src/battle_script_commands.c:8472-8476) runs
++      -- after ppreduce and BEFORE statbuffchange, so the bit is set even at
++      -- +6. It lasts until faint or switch-out (design section 8).
++      attacker.defenseCurl = true
++    end
+     local stat = statEntry.stat
+     local delta = statEntry.delta
+     local targetSide = isSelfTargetStat and attackerSide or defenderSide
+@@ -4290,9 +4413,11 @@ end
+ function BattleEngine:resolveEndTurn(events, playerMove, foeMove)
+   -- HandleEndTurn_ContinueBattle clears flinch before end-turn effects.
+   self.player.flinched, self.foe.flinched = false, false
+-  -- ...and cancels a sleeping battler's multi-turn move (:2941-2942).
++  -- ...and cancels a sleeping battler's multi-turn move (:2941-2942):
++  -- MULTIPLETURNS is a charge, a rampage or a Rollout (variable-power V3).
+   for _, b in ipairs({ self.player, self.foe }) do
+-    if StatusConditions.isAsleep(b.status) and (b.charging or (b.rampageTurns or 0) > 0) then
++    if StatusConditions.isAsleep(b.status) and (b.charging or (b.rampageTurns or 0) > 0
++        or (b.rolloutTimer or 0) > 0) then
+       self:cancelMultiTurnMoves(b)
+     end
+   end
+diff --git a/tests/battle_variable_power_v3_test.lua b/tests/battle_variable_power_v3_test.lua
+new file mode 100644
+index 0000000000000000000000000000000000000000..6b41967a102f25888cfb106e6486d9929360b6ca
+--- /dev/null
++++ b/tests/battle_variable_power_v3_test.lua
+@@ -0,0 +1,521 @@
++-- Run: lua5.1 tests/battle_variable_power_v3_test.lua
++--
++-- Variable-power slice V3 (work/tasks/phase4-variable-power-v3.md):
++-- EFFECT_ROLLOUT (117, moves 205 Rollout and 301 Ice Ball) and
++-- EFFECT_DEFENSE_CURL (156, move 111). Oracles come from pret/pokefirered
++-- c75f352304d529f6ba92d4f74b9cf8b5c3810788:
++--   * BattleScript_EffectRollout data/battle_scripts_1.s:1592-1602:
++--     attackcanceler, attackstring, `jumpifstatus2 BS_ATTACKER,
++--     STATUS2_MULTIPLETURNS, BattleScript_RolloutCheckAccuracy` (skips
++--     ppreduce), ppreduce, accuracycheck BattleScript_RolloutHit (the hit and
++--     the miss share the label), typecalc2, rolloutdamagecalculation, then
++--     BattleScript_HitFromCritCalc (critcalc, damagecalc, typecalc,
++--     adjustnormaldamage);
++--   * Cmd_rolloutdamagecalculation src/battle_script_commands.c:8161-8193:
++--     NO_EFFECT -> CancelMultiTurnMoves and MoveMissedPause; else the first
++--     hit (MULTIPLETURNS clear) sets rolloutTimer 5, MULTIPLETURNS and
++--     gLockedMoves; `--rolloutTimer`, at 0 MULTIPLETURNS clears; power =
++--     record power doubled 4 - timer times; doubled again under
++--     STATUS2_DEFENSE_CURL (:8189-8190);
++--   * the protect step src/battle_script_commands.c:896-906 cancels for any
++--     protected move not in IsTwoTurnsMove (:7821-7832), so a protected
++--     locked turn reaches ppreduce (guarded at 0 PP, :1147); the 0-PP check
++--     is bypassed under MULTIPLETURNS (:838-839);
++--   * CancelMultiTurnMoves src/battle_util.c:203-214 (rolloutTimer = 0 at
++--     :212) and its callers (flinch :1366, recharge :1354, full paralysis
++--     bs1.s:3717, confusion self-hit bs1.s:3742, sleep/freeze applied
++--     bsc.c:2173/:2269, the end-of-turn sleep cancel src/battle_main.c
++--     :2941-2942);
++--   * BattleScript_EffectDefenseCurl data/battle_scripts_1.s:2010-2021 and
++--     Cmd_setdefensecurlbit bsc.c:8472-8476 (the bit is set before
++--     statbuffchange, so at +6 too); STATUS2_DEFENSE_CURL
++--     include/constants/battle.h:130, cleared at faint (bm.c:2441) and
++--     switch-in (:2367).
++-- Move records transcribed from src/data/battle_moves.h at the pin:
++-- rec(effect, power, type, accuracy, pp, chance, target, priority, flags).
++--
++-- Damage oracle (src/pokemon.c CalculateBaseDamage): level 10 gives
++-- 2*10/5+2 = 6; attack 20, defense 20 (Ice Ball is special: spAttack 20,
++-- spDefense 20, same numbers):
++--   floor(floor(20 * P * 6 / 20) / 50) + 2 = floor(6P / 50) + 2
++--   P = 30 -> 3 + 2 = 5;    60 -> 7 + 2 = 9;    120 -> 14 + 2 = 16;
++--   P = 240 -> 28 + 2 = 30; 480 -> 57 + 2 = 59; 960 -> 115 + 2 = 117.
++-- The player is Psychic, the foe Water (Rollout) or Normal (Ice Ball, as Ice
++-- is resisted by Water): no STAB, neutral. A hit draws accuracy, crit and
++-- random (scripted 0, 1, 0: hit, no crit, 100%). Expected numbers are
++-- worked here, never read back from the engine.
++package.path = package.path .. ";./?.lua"
++
++local BattleEngine = require("src.core.BattleEngine")
++local BattleSceneController = require("src.core.BattleSceneController")
++local S = require("src.core.StatusConditions")
++local Data = require("tests.battle_test_data")
++
++local passed, failed = 0, 0
++local function check(name, condition, detail)
++  if condition then
++    passed = passed + 1
++  else
++    failed = failed + 1
++    print("FAIL: " .. name .. (detail ~= nil and (" -- " .. tostring(detail)) or ""))
++  end
++end
++
++local function scriptedRng(values)
++  return {
++    draws = 0,
++    values = values,
++    next16 = function(self)
++      self.draws = self.draws + 1
++      return self.values[self.draws] or 0
++    end,
++  }
++end
++
++local function rec(effect, power, type_, acc, pp, chance, target, priority, flags)
++  return { effect = effect, power = power, type = type_, accuracy = acc, pp = pp,
++    secondaryEffectChance = chance, target = target, priority = priority, flags = flags }
++end
++
++local ROLLOUT, ICE_BALL, DEFENSE_CURL, TACKLE, SPLASH, HYPNOSIS = 205, 301, 111, 33, 150, 95
++local FURY_CUTTER = 210
++local moves = {}
++for id, m in pairs(Data.moves) do moves[id] = m end
++moves[ROLLOUT] = rec(117, 30, 5, 90, 20, 0, 0x00, 0, 0x33)     -- battle_moves.h:2668
++moves[ICE_BALL] = rec(117, 30, 15, 90, 20, 0, 0x00, 0, 0x33)   -- :3916
++moves[DEFENSE_CURL] = rec(156, 0, 0, 0, 40, 0, 0x10, 0, 0x08)  -- :1446
++moves[SPLASH] = rec(85, 0, 0, 0, 40, 0, 0x10, 0, 0x00)         -- :1953
++moves[HYPNOSIS] = rec(1, 0, 14, 60, 20, 0, 0x00, 0, 0x16)      -- :1238
++moves[FURY_CUTTER] = rec(119, 10, 6, 95, 20, 0, 0x00, 0, 0x33) -- :2733
++
++local function newBattler(id, opts)
++  opts = opts or {}
++  local list = {}
++  for i, m in ipairs(opts.moves or { ROLLOUT }) do list[i] = { move = m, pp = moves[m].pp } end
++  return BattleEngine.makeBattler({ species = id, level = 10,
++    stats = { hp = opts.hp or 1000, attack = 20, defense = 20, speed = opts.speed or 20,
++      spAttack = 20, spDefense = 20 },
++    types = opts.types or { Data.TYPE_WATER, Data.TYPE_WATER }, moves = list })
++end
++
++local function battle(values, opts)
++  opts = opts or {}
++  local engine = BattleEngine.new({
++    player = newBattler(1, { moves = opts.playerMoves, speed = opts.playerSpeed or 30,
++      types = { Data.TYPE_PSYCHIC, Data.TYPE_PSYCHIC } }),
++    foe = newBattler(19, { moves = opts.foeMoves or { SPLASH }, speed = opts.foeSpeed or 20,
++      types = opts.foeTypes, hp = opts.foeHP }),
++    moves = moves, typeChart = opts.typeChart or Data.typeChart, rng = scriptedRng(values or {}),
++    hasReplacement = opts.hasReplacement,
++  })
++  engine.player.ability, engine.foe.ability = 0, 0
++  return engine
++end
++
++local function sig(events)
++  local out = {}
++  for _, e in ipairs(events) do out[#out + 1] = e.type .. (e.side and (":" .. e.side) or "") end
++  return table.concat(out, ",")
++end
++local function find(events, kind)
++  for _, e in ipairs(events) do if e.type == kind then return e end end
++end
++-- One resolveMove with its own fresh draws.
++local function use(engine, side, slot, values)
++  engine.rng = scriptedRng(values or { 0, 1, 0 })
++  local events = {}
++  engine:resolveMove(side or "player", slot or 1, events)
++  return events, engine.rng.draws
++end
++local HIT = { 0, 1, 0 }
++local MISS = { 99 } -- accuracy 90: 99 % 100 + 1 = 100 > 90
++local POWER_DAMAGE = { 5, 9, 16, 30, 59 }
++local CURL_DAMAGE = { 9, 16, 30, 59, 117 }
++
++-- 1. Defaults and admission.
++do
++  local e = battle()
++  check("new battler: rolloutTimer 0, defenseCurl false", e.player.rolloutTimer == 0
++    and e.player.defenseCurl == false and e.foe.rolloutTimer == 0 and e.foe.defenseCurl == false)
++  check("Rollout admitted", e:supportsMove(moves[ROLLOUT], ROLLOUT))
++  check("Ice Ball admitted", e:supportsMove(moves[ICE_BALL], ICE_BALL))
++  check("Defense Curl admitted", e:supportsMove(moves[DEFENSE_CURL], DEFENSE_CURL))
++  check("Defense Curl needs MOVE_TARGET_USER",
++    not e:supportsMove(rec(156, 0, 0, 0, 40, 0, 0x00, 0, 0x08), DEFENSE_CURL))
++  check("a fresh battler is not locked", not e:isLocked("player"))
++end
++
++-- 2. The five-hit lock through real turns: 30, 60, 120, 240, 480; the lock
++-- overrides the chosen action on turns 2-5; hit 1 spends 1 PP, hits 2-5
++-- none; hit 5 releases the lock and the next turn uses the chosen move.
++do
++  for _, entry in ipairs({ { ROLLOUT, "Rollout", nil }, { ICE_BALL, "Ice Ball",
++      { Data.TYPE_NORMAL, Data.TYPE_NORMAL } } }) do
++    local id, label = entry[1], entry[2]
++    local e = battle(nil, { playerMoves = { id, TACKLE }, foeTypes = entry[3] })
++    local hp = 1000
++    local timers = { 4, 3, 2, 1, 0 }
++    for i = 1, 5 do
++      e.rng = scriptedRng({ 0, 1, 0 })
++      -- Turns 2-5 ask for Tackle: the lock replaces it.
++      local events = e:runTurn({ action = "move", moveSlot = i == 1 and 1 or 2 },
++        { action = "move", moveSlot = 1 })
++      local use_ = find(events, "useMove")
++      local dmg = find(events, "damage")
++      hp = hp - POWER_DAMAGE[i]
++      check(label .. " hit " .. i .. ": uses " .. id, use_ and use_.move == id, use_ and use_.move)
++      check(label .. " hit " .. i .. ": damage " .. POWER_DAMAGE[i], dmg and dmg.amount == POWER_DAMAGE[i]
++        and e.foe.hp == hp, dmg and dmg.amount)
++      check(label .. " hit " .. i .. ": timer " .. timers[i], e.player.rolloutTimer == timers[i],
++        e.player.rolloutTimer)
++      check(label .. " hit " .. i .. ": 3 draws in the turn", e.rng.draws == 3, e.rng.draws)
++      check(label .. " hit " .. i .. ": PP 19", e.player.moves[1].pp == 19, e.player.moves[1].pp)
++      check(label .. " hit " .. i .. ": locked " .. tostring(i < 5), e:isLocked("player") == (i < 5)
++        and (e.player.lockedSlot == (i < 5 and 1 or nil)))
++    end
++    e.rng = scriptedRng({ 0, 1, 0 })
++    local events = e:runTurn({ action = "move", moveSlot = 2 }, { action = "move", moveSlot = 1 })
++    check(label .. ": after hit 5 the chosen move runs (Tackle)", find(events, "useMove").move == TACKLE)
++    e.rng = scriptedRng({ 0, 1, 0 })
++    events = e:runTurn({ action = "move", moveSlot = 1 }, { action = "move", moveSlot = 1 })
++    check(label .. ": a new sequence restarts at 30 and spends PP", find(events, "damage").amount == 5
++      and e.player.rolloutTimer == 4 and e.player.moves[1].pp == 18)
++    check(label .. ": ROM record keeps power 30", moves[id].power == 30)
++  end
++end
++
++-- 3. Defense Curl: DEF +1, the bit, no draw; then 60 .. 960; +6 keeps the
++-- bit and prints "won't go higher!".
++do
++  local e = battle(nil, { playerMoves = { DEFENSE_CURL, ROLLOUT } })
++  local events, draws = use(e, "player", 1, {})
++  check("Defense Curl: DEF +1 (stage 6 -> 7), bit set, 0 draws", e.player.statStages.defense == 7
++    and e.player.defenseCurl == true and draws == 0, draws)
++  check("Defense Curl: events", sig(events) == "useMove:player,statChange:player", sig(events))
++  check("Defense Curl: PP spent", e.player.moves[1].pp == 39)
++  -- Both family members (review F1); Ice Ball against a Normal foe.
++  for _, entry in ipairs({ { ROLLOUT, "Rollout", nil }, { ICE_BALL, "Ice Ball",
++      { Data.TYPE_NORMAL, Data.TYPE_NORMAL } } }) do
++    local id, label = entry[1], entry[2]
++    if id ~= ROLLOUT then
++      e = battle(nil, { playerMoves = { DEFENSE_CURL, id }, foeTypes = entry[3] })
++      use(e, "player", 1, {})
++    end
++    local hp = 1000
++    for i = 1, 5 do
++      events = use(e, "player", 2, HIT)
++      hp = hp - CURL_DAMAGE[i]
++      check(label .. " curled hit " .. i .. ": damage " .. CURL_DAMAGE[i],
++        find(events, "damage").amount == CURL_DAMAGE[i] and e.foe.hp == hp, find(events, "damage").amount)
++    end
++    check(label .. ": the bit outlasts the sequence", e.player.defenseCurl == true
++      and e.player.rolloutTimer == 0)
++    check(label .. ": ROM record keeps power 30 after curled hits", moves[id].power == 30)
++  end
++
++  e = battle(nil, { playerMoves = { DEFENSE_CURL, ROLLOUT } })
++  e.player.statStages.defense = 12 -- +6
++  events, draws = use(e, "player", 1, {})
++  local sc = find(events, "statChange")
++  check("Defense Curl at +6: prevented, bit still set", sc and sc.prevented == true
++    and e.player.defenseCurl == true and e.player.statStages.defense == 12 and draws == 0)
++  local c = BattleSceneController.new({ engine = e, playerName = "PLAYER", foeName = "FOE",
++    introMessages = {}, moveName = function() return "DEFENSE CURL" end })
++  local out = {}
++  for _, m in ipairs(c:_eventMessages(events)) do out[#out + 1] = m.text end
++  check("Defense Curl at +6 text (same as effect 11)", table.concat(out, "|")
++    == "PLAYER used DEFENSE CURL!|PLAYER's DEFENSE\nwon't go higher!", table.concat(out, "|"))
++  events = use(e, "player", 2, HIT)
++  check("curled at +6: first hit at 60 (9)", find(events, "damage").amount == 9)
++
++  -- The foe's bit is its own.
++  e = battle(nil, { foeMoves = { DEFENSE_CURL } })
++  use(e, "foe", 1, {})
++  check("foe's Defense Curl sets only the foe's bit", e.foe.defenseCurl and not e.player.defenseCurl)
++  events = use(e, "player", 1, HIT)
++  -- Foe DEF 20 at +1 = 30: floor(floor(20 * 30 * 6 / 30) / 50) + 2 = 4 (a
++  -- doubled 60 would give floor(240 / 50) + 2 = 6).
++  check("player's Rollout is not doubled by the foe's bit", find(events, "damage").amount == 4,
++    find(events, "damage").amount)
++end
++
++-- 4. Cancel paths on a locked turn (after two hits, timer 3).
++local function primed(opts)
++  local e = battle(nil, opts)
++  use(e, "player", 1, HIT)
++  use(e, "player", 1, HIT)
++  return e
++end
++local function unlocked(e)
++  return e.player.rolloutTimer == 0 and e.player.lockedSlot == nil and not e:isLocked("player")
++end
++do
++  -- Accuracy miss: 1 draw, "missed", no PP (MULTIPLETURNS still set at
++  -- jumpifstatus2), lock cancelled, the next use restarts at 30.
++  local e = primed()
++  local events, draws = use(e, "player", 1, MISS)
++  check("locked miss: cancelled", unlocked(e))
++  check("locked miss: 1 draw, missed", draws == 1 and sig(events) == "useMove:player,miss:player", sig(events))
++  check("locked miss: no PP spent", e.player.moves[1].pp == 19, e.player.moves[1].pp)
++  events = use(e, "player", 1, HIT)
++  check("after a locked miss: back to 30 (5), PP spent", find(events, "damage").amount == 5
++    and e.player.moves[1].pp == 18 and e.player.rolloutTimer == 4)
++
++  -- First-turn miss: PP spent, no lock.
++  e = battle()
++  events, draws = use(e, "player", 1, MISS)
++  check("first-turn miss: PP spent, no lock", e.player.moves[1].pp == 19 and unlocked(e) and draws == 1)
++
++  -- Protected locked turn (P1 gate): the protect step cancels first, so
++  -- ppreduce runs: 1 PP, 0 draws, the protected text.
++  e = primed()
++  e.foe.protected = true
++  events, draws = use(e, "player", 1, HIT)
++  check("protected locked: cancelled", unlocked(e))
++  check("protected locked: 0 draws, protected text", draws == 0
++    and sig(events) == "useMove:player,protected:player", sig(events))
++  check("protected locked: one PP spent", e.player.moves[1].pp == 18, e.player.moves[1].pp)
++  check("protected locked: no damage", e.foe.hp == 1000 - 5 - 9)
++  e.foe.protected = false
++  events = use(e, "player", 1, HIT)
++  check("after a protected turn: back to 30 (5)", find(events, "damage").amount == 5)
++
++  -- Protected locked turn at 0 PP: the 0-PP check is bypassed (still
++  -- locked at attackcanceler), and ppreduce spends nothing at 0 (:1147).
++  e = primed()
++  e.player.moves[1].pp = 0
++  e.foe.protected = true
++  events = use(e, "player", 1, HIT)
++  check("protected locked at 0 PP: protected, PP stays 0", e.player.moves[1].pp == 0
++    and find(events, "protected") ~= nil and unlocked(e), e.player.moves[1].pp)
++
++  -- Protected first turn: PP spent, no lock.
++  e = battle()
++  e.foe.protected = true
++  events, draws = use(e, "player", 1, HIT)
++  check("protected first turn: PP spent, no lock, protected", e.player.moves[1].pp == 19
++    and unlocked(e) and draws == 0 and find(events, "protected") ~= nil)
++
++  -- Fly/Dig target: AccuracyCalcHelper misses with no draw; the lock is
++  -- cancelled (a rampage keeps its lock here) and no PP is spent.
++  for _, state in ipairs({ "air", "underground" }) do
++    e = primed()
++    e.foe.semiInvulnerable = state
++    events, draws = use(e, "player", 1, HIT)
++    check(state .. ": cancelled", unlocked(e))
++    check(state .. ": 0 draws, missed", draws == 0 and sig(events) == "useMove:player,miss:player", draws)
++    check(state .. ": no PP spent", e.player.moves[1].pp == 19)
++  end
++
++  -- A locked 0-PP slot still hits (MULTIPLETURNS bypasses the 0-PP check).
++  e = primed()
++  e.player.moves[1].pp = 0
++  events = use(e, "player", 1, HIT)
++  check("locked at 0 PP: hit 3 at 120 (16), PP stays 0", find(events, "damage")
++    and find(events, "damage").amount == 16 and e.player.moves[1].pp == 0 and e.player.rolloutTimer == 2)
++end
++
++-- 5. A no-effect hit (synthetic 0x row Rock -> Water; the real chart has no
++-- Rock or Ice immunity): typecalc2 precedes rolloutdamagecalculation, so
++-- only the accuracy draw is spent; the lock is cancelled.
++do
++  local chart = {}
++  local n = 0
++  while Data.typeChart[n] do chart[n] = Data.typeChart[n]; n = n + 1 end
++  chart[n] = { attackingType = 5, defendingType = 11, multiplier = 0 }
++  local e = battle(nil, { typeChart = chart, foeTypes = { Data.TYPE_FIRE, Data.TYPE_FIRE } })
++  use(e, "player", 1, HIT)
++  use(e, "player", 1, HIT)
++  check("synthetic: two hits against Fire lock (timer 3)", e.player.rolloutTimer == 3)
++  e.foe.types = { Data.TYPE_WATER, Data.TYPE_WATER }
++  local events, draws = use(e, "player", 1, HIT)
++  check("no effect: cancelled", unlocked(e))
++  check("no effect: 1 draw (accuracy; no crit, no random)", draws == 1, draws)
++  check("no effect: events", sig(events) == "useMove:player,noEffect:player", sig(events))
++  check("no effect (locked): no PP spent", e.player.moves[1].pp == 19)
++end
++
++-- 6. Cancellers (all through cancelMultiTurnMoves).
++do
++  local e = primed()
++  e.player.flinched = true
++  local events, draws = use(e, "player", 1, HIT)
++  check("flinch: cancelled, no draw", unlocked(e) and draws == 0 and sig(events) == "flinched:player",
++    sig(events))
++
++  e = primed()
++  e.player.status = S.PARALYSIS
++  events, draws = use(e, "player", 1, { 0 })
++  check("full paralysis: cancelled", unlocked(e) and sig(events) == "fullyParalyzed:player"
++    and draws == 1, sig(events))
++  e = primed()
++  e.player.status = S.PARALYSIS
++  events = use(e, "player", 1, { 1, 0, 1, 0 })
++  check("paralysed but acting: hit 3 at 120 (16)", find(events, "damage").amount == 16
++    and e.player.rolloutTimer == 2)
++
++  e = primed()
++  e.player.confusionTurns = 3
++  events = use(e, "player", 1, { 0, 0 })
++  check("confusion self-hit: cancelled", unlocked(e) and find(events, "confusionSelfHit") ~= nil)
++
++  e = primed()
++  e.player.recharging, e.player.rechargeTimer = true, 2
++  events = use(e, "player", 1, HIT)
++  check("recharge canceller: timer 0", e.player.rolloutTimer == 0
++    and sig(events) == "mustRecharge:player", sig(events))
++
++  -- Sleep applied by the foe's Hypnosis cancels at once.
++  e = primed({ foeMoves = { HYPNOSIS } })
++  use(e, "foe", 1, { 0, 2 })
++  check("sleep applied: cancelled", S.isAsleep(e.player.status) and unlocked(e))
++  -- A missed Hypnosis keeps the lock.
++  e = primed({ foeMoves = { HYPNOSIS } })
++  use(e, "foe", 1, { 99 })
++  check("missed Hypnosis: lock kept", e.player.rolloutTimer == 3 and e:isLocked("player"))
++
++  -- Freeze applied (the SetMoveEffect freeze case) cancels.
++  e = primed()
++  check("freeze applied", e:applySecondaryStatus("player", "freeze", false, {}))
++  check("freeze applied: cancelled", unlocked(e))
++  -- An existing freeze keeps the lock (CANCELLER_FROZEN does not cancel).
++  e = primed()
++  e.player.status = S.FREEZE
++  events, draws = use(e, "player", 1, { 1 })
++  check("already frozen: frozen solid, lock kept", sig(events) == "frozenSolid:player"
++    and e.player.rolloutTimer == 3 and e:isLocked("player") and draws == 1, sig(events))
++
++  -- An existing sleep keeps the lock through the canceller; the end-of-turn
++  -- sleep cancel (MULTIPLETURNS) ends it.
++  e = primed()
++  e.player.status = S.withSleepTurns(0, 3)
++  events = use(e, "player", 1, {})
++  check("asleep: fast asleep, lock kept until end of turn", sig(events) == "fastAsleep:player"
++    and e.player.rolloutTimer == 3)
++  e.rng = scriptedRng({})
++  e:resolveEndTurn({}, nil, nil)
++  check("end-of-turn sleep cancel: cancelled", unlocked(e))
++
++  -- Review F4: the lock is cancelled earlier in the same turn (a faster
++  -- foe's freeze), then a thaw: bm.c:3989-3991 uses gLockedMoves only while
++  -- MULTIPLETURNS is set, so the kept slot runs with no NO_PPDEDUCT and the
++  -- 0-PP check applies (bsc.c:838-839). Draws: thaw % 5 == 0, accuracy,
++  -- crit, random.
++  e = primed()
++  e.lockedThisTurn = { player = true, foe = false }
++  e:applySecondaryStatus("player", "freeze", false, {})
++  events = use(e, "player", 1, { 0, 0, 1, 0 })
++  check("cancelled this turn, thawed: restarts at 30, spends PP",
++    sig(events) == "thawed:player,useMove:player,damage:player" and find(events, "damage").amount == 5
++    and e.player.moves[1].pp == 18 and e.player.rolloutTimer == 4, sig(events))
++  e = primed()
++  e.lockedThisTurn = { player = true, foe = false }
++  e:applySecondaryStatus("player", "freeze", false, {})
++  e.player.moves[1].pp = 0
++  events = use(e, "player", 1, { 0 })
++  check("cancelled this turn, thawed at 0 PP: no PP", sig(events) == "thawed:player,noPP:player"
++    and e.player.moves[1].pp == 0 and unlocked(e), sig(events))
++
++  -- Fury Cutter's counter and the Rollout lock share CancelMultiTurnMoves.
++  e = battle(nil, { playerMoves = { FURY_CUTTER, ROLLOUT } })
++  use(e, "player", 1, { 0, 1, 0 })
++  use(e, "player", 2, HIT)
++  e.player.flinched = true
++  use(e, "player", 2, HIT)
++  check("flinch clears both the Fury Cutter counter and the lock", e.player.furyCutterCounter == 0
++    and unlocked(e))
++end
++
++-- 7. A protected locked turn through runTurn (P1), and the lock across
++-- turns when the target faints.
++do
++  local e = battle(nil, { playerMoves = { ROLLOUT, TACKLE } })
++  e.rng = scriptedRng({ 0, 1, 0 })
++  e:runTurn({ action = "move", moveSlot = 1 }, { action = "move", moveSlot = 1 })
++  e.player.protected = false
++  e.foe.protected = true -- as if the foe's Protect had landed this turn
++  local events = {}
++  e.rng = scriptedRng({})
++  e:resolveMove("player", e.player.lockedSlot, events)
++  check("runTurn-locked then protected: protected, PP 18, unlocked",
++    find(events, "protected") ~= nil and e.player.moves[1].pp == 18 and unlocked(e))
++  e.rng = scriptedRng({ 0, 1, 0 })
++  events = e:runTurn({ action = "move", moveSlot = 2 }, { action = "move", moveSlot = 1 })
++  check("the next turn offers the chosen move (Tackle) and protected is per turn",
++    find(events, "useMove").move == TACKLE and find(events, "damage") ~= nil)
++
++  -- The lock survives the target's faint and replacement.
++  e = battle(nil, { foeHP = 10, hasReplacement = function() return true end })
++  use(e, "player", 1, HIT) -- 5 damage, 10 -> 5
++  e.rng = scriptedRng({ 0, 1, 0 })
++  e:runTurn({ action = "move", moveSlot = 1 }, { action = "move", moveSlot = 1 }) -- 9: KO
++  check("target fainted, lock kept (timer 3)", e.foe.hp == 0 and e.player.rolloutTimer == 3
++    and e.awaitingForcedSwitch == "foe" and e:isLocked("player"))
++  e:resolveForcedSwitch("foe", newBattler(20, { moves = { SPLASH } }))
++  e.rng = scriptedRng({ 0, 1, 0 })
++  events = e:runTurn({ action = "move", moveSlot = 1 }, { action = "move", moveSlot = 1 })
++  check("replacement: hit 3 at 120 (16)", find(events, "damage").amount == 16
++    and e.player.rolloutTimer == 2)
++end
++
++-- 8. Faint and switch-in clear the timer and the bit.
++do
++  local e = battle(nil, { playerMoves = { DEFENSE_CURL, ROLLOUT } })
++  use(e, "player", 1, {})
++  use(e, "player", 2, HIT)
++  e:beginFaintSequence()
++  e.player.hp = 0
++  e:recordFaint("player", {})
++  check("faint: timer 0, bit cleared, unlocked", e.player.rolloutTimer == 0
++    and e.player.defenseCurl == false and e.player.lockedSlot == nil)
++
++  -- The foe curls and rolls; the player's voluntary switch-in starts clear
++  -- and the foe keeps its lock and bit (hit 2 curled: 120, 16).
++  e = battle(nil, { foeMoves = { DEFENSE_CURL, ROLLOUT }, playerMoves = { DEFENSE_CURL } })
++  use(e, "player", 1, {})
++  use(e, "foe", 1, {})
++  use(e, "foe", 2, HIT)
++  local incoming = newBattler(4, { types = { Data.TYPE_PSYCHIC, Data.TYPE_PSYCHIC } })
++  e.rng = scriptedRng({ 0, 1, 0 })
++  local events = e:runTurn({ action = "switch", battler = incoming }, { action = "move", moveSlot = 1 })
++  check("switch-in: fresh battler clear", e.player == incoming and e.player.rolloutTimer == 0
++    and e.player.defenseCurl == false)
++  check("switch-in: the foe's locked curled hit 2 at 120 (16)", find(events, "damage")
++    and find(events, "damage").amount == 16 and e.foe.rolloutTimer == 3, find(events, "damage")
++    and find(events, "damage").amount)
++end
++
++-- 9. Controller: no menu for a locked player; no AI for a locked foe.
++do
++  local values = {}
++  for i = 1, 5 do values[#values + 1] = 0; values[#values + 1] = 1; values[#values + 1] = 0 end
++  local b = battle(values)
++  local aiCalls = 0
++  local c = BattleSceneController.new({ engine = b, playerName = "A", foeName = "B",
++    moveName = function() return "MOVE" end,
++    chooseFoeMove = function() aiCalls = aiCalls + 1; return 1 end })
++  c:_runTurn({ action = "move", moveSlot = 1 })
++  check("turn 1 locked the player", b:isLocked("player") and aiCalls == 1)
++  local guard = 0
++  while c.state == BattleSceneController.MESSAGES and guard < 200 do
++    c:advanceMessage(); guard = guard + 1
++  end
++  check("a rolling player gets no menu: five turns ran", b.turn == 5 and not b:isLocked("player")
++    and aiCalls == 5 and b.rng.draws == 15 and c.state == BattleSceneController.ACTION, b.turn)
++
++  local fb = battle(nil, { foeMoves = { ROLLOUT }, foeSpeed = 50, playerMoves = { SPLASH } })
++  local foeCalls = 0
++  local fc = BattleSceneController.new({ engine = fb, playerName = "A", foeName = "B",
++    moveName = function() return "MOVE" end,
++    chooseFoeMove = function() foeCalls = foeCalls + 1; return 1 end })
++  fb.rng = scriptedRng({ 0, 1, 0 })
++  fc:_runTurn({ action = "move", moveSlot = 1 })
++  check("the foe started rolling", fb:isLocked("foe") and foeCalls == 1)
++  fb.rng = scriptedRng({ 0, 1, 0 })
++  fc:_runTurn({ action = "move", moveSlot = 1 })
++  check("a rolling foe runs no AI (3 draws)", foeCalls == 1 and fb.foe.rolloutTimer == 3
++    and fb.rng.draws == 3, foeCalls)
++end
++
++print(("%d passed, %d failed"):format(passed, failed))
++os.exit(failed == 0 and 0 or 1)
+diff --git a/tests/phase4_move_effect_inventory_test.lua b/tests/phase4_move_effect_inventory_test.lua
+index 4d7e3b75cb49df7d919bb946d75dcbb26ab78eb9..bb73df1c6328925aaccad1efdc984aa138955753 100644
+--- a/tests/phase4_move_effect_inventory_test.lua
++++ b/tests/phase4_move_effect_inventory_test.lua
+@@ -126,7 +126,7 @@ local inventory = {
+   [114] = {"blocked_on_state", false, 0, {195}}, -- EFFECT_PERISH_SONG
+   [115] = {"represented", true, 0, {201}}, -- EFFECT_SANDSTORM: ROM fixture pending (phase4_weather_effect_rom_test)
+   [116] = {"blocked_on_state", false, 0, {203}}, -- EFFECT_ENDURE
+-  [117] = {"blocked_on_state", true, 1, {205,301}}, -- EFFECT_ROLLOUT
++  [117] = {"represented", true, 1, {205,301}}, -- EFFECT_ROLLOUT: ROM fixture pending (phase4_variable_power_v3_effect_rom_test)
+   [118] = {"represented", true, 0, {207}}, -- EFFECT_SWAGGER: ROM fixture pending (phase4_confusion_flinch_effect_rom_test)
+   [119] = {"represented", true, 1, {210}}, -- EFFECT_FURY_CUTTER: ROM fixture pending (phase4_variable_power_v2_effect_rom_test)
+   [120] = {"blocked_on_state", false, 0, {213}}, -- EFFECT_ATTRACT
+@@ -165,7 +165,7 @@ local inventory = {
+   [153] = {"blocked_on_state", false, 0, {100}}, -- EFFECT_TELEPORT
+   [154] = {"blocked_on_state", true, 1, {251}}, -- EFFECT_BEAT_UP
+   [155] = {"represented", true, 1, {19,91,291,340}}, -- EFFECT_SEMI_INVULNERABLE: ROM fixture pending (phase4_semi_invulnerable_effect_rom_test)
+-  [156] = {"blocked_on_state", false, 0, {111}}, -- EFFECT_DEFENSE_CURL
++  [156] = {"represented", true, 0, {111}}, -- EFFECT_DEFENSE_CURL: ROM fixture pending (phase4_variable_power_v3_effect_rom_test)
+   [157] = {"represented", true, 0, {135,208}}, -- EFFECT_SOFTBOILED: ROM fixture pending (phase4_batch3_status_effect_rom_test)
+   [158] = {"represented", true, 1, {252}}, -- EFFECT_FAKE_OUT: ROM fixture pending (phase4_protection_p4_effect_rom_test)
+   [159] = {"blocked_on_state", true, 1, {253}}, -- EFFECT_UPROAR
+@@ -227,13 +227,13 @@ local inventory = {
+ 
+ local expectedTotals = {
+   moves = 354, defined = 214, used = 198, unused = 16,
+-  positive = 216, zero = 138, admitted = 299, rejected = 55,
+-  admitted_uncovered_positive = 22,
++  positive = 216, zero = 138, admitted = 300, rejected = 54,
++  admitted_uncovered_positive = 20,
+ }
+ local expectedClasses = {
+-  represented = {families = 129, moves = 277, positive = 193, zero = 84},
++  represented = {families = 131, moves = 280, positive = 195, zero = 85},
+   candidate = {families = 0, moves = 0, positive = 0, zero = 0},
+-  blocked_on_state = {families = 68, moves = 76, positive = 22, zero = 54},
++  blocked_on_state = {families = 66, moves = 73, positive = 20, zero = 53},
+   intentionally_rejected = {families = 1, moves = 1, positive = 1, zero = 0},
+   unused = {families = 16, moves = 0, positive = 0, zero = 0},
+ }
+diff --git a/tests/phase4_variable_power_v3_effect_rom_test.lua b/tests/phase4_variable_power_v3_effect_rom_test.lua
+new file mode 100644
+index 0000000000000000000000000000000000000000..965f62a1010e9d75ceaafe7ff0dd682c7821f5fa
+--- /dev/null
++++ b/tests/phase4_variable_power_v3_effect_rom_test.lua
+@@ -0,0 +1,44 @@
++-- Accepted c75f352 source records; no extracted data is retained.
++-- Variable-power slice V3: effect 117 EFFECT_ROLLOUT (Rollout, Ice Ball) and
++-- effect 156 EFFECT_DEFENSE_CURL (Defense Curl).
++package.path = package.path .. ";./?.lua"
++local BattleMove = require("import.BattleMove")
++local RomAddresses = require("import.RomAddresses")
++local RomImporter = require("import.RomImporter")
++local path = os.getenv("POKEPORT_ROM")
++if not path or path == "" then print("SKIP phase4_variable_power_v3_effect_rom_test (set POKEPORT_ROM)"); os.exit(0) end
++assert(RomImporter.verify(path), "supported-ROM verification failed")
++local f = assert(io.open(path, "rb"), "verified ROM could not be opened")
++local rom = f:read("*a"); f:close()
++local a = assert(RomAddresses["41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc"])
++local moves = BattleMove.parseTable(rom, a.gBattleMoves, RomAddresses.COUNTS.MOVES_COUNT)
++rom = nil
++-- src/data/battle_moves.h:2668-2679: Rollout 205 and :3916-3927: Ice Ball
++-- 301, effect 117, power 30, Rock (5) / Ice (15), accuracy 90, PP 20,
++-- chance 0, MOVE_TARGET_SELECTED, priority 0, flags FLAG_MAKES_CONTACT |
++-- FLAG_PROTECT_AFFECTED | FLAG_MIRROR_MOVE_AFFECTED |
++-- FLAG_KINGS_ROCK_AFFECTED = 0x01 | 0x02 | 0x10 | 0x20.
++-- :1446-1457: Defense Curl 111, effect 156, power 0, Normal (0), accuracy 0,
++-- PP 40, chance 0, MOVE_TARGET_USER (0x10), priority 0, flags
++-- FLAG_SNATCH_AFFECTED = 0x08 (include/constants/pokemon.h:238-243).
++local members = { [117] = { [205] = true, [301] = true }, [156] = { [111] = true } }
++local counts = { [117] = 0, [156] = 0 }
++for id=0,RomAddresses.COUNTS.MOVES_COUNT-1 do
++  local family = members[moves[id].effect]
++  if family then
++    assert(family[id], "unexpected V3 family member")
++    counts[moves[id].effect] = counts[moves[id].effect] + 1
++  end
++end
++assert(counts[117] == 2 and counts[156] == 1, "V3 family membership count changed")
++for id, t in pairs({ [205] = 5, [301] = 15 }) do
++  local m = moves[id]
++  assert(m.effect==117 and m.power==30 and m.type==t and m.accuracy==90 and m.pp==20
++    and m.secondaryEffectChance==0 and m.target==0 and m.priority==0 and m.flags==0x33,
++    "V3 Rollout-family source record mismatch")
++end
++local m = moves[111]
++assert(m.effect==156 and m.power==0 and m.type==0 and m.accuracy==0 and m.pp==40
++  and m.secondaryEffectChance==0 and m.target==0x10 and m.priority==0 and m.flags==0x08,
++  "V3 Defense Curl source record mismatch")
++print("phase4_variable_power_v3_effect_rom_test: 4 passed, 0 failed; exact 2-member and 1-member source families")
+diff --git a/work/reports/phase4-move-effect-inventory.md b/work/reports/phase4-move-effect-inventory.md
+index 9c7027ad2a4d583c1058703d4db974d9ca1b011e..c6688327a808307df811a96773c4f49eb509226d 100644
+--- a/work/reports/phase4-move-effect-inventory.md
++++ b/work/reports/phase4-move-effect-inventory.md
+@@ -22,8 +22,8 @@ Existing accepted engine families retain their documented limits.
+ 
+ A separate source-only invocation of the actual current
+ `BattleEngine:supportsMove` on source-derived effect/power metadata returned
+-248 admissions and 106 rejections at that refresh (now 299/55 after the status slices,
+-fast-lane batches, weather slices W1-W2, residual slices R1-R3, protection slices P4-P5 and variable-power slices V1-V2; the test is authoritative). These are source/predicate observations,
++248 admissions and 106 rejections at that refresh (now 300/54 after the status slices,
++fast-lane batches, weather slices W1-W2, residual slices R1-R3, protection slices P4-P5 and variable-power slices V1-V3; the test is authoritative). These are source/predicate observations,
+ **not a local ROM result**. The checked-in [inventory test](../../tests/phase4_move_effect_inventory_test.lua)
+ contains literal expected membership, admission and coverage metadata. It does
+ not read engine tables to construct expectations. It checks partition integrity
+@@ -35,11 +35,11 @@ labels `defined_source=214`; the ROM gate checks member usage and unused IDs.
+ 
+ | Source-confirmed semantic class | Used families | Moves | Positive power | Zero power | Admitted / rejected |
+ | --- | ---: | ---: | ---: | ---: | ---: |
+-| Represented with stated limits | 129 | 277 | 193 | 84 | 277 / 0 |
++| Represented with stated limits | 131 | 280 | 195 | 85 | 280 / 0 |
+ | Candidate for separate discovery | 0 | 0 | 0 | 0 | 0 / 0 |
+-| Blocked on additional state or an absent cross-component path | 68 | 76 | 22 | 54 | 22 / 54 |
++| Blocked on additional state or an absent cross-component path | 66 | 73 | 20 | 53 | 20 / 53 |
+ | Intentionally rejected | 1 | 1 | 1 | 0 | 0 / 1 |
+-| Total used | 198 | 354 | 216 | 138 | 299 / 55 |
++| Total used | 198 | 354 | 216 | 138 | 300 / 54 |
+ | Defined but unused | 16 | 0 | 0 | 0 | no real-record claim |
+ 
+ `represented` means an existing bounded mechanism plus checked-in tests/source
+@@ -53,12 +53,12 @@ families are unimplemented, not a policy decision that they should never work.
+ 
+ ## Coverage and admission are separate
+ 
+-The **22 admitted, semantically uncovered positive-power records** occupy
+-19 effects: `26, 34, 81, 89, 105, 117, 121, 123, 128, 135, 144, 148, 154, 159, 161, 185, 188, 196, 197`.
++The **20 admitted, semantically uncovered positive-power records** occupy
++18 effects: `26, 34, 81, 89, 105, 121, 123, 128, 135, 144, 148, 154, 159, 161, 185, 188, 196, 197`.
+ Their precise move members and counts are the `yes / C` and `yes / B` rows
+ below. They reach ordinary damage because of the positive-power fallback;
+ admission does not implement their effects. None is a candidate record; all
+-22 need additional state/path work. This refresh supersedes the older
++20 need additional state/path work. This refresh supersedes the older
+ 140-fallback positive-only count; accepted intervening leaves account for the
+ reduction, while 138 zero-power records are now included explicitly.
+ 
+@@ -220,7 +220,7 @@ body (Protect/Endure, Return/Frustration, sunlight recovery, Mud/Water Sport).
+ | 114 `EFFECT_PERISH_SONG` | 195 (1; Z) | no | B | [`BattleScript_EffectPerishSong`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L1563) | Perish counters and ordered end-turn faints absent; source visits all battlers/abilities. |
+ | 115 `EFFECT_SANDSTORM` | 201 (1; Z) | yes | R | [`BattleScript_EffectSandstorm`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L1585) | Weather slice [W1](../tasks/phase4-weather-w1.md): attackstring/ppreduce, no accuracycheck or RNG; But it failed in its own family (permanent included), else overwrites any family with the temporary bit and the shared 5-turn counter (4 continues, then stopped); sandstorm/hail damage max(1, maxHP/16) on each of those 4 ends of turn in ENDTURN_ORDER, exempt Rock/Steel/Ground or Sand Veil (sand), Ice (hail), Dig/Dive (not Fly/Bounce), 0-HP battlers skipped; Cloud Nine/Air Lock suppress gameplay effects, not the timer or texts; AI -8 with the stale-result quirk. Thunder accuracy/Solar Beam sun path/Weather Ball/heals are weather [W2](../tasks/phase4-weather-w2.md); Swift Swim/Chlorophyll speed, Sand Veil accuracy and Rain Dish are weather [W3a](../tasks/phase4-weather-w3a.md); Drizzle/Sand Stream/Drought permanent weather (the move fails against its own permanent family and overwrites another) is weather [W3b](../tasks/phase4-weather-w3b.md); Forecast absent; ROM fixture pending. |
+ | 116 `EFFECT_ENDURE` | 203 (1; Z) | no | B | [`BattleScript_EffectEndure`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L1529) | Shared setprotectlike requires counter/RNG, distinct Protect/Endure interception and turn reset. |
+-| 117 `EFFECT_ROLLOUT` | 205, 301 (2; P) | yes | B | [`BattleScript_EffectRollout`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L1592) | Rollout needs its hit-sequence lock and resets (variable-power V3; Fury Cutter is [V2](../tasks/phase4-variable-power-v2.md)); #205/#301 additionally consume Defense Curl. |
++| 117 `EFFECT_ROLLOUT` | 205, 301 (2; P) | yes | R | [`BattleScript_EffectRollout`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L1592) | Variable-power slice [V3](../tasks/phase4-variable-power-v3.md): per-battler `rolloutTimer` 5..0 (nonzero = MULTIPLETURNS) locks five hits at power 30/60/120/240/480, doubled again by the Defense Curl bit (up to 960), on a local copy through the ordinary crit/damage/typecalc/random path (the tracked plain-hit gap applies); hit 5 releases the lock. Hit 1 spends 1 PP, locked hits and an unprotected locked miss none, a protected locked turn one (guarded at 0); a locked 0-PP slot still hits. Cancelled by an accuracy, protected or Fly/Dig miss, a no-effect typecalc2 (accuracy draw only; unreachable with the real chart), every `cancelMultiTurnMoves` caller (flinch, full paralysis, confusion self-hit, recharge, sleep/freeze applied, the protect step, the end-of-turn sleep cancel) and faint; an existing freeze or sleep keeps it until that end-of-turn cancel; survives the target's faint and replacement. Unrepresented `CancelMultiTurnMoves` callers are limits, as for V2; ROM fixture pending. |
+ | 118 `EFFECT_SWAGGER` | 207 (1; Z) | yes | R | [`BattleScript_EffectSwagger`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L1604) | Accuracy first; confused and ATK +6 fails; ATK +2 (silent at +6); Own Tempo text; confusion (silent if already). Confusion/flinch slice [C2](../tasks/phase4-confusion-flinch-c2.md); ROM fixture pending. |
+ | 119 `EFFECT_FURY_CUTTER` | 210 (1; P) | yes | R | [`BattleScript_EffectFuryCutter`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L1627) | Variable-power slice [V2](../tasks/phase4-variable-power-v2.md): per-battler `furyCutterCounter` 0-5 (power 10/20/40/80/160, then 160), local copy, ordinary crit/damage/typecalc/random (the tracked plain-hit gap applies). Reset by an accuracy, protected or Fly/Dig miss, a no-effect hit (which skips the random draw), every `cancelMultiTurnMoves` caller (flinch, full paralysis, confusion self-hit, recharge, sleep/freeze applied, the protect step for any protected move, the end-of-turn sleep cancel, the rampage `targetNotAffected` cancel), the capture action (every item action in source; only capture is represented), a failed run, faint and switch-in; **not** by using a different move; survives the target's faint and replacement. Unrepresented `CancelMultiTurnMoves` callers (Truant, Disable, Taunt, Imprison, infatuation, Torment, Uproar, Yawn, Spite) and Baton Pass are limits; ROM fixture pending. |
+ | 120 `EFFECT_ATTRACT` | 213 (1; Z) | no | B | [`BattleScript_EffectAttract`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L1641) | Infatuation needs gender, owner identity and action cancellation lifecycle. |
+@@ -259,7 +259,7 @@ body (Protect/Endure, Return/Frustration, sunlight recovery, Mud/Water Sport).
+ | 153 `EFFECT_TELEPORT` | 100 (1; Z) | no | B | [`BattleScript_EffectTeleport`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L1921) | Teleport needs trainer/wild escape restrictions and explicit outcome/controller handling beyond ordinary run. |
+ | 154 `EFFECT_BEAT_UP` | 251 (1; P) | yes | B | [`BattleScript_EffectBeatUp`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L1936) | Beat Up needs eligible-party contributor/base-stat input. |
+ | 155 `EFFECT_SEMI_INVULNERABLE` | 19, 91, 291, 340 (4; P) | yes | R | [`BattleScript_EffectSemiInvulnerable`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L1969) | Charge turn sets ON_AIR/UNDERGROUND/UNDERWATER (moves with accuracycheck miss it without RNG); turn 2 hit without PP; Bounce 30% paralysis; OHKO/Pain Split against it fail (But it failed); Fly/Dig/Dive turn 2 follow the tracked plain-hit gap (no zero-effect roll draw). Multi-turn slice [M2](../tasks/phase4-multiturn-m2.md); ROM fixture pending. |
+-| 156 `EFFECT_DEFENSE_CURL` | 111 (1; Z) | no | B | [`BattleScript_EffectDefenseCurl`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L2010) | Defense Curl adds volatile flag used by Rollout/Ice Ball; interaction/reset absent. |
++| 156 `EFFECT_DEFENSE_CURL` | 111 (1; Z) | yes | R | [`BattleScript_EffectDefenseCurl`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L2010) | Variable-power slice [V3](../tasks/phase4-variable-power-v3.md): attackstring/ppreduce, `setdefensecurlbit` (battle-only `defenseCurl`, set even at +6), then the effect-11 DEF +1 path, no accuracycheck or RNG ("won't go higher!" at +6; source only skips effect 11's short pause). The bit's only reader is Rollout/Ice Ball; cleared at faint and switch-in. Snatch absent; ROM fixture pending. |
+ | 157 `EFFECT_SOFTBOILED` | 135, 208 (2; Z) | yes | R | [`BattleScript_EffectSoftboiled`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L2023) | Literal #135/#208 heal max(1, maxHP/2), clamped; fails at full HP. Fast-lane batch [P4-FL3](../tasks/phase4-batch3-status-moves.md); ROM fixture pending. |
+ | 158 `EFFECT_FAKE_OUT` | 252 (1; P) | yes | R | [`BattleScript_EffectFakeOut`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L2044) | Protection slice [P4](../tasks/phase4-protection-p4.md): the mirrored 2/1/0 `isFirstTurn` counter (leads 1, voluntary switch-in 2, forced replacement 1, decrement as the last end-of-turn step); after the first turn "But it failed!" with PP spent and no RNG; priority +1; certain flinch with no draw, only for a target that has not acted, Shield Dust silent, Inner Focus "prevents flinching!" text, nothing on a KO; a Ghost target takes the discarded `% 100`; `AI_CBM_FakeOut` −10 once `isFirstTurn` is 0. Protect: [P1](../tasks/phase4-protection-p1.md) prints the protected text on both paths (the flag is set only by tests until P2); ROM fixture pending. |
+ | 159 `EFFECT_UPROAR` | 253 (1; P) | yes | B | [`BattleScript_EffectUproar`](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/data/battle_scripts_1.s#L2068) | Uproar needs repeat lock/duration, wake/sleep suppression and end-turn lifecycle. |
+diff --git a/work/reviews/2026-10-28-variable-power-v3-implementation-review.md b/work/reviews/2026-10-28-variable-power-v3-implementation-review.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..83b892a15c1e32eccaaf1c537945aee26f01debb
+--- /dev/null
++++ b/work/reviews/2026-10-28-variable-power-v3-implementation-review.md
+@@ -0,0 +1,156 @@
++# Review: variable-power slice V3 (Rollout / Ice Ball, effect 117, and Defense Curl, effect 156)
++
++- Reviewed: `bb2a1e8` on `claude/variable-power-v3-20261028` (PR #58), read as `git diff 49d0f45 bb2a1e8`.
++- Specs: `work/reports/phase4-variable-power-design-proposal.md` (§7, §8, "V3", verification plan V3), `work/reviews/2026-10-21-variable-power-design-review.md` (F2, F3, F10, D3), `work/tasks/phase4-variable-power-v3.md`.
++- Precedent: `work/reviews/2026-10-21-variable-power-v1-v2-implementation-review.md`.
++- Date: 2026-10-28
++- Source pin: pret/pokefirered `c75f352304d529f6ba92d4f74b9cf8b5c3810788`, local read-only copy `/home/home/FireRedRecomp-reference/pokefirered` (`git log -1` confirms the pin).
++- Abbreviations: `bsc.c` = `src/battle_script_commands.c`, `bs1.s` = `data/battle_scripts_1.s`, `bm.c` = `src/battle_main.c`, `bu.c` = `src/battle_util.c`, `moves.h` = `src/data/battle_moves.h`, `BE` = `src/core/BattleEngine.lua`, `T` = `tests/battle_variable_power_v3_test.lua`.
++- Nothing in the repository was edited except this file. Each mutation was applied to `BE` in place, tested, and reverted with `git checkout -- src/core/BattleEngine.lua`. Probes ran from the scratchpad and wrote nothing to the repository. `git status` was clean before this commit.
++
++## Verdict: **PASS WITH CORRECTIONS**
++
++I re-derived every V3 path from source. The engine matches the source on all of them, and I found no behaviour bug.
++
++- `env -u POKEPORT_ROM -u POKEPORT_RUNTIME_REPLAY bash scripts/test_all.sh` passes: 204 test files (no-ROM mode), exit 0.
++- `lua5.1 scripts/check_repository.lua` passes: 332 Lua, 394 Markdown, 1316 local targets.
++- `T` runs 135/0. The ROM fixture skips cleanly without a ROM.
++- I ran 7 mutants of my own: 6 were killed and 1 survived (F1).
++
++The corrections are a test gap (F1), a task-file wording fix (F2) and two INFO items. None of them blocks merging the code.
++
++## What was checked
++
++### Rollout / Ice Ball (`BE:2122-2124`, `:2239-2245`, `:2323-2324`, `:2896-2897`, `:2915-2925`, `:3041-3078`)
++
++| Item | Source | Engine | Result |
++| --- | --- | --- | --- |
++| Script order | `bs1.s:1592-1602`: attackcanceler, attackstring, `jumpifstatus2 MULTIPLETURNS` over ppreduce, `accuracycheck BattleScript_RolloutHit` (the hit and the miss share the label), typecalc2, rolloutdamagecalculation, `HitFromCritCalc` | PP block, then the `not hit` cancel, then the typecalc2 query, then the timer and power, then the ordinary crit/damage/typecalc/random path | Match |
++| First hit | `bsc.c:8172-8178`: MULTIPLETURNS clear, so `rolloutTimer = 5`, MULTIPLETURNS, `gLockedMoves` | `rolloutTimer == 0`: set 5 and `lockedSlot = moveSlot` (`BE:3061-3064`) | Match. `rolloutTimerStartValue` is read only by animations (`battle_anim_rock.c:707`, `battle_anim_ice.c:1410/1472`), so leaving it out is correct |
++| Decrement / release | `bsc.c:8179-8182`: `--timer`; at 0 MULTIPLETURNS clears | `-1`; at 0 `lockedSlot = nil` under the `not recharging` guard (`BE:3065-3068`) | Match (F3 of the design review). Tested: the hit-5 release, then Tackle on the next turn (`T:174-180`) |
++| Power | `bsc.c:8184-8187`: record power, doubled for `i = 1 .. 4 - timer`; `:8189-8190` doubles again under `STATUS2_DEFENSE_CURL` | `for _ = 1, 4 - timer`; `* 2` if `defenseCurl`; on a local copy, so the record keeps 30 | Match: 30/60/120/240/480, curled 60 to 960. I re-derived the oracle `floor(6P/50)+2` = 5/9/16/30/59/117 |
++| NO_EFFECT arm | `bsc.c:8163-8167`: CancelMultiTurnMoves, `MoveMissedPause` (`bs1.s:279-285`, resultmessage) | Accuracy, protected and semi-invulnerable misses all cancel, then emit `miss` or `protected` (`BE:2915-2925`). The typecalc2 immunity cancels and emits `noEffect` before the crit (`BE:3049-3055`) | Match. Draws are 1/0/0/1 (the 1 for an immunity is the accuracy draw). `typecalc2` (`bsc.c:4346-4439`) ORs DOESNT_AFFECT on a miss too, but Rock and Ice have no 0x row, so it is unobservable |
++| PP (F2/F3) | `jumpifstatus2` reads MULTIPLETURNS **after** the protect step (`bsc.c:896-906`), which cancels any protected move not in `IsTwoTurnsMove` (`:7821-7832`, Rollout absent); ppreduce deducts only while PP > 0 (`:1147`) | One `rolloutLocked` capture after `protectBlocks` (`BE:2306-2324`); spend unless locked, guarded at 0 (`BE:2896-2897`) | Match. Hit 1 spends 1; hits 2-5 spend 0; an unprotected locked miss or Fly/Dig miss spends 0; a protected locked turn spends 1; at 0 PP it stays 0 |
++| 0-PP check | `bsc.c:838-839`: bypassed under MULTIPLETURNS. It runs **before** the protect step | It reads the live `rolloutTimer` before the protect step (`BE:2239-2245`) | Match. A locked 0-PP slot hits (`T:300-305`); a protected locked 0-PP turn is protected with PP 0 (`T:270-277`) |
++| Cancelled earlier this turn | `bm.c:3989-3991` uses `gLockedMoves` only while MULTIPLETURNS is set; otherwise the old position, with no NO_PPDEDUCT | `turnLocked`: the slot is kept; the 0-PP check applies; PP is spent; the sequence restarts | Match. A probe (freeze applied, then a thaw on the next draw) gave `thawed,useMove,damage=5`, PP 5 to 4, timer 4; at 0 PP it gave `thawed,noPP`. Untested (F4) |
++| `isLocked` / `lockedTurn` | `bm.c:3125-3130`: MULTIPLETURNS skips action selection | `rolloutTimer > 0` is added to `isLocked` (`BE:2024`) and `lockedTurn` (`BE:2122-2124`); `runTurn` swaps in `lockedSlot` (`BE:4790-4799`) | Match. The controller runs no AI for a locked foe and opens no menu for a locked player (`T:459-488`). A probe confirms the state is `action` after hit 5 (F3) |
++| CancelMultiTurnMoves | `bu.c:203-214`, `:212` zeroes the timer. Callers: recharge `bu.c:1354`, flinch `:1366`, paralysis `bs1.s:3717`, confusion self-hit `:3742`, sleep/freeze applied `bsc.c:2173/:2269`, the protect step `:900`, end-of-turn sleep `bm.c:2941-2942` | `rolloutTimer = 0` is added inside the function (`BE:2010`), so every existing caller gets it | Match; each caller has a test (`T:330-394`). The unrepresented callers are recorded as limits (the same set as V2) |
++| End-turn sleep | `bm.c:2941-2942`: SLEEP && MULTIPLETURNS | `rolloutTimer > 0` is added to the gate (`BE:4419-4420`) | Match (`T:383-391`) |
++| Existing freeze / sleep | `CANCELLER_FROZEN` and `CANCELLER_ASLEEP` do not cancel | The lock is kept; the end-of-turn cancel ends it for a sleeper | Match |
++| Faint / switch-in | Disable-struct clears at `bm.c:2382-2384` and `:2457-2459`; status2 clears at `:2441` (faint) and `:2367` (switch-in) | `recordFaint` clears `rolloutTimer` and `defenseCurl` (`BE:1480-1481`); a switch-in is a fresh `makeBattler` (`BE:1218`, `:1223`) | Match (`T:430-455`) |
++| Target faint | Nothing touches the attacker's lock | The lock is kept; hit 3 lands at 120 on the replacement | Match (`T:415-428`) |
++| Different move | Locked, so no other move can be chosen | n/a | n/a |
++| RNG | No new draws | Hit 3, miss 1, protected or semi-invulnerable 0, immunity 1, Defense Curl 0; a locked foe skips the AI draw | Match |
++
++### Defense Curl (`BE:1661-1665`, `:2801-2809`, `:3354-3359`)
++
++| Item | Source | Engine | Result |
++| --- | --- | --- | --- |
++| Script | `bs1.s:2010-2021`: attackcanceler, attackstring, ppreduce, `setdefensecurlbit` (`bsc.c:8472-8476`), `setstatchanger STAT_DEF, 1`, `statbuffchange AFFECTS_USER \| ALLOW_PTR` | Effect-11 stat entry `{defense, +1}`, self-target (`0x10`), so no accuracycheck and no protect; PP is spent; the bit is set before the at-limit branch | Match |
++| At +6 | `ChangeStatBuffs` (`bsc.c:6797-6815`): `B_MSG_STAT_WONT_INCREASE` sets MISSED and returns WORKED (ALLOW_PTR), and `jumpifbyte` goes to `StatUpPrintString` (`bs1.s:506`) without effect 11's pause (`:498`) | A `prevented` statChange; the controller prints "PLAYER's DEFENSE\nwon't go higher!" (`T:206-217`); the bit is set | Match (F10). MISSED is unobservable here |
++| Bit scope | `STATUS2_DEFENSE_CURL` (`include/constants/battle.h:130`). Its only writer is `:8474` and its only reader is `:8189` (grep of the pin) | A per-battler `defenseCurl`; the foe's bit does not double the player's Rollout (`T:222-230`) | Match |
++| Text | "used" grammar: `sGrammarMoveUsedTable` (`battle_message.c:1398-1425`) lists Defense Curl and Rollout, but every English mark is "!" | Existing "used" line | Match; no new string |
++| AI | `AI_CBM_DefenseUp` (`ai.s:186`) | Already ported (`AICheckBadMove.lua:645`) | Match; no AI change needed |
++
++### Trainer battles that carry Defense Curl (parity check)
++
++Source parties: Camper Liam's Geodude and Sandshrew (`trainer_parties.h:863`, `:869`; `aiFlags` = CHECK_BAD_MOVE, `trainers.h:1422`) and Brock's Geodude (`:5609`; `aiFlags` 7, `trainers.h:4142`). I probed both at `49d0f45` (the parent engine loaded through `package.preload`) and at `bb2a1e8`:
++
++- **Liam (CHECK_BAD_MOVE):**
++  - The AI is identical before and after: 1 draw and the same scores. `TrainerAI` does not filter on `supportsMove`.
++  - Before V3, when the AI picked Defense Curl, `runTurn` raised `unsupported move effect 156` (`BE` parent `:2118`). `main.lua` does not wrap the live battle in a `pcall`, so this was a hard error.
++  - After V3, the foe goes to DEF +1 with the bit set, as in source.
++  - The change only replaces a crash with source behaviour: no RNG stream or earlier-correct outcome changes. **No conflict with the parity contract.**
++- **Brock (aiFlags 7):**
++  - `TrainerAI.choose` delegates to `EarlyRivalAI.choose` (`TrainerAI.lua:144`), which raises `unsupported Oak-lab AI move effect 156` for any non-hit move (`EarlyRivalAI.lua:76-81`). This happens before the engine is reached, both before and after V3.
++  - Onix's Bind (effect 42) is still blocked.
++  - V3 therefore changes nothing observable for Brock (F2).
++
++### Inventory and ROM fixtures
++
++- Rows 117 and 156 flip to `represented`, with 156's admission going false to true. The counts are consistent:
++  - +1 admitted;
++  - two positive records (205, 301) leave the uncovered list (22 to 20; 18 effects);
++  - represented 131/280/195/85, blocked 66/73/20/53.
++- The report rows and the class table match the test.
++- The ROM fixture could not run: no ROM is present, and I did not read one. I checked it statically against the pin:
++  - Rollout: `moves.h:2668-2679`, 117/30/Rock(5)/90/20/0/selected(0)/0/0x33.
++  - Ice Ball: `:3916-3927`, the same with Ice (15).
++  - Defense Curl: `:1446-1457`, 156/0/Normal/0/40/0/`MOVE_TARGET_USER` (0x10, `include/battle.h:64`)/0/0x08.
++  - The flag bits match `include/constants/pokemon.h:237-242`.
++- The family-membership asserts are 2 and 1. "ROM fixture pending" is the correct status.
++
++### Citations
++
++I checked every source citation in the task file, the `BE` comments and the `T` header against the pin, and all are accurate. They are:
++
++- `bs1.s:1592-1602`, `:2010-2021`, `:3717`, `:3742`
++- `bsc.c:838-839`, `:896-906`, `:1147`, `:2173`, `:2269`, `:7821-7832`, `:8161-8193` (sub-ranges `:8163-8167`, `:8172-8182`, `:8184-8190`), `:8472-8476`
++- `bu.c:203-214`, `:212`, `:1354`, `:1366`
++- `bm.c:2367`, `:2382-2384`, `:2441`, `:2457-2459`, `:2941-2942`, `:3125-3130`
++- `include/battle.h:156`, `include/constants/battle.h:130`
++- `moves.h:2668`, `:3916`, `:1446`
++- `AICheckBadMove.lua:645`
++
++### Regressions
++
++- No existing assertion changed except the intended inventory flips.
++- `main.lua`, `BattleSceneController.lua`, `AICheckBadMove.lua` and `BattlePartyBridge.lua` are untouched (`git diff --stat 49d0f45 bb2a1e8`).
++
++### Mutation testing (7 mutants of my own; 6 killed)
++
++| Mutant | V3 failures |
++| --- | ---: |
++| An unprotected locked miss spends PP (`(not rolloutLocked or not hit)`) | 4 |
++| `recordFaint` keeps `defenseCurl` (the timer clear left in place) | 1 |
++| A semi-invulnerable miss keeps the lock (`if not semiMiss then cancel`) | 2 |
++| The first hit does not set `lockedSlot` | run aborts (1 FAIL, then an error) |
++| `rolloutLocked` also true when locked at turn start (pre-protect value) | 2 |
++| The typecalc2 no-effect arm does not cancel | 1 |
++| The Defense Curl doubling only for Rock-type (`move.type == 5`) | **0 (survived, F1)** |
++
++The implementer's 14 recorded mutants are different from these.
++
++## Findings
++
++### F1 (LOW, test gap): no curled Ice Ball test; a Rock-only Defense Curl doubling survives
++
++`bsc.c:8189-8190` doubles for every `EFFECT_ROLLOUT` move. `T:188-205` runs the curled sequence only with Rollout (`playerMoves = { DEFENSE_CURL, ROLLOUT }`, `T:190`), and Ice Ball is only exercised uncurled (`T:152-185`). The mutant `if attacker.defenseCurl and move.type == 5 then` at `BE:3076` passes 135/0.
++
++A probe at `bb2a1e8` shows the engine itself is correct: a curled Ice Ball against a Normal foe does 9, 16, 30, 59, 117.
++
++**Fix:** in `T` §3, run the curled five-hit loop for both `{ ROLLOUT, nil }` and `{ ICE_BALL, { Data.TYPE_NORMAL, Data.TYPE_NORMAL } }`. Build the battle with `playerMoves = { DEFENSE_CURL, id }` and `foeTypes` from the entry, and expect `CURL_DAMAGE` = 9/16/30/59/117 for each.
++
++### F2 (LOW, task accuracy): "Brock's Geodude ... carry it" overstates the behaviour change
++
++`work/tasks/phase4-variable-power-v3.md:132-133` says Defense Curl "is now admitted (Brock's Geodude and Liam's Geodude carry it)". That implies both battles change. Only Liam's does:
++
++- Brock's aiFlags 7 path errors in `EarlyRivalAI.choose` (`EarlyRivalAI.lua:76-81`) before the engine runs, both before and after V3.
++- Liam's Sandshrew also carries Defense Curl (`trainer_parties.h:869`).
++
++**Fix:** replace those two lines with:
++
++> **Behavior change:** Defense Curl was rejected before; it is now admitted. Camper Liam's Geodude and Sandshrew (CHECK_BAD_MOVE) previously raised "unsupported move effect 156" when the AI chose it and now follow source (AI scoring and draws unchanged). Brock (aiFlags 7) is unchanged: `EarlyRivalAI.choose` still rejects effect 156 (and Onix's Bind remains blocked).
++
++### F3 (INFO, test strength): the controller test does not assert the menu returns after hit 5
++
++The design verification plan asks that "after hit 5 `isLocked` is false and the next turn offers the menu". `T:473-474` checks `b.turn == 5 and not b:isLocked("player")` but not the controller state. A probe confirms `c.state == BattleSceneController.ACTION` after the loop.
++
++**Fix:** append `and c.state == BattleSceneController.ACTION` to the check at `T:473`.
++
++### F4 (INFO, coverage): the "lock cancelled earlier this turn" path is untested for Rollout
++
++Source (`bm.c:3989-3991`; `bsc.c:838-839`) and the engine (`BE:2119-2129`, `:2239-2245`) agree. When a faster foe's freeze is followed by a thaw, the battler restarts at 30, spends PP, and reports "no PP" at 0 PP. Both outcomes are probe-confirmed above, but no V3 test pins them.
++
++**Optional fix:** add to `T` §6: `primed()`, `e.lockedThisTurn = { player = true, foe = false }`, `applySecondaryStatus("player", "freeze", false, {})`, then `use(e, "player", 1, { 0, 0, 1, 0 })`. Expect `thawed,useMove,damage`, damage 5, PP 18, timer 4. Repeat at PP 0 and expect `thawed,noPP`.
++
++### F5 (INFO, design wording only; no code change)
++
++The design's V3 bullet (`work/reports/phase4-variable-power-design-proposal.md:555-556`) says "The PP block and the 0-PP bypass both read that value [`rolloutLocked`]". The 0-PP check (`bsc.c:838`) runs before the protect step (`:896`), so it must read the live timer, and the implementation correctly does (`BE:2241`). A protected locked 0-PP turn shows the difference: it is protected, not "no PP", and `T:270-277` covers it.
++
++**Fix (optional, at the next design fold):** "the PP block reads `rolloutLocked`; the earlier 0-PP bypass reads the live `rolloutTimer`".
++
++## UNKNOWN
++
++- The ROM fixture against the verified ROM: no ROM was available, and I was not permitted to read one.
++- The live LÖVE behaviour of a Liam battle: I did not run LÖVE. The Liam conclusion comes from engine and AI probes only.
+diff --git a/work/reviews/2026-10-30-variable-power-v3-final-head-review.md b/work/reviews/2026-10-30-variable-power-v3-final-head-review.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..1b0958d0c858b82de91d7a2567f0897f14092cd6
+--- /dev/null
++++ b/work/reviews/2026-10-30-variable-power-v3-final-head-review.md
+@@ -0,0 +1,36 @@
++# PR58 final-head correction reconciliation — 2026-10-30
++
++Verdict: **PASS** for the bounded no-ROM correction reconciliation. This is not a full-relay closure or runtime/ROM acceptance.
++
++- Live GitHub independently confirmed PR58 OPEN, unmerged, base `49d0f4531ed067370a3024deabcbeb7dc564c597`, head `9d761f49488156619c3cf87a49bb1958437083c8`, branch `claude/variable-power-v3-20261028`.
++- Reviewed clean worktree `/home/home/FireRedRecomp-v3` at that exact head; recovered existing independent review `work/reviews/2026-10-28-variable-power-v3-implementation-review.md` of `bb2a1e8`. Did not duplicate its accepted source research or mutation campaign.
++- `git diff bb2a1e8 HEAD` contains only the prior review, test corrections and task changes. Engine is byte-identical to the previously reviewed engine (`git diff --quiet bb2a1e8 HEAD -- src/core/BattleEngine.lua`, exit 0).
++- F1: curled five-hit sequence now covers both Rollout and Ice Ball, with independently specified 9/16/30/59/117 damage and Normal target for Ice Ball. F2: Liam's Geodude/Sandshrew and unchanged Brock limitation are accurately recorded. F3: controller assertion now requires ACTION after hit 5. F4: freeze/thaw cancellation tests pin restart power/PP and no-PP behavior. F5 remains optional design-only wording, expressly excluded here. No new code finding.
++- Base-to-head changed paths are engine, three tests, inventory report, task and prior review; no ROM/extracted assets/generated cache or forbidden runtime/party/AI/controller edits appear.
++
++Checks run at exact head (all exit 0):
++
++```text
++env -u POKEPORT_ROM -u POKEPORT_RUNTIME_REPLAY bash scripts/test_all.sh
++  PASS: 204 test files (no-ROM); log /tmp/firered-v3-no-rom-20261030.log
++env -u POKEPORT_ROM -u POKEPORT_RUNTIME_REPLAY lua5.1 tests/battle_variable_power_v3_test.lua
++  144 passed, 0 failed
++env -u POKEPORT_ROM -u POKEPORT_RUNTIME_REPLAY lua5.1 tests/phase4_variable_power_v3_effect_rom_test.lua
++  SKIP (no ROM supplied)
++env -u POKEPORT_ROM -u POKEPORT_RUNTIME_REPLAY lua5.1 scripts/check_repository.lua
++  PASS: 332 tracked Lua, 395 tracked Markdown, 1317 local targets
++git diff --check 49d0f45 HEAD
++git diff --quiet bb2a1e8 HEAD -- src/core/BattleEngine.lua
++git status --short
++  clean
++```
++
++Authority/status finding requiring Orchestrator reconciliation:
++
++`AGENTS.md` excludes new cross-turn state from the fast lane. Both the reviewed design and task correctly label V3 full relay. The task nevertheless changes IMPLEMENTED to DONE based on a prior bounded no-ROM review and Worker-applied corrections; canonical coordination still dispatches P5-06 and contains no READY_FOR_REVIEWER V3 relay. This correction review cannot retrospectively supply that missing reconciliation or fast-lane ROM deferral authority.
++
++The existing design's verification plan explicitly specifies no-ROM engine/controller checks and skippable ROM fixtures. It does **not** specify a V3 runtime replay witness; none is invented as a new acceptance condition here. Actual evidence still missing: non-skipped supported-SHA ROM fixture/admission checks and any live LÖVE/runtime observation (the prior review explicitly calls these unavailable). Thus no claim of those results, general battle parity, phase completion or automatic full-relay acceptance follows from PASS.
++
++Smallest next step: Orchestrator adopt this exact correction-only PASS and reconcile V3 task/relay status to preserve implementation review while leaving broader acceptance unresolved; explicitly determine the existing full-relay authority/evidence boundary before closure or any guarded action. Reuse the accepted source/design review; no new engine work or repeated research is needed. Any genuinely required guarded evidence needs a separately bounded authorized route, not local ROM access or revived prior allowances.
++
++Repository left unchanged. Only this `/tmp` artifact and test log were written; no merge, push, ROM access, runner configuration or guarded request. PR57's separate automatic-review merge block remains untouched.
+diff --git a/work/tasks/phase4-variable-power-v3.md b/work/tasks/phase4-variable-power-v3.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..7bba0d3d65d9d655e2d07cf737f8aceaeef0986a
+--- /dev/null
++++ b/work/tasks/phase4-variable-power-v3.md
+@@ -0,0 +1,230 @@
++# Task: variable-power slice V3 — Rollout / Ice Ball and Defense Curl
++
++- Task ID: `P4-VARIABLE-POWER-V3`
++- Status: `IMPLEMENTED — bounded source/no-ROM review and final corrections PASS; full-relay acceptance unresolved`
++- Lane: full relay (new cross-turn battle state: a fourth lock family and a
++  battle-only status2 bit)
++- Spec: [variable-power design proposal](../reports/phase4-variable-power-design-proposal.md)
++  (§7 "Rollout / Ice Ball", §8 "Defense Curl", "V3: Rollout / Ice Ball (117)
++  and Defense Curl (156)", verification plan V3), status
++  `independently reviewed PASS WITH CORRECTIONS (applied)`, with the
++  [design review](../reviews/2026-10-21-variable-power-design-review.md)
++  folded in: F2 (Rollout vs Rampage PP: equal on a protected locked turn,
++  different on an unprotected locked miss), F3 (one `rolloutLocked`
++  capture after the protect step and before the hit branch; the fifth hit
++  frees `lockedSlot`), F10 (Defense Curl at +6 prints "won't go higher!"),
++  D3 (V3 is its own package, after V2's `cancelMultiTurnMoves` edit).
++- Base: `49d0f45` (origin/main, after V1 `53e08cd`, V2 `0663e1d` and the
++  V1/V2 review fold `1ff5ff3`).
++
++## Source lock (pret/pokefirered `c75f352304d529f6ba92d4f74b9cf8b5c3810788`)
++
++Abbreviations: `bsc.c` `src/battle_script_commands.c`, `bs1.s`
++`data/battle_scripts_1.s`, `bm.c` `src/battle_main.c`, `bu.c`
++`src/battle_util.c`, `moves.h` `src/data/battle_moves.h`, `cb.h`
++`include/constants/battle.h`.
++
++- **Script** `BattleScript_EffectRollout` (`bs1.s:1592-1602`):
++  attackcanceler, attackstring, `jumpifstatus2 BS_ATTACKER,
++  STATUS2_MULTIPLETURNS, BattleScript_RolloutCheckAccuracy` (skips
++  ppreduce), ppreduce, `accuracycheck BattleScript_RolloutHit` (hit and miss
++  share the label), typecalc2, `rolloutdamagecalculation`, then
++  `BattleScript_HitFromCritCalc`.
++- **`Cmd_rolloutdamagecalculation`** (`bsc.c:8161-8193`): `NO_EFFECT` (a
++  miss, a protected or semi-invulnerable target, a typecalc2 immunity) →
++  `CancelMultiTurnMoves(attacker)`, `BattleScript_MoveMissedPause`
++  (`:8163-8167`). Otherwise the first hit (MULTIPLETURNS clear) sets
++  `rolloutTimer = 5`, MULTIPLETURNS and `gLockedMoves` (`:8172-8178`);
++  `--rolloutTimer`, and at 0 MULTIPLETURNS clears (`:8179-8182`); power =
++  record power doubled `4 - timer` times (`:8184-8187`), doubled again under
++  `STATUS2_DEFENSE_CURL` (`:8189-8190`).
++- **Lock**: MULTIPLETURNS skips action selection (`bm.c:3125-3130`) and the
++  0-PP check (`bsc.c:838-839`). Rollout is not in `IsTwoTurnsMove`
++  (`bsc.c:7821-7832`), so the protect step (`bsc.c:896-906`) cancels a
++  locked Rollout before `jumpifstatus2`; ppreduce then spends one PP while
++  above 0 (`bsc.c:1147`).
++- **Timer** `gDisableStructs[].rolloutTimer` (`include/battle.h:156`).
++  Writers: `rolloutdamagecalculation`; `CancelMultiTurnMoves`
++  (`bu.c:203-214`, `:212`) at every represented caller (recharge
++  `bu.c:1354`, flinch `:1366`, full paralysis `bs1.s:3717`, confusion
++  self-hit `bs1.s:3742`, sleep/freeze applied `bsc.c:2173`, `:2269`, the
++  protect step, the end-of-turn sleep cancel `bm.c:2941-2942`); the
++  disable-struct clears at switch-in (`bm.c:2382-2384`) and faint
++  (`:2457-2459`).
++- **Defense Curl** `BattleScript_EffectDefenseCurl` (`bs1.s:2010-2021`):
++  attackcanceler, attackstring, ppreduce, `setdefensecurlbit`
++  (`bsc.c:8472-8476`), `setstatchanger STAT_DEF, 1`, statbuffchange
++  (StatUpDoAnim / StatUpPrintString). `STATUS2_DEFENSE_CURL` (`cb.h:130`) has
++  no other reader than Rollout; status2 is cleared at faint (`bm.c:2441`)
++  and switch-in (`:2367`).
++- **Records**: Rollout `moves.h:2668-2679` (117, 30, Rock, 90, PP 20, chance
++  0, selected, priority 0, flags 0x33); Ice Ball `:3916-3927` (the same,
++  Ice); Defense Curl `:1446-1457` (156, 0, Normal, 0, PP 40, chance 0,
++  `MOVE_TARGET_USER`, priority 0, `FLAG_SNATCH_AFFECTED` = 0x08).
++- **AI**: Rollout/Ice Ball have no `AI_CheckBadMove` row; Defense Curl's
++  `AI_CBM_DefenseUp` is already ported (`AICheckBadMove.lua:645`). No AI
++  change.
++
++## Design (as implemented)
++
++- `BattleEngine.EFFECT_ROLLOUT = 117`, `EFFECT_DEFENSE_CURL = 156`;
++  `makeBattler` fields `rolloutTimer = 0` and `defenseCurl = false`
++  (battle-only, never persisted). For this family `rolloutTimer > 0` is
++  MULTIPLETURNS.
++- Lock plumbing: `rolloutTimer > 0` added to `isLocked`, to `lockedTurn`
++  (`rollingOut`), to the post-canceller 0-PP bypass and to the end-of-turn
++  sleep cancel. The controller's M1 auto-run reads `isLocked` and needs no
++  change.
++- `cancelMultiTurnMoves` clears `rolloutTimer` (and `lockedSlot` with its
++  existing `not recharging` guard), so every existing caller cancels the
++  lock.
++- PP (F2/F3): `rolloutLocked = rolloutTimer > 0` is captured once, right
++  after the protect step's `cancelMultiTurnMoves` and before the hit branch.
++  The PP block spends one PP (guarded at 0) unless `rolloutLocked`.
++- Not hit (an accuracy miss, a protected target, a semi-invulnerable
++  target): `cancelMultiTurnMoves`, then the existing `miss` or `protected`
++  event. A first-turn miss sets no lock.
++- Hit: a pure typecalc2 query first; a no-effect result cancels and emits
++  `noEffect` before any crit or random draw (unreachable with the real
++  chart; tested with a synthetic row). Otherwise the first hit sets
++  `rolloutTimer = 5` and `lockedSlot`; then `rolloutTimer - 1`, and at 0
++  `lockedSlot = nil` (`not recharging` guard). A local copy's power is 30
++  doubled `4 - timer` times, times 2 under `defenseCurl`; then the ordinary
++  crit, damage, typecalc, random and hit. The shared record keeps power 30.
++- Defense Curl: admitted in `supportsMove` (power 0, `MOVE_TARGET_USER`);
++  `resolveMoveCore` gives it the effect-11 stat entry (DEF +1, self-target,
++  no accuracycheck) and sets `defenseCurl = true` after PP, before the
++  at-limit branch, so the bit is set at +6 too. `recordFaint` clears
++  `rolloutTimer` and `defenseCurl`; a switch-in installs a fresh battler.
++- Header slice list, the `cancelMultiTurnMoves` and `isLocked` comments
++  updated.
++
++### Limits
++
++- Unrepresented `CancelMultiTurnMoves` callers (Truant, Disable, Taunt,
++  Imprison, infatuation, Torment, Uproar, Yawn, Spite) do not exist yet;
++  each must cancel the lock when it lands. `rolloutTimerStartValue` is not
++  modeled (no reader in the represented engine).
++- Snatch (Defense Curl is `FLAG_SNATCH_AFFECTED`) and Baton Pass are not
++  represented.
++- The tracked plain-hit `seteffectwithchance` zero-chance gap applies to
++  every Rollout hit, as for every ordinary hit.
++
++## File ownership
++
++- **MAY CHANGE:** `src/core/BattleEngine.lua`;
++  `tests/battle_variable_power_v3_test.lua` (new);
++  `tests/phase4_variable_power_v3_effect_rom_test.lua` (new);
++  `tests/phase4_move_effect_inventory_test.lua` (rows 117 and 156 and the
++  counts); `work/reports/phase4-move-effect-inventory.md` (rows 117 and 156,
++  the counts); this task file.
++- **MUST NOT CHANGE:** `main.lua`, party/Dex code, `BattlePartyBridge.lua`,
++  the Pokémon factories, coordination and roadmap files,
++  `AICheckBadMove.lua`, `BattleSceneController.lua` (no new event or text).
++
++## RNG change and changed assertions
++
++- **RNG:** no new draws. A hit draws accuracy, crit and random; a miss 1; a
++  protected or semi-invulnerable miss 0; a (synthetic) no-effect hit 1.
++  Defense Curl draws nothing. A locked foe skips the AI choice for turns
++  2-5 (as for M1), and the changed power changes damage and KO timing, so
++  seeded replays with Rollout, Ice Ball or Defense Curl diverge.
++- **Behavior change:** Defense Curl was rejected before; it is now admitted.
++  Camper Liam's Geodude and Sandshrew (CHECK_BAD_MOVE) previously raised
++  'unsupported move effect 156' when the AI chose it and now follow source
++  (AI scoring and draws unchanged). Brock (aiFlags 7) is unchanged:
++  `EarlyRivalAI.choose` still rejects effect 156 (and Onix's Bind remains
++  blocked).
++- **Changed assertions** (inventory only, the intended flip):
++  rows 117 and 156 `blocked_on_state` → `represented` (156 admission false
++  → true); admitted/rejected 299/55 → 300/54; `admitted_uncovered_positive`
++  22 → 20; represented 129/277/193/84 → 131/280/195/85; blocked 68/76/22/54
++  → 66/73/20/53. No other existing assertion changes.
++- Inventory report: rows 117 and 156 → `R`; the class table, the uncovered
++  list (20 records in 18 effects) and the admission note.
++
++## Acceptance
++
++- `tests/battle_variable_power_v3_test.lua`: 144 checks, exact `scriptedRng`
++  draw counts.
++  - Defaults and admission (Rollout, Ice Ball, Defense Curl; Defense Curl
++    needs `MOVE_TARGET_USER`).
++  - Five hits through `runTurn` for Rollout and Ice Ball: damage 5, 9, 16,
++    30, 59 (power 30-480), timer 4..0, 3 draws a turn, PP 19 throughout,
++    the lock overrides the chosen Tackle on turns 2-5 and is released after
++    hit 5 (the next turn uses Tackle; a new sequence restarts at 30 and
++    spends PP); the record keeps power 30.
++  - Defense Curl: DEF +1, the bit, 0 draws, PP 39; curled hits 9, 16, 30,
++    59, 117 (power 60-960); at +6 "won't go higher!" with the bit set (and
++    the next hit at 60); the foe's bit does not double the player's Rollout.
++  - Cancel paths on a locked turn: accuracy miss (1 draw, no PP, restarts at
++    30); first-turn miss (PP, no lock); protected locked turn (0 draws, one
++    PP, the protected text); protected locked at 0 PP (PP stays 0);
++    protected first turn; Fly and Dig targets (0 draws, no PP, cancelled); a
++    locked 0-PP slot still hits; a synthetic no-effect hit (1 draw).
++  - Cancellers: flinch, full paralysis, confusion self-hit, recharge, sleep
++    applied by Hypnosis, freeze applied; controls: a paralysed battler that
++    acts keeps rolling, a missed Hypnosis keeps the lock, an existing freeze
++    keeps it, an existing sleep keeps it through the canceller and the
++    end-of-turn sleep cancel ends it; flinch clears the Fury Cutter counter
++    and the lock together.
++  - P1 interplay through `runTurn`; the lock survives the target's faint and
++    forced replacement (hit 3 at 120); faint clears the timer and the bit; a
++    switch-in starts clear while the foe keeps its curled lock.
++  - Controller: a locked player gets no menu (five turns run, the unlocked
++    foe's AI asked each turn); a locked foe runs no AI.
++- `tests/phase4_variable_power_v3_effect_rom_test.lua`: the three records
++  and the two families against the verified ROM; skips without a ROM (ROM
++  fixture pending).
++- Mutation spot-checks (each applied to the working tree from a scratchpad
++  backup, then restored with `cp` and confirmed with `cmp`):
++  `rolloutLocked` captured before the protect step fails 2; no miss cancel
++  fails 4; doubling `5 - timer` times fails 26; no Defense Curl doubling
++  fails 7; `isLocked` without the timer fails 15; no 0-PP bypass fails 2;
++  no end-of-turn sleep cancel fails 1; no faint clear fails 1; no
++  `cancelMultiTurnMoves` clear fails (the run aborts); no hit-5 release
++  fails 2; no no-effect cancel fails 2; the bit not set at +6 fails 2;
++  locked hits spending PP fails 16; no 0-PP guard fails 1.
++- `bash scripts/test_all.sh` and `lua5.1 scripts/check_repository.lua`
++  pass; `main.lua` unchanged.
++
++## Deviations from the design
++
++- The design calls the typecalc2 no-effect "unreachable in this engine". It
++  is implemented with the source's draw shape (accuracy only: typecalc2 and
++  the cancel precede `HitFromCritCalc`) and tested through a synthetic
++  type-chart row, as V2 did for Fury Cutter.
++- `tests/phase4_variable_power_v3_effect_rom_test.lua` was not named in the
++  design; it mirrors V1/V2's ROM fixture.
++
++## Review corrections applied (2026-10-28)
++
++[Implementation review](../reviews/2026-10-28-variable-power-v3-implementation-review.md):
++PASS WITH CORRECTIONS.
++
++- F1: the curled five-hit loop runs for Rollout and Ice Ball (Ice Ball
++  against a Normal foe), 9/16/30/59/117 each.
++- F2: the behavior-change note now names Liam's Geodude and Sandshrew, and
++  says Brock is unchanged.
++- F3: the controller test asserts the menu returns (`ACTION`) after hit 5.
++- F4: a lock cancelled earlier in the same turn (freeze, then thaw)
++  restarts at 30 and spends PP; at 0 PP it reports no PP.
++- F5 (design wording) belongs to the design proposal and is not applied
++  here.
++
++## Orchestrator acceptance reconciliation — 2026-10-30
++
++The [independent final-head review](../reviews/2026-10-30-variable-power-v3-final-head-review.md)
++PASSed the F1–F4 corrections at exact `9d761f4`: focused144/0, full204 no-ROM
++files and checker PASS. The engine is unchanged since the original source
++review. Orchestrator accepts that bounded result; this is no longer labeled
++DONE. Preserve the existing full-relay lane: no fast-lane ROM deferral or
++non-skipped supported-ROM result is established here. The accepted design
++specifies no-ROM engine/controller checks and a skippable ROM fixture; it does
++not specify a V3 runtime replay, so no new witness requirement is added.
++
++Remaining: reconcile the full-relay authority/evidence boundary and obtain any
++required non-skipped evidence through a separately authorized environment
++before full acceptance. Neither local review nor inventory representation
++proves live Brock AI support, whole-battle parity or phase completion. No
++merge, runner request, probe or ROM access is authorized by this correction.
