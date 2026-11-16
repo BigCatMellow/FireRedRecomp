@@ -23,6 +23,7 @@
 --   {type="useMove", side=, move=<move id>, moveName=nil}
 --   {type="miss", side=}                          -- attacker missed
 --   {type="noEffect", side=, target=}             -- 0x type effectiveness
+--   {type="wonderGuard", side=, target=}          -- defender ability avoided damage
 --   {type="critical", side=}                      -- emitted before damage
 --   {type="damage", side=<attacker>, target=<defender side>, amount=,
 --    hpRemaining=, superEffective=, notVeryEffective=}
@@ -363,8 +364,9 @@
 --   * Variable-power slice V1 (work/tasks/phase4-variable-power-v1.md):
 --     Present's `& 0xFF` roll after accuracy and PP; 40/80/120 through the
 --     ordinary hit, or the target heal (maxHP/4, minimum 1; "HP is full!"
---     at full HP), which ignores type immunity. Substitute, Wonder Guard and
---     the pre-roll targetNotAffected mark are not represented.
+--     at full HP), which ignores type immunity. Wonder Guard's MISSED
+--     prevents HP changes while retaining heal/full text. Substitute and
+--     the pre-roll targetNotAffected bookkeeping are not represented.
 --   * Variable-power slice V2 (work/tasks/phase4-variable-power-v2.md):
 --     Fury Cutter's per-battler furyCutterCounter (0-5, power 10 doubled
 --     counter-1 times, so 10/20/40/80/160). Reset by a miss, a protected or
@@ -2142,6 +2144,38 @@ function BattleEngine:accuracyRoll(attacker, defender, move, moveId)
     defender.statStages.evasion, self.rng, attacker.ability, move.type, sandVeil)
 end
 
+-- Action-local WG result, deliberately separate from true type immunity.
+-- pret c75f352 bsc.c:1274-1417, :4346-4436. Charging turns return above
+-- their scripts' typecalc sites; the attacking/release turn reaches here.
+-- Ability history/AI recording is deliberately unattached and unchanged.
+-- Counter/Mirror Coat/Bide are inventory B fallbacks, not represented source
+-- routes, and remain excluded. Record power/type always come from the shared
+-- immutable move record; dynamic copies supply only normal/miss move type.
+local function wonderGuardFlags(engine, defender, move, moveId, flags, mode)
+  local record = engine.moves[moveId] or move
+  if mode then
+    flags = BattleFormulas.wonderGuardScan(mode == "typecalc2" and record.type or move.type,
+      defender.types, engine.typeChart, mode == "typecalc2")
+  end
+  local excluded = record.effect == 89 or record.effect == 144 or record.effect == 26
+  flags.wonderGuardMiss = defender.ability == 25 and moveId ~= BattleEngine.MOVE_STRUGGLE
+    and record.power ~= 0 and not excluded
+    and (not flags.superEffective or flags.notVeryEffective)
+  return flags
+end
+
+local function guardResult(flags, attackerSide, defenderSide, fallback)
+  return { type = flags.wonderGuardMiss and "wonderGuard"
+      or flags.noEffect and "noEffect" or fallback or "miss",
+    side = attackerSide, target = defenderSide }
+end
+
+local function guardTail(engine, move)
+  -- Source seteffectwithchance still rolls when MISSED defeats CERTAIN.
+  -- Only newly WG-blocked routes use this: unblocked generic RNG unchanged.
+  BattleFormulas.secondaryEffectRoll(engine.rng, move.secondaryEffectChance or 0)
+end
+
 function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
   local attacker = self:battler(attackerSide)
   local defenderSide = otherSide(attackerSide)
@@ -2467,6 +2501,7 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
     local flags
     damage, flags = BattleFormulas.typeCalc(
       damage, move.type, attacker.types, defender.types, self.typeChart)
+    flags = wonderGuardFlags(self, defender, move, moveId, flags)
     damage = BattleFormulas.applyRandomDamageMultiplier(damage, self.rng)
     -- Protection slice P1: the loop's movevaluescleanup clears the
     -- attackcanceler MISSED, and accuracycheck re-tests protect first
@@ -2474,6 +2509,19 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
     -- crit and damage draws above are already taken.
     local protectedHit = self.protectedMove
     local hit = not protectedHit and self:accuracyRoll(attacker, defender, move, moveId)
+    if flags.wonderGuardMiss then
+      local result = flags
+      if protectedHit then
+        -- Protect overwrites MISS_TYPE after typecalc; immunity still wins.
+        result = { noEffect = flags.noEffect }
+      elseif not hit and not self:semiInvulnerableMiss(defender, move, moveId) then
+        result = wonderGuardFlags(self, defender, move, moveId, nil, "miss")
+      end
+      events[#events + 1] = guardResult(result, attackerSide, defenderSide,
+        protectedHit and "protected" or "miss")
+      settleExplosion(false)
+      return
+    end
     -- A miss after typecalc keeps DOESNT_AFFECT_FOE, so resultmessage
     -- (bsc.c:1937) prints "It doesn't affect" for an immune target -- also
     -- over the protected text (MISS_TYPE 1 is not > B_MSG_AVOIDED_ATK).
@@ -2973,6 +3021,44 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
   end
 
   if not hit then
+    local missFlags
+    if isRollout then
+      missFlags = wonderGuardFlags(self, defender, move, moveId, nil, "typecalc2")
+    elseif BattleEngine.HITS_UNDERGROUND[move.effect] then
+      local _, flags = BattleFormulas.typeCalc(1, move.type, attacker.types, defender.types, self.typeChart)
+      -- Hit-all's missed label enters typecalc with MISSED already set
+      -- (bs1.s:1836-1847,1867-1875). ModulateDmgByType cannot establish
+      -- super/resist while NO_EFFECT is present (bsc.c:1254-1271), but
+      -- actual type immunity still sets DOESNT_AFFECT. This is NOT the
+      -- random-miss helper's independent OR scan or typecalc2's local flags.
+      flags.superEffective, flags.notVeryEffective = false, false
+      missFlags = wonderGuardFlags(self, defender, move, moveId, flags)
+    elseif not protectedMiss and not semiMiss then
+      missFlags = wonderGuardFlags(self, defender, move, moveId, nil, "miss")
+    end
+    -- Preserve legacy behavior for non-WG controls, including existing RNG.
+    if defender.ability == 25 and missFlags and moveId ~= BattleEngine.MOVE_STRUGGLE
+        and move.power ~= 0 and move.effect ~= 89 and move.effect ~= 144 and move.effect ~= 26 then
+      if isRollout then self:cancelMultiTurnMoves(attacker) end
+      if move.effect == BattleEngine.EFFECT_FURY_CUTTER then attacker.furyCutterCounter = 0 end
+      if move.effect == BattleEngine.EFFECT_RAMPAGE and missFlags.noEffect then
+        attacker.targetNotAffected = true
+      end
+      events[#events + 1] = guardResult(missFlags, attackerSide, defenderSide,
+        protectedMiss and "protected" or "miss")
+      if move.effect == 45 and (moveId == 26 or moveId == 136) then
+        if missFlags.noEffect then return end
+        local damage = BattleFormulas.calculateBaseDamage(attacker, defender, move, false,
+          self.sideStatus[defenderSide])
+        damage = BattleFormulas.typeCalc(damage, move.type, attacker.types, defender.types, self.typeChart)
+        damage = BattleFormulas.applyRandomDamageMultiplier(damage, self.rng)
+        local loss = math.min(attacker.hp, BattleEngine.recoilIfMissDamage(damage, defender.maxHP))
+        attacker.hp = attacker.hp - loss -- crash clears MISSED, retains actual immunity
+        events[#events + 1] = { type = "crash", side = attackerSide, amount = loss, hpRemaining = attacker.hp }
+        self:checkFaint(attackerSide, events)
+      end
+      return
+    end
     if move.effect == BattleEngine.EFFECT_FURY_CUTTER then
       -- BattleScript_EffectFuryCutter (data/battle_scripts_1.s:1627-1639):
       -- the hit and the miss both go to FuryCutterHit; furycuttercalc sees
@@ -3113,14 +3199,16 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
     -- first. A no-effect result reaches Cmd_rolloutdamagecalculation's
     -- NO_EFFECT arm (src/battle_script_commands.c:8163-8167):
     -- CancelMultiTurnMoves and MoveMissedPause ("It doesn't affect"), before
-    -- HitFromCritCalc, so no crit and no random draw. Unreachable with the
-    -- real chart (Rock and Ice have no 0x row; Levitate stops only Ground;
-    -- Wonder Guard is unrepresented); kept for source shape. Pure query.
+    -- HitFromCritCalc, so no crit and no random draw. Wonder Guard reaches
+    -- this early cancellation too, with a separate ordered OR scan.
     local _, immunity = BattleFormulas.typeCalc(
       1, move.type, attacker.types, defender.types, self.typeChart)
-    if immunity.noEffect then
+    if defender.ability == 25 then
+      immunity = wonderGuardFlags(self, defender, move, moveId, nil, "typecalc2")
+    end
+    if immunity.noEffect or immunity.wonderGuardMiss then
       self:cancelMultiTurnMoves(attacker)
-      events[#events + 1] = { type = "noEffect", side = attackerSide, target = defenderSide }
+      events[#events + 1] = guardResult(immunity, attackerSide, defenderSide)
       return
     end
     -- Cmd_rolloutdamagecalculation on a landed hit (:8168-8193): the first
@@ -3158,6 +3246,8 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
     -- second typecalc (damage branch) or cleared (heal branch); its
     -- targetNotAffected mark on a Ghost is unobservable for this
     -- non-locking move (design D4), so it is not modeled.
+    local _, presentFlags = BattleFormulas.typeCalc(1, move.type, attacker.types, defender.types, self.typeChart)
+    presentFlags = wonderGuardFlags(self, defender, move, moveId, presentFlags)
     local roll = self.rng:next16() % 256
     local power = BattleEngine.presentPowerFromRoll(roll)
     if power then
@@ -3177,8 +3267,8 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
       -- datahpupdate, clamped at maxHP, "<target> regained health!". No
       -- crit or damage draw; not move damage (tookMoveDamage, Oak's
       -- tutorial flag and the move-end defrost are untouched). Substitute
-      -- (ignored by the heal) and Wonder Guard's leftover MISSED are not
-      -- represented (design D4).
+      -- (ignored by the heal) is outside this model. Wonder Guard's MISSED
+      -- survives clearing DOESNT_AFFECT: retain heal text with unchanged HP.
       if defender.hp == defender.maxHP then
         events[#events + 1] = { type = "restoreHPFull", side = defenderSide }
         return
@@ -3186,7 +3276,9 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
       local amount = math.floor(defender.maxHP / 4)
       if amount == 0 then amount = 1 end
       local beforeHP = defender.hp
-      defender.hp = math.min(defender.maxHP, defender.hp + amount)
+      if not presentFlags.wonderGuardMiss then
+        defender.hp = math.min(defender.maxHP, defender.hp + amount)
+      end
       events[#events + 1] = {
         type = "restoreHP", side = defenderSide, beforeHP = beforeHP,
         hpRemaining = defender.hp, amount = defender.hp - beforeHP,
@@ -3485,6 +3577,12 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
     local _, flags = BattleFormulas.typeCalc(
       fixedDamage, move.type, attacker.types, defender.types, self.typeChart
     )
+    flags = wonderGuardFlags(self, defender, move, moveId, flags)
+    if flags.wonderGuardMiss then
+      events[#events + 1] = guardResult(flags, attackerSide, defenderSide)
+      guardTail(self, move)
+      return
+    end
     if flags.noEffect then
       events[#events + 1] = { type = "noEffect", side = attackerSide, target = defenderSide }
       return
@@ -3499,6 +3597,12 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
     local _, flags = BattleFormulas.typeCalc(
       1, move.type, attacker.types, defender.types, self.typeChart
     )
+    flags = wonderGuardFlags(self, defender, move, moveId, flags)
+    if flags.wonderGuardMiss then
+      events[#events + 1] = guardResult(flags, attackerSide, defenderSide)
+      guardTail(self, move)
+      return
+    end
     if flags.noEffect then
       events[#events + 1] = { type = "noEffect", side = attackerSide, target = defenderSide }
       return
@@ -3517,6 +3621,12 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
     local _, flags = BattleFormulas.typeCalc(
       1, move.type, attacker.types, defender.types, self.typeChart
     )
+    flags = wonderGuardFlags(self, defender, move, moveId, flags)
+    if flags.wonderGuardMiss then
+      events[#events + 1] = guardResult(flags, attackerSide, defenderSide)
+      guardTail(self, move)
+      return
+    end
     if flags.noEffect then
       events[#events + 1] = { type = "noEffect", side = attackerSide, target = defenderSide }
       return
@@ -3533,9 +3643,15 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
     local _, flags = BattleFormulas.typeCalc(
       1, move.type, attacker.types, defender.types, self.typeChart
     )
+    flags = wonderGuardFlags(self, defender, move, moveId, flags)
     flags.superEffective = false
     flags.notVeryEffective = false
     local damage = BattleEngine.psywaveDamageFromLevel(attacker.level, self.rng)
+    if flags.wonderGuardMiss then
+      events[#events + 1] = guardResult(flags, attackerSide, defenderSide)
+      guardTail(self, move)
+      return
+    end
     if flags.noEffect then
       events[#events + 1] = { type = "noEffect", side = attackerSide, target = defenderSide }
       return
@@ -3546,6 +3662,12 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
 
   if move.effect == BattleEngine.EFFECT_OHKO then
     local _, flags = BattleFormulas.typeCalc(1, move.type, attacker.types, defender.types, self.typeChart)
+    flags = wonderGuardFlags(self, defender, move, moveId, flags)
+    if flags.wonderGuardMiss then
+      events[#events + 1] = guardResult(flags, attackerSide, defenderSide)
+      guardTail(self, move)
+      return
+    end
     if flags.noEffect then
       events[#events + 1] = { type = "noEffect", side = attackerSide, target = defenderSide }
       return
@@ -3564,6 +3686,7 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
     return
   end
 
+  local brickBreakRemovedScreens = false
   if move.effect == BattleEngine.EFFECT_BRICK_BREAK then
     -- Source tests the timers (bsc.c:9444); flags and timers stay in sync
     -- via resolveScreenMove/decaySideTimers, so the flags are equivalent.
@@ -3571,6 +3694,7 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
     if status.reflect or status.lightScreen then
       status.reflect, status.reflectTimer = false, 0
       status.lightScreen, status.lightScreenTimer = false, 0
+      brickBreakRemovedScreens = true
       events[#events + 1] = { type = "wallShattered", side = defenderSide }
     end
   end
@@ -3647,13 +3771,45 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
   -- (data/battle_scripts_1.s:1635-1636), so a no-effect hit skips the
   -- random draw, and furycuttercalc zeroes the counter and goes to
   -- MoveMissedPause ("It doesn't affect", resultmessage). The crit draw
-  -- above was spent. Unreachable with the real type chart (Bug has no 0x
-  -- row) while Wonder Guard is unrepresented; kept for source shape.
-  local furyCutterNoEffect = move.effect == BattleEngine.EFFECT_FURY_CUTTER and flags.noEffect
+  -- above was spent. Bug has no natural zero row; Wonder Guard reaches
+  -- this early counter reset without a damage-random or tail draw.
+  flags = wonderGuardFlags(self, defender, move, moveId, flags)
+  local furyCutterNoEffect = move.effect == BattleEngine.EFFECT_FURY_CUTTER
+    and (flags.noEffect or flags.wonderGuardMiss)
   if furyCutterNoEffect then
     attacker.furyCutterCounter = 0
   else
     damage = BattleFormulas.applyRandomDamageMultiplier(damage, self.rng)
+  end
+
+  local brickBreakGuardBlocked = false
+  if move.effect == BattleEngine.EFFECT_BRICK_BREAK and defender.ability == 25 then
+    -- bs1.s:2413-2444: AFTER the first typecalc/random, actual screen
+    -- removal clears only MISSED/DOESNT_AFFECT, then typecalc2 always runs.
+    -- Its ordered static-type OR scan can leave immunity without reasserting
+    -- Guard (Fighting/Dark-super precedes Ghost-zero). No-screen keeps the
+    -- earlier MISSED/reason. Preserve the unblocked generic RNG gap.
+    brickBreakGuardBlocked = flags.wonderGuardMiss
+    if brickBreakRemovedScreens then
+      flags.wonderGuardMiss, flags.noEffect = false, false
+    end
+    local secondFlags = wonderGuardFlags(self, defender, move, moveId, nil, "typecalc2")
+    flags.noEffect = flags.noEffect or secondFlags.noEffect
+    flags.wonderGuardMiss = flags.wonderGuardMiss or secondFlags.wonderGuardMiss
+  end
+
+  if flags.wonderGuardMiss or brickBreakGuardBlocked then
+    events[#events + 1] = guardResult(flags, attackerSide, defenderSide)
+    if move.effect == BattleEngine.EFFECT_RAMPAGE and flags.noEffect then
+      attacker.targetNotAffected = true
+    end
+    -- Absorb and hit-all have no seteffectwithchance (bs1.s:325-365,
+    -- :1830-1875; Magnitude enters that loop after :1679-1688).
+    if not furyCutterNoEffect and not BattleEngine.DRAIN_MOVES[move.effect]
+        and not BattleEngine.HITS_UNDERGROUND[move.effect] then
+      guardTail(self, move)
+    end
+    return
   end
 
   if flags.noEffect then
@@ -4150,6 +4306,12 @@ function BattleEngine:resolveMultiHit(attackerSide, attacker, defenderSide, defe
       damage, move.type, attacker.types, defender.types, self.typeChart
     )
 
+    flags = wonderGuardFlags(self, defender, move, moveId, flags)
+    if flags.wonderGuardMiss then
+      events[#events + 1] = guardResult(flags, attackerSide, defenderSide)
+      guardTail(self, move)
+      return
+    end
     if flags.noEffect then
       -- Real jumpifmovehadnoeffect: the ENTIRE sequence stops here, not
       -- just this one hit -- a type-immune target takes zero hits total.
@@ -4216,13 +4378,22 @@ end
 -- count; its faint is then handled by the caller's ordinary faint check.
 -- The trailing seteffectwithchance Random() is not spent, matching the
 -- tracked plain-hit gap; note the source spends it on every path here,
--- including a first-kick miss (bs1.s:1431).
+-- including a first-kick miss (bs1.s:1431). Newly WG-blocked kicks below
+-- consume that tail; unaffected existing paths retain the documented gap.
 function BattleEngine:resolveTripleKick(attackerSide, attacker, defenderSide, defender, move, events, moveId)
   local hits, power = 0, 0
   local stopped
   for _ = 1, 3 do
     if defender.hp <= 0 then break end
     if not self:accuracyRoll(attacker, defender, move, nil) then
+      if defender.ability == 25 and not self:semiInvulnerableMiss(defender, move, moveId) then
+        local flags = wonderGuardFlags(self, defender, move, moveId, nil, "miss")
+        if hits == 0 and (flags.wonderGuardMiss or flags.noEffect) then
+          events[#events + 1] = guardResult(flags, attackerSide, defenderSide)
+          if flags.wonderGuardMiss then guardTail(self, move) end
+          return
+        end
+      end
       stopped = "miss"
       break
     end
@@ -4235,7 +4406,20 @@ function BattleEngine:resolveTripleKick(attackerSide, attacker, defenderSide, de
     if isCrit then damage = damage * BattleFormulas.CRIT_MULTIPLIER end
     local flags
     damage, flags = BattleFormulas.typeCalc(damage, move.type, attacker.types, defender.types, self.typeChart)
+    flags = wonderGuardFlags(self, defender, move, moveId, flags)
     damage = BattleFormulas.applyRandomDamageMultiplier(damage, self.rng)
+    if flags.wonderGuardMiss then
+      -- Source counter increments BEFORE calc; NoMoreHits clears MISSED
+      -- when that count is nonzero. Immunity survives and suppresses count.
+      if flags.noEffect then
+        events[#events + 1] = { type = "noEffect", side = attackerSide, target = defenderSide }
+      else
+        events[#events + 1] = { type = "multiHit", side = attackerSide, hits = hits + 1,
+          superEffective = flags.superEffective, notVeryEffective = flags.notVeryEffective }
+      end
+      guardTail(self, move)
+      return
+    end
     if flags.noEffect then
       stopped = "noEffect"
       break
