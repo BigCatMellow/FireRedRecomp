@@ -3,7 +3,7 @@
 -- Coverage and admission are independent expectations, reviewed with
 -- work/reports/phase4-move-effect-inventory.md. Never build these expectations
 -- from BattleEngine's predicate/tables: that would make this check circular.
--- Each row: semantic class, expected admission, power class (1=positive,
+-- Each row: semantic class, expected populated-native-input admission, power class (1=positive,
 -- 0=zero, -1=unused), complete real move-ID membership. Sentinel 0 is excluded.
 -- Admission false on an unused row is a placeholder, not a runtime claim.
 package.path = package.path .. ";./?.lua"
@@ -130,9 +130,9 @@ local inventory = {
   [118] = {"represented", true, 0, {207}}, -- EFFECT_SWAGGER: ROM fixture pending (phase4_confusion_flinch_effect_rom_test)
   [119] = {"represented", true, 1, {210}}, -- EFFECT_FURY_CUTTER: ROM fixture pending (phase4_variable_power_v2_effect_rom_test)
   [120] = {"blocked_on_state", false, 0, {213}}, -- EFFECT_ATTRACT
-  [121] = {"blocked_on_state", false, 1, {216}}, -- EFFECT_RETURN: represented with friendship snapshot; needs H1/V4b; ROM fixture pending
+  [121] = {"represented", true, 1, {216}}, -- EFFECT_RETURN: H1/V4b native friendship snapshot; absent input refuses; ROM fixture/F4 pending
   [122] = {"represented", true, 1, {217}}, -- EFFECT_PRESENT: ROM fixture pending (phase4_variable_power_v1_effect_rom_test)
-  [123] = {"blocked_on_state", false, 1, {218}}, -- EFFECT_FRUSTRATION: represented with friendship snapshot; needs H1/V4b; ROM fixture pending
+  [123] = {"represented", true, 1, {218}}, -- EFFECT_FRUSTRATION: H1/V4b native friendship snapshot; absent input refuses; ROM fixture/F4 pending
   [124] = {"blocked_on_state", false, 0, {219}}, -- EFFECT_SAFEGUARD
   [125] = {"represented", true, 1, {172,221}}, -- EFFECT_THAW_HIT: ROM fixture pending (phase4_status_s4_effect_rom_test)
   [126] = {"represented", true, 1, {222}}, -- EFFECT_MAGNITUDE (Magnitude only)
@@ -144,7 +144,7 @@ local inventory = {
   [132] = {"represented", true, 0, {234}}, -- EFFECT_MORNING_SUN: ROM fixture pending (phase4_weather_w2_effect_rom_test)
   [133] = {"represented", true, 0, {235}}, -- EFFECT_SYNTHESIS: ROM fixture pending (phase4_weather_w2_effect_rom_test)
   [134] = {"represented", true, 0, {236}}, -- EFFECT_MOONLIGHT: ROM fixture pending (phase4_weather_w2_effect_rom_test)
-  [135] = {"blocked_on_state", false, 1, {237}}, -- EFFECT_HIDDEN_POWER: represented with IV snapshot; needs H1/V4b; ROM fixture pending
+  [135] = {"represented", true, 1, {237}}, -- EFFECT_HIDDEN_POWER: H1/V4b native IV snapshot; absent input refuses; ROM fixture/F4 pending
   [136] = {"represented", true, 0, {240}}, -- EFFECT_RAIN_DANCE: ROM fixture pending (phase4_weather_effect_rom_test)
   [137] = {"represented", true, 0, {241}}, -- EFFECT_SUNNY_DAY: ROM fixture pending (phase4_weather_effect_rom_test)
   [138] = {"represented", true, 1, {211}}, -- EFFECT_DEFENSE_UP_HIT
@@ -227,16 +227,20 @@ local inventory = {
 
 local expectedTotals = {
   moves = 354, defined = 214, used = 198, unused = 16,
-  positive = 216, zero = 138, admitted = 297, rejected = 57,
+  positive = 216, zero = 138, admitted = 300, rejected = 54,
   admitted_uncovered_positive = 17,
 }
 local expectedClasses = {
-  represented = {families = 131, moves = 280, positive = 195, zero = 85},
+  represented = {families = 134, moves = 283, positive = 198, zero = 85},
   candidate = {families = 0, moves = 0, positive = 0, zero = 0},
-  blocked_on_state = {families = 66, moves = 73, positive = 20, zero = 53},
+  blocked_on_state = {families = 63, moves = 70, positive = 17, zero = 53},
   intentionally_rejected = {families = 1, moves = 1, positive = 1, zero = 0},
   unused = {families = 16, moves = 0, positive = 0, zero = 0},
 }
+-- Source delta: exactly three positive records216/218/237 moved B -> R.
+-- Populated300/54 includes them; explicit absent-input297/57 excludes them.
+local expectedMissing = {admitted=297,rejected=57}
+local conditionalIds = {[216]=true,[218]=true,[237]=true}
 local function counts()
   return {moves=0, defined=0, used=0, unused=0, positive=0, zero=0,
     admitted=0, rejected=0, admitted_uncovered_positive=0}
@@ -294,6 +298,13 @@ for id=1,354 do check(expectedByMove[id]~=nil, "expected_move_gap") end
 check(expectedByMove[0]==nil, "sentinel_excluded")
 equalCounts(sourceTotals, expectedTotals, "expected_totals")
 for kind, expected in pairs(expectedClasses) do equalCounts(sourceClasses[kind], expected, "expected_classes") end
+local sourceMissing={admitted=0,rejected=0}
+for id, expected in pairs(expectedByMove) do
+  local admitted=expected.admitted and not conditionalIds[id]
+  local key=admitted and "admitted" or "rejected"
+  sourceMissing[key]=sourceMissing[key]+1
+end
+equalCounts(sourceMissing,expectedMissing,"expected_missing_input_totals")
 finish()
 
 local path = os.getenv("POKEPORT_ROM")
@@ -316,14 +327,15 @@ check(RomAddresses.COUNTS.MOVES_COUNT==355, "importer_count")
 local moves = BattleMove.parseTable(bytes, address.gBattleMoves, RomAddresses.COUNTS.MOVES_COUNT)
 bytes = nil -- in-memory only; never print or persist parsed records
 local probe = setmetatable({}, {__index=BattleEngine})
--- Default admission counts above deliberately probe absent live input. V4a
--- remains blocked_on_state until H1/V4b; populated synthetic inputs admit
--- these three families, without changing unconditional coverage counts.
+-- Aggregate uses explicitly populated native-compatible input, independently
+-- of absent-input API checks. Neither scope substitutes defaults in production.
 local populated = {friendship=70,ivs={hp=0,attack=0,defense=0,speed=0,spAttack=0,spDefense=0}}
 for _, id in ipairs({216,218,237}) do
-  check(probe:supportsMove(moves[id],id,populated)==true,"v4a_conditional_admission")
+  check(probe:supportsMove(moves[id],id,populated)==true,"native_populated_admission")
+  check(probe:supportsMove(moves[id],id,{})==false,"missing_input_refusal")
 end
 local actual, familyCounts = counts(), {}
+local actualMissing={admitted=0,rejected=0}
 actual.defined = sourceTotals.defined -- definitions are source-only; ROM contains records, not this enum
 for id=1,354 do
   local move, expected = moves[id], expectedByMove[id]
@@ -337,9 +349,13 @@ for id=1,354 do
     check((positive and 1 or 0)==expected.power, "rom_power_class")
     local powerKey=positive and "positive" or "zero"
     actual[powerKey]=actual[powerKey]+1
-    local ok, admitted=pcall(probe.supportsMove, probe, move, id)
+    local ok, admitted=pcall(probe.supportsMove, probe, move, id, populated)
     check(ok and type(admitted)=="boolean", "admission_execution")
     check(ok and admitted==expected.admitted, "admission_expectation")
+    local missingOk, missingAdmitted=pcall(probe.supportsMove,probe,move,id,{})
+    check(missingOk and missingAdmitted==(expected.admitted and not conditionalIds[id]),"missing_admission_expectation")
+    local missingKey=missingOk and missingAdmitted and "admitted" or "rejected"
+    actualMissing[missingKey]=actualMissing[missingKey]+1
     local admitKey=ok and admitted and "admitted" or "rejected"
     actual[admitKey]=actual[admitKey]+1
     if positive and ok and admitted and expected.kind~="represented" then
@@ -353,9 +369,11 @@ for effect=0,213 do
   if count==0 then actual.unused=actual.unused+1 else actual.used=actual.used+1 end
 end
 equalCounts(actual, expectedTotals, "rom_totals")
+equalCounts(actualMissing,expectedMissing,"rom_missing_input_totals")
+print(("inventory missing-input aggregate admitted=%d rejected=%d"):format(actualMissing.admitted,actualMissing.rejected))
 -- Only counts are emitted, including on a disagreement. A failing result is
 -- evidence to investigate, never permission to rewrite expectations to match.
-print(("inventory aggregate moves=%d positive=%d zero=%d defined_source=%d used=%d unused=%d admitted=%d rejected=%d admitted_uncovered_positive=%d")
+print(("inventory populated-input aggregate moves=%d positive=%d zero=%d defined_source=%d used=%d unused=%d admitted=%d rejected=%d admitted_uncovered_positive=%d")
   :format(actual.moves,actual.positive,actual.zero,actual.defined,actual.used,actual.unused,actual.admitted,actual.rejected,actual.admitted_uncovered_positive))
 finish()
 print("phase4_move_effect_inventory_test: PASS complete source partition and SHA-verified ROM admission; semantic coverage is reviewed metadata, not proven by admission")
