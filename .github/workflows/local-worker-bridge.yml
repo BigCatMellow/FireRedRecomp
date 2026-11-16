@@ -134,6 +134,9 @@ jobs:
             phase4-recoil-if-miss-effect*.patch|phase4-recoil-if-miss-effect*.probe)
               route='phase4-recoil-if-miss-effect'
               ;;
+            phase4-variable-power-v3-effect*.patch|phase4-variable-power-v3-effect*.probe)
+              route='phase4-variable-power-v3-effect'
+              ;;
             phase5-viridian-old-man-projection*.patch|phase5-viridian-old-man-projection*.probe)
               route='phase5-viridian-old-man-projection'
               ;;
@@ -269,6 +272,8 @@ jobs:
                 ;;
               phase4-recoil-if-miss-effect:src/core/BattleEngine.lua|phase4-recoil-if-miss-effect:src/core/BattleSceneController.lua|phase4-recoil-if-miss-effect:tests/battle_engine_test.lua|phase4-recoil-if-miss-effect:tests/battle_scene_controller_test.lua|phase4-recoil-if-miss-effect:tests/battle_party_bridge_test.lua|phase4-recoil-if-miss-effect:tests/phase4_move_effect_inventory_test.lua|phase4-recoil-if-miss-effect:tests/phase4_recoil_if_miss_effect_rom_test.lua|phase4-recoil-if-miss-effect:scripts/runtime_phase4_recoil_if_miss_replay.sh|phase4-recoil-if-miss-effect:work/tasks/phase4-recoil-if-miss-implementation.md|phase4-recoil-if-miss-effect:work/reports/phase4-recoil-if-miss-implementation.md)
                 ;;
+              phase4-variable-power-v3-effect:src/core/BattleEngine.lua|phase4-variable-power-v3-effect:tests/battle_variable_power_v3_test.lua|phase4-variable-power-v3-effect:tests/phase4_move_effect_inventory_test.lua|phase4-variable-power-v3-effect:tests/phase4_variable_power_v3_effect_rom_test.lua|phase4-variable-power-v3-effect:work/reports/phase4-move-effect-inventory.md|phase4-variable-power-v3-effect:work/reviews/2026-10-28-variable-power-v3-implementation-review.md|phase4-variable-power-v3-effect:work/reviews/2026-10-30-variable-power-v3-final-head-review.md|phase4-variable-power-v3-effect:work/tasks/phase4-variable-power-v3.md)
+                ;;
               phase5-viridian-old-man-projection:src/core/ViridianOldManProjection.lua|phase5-viridian-old-man-projection:main.lua|phase5-viridian-old-man-projection:tests/phase5_viridian_old_man_projection_test.lua|phase5-viridian-old-man-projection:work/tasks/phase5-viridian-old-man-projection-implementation.md|phase5-viridian-old-man-projection:work/reports/phase5-viridian-old-man-projection-implementation.md)
                 ;;
               phase5-viridian-roadblock:src/core/ViridianRoadblock.lua|phase5-viridian-roadblock:src/core/PlayerMovement.lua|phase5-viridian-roadblock:main.lua|phase5-viridian-roadblock:tests/phase5_viridian_roadblock_test.lua|phase5-viridian-roadblock:tests/phase5_viridian_roadblock_integration_test.lua|phase5-viridian-roadblock:tests/phase5_viridian_roadblock_rom_test.lua|phase5-viridian-roadblock:tests/player_movement_test.lua|phase5-viridian-roadblock:scripts/runtime_viridian_roadblock_replay.sh|phase5-viridian-roadblock:work/tasks/phase5-viridian-roadblock-implementation.md)
@@ -310,6 +315,28 @@ jobs:
           for path in "${required_paths[@]}"; do
             if ! test -f "$path"; then
               echo "Required Viridian roadblock artifact is missing before evidence: $path" >&2
+              exit 1
+            fi
+          done
+
+      - name: Verify variable-power V3 artifacts before evidence
+        if: steps.request.outputs.mode == 'patch' && steps.route.outputs.route == 'phase4-variable-power-v3-effect'
+        shell: bash
+        run: |
+          set -euo pipefail
+          required_paths=(
+            src/core/BattleEngine.lua
+            tests/battle_variable_power_v3_test.lua
+            tests/phase4_move_effect_inventory_test.lua
+            tests/phase4_variable_power_v3_effect_rom_test.lua
+            work/reports/phase4-move-effect-inventory.md
+            work/reviews/2026-10-28-variable-power-v3-implementation-review.md
+            work/reviews/2026-10-30-variable-power-v3-final-head-review.md
+            work/tasks/phase4-variable-power-v3.md
+          )
+          for path in "${required_paths[@]}"; do
+            if ! test -f "$path"; then
+              echo "Required variable-power V3 artifact is missing before evidence: $path" >&2
               exit 1
             fi
           done
@@ -437,6 +464,12 @@ jobs:
               "$LUA" tests/phase4_move_effect_inventory_test.lua
               "$LUA" tests/phase4_recoil_if_miss_effect_rom_test.lua
               ;;
+            phase4-variable-power-v3-effect)
+              "$LUA" tests/battle_engine_test.lua
+              "$LUA" tests/battle_variable_power_v3_test.lua
+              "$LUA" tests/phase4_move_effect_inventory_test.lua
+              "$LUA" tests/phase4_variable_power_v3_effect_rom_test.lua
+              ;;
             phase5-viridian-old-man-projection)
               "$LUA" tests/phase5_viridian_old_man_projection_test.lua
               ;;
@@ -563,6 +596,9 @@ jobs:
               ;;
             phase4-recoil-if-miss-effect)
               bash scripts/runtime_phase4_recoil_if_miss_replay.sh
+              ;;
+            phase4-variable-power-v3-effect)
+              echo "No runtime replay is authorized: the accepted V3 design specifies none; focused and verified-ROM suite results are the evidence."
               ;;
             phase5-viridian-old-man-projection)
               echo "No runtime replay is applicable: this route projects pre-spawn data and excludes traversal, tutorial, rendering, and generic scripts."
@@ -771,6 +807,27 @@ jobs:
               for path in "${required_paths[@]}"; do
                 if ! test -f "$path"; then
                   echo "Required effect-45 artifact is missing: $path" >&2
+                  exit 1
+                fi
+              done
+              for path in "${required_paths[@]}"; do
+                git add -- "$path"
+              done
+              ;;
+            phase4-variable-power-v3-effect)
+              required_paths=(
+                src/core/BattleEngine.lua
+                tests/battle_variable_power_v3_test.lua
+                tests/phase4_move_effect_inventory_test.lua
+                tests/phase4_variable_power_v3_effect_rom_test.lua
+                work/reports/phase4-move-effect-inventory.md
+                work/reviews/2026-10-28-variable-power-v3-implementation-review.md
+                work/reviews/2026-10-30-variable-power-v3-final-head-review.md
+                work/tasks/phase4-variable-power-v3.md
+              )
+              for path in "${required_paths[@]}"; do
+                if ! test -f "$path"; then
+                  echo "Required variable-power V3 artifact is missing before staging: $path" >&2
                   exit 1
                 fi
               done

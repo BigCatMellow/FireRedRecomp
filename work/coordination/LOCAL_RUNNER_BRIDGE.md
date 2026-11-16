@@ -71,6 +71,25 @@ Current supported request/probe prefixes are:
   later substrate-only probe before any separately reviewed implementation
   request; it excludes `main.lua`, importer/data-model, save/AI/UI-scene,
   coordination, generic dynamic-power work, and every other effect family;
+- `phase4-variable-power-v3-effect...` — bounded variable-power V3 route
+  (Rollout/Ice Ball effect 117, Defense Curl effect 156). Configuration only
+  until independent review PASS. It admits exactly `src/core/BattleEngine.lua`,
+  `tests/battle_variable_power_v3_test.lua`,
+  `tests/phase4_move_effect_inventory_test.lua`,
+  `tests/phase4_variable_power_v3_effect_rom_test.lua`,
+  `work/reports/phase4-move-effect-inventory.md`,
+  `work/reviews/2026-10-28-variable-power-v3-implementation-review.md`,
+  `work/reviews/2026-10-30-variable-power-v3-final-head-review.md`, and
+  `work/tasks/phase4-variable-power-v3.md`.
+  - All eight must exist before evidence and again before staging.
+  - It runs the four focused Lua tests and the shared no-ROM and
+    SHA-verified-ROM suites. The verified-ROM suite must run the V3 fixture
+    and the inventory without skipping.
+  - No runtime replay is authorized; the accepted V3 design specifies none.
+  - Configuration PASS permits only one later substrate-only probe, then a
+    separately reviewed request byte-identical to `git diff 49d0f45 fbe5b6f`.
+  - It excludes `main.lua`, controller, party, AI, save, coordination and
+    every other effect family;
 - `phase5-viridian-old-man-projection...` — bounded pre-spawn Viridian local-ID
   4 scene projection route. It admits only its reviewed helper, `main.lua`, one
   focused projection test, and implementation task/report paths. It runs that
