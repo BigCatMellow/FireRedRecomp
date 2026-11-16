@@ -99,3 +99,21 @@ whitespace PASS. Product baseline/full suite N/A for design-only; accepted
 213 no-ROM evidence recovered by unchanged src/tests/main944df72 identity.
 Only own task/new contract/append friction changed; no runtime prototype, code/
 test/inventory/ROM/private/remote action. Final clean commit returned separately.
+
+## Worker F1/F2 design correction checkpoint — 2026-11-16
+
+Independent e6633f0 design review remains NEEDS_FIX history. Input canonical
+`/home/home/FireRedRecomp-integrated/work/reviews/2026-11-16-low-kick-engine-contract-review.md`
+(scratch receipt SHA-256
+`eaebb08822baa63c53c32ad02e4f53ba34f1a3fa1626f4ad4b594fd28c3ba84c`).
+Only F1/F2 corrected: preserve new(opts) plus optional opts.lowKickWeights field
+and full existing-constructor call; one pure action planner with mandatory
+selection/resolution context, exact projected recharge expiry/new turn lock
+versus live core recharging/lockedThisTurn/passed-slot fallback. Literal timer1/
+timer2/all-zero/cleared-lock cases added; no state mutation/prototype.
+Current report SHA-256
+`be0df3a0044ba1d2ada00bf1dd90882f3d2c33f15573f46a66844e5bb622e682`.
+All independently verified domain/provider/ABI/refusal/oracle/native-merge gates
+remain. READY_FOR_REVIEWER for same independent actor's delta review, no Worker
+acceptance or product authority. Product suite remains N/A; staged repository
+and whitespace checks accompany clean correction freeze. Exact three-doc scope.

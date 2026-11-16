@@ -50,8 +50,13 @@ address/ABI proof and SHA-first reader/wiring authorization; no such edits here.
 
 ## Exact proposed API and immutable lookup
 
-Use optional `BattleEngine.new(opts.lowKickWeights)` **plain table**, indexed by
-internal ordinary species ID, storing u16 hectograms. Nil means no provider;
+Retain the existing `BattleEngine.new(opts)` signature. Add the optional
+**field** `opts.lowKickWeights`, a plain table indexed by internal ordinary
+species ID and storing u16 hectograms. Complete existing-argument call shape:
+`BattleEngine.new({player=player,foe=foe,moves=moves,typeChart=chart,rng=rng,lowKickWeights=weights})`.
+Other existing options (for example hasReplacement/firstBattle) remain accepted
+unchanged when present; this field does not replace the constructor argument.
+Nil means no provider;
 empty/partial table is allowed for bounded tests, missing target means refusal.
 Reject a non-table/metatable, unsupported key, noninteger, NaN, infinity,
 negative or>65535 weight during construction, **before** existing constructor
@@ -77,14 +82,42 @@ required. Non-Low-Kick/V4a callers retain existing behavior. Invalid/missing
 species/lookup returns false, never power1/zero-weight fallback. Require the
 source-locked move67 record shape; no arbitrary effect196 record expansion.
 
-Add narrow pure `supportsLowKickAction(side,action,defenderOverride)` returning
-boolean plus bounded reason. It checks only an **effective Low Kick** action;
-other effective moves/non-move actions return true without changing their
-existing admission rules. Resolve live lock first (existing isLocked/lockedSlot),
-then all-PP-zero Struggle substitution exactly as resolveMoveCore currently does;
-only then inspect selected slot/record. Missing slot/record keeps existing loud
-error semantics. `chosenMoveRecord` at4962 is just a raw slot lookup and is
-**insufficient**: it knows neither Struggle nor locks. Do not silently reuse it.
+Add one narrow pure `supportsLowKickAction(side,action,context,defenderOverride)`
+returning boolean plus bounded reason. The mandatory context is `selection`
+(next-turn controller/runTurn preflight) or `resolution` (direct wrapper/core).
+One shared effective-record planner handles both through explicit local inputs;
+do not maintain two drifting planners. It checks only an **effective Low Kick**;
+other effective moves/non-move actions retain existing admission rules.
+
+- **Selection:** preview runTurn without writes. Compute the new selection lock
+  using isLocked: charging, positive rampageTurns/rolloutTimer, or recharging
+  with rechargeTimer>1. Ignore old self.lockedThisTurn because runTurn replaces
+  it. If selected-locked, preview action replacement with moveSlot=lockedSlot
+  exactly (no guessed fallback to the requested slot). Otherwise retain the
+  requested action. A resulting non-move action has no Low Kick to validate.
+  In locals only, preview rechargeTimer decrement when>0; if it reaches0
+  while recharging, clear recharging and, unless charging, clear lockedSlot.
+  Then compute the core lock from those projected live fields plus the newly
+  computed selection-lock snapshot. This includes the timer1 expiry distinction
+  and does not equate selection isLocked with the later core predicate.
+- **Resolution:** do not preview or perform turn-entry timer decrement/expiry
+  or selection action replacement. Use the passed moveSlot. Core lock is live
+  charging OR recharging (regardless of timer) OR positive rampage/rollout OR
+  existing self.lockedThisTurn[side]. If locked, use live lockedSlot **or the
+  passed slot**; the latter preserves the move chosen before an earlier action
+  cancelled the live lock/cleared lockedSlot.
+- **Shared final step:** first decide the context's core lock. A lock disables
+  all-PP-zero substitution. Under that lock use the context's live/projected
+  lockedSlot or its passed/chosen slot; otherwise, if every slot has0PP, select
+  Struggle without a real slot. Only then inspect the effective record and
+  Low Kick inputs. No counter, slot, flag, event, PP or RNG is changed. Missing
+  slots/records preserve existing loud error semantics; no fabricated slot.
+
+`chosenMoveRecord` at4962 is raw slot lookup and is **insufficient**: it knows
+neither Struggle nor either lock context. In particular isLocked2077..2080,
+runTurn5044..5067
+and resolveMoveCore2206..2216 intentionally differ; isLocked must not replace
+the core predicate. Do not silently reuse it for direct resolution.
 TrainerAI still raises on an all-PP-zero foe before engine entry; direct-engine
 Struggle validation does not repair or claim that chooser gap. No new generic
 action/transaction framework or AI filtering.
@@ -108,15 +141,18 @@ currentMove/moveDamageDealt before core. These are current facts, not new proof.
 
 Proposed future placements:
 
-- Controller's selected-player Low Kick arm uses supportsLowKickAction with
-  current foe before chooser; other unsupported checks stay unchanged. Preserve
+- Controller's selected-player Low Kick arm uses supportsLowKickAction in
+  `selection` context with current foe before chooser; other unsupported checks
+  stay unchanged. Preserve
   the existing one-message return to MOVE. No turn/PP/HP/engine-event/RNG or AI
   call; UI message/revision changes are allowed. All-zero PP follows Struggle,
   so a raw Low Kick slot does not incorrectly veto an effective Struggle.
 - At runTurn entry after existing read-only over/forced-switch assertions but
   before events allocation/reset, turn increment, runAttempted, lock/canceller/
-  Focus Punch work or ordering RNG: preflight both effective Low Kick actions.
-  Honor lock overriding a requested switch. For an actual unlocked player
+  Focus Punch work or ordering RNG: preflight both effective Low Kick actions
+  in `selection` context, including
+  projected timer expiry and the new lock snapshot. Honor selection lock
+  overriding a requested switch. For an actual unlocked player
   switch, preview action.battler as the foe's target before engine mutation;
   otherwise current target. Current engine has no foe voluntary-switch action.
   Pending forced replacement remains blocked; next turn reads actual new mon.
@@ -127,7 +163,9 @@ Proposed future placements:
   Controller has no catch/retry around runTurn; error propagates fail-closed,
   not a new menu loop. Caller must fix its input rather than retry unchanged.
 - Direct resolveMove preflight precedes its resets; direct resolveMoveCore
-  checks before its own mutation. Failure appends nothing to caller events.
+  checks before its own mutation. Both use `resolution` context with the actual
+  passed slot, live lock/lockedThisTurn and no turn-entry expiry. Failure appends
+  nothing to caller events.
   Resolution rechecks actual current defender; supported modeled moves cannot
   Transform/change species between preflight and execution. New such mechanics
   require another contract. No promise to undo an already-resolved earlier hit
@@ -182,8 +220,30 @@ Use source-derived literals, never engine readback to construct expectations.
   message. Direct/foe engine errors: snapshot turn/flags/locks/timers/events,
   PP/HP/RNG before entry; all unchanged. Chooser fixture deliberately draws
   once then selects unsupported foe: chooser count1 retained, no engine draw.
-  Locks and all-zero Struggle bypass irrelevant Low Kick input checks. No
-  terminal auto-retry. Save/record snapshots untouched by engine construction/
+  Literal planner cases (both sides; missing weights, slot1=Low Kick67 and
+  slot2=Hyper Beam63 unless specified):
+  - recharging=true/timer1/lockedSlot2, selected slot1 with PP: selection
+    previews expiry and refuses Low Kick; direct resolution retains live lock
+    and uses slot2, adding no Low Kick refusal or timer mutation.
+  - Same state with timer2: selection locks to2 (projected timer1); direct
+    resolution also uses2. Neither validates unrelated slot1 weight.
+  - All slots0PP/timer1: selection expires recharge, no selection/core lock,
+    therefore Struggle; direct resolution retains recharge lock and slot2,
+    never Struggle. Timer2/all0PP remains slot2 in both contexts.
+  - No live lock and no lockedThisTurn/all0PP: Struggle at both boundaries.
+    Positive charging/rampage/rollout locks at0PP keep their locked slot.
+  - Resolution with lockedThisTurn[side]=true but charging/recharging/rampage/
+    rollout cleared and lockedSlot=nil: passed slot1=Low Kick remains selected
+    even at0PP and refuses missing weights, not Struggle. Passed slot2 instead
+    keeps Hyper Beam without Low Kick refusal. This snapshot is honored only
+    by resolution; next-turn selection discards old lockedThisTurn and, with
+    no new live selection/core lock and all0PP, uses Struggle.
+  - Resolution live lock with lockedSlot=nil uses the passed slot; selection
+    action replacement with a missing lockedSlot preserves existing malformed
+    state error, rather than inventing a requested-slot fallback.
+  Every planner assertion also checks unchanged rechargeTimer/recharging/slot/
+  lockedThisTurn/PP/events/RNG; later actual recharge/canceller behavior is
+  inherited, not performed by planning. No terminal auto-retry. Save/record snapshots untouched by engine construction/
   resolution; no claim about earlier main callback writes.
 
 ## Future literal scope, fixtures and eligibility
