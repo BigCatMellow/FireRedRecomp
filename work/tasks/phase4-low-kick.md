@@ -1,7 +1,7 @@
 # Task: Low Kick bounded injected-weight engine slice
 
 - Task ID: `P4-LOW-KICK`
-- Status: `READY_FOR_REVIEWER — bounded local implementation frozen; no self-approval`
+- Status: `READY_FOR_REVIEWER — F1 PP-order correction frozen; no self-approval`
 - Type: `IMPLEMENTATION — injected ordinary-species engine slice only`
 - Parent: Phase 4 battle engine in [CAPABILITY_CHECKLIST](../roadmaps/CAPABILITY_CHECKLIST.md), effect196/move67. No native/full-family or phase acceptance.
 - Worker: Sol high — selection/direct-resolution contexts, locks/Struggle, damage/RNG and controller preflight need cross-file care. Distinct Sol high Reviewer follows; parent rina integrates.
@@ -200,3 +200,77 @@ publication or remote/ref modification occurred.
 One next action: parent rina freezes/receipts the exact clean local head and
 routes it to the distinct Sol high implementation Reviewer against this contract.
 Parent alone reconciles canonical state after freeze; review is still required.
+
+
+## F1 correction receipt — 2026-11-17
+
+Parent correction dispatchf99397f and independent NEEDS_FIX review
+SHA-256 `145d6be17bde215204a0f179d98490680af775316c6f9ff67bb38ccad5b87199`
+are adopted for this same eight-path package. Sole F1: pinned script2550–2556
+orders attackcanceler, attackstring, PP reduction, weight calculation, accuracy.
+Worker `/root/low_kick_engine_worker` preserved all other approved semantics and
+all original400 assertions. Prior445f3c4 receipt above remains historical.
+
+Corrected product/test freeze `9fae63734f981320a65081e0a7c1090352a5459e`;
+its final review descendant adds only this task receipt. Exact final clean head
+is returned to parent rina for the same distinct Reviewer's delta verification.
+READY_FOR_REVIEWER is a handoff, not Worker approval or native acceptance.
+
+Only Low Kick now reduces PP in its post-canceller/noPP-check prefix, after
+useMove and before its action-local weight calculation and accuracy. Its late
+generic deduction is skipped. Existing non-Low-Kick PP, immutable planner,
+refusal, ordinary/WG tail and source-unreachable lock limits are preserved.
+The injected map/domain/API and approved source/design report are unchanged.
+Both-side read-only RNG observers assert literal PP19 at each of four successful
+draws and PP19 at the sole lowered-accuracy miss draw; each spends exactly one
+PP. Existing protect/Fly/Dig/status/refusal oracles remain unchanged.
+
+Verification and recovery:
+
+- Before the fix, the added observers reproduced four failures (both sides,
+  hit/miss);412 assertions passed. Log
+  `/tmp/firered-low-kick-f1-before-20261117.log`, SHA-256
+  `718a9676d3e018e0dcd3047497ac42810e78719b55639e2aa3f33e7f18e13715`.
+- `env -u POKEPORT_ROM -u POKEPORT_RUNTIME_REPLAY lua5.1
+  tests/battle_low_kick_test.lua`: **416 passed,0 failed**.
+  Required same focused file loop listed in the Nov16 receipt reran with
+  controller144/0,V4a243/0,H1 87/0,V4b93/0,WG768/0,V2 80/0,V3 144/0;
+  associated ROM fixtures/inventory cleanly SKIP. The independent read-only
+  `pp_order.lua` from the review scratch directory was then run with the same
+  unset ROM/replay environment: both sides observe literal19,19,19,19 and exit0.
+  Combined log `/tmp/firered-low-kick-f1-focused-20261117.log`, SHA-256
+  `e14b54315eb45c6f1d6d7e7cc8c8dbe433cb26b816fce0d7af20fd8e404c392b`.
+- Final foreground `env -u POKEPORT_ROM -u POKEPORT_RUNTIME_REPLAY bash
+  scripts/test_all.sh`: **PASS215 test files**, clean ROM skips/no replay.
+  Log `/tmp/firered-low-kick-f1-full-20261117.log`, SHA-256
+  `24be9379ef674c8a999d44174d985d4f60a8e3afa8af0d2d276bfd72539899e1`.
+- `lua5.1 scripts/check_repository.lua` PASS344Lua/432Markdown/1385targets;
+  `git diff --cached --check` and `git diff --check` PASS. Final task-only
+  descendant rechecked. Canonical read-only authority check
+  `python3 scripts/check_handoff_state.py --revision f99397f --task
+  work/tasks/phase4-low-kick.md` PASS; no state written. Parent reconciles the
+  new exact frozen target and performs the review-stage handoff check.
+- Recovered rather than repeated: accepted baseline213/product identity,
+  prior215 log `fec13252…99e13b`, source354/four scopes/receipt-byte proof
+  `44b5776e…cd3d13a` and independent372 scenarios/996 non-Low-Kick transitions
+  plus28 Low Kick source cases, as recorded by review145d6be1. Unchanged
+  inventory files/source partition and source pin c75f352 were rechecked;
+  no fresh broad source/differential campaign was needed.
+
+Corrected SHA-256: BattleEngine
+`e4958bef6e3ed43fee7ce5e1e6b394b0b59ceb6fdbf15f45a7efd885fbef2876`;
+battle_low_kick_test
+`94f6b4d3edc71d8bd692a2178919ba5838c3e3da739b561e7bc88416a29a1f45`.
+Other four product/test/report hashes in the Nov16 receipt remain identical.
+The full package remains exactly the authorized eight paths from274cbad;
+this correction changes only Engine/new focused test/own task/append-only
+friction relative to445f3c4. The source/design report remains exactly
+`be0df3a0044ba1d2ada00bf1dd90882f3d2c33f15573f46a66844e5bb622e682`.
+
+Limits: numeric retail provider/address/delivery remains UNKNOWN/unimplemented,
+native merge blocked; no represented/family/ROM/F4/AI/runtime/phase/CI/publication/
+main gate accepted. No generic PP repair, other effect change, original ref,
+ROM/private job/replay/remote/publication/main action. Prior chooser RNG/main
+switch writes/capture removal remain outside engine-entry rollback promises.
+Next action: parent receipts the exact clean correction head and sends it to
+the same distinct Reviewer for F1-only delta verification.
