@@ -1,7 +1,7 @@
 # Task: Low Kick bounded injected-weight engine slice
 
 - Task ID: `P4-LOW-KICK`
-- Status: `REVIEWED_PASS — local injected engine slice; native/provider blocked`
+- Status: `READY_FOR_WORKER — draft-publication preparation only; bounded implementation independently PASS`
 - Type: `IMPLEMENTATION — injected ordinary-species engine slice only`
 - Parent: Phase 4 battle engine in [CAPABILITY_CHECKLIST](../roadmaps/CAPABILITY_CHECKLIST.md), effect196/move67. No native/full-family or phase acceptance.
 - Worker: Sol high — selection/direct-resolution contexts, locks/Struggle, damage/RNG and controller preflight need cross-file care. Distinct Sol high Reviewer follows; parent rina integrates.
