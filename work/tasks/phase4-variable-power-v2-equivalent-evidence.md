@@ -1,7 +1,7 @@
 # Task: V2 independent equivalent-evidence outcome review
 
 - Task ID: `P4-VARIABLE-POWER-V2-EQUIVALENT-EVIDENCE`
-- Status: `READY_FOR_REVIEWER`
+- Status: `READY_FOR_WORKER — public coordination projection only; gate6b PASS and local6c preserved`
 - Type: `REVIEW / operator-ratified bounded adoption; no runner action`
 - Parent: Fury Cutter V2, effect119/move210, already on main; no full-relay or phase closure.
 - Owner/integration: ORCHESTRATOR rina; gate6c remains parent-owned.
@@ -77,25 +77,58 @@ and one next action. Freeze clean local report/commit/digest; parent receipts
 only then performs6c in existing owners. Normal real operator hcom/opcmd main
 merge gate remains separate. Seven AGI tests and ten criteria PASS for6b review.
 
-## Reviewer progress — 2026-11-17 (evidence only; authority/status unchanged)
+## Parent gate6c receipt — 2026-11-17
 
-Fresh independent actual actor `/root/v2_equivalent_outcome_review` reviewed
-frozen `001bad93d0c585d264dfe784c9c2b055ada71e8b` and authored the new
-[gate 6b outcome report](../reviews/2026-11-17-variable-power-v2-equivalent-evidence-outcome-review.md).
-Verdict PASS for bounded equivalent-evidence adoption only. Parent 6c remains
-pending; entire gates1–6a remain MISSING, not satisfied. Current public main
-`df53c7770c1df5884f4c3924e331c5efebe91925` product/tests/scripts/import/main
-equal the accepted tested/published `b8cede0` tree and this frozen review input.
-Both environment variables unset: fresh V2 80/0 and full no-ROM207 PASS;
-repository336Lua/419Markdown/1368targets and whitespace PASS before doc outputs.
-Exact request postimages reconstructed read-only in memory, all eight equal
-`b8cede0`; accepted receipt/source attribution and public metadata checked.
-Only reviewer docs changed; no private logs/jobs/ROM/source/pub/merge action.
-Friction entries preserve missing exploratory FLOW path and metadata endpoint/
-wrapper recovery. Final staged repository/link/whitespace results follow here.
+Newindependentactor `/root/v2_equivalent_outcome_review` PASS21a834e, reportSHA750a9a05522841ccc714b7e68039af42208abff18d7a1af005b6ff5490bc4a08. [Exact outcome](../reviews/2026-11-17-variable-power-v2-equivalent-evidence-outcome-review.md) verifieshuman/ledger,patchedB8/currentMainidentity,acceptednonSKIPreceipts/publicmetadataandfresh80/207noROMchecks. Parent replaces existingv2_relay/registerrow, updates originalV2Taskstatusonlyandcurrenthandoff. Boundedadoption/6c complete LOCALLY; entire1–6a remainMISSING,1–5/V2routeparts6awaived, no fullrelay/private/main/phase grant. Reopenonlaterfixture/testfailure.
 
-Final staged checks: `env -u POKEPORT_ROM -u POKEPORT_RUNTIME_REPLAY lua5.1
-scripts/check_repository.lua` PASS336Lua/421Markdown/1376targets;
-`git diff --check` and `git diff --cached --check` exit0. Staged paths are
-exactly the new report, this own-task progress and append-only friction log.
-Report SHA256 `750a9a05522841ccc714b7e68039af42208abff18d7a1af005b6ff5490bc4a08`.
+
+## Parent public-coordination projection stage — 2026-11-17
+
+Outcome: prepare a clean documentation-only candidate that makes the actual
+ratified V2 decision and independently passed6b/local6c discoverable to public
+reviewers. Prior gates6b/local6c are complete, not reopened. Parent rina owns
+integration and any later exact leased PR78 update. This stage is local only.
+Existing PR78 e02bffd is an old NOT ELIGIBLE audit, not current exception adoption.
+Preserve its audit/review bodies as history, add a clear superseded-status banner
+only to the audit report. Do not overwrite the original signed reviews.
+
+Terra medium Worker starts a NEW isolated
+`/home/home/FireRedRecomp-v2-coordination-draft`, branch
+`work/v2-coordination-projection-20261117`, from accepted outcome
+`21a834e1171c3731aa3b1875caba0e379fac0acc` plus this amended task only. Product
+base remains public main df53c777; no organizer runtime/private/denied content.
+Distinct existing outcome Reviewer checks the frozen documentation projection.
+
+MAY CHANGE only: this task progress/leading metadata/current gate6b/6c ledger;
+original `work/tasks/phase4-variable-power-v2.md` leading status line ONLY;
+`work/coordination/STATE.json` ADD/REPLACE exactly one v2_relay object only;
+`work/coordination/HANDOFF.md` ADD one dated parallel V2 adoption section only;
+`work/coordination/TASK_REGISTER.md` ADD/REPLACE exactly one original
+P4-VARIABLE-POWER-V2 row only; audit report
+`work/reports/phase4-variable-power-v2-closure-eligibility.md` add historical
+superseded banner only; append own scratch friction
+`/tmp/firered-v2-coordination-draft-FRICTION_LOG.md` (no canonical friction edits).
+All existing public primary P5/V3/unrelated metadata and narrative remain exact.
+No duplicate V2 object/row. If existing unrelated coordination is stale, report it,
+never fix or import organizer coordination wholesale in this task.
+
+Bind exact operator quote/public comment, outcome21a834e/review750a9a05522841ccc714b7e68039af42208abff18d7a1af005b6ff5490bc4a08,
+code0663e1d/preapply65f/patchedtestedB8/currentdf53 distinction and shared-suite
+substitute run43782148986/job133021540905. Gates1–6a remain MISSING; waived1–5
+and V2-route-specific6a only;6bPASS/local6c complete under exception, public
+adoption still proposed until separately gated main merge. Native/runtime/phase/
+capability/full-relay and other families unchanged, no future merge/private grant.
+
+Prove all product/tests/scripts/import/main and frozen outcome/audit-review
+receipts unchanged from21a; original V2 task has exactly one changed status line.
+Parse JSON with duplicate-key detection and compare after removing v2_relay to
+base; byte-compare unrelated handoff/register text after removing single bounded
+insert/row. Stage new linked targets before repo/whitespace checks. Recover fresh
+V2 80/full207 evidence from outcome unchanged; no redundant suites. Freeze clean
+local candidate, exact path set/digests/commands and READY_FOR_REVIEWER. Write
+proposed concise updated PR78 title/body to scratch
+`/tmp/firered-v2-coordination-draft-body-20261117.md`; no actual PR/ref changes.
+Stop for authority contradiction, source drift, unexpected paths/needed scope.
+No ROM/search/private logs/jobs/request/probe/replay/main/publication. No empty
+request or fabricated satisfied gates. Seven AGI and ten criteria PASS for this
+projection only. Parent separately scopes any bounded publication and main gate.
