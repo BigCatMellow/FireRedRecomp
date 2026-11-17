@@ -1,6 +1,6 @@
 -- Source oracles: pret/pokefirered c75f352304d529f6ba92d4f74b9cf8b5c3810788.
 -- bsc.c:756-769,9072-9088: strict greater-than hectogram thresholds;
--- bs1.s:2550-2552 -> Hit tail: accuracy, crit, damage, zero-chance secondary.
+-- bs1.s:2550-2556: canceller, PP, weight, accuracy -> crit/damage/secondary.
 -- battle_moves.h:874-885 singleton67. No retail weight data/provider here.
 -- Level10/Atk20/Def20, neutral/no STAB: floor(6P/50)+2 = 4,6,9,11,14,16.
 package.path = package.path .. ";./?.lua"
@@ -129,6 +129,30 @@ for _,row in ipairs({{0,4},{100,6},{250,9},{500,11},{1000,14},{2000,16}}) do
     check("shared record unchanged",same(e.moves[67],record()))
   end
 end
+-- Source2550-2556 spends PP before weight/accuracy, not at generic Hit's
+-- later PP step. This observer only reads engine PP; its trace is test-local.
+for _,side in ipairs({"player","foe"}) do
+  for _,row in ipairs({
+    {"hit",{0,1,0,99},{19,19,19,19},4,391},
+    {"accuracy miss",{99},{19},1,400},
+  }) do
+    local e=battle({[1]=250,[2]=250},row[2])
+    local attacker=e:battler(side)
+    local defender=side=="player" and e.foe or e.player
+    if row[1]=="accuracy miss" then attacker.statStages.accuracy=0 end
+    local seen={};local next16=e.rng.next16
+    e.rng.next16=function(rng)
+      seen[#seen+1]=attacker.moves[1].pp
+      return next16(rng)
+    end
+    local events=resolve(e,side)
+    check("PP before every Random "..side..row[1],same(seen,row[3]))
+    check("PP deducted exactly once "..side..row[1],attacker.moves[1].pp==19)
+    check("PP prefix keeps RNG/HP "..side..row[1],e.rng.draws==row[4] and defender.hp==row[5])
+    check("PP prefix keeps event "..side..row[1],find(events,row[1]=="hit" and "damage" or "miss")~=nil)
+  end
+end
+
 -- caller weights copied independently; action-local record cannot alias source.
 do
   local weights={[1]=100,[2]=250};local e=battle(weights);local q=battle(weights)

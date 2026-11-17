@@ -25,3 +25,9 @@
 
 - Parent rina explicitly approved removing only the extra source-unreachable Low Kick-as-Rollout-lock PP-preserved assertion: it lacks a source oracle and is outside acceptance. Retained labeled synthetic effective-record/damage/RNG checks, every mandated pure-planner zeroPP/lock immutability witness and actual source-reachable V3 locked0PP assertions. No assertion blesses inherited negative PP; no generic PP repair or contract change.
 - First ephemeral public-source inventory proof parser omitted parenthesized bit-shift MOVE_TARGET definitions. Extend its read-only constants parsing to those source expressions, then rerun; this is a proof-script parsing gap, not inventory/engine evidence. No generated source data is saved.
+
+## 2026-11-17 — Low Kick implementation F1 PP-order correction
+
+- Independent review445f3c4 NEEDS_FIX (review SHA-256145d6be17bde215204a0f179d98490680af775316c6f9ff67bb38ccad5b87199) found the Low Kick route inherited generic accuracy-before-PP order; source script2550–2556 explicitly spends PP before weight calculation/accuracy. Final PP/damage/four draws hid the defect in the old400 assertions. Add both-side literal read-only RNG PP observers for hit and accuracy miss as a mechanical safeguard, without changing old oracles/non-Low-Kick PP behavior.
+
+- New observers first reproduced exactly four F1 failures (both sides, hit and accuracy miss), while412 other assertions passed. Moved only Low Kick's PP deduction and action-local weight calculation into its post-canceller/noPP-check attack prefix, excluding that move from generic late deduction. All original400 assertions remain unchanged; new total416/0 and independent pp_order.lua now show19,19,19,19 on both sides. Focused controller/V4a/H1/V4b/WG/V2/V3 checks and final foreground215 suite pass. Prior baseline/source/inventory/differential evidence recovered rather than repeated; no generic PP/unreachable-state repair.

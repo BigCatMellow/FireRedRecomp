@@ -2312,13 +2312,6 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
       :format(move.effect or -1, slot and slot.move or BattleEngine.MOVE_STRUGGLE))
   end
 
-  if move.effect == BattleEngine.EFFECT_LOW_KICK then
-    local dynamicMove = {}
-    for k, v in pairs(move) do dynamicMove[k] = v end
-    dynamicMove.power = BattleEngine.lowKickPower(self._lowKickWeight(defender.species))
-    move = dynamicMove
-  end
-
   if move.effect == BattleEngine.EFFECT_RETURN or move.effect == BattleEngine.EFFECT_FRUSTRATION
       or move.effect == BattleEngine.EFFECT_HIDDEN_POWER then
     local dynamicMove = {}
@@ -2510,6 +2503,17 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
   end
   self.currentMove = move
   events[#events + 1] = { type = "useMove", side = attackerSide, move = moveId }
+  local isLowKick = move.effect == BattleEngine.EFFECT_LOW_KICK
+  if isLowKick then
+    -- Source bs1.s:2550-2556: attackcanceler -> attackstring -> ppreduce
+    -- -> weightdamagecalculation -> accuracycheck. Keep generic PP unchanged.
+    if slot and not self.noPPDeduct then slot.pp = slot.pp - 1 end
+    local dynamicMove = {}
+    for k, v in pairs(move) do dynamicMove[k] = v end
+    dynamicMove.power = BattleEngine.lowKickPower(self._lowKickWeight(defender.species))
+    move = dynamicMove
+    self.currentMove = move
+  end
   if move.effect == BattleEngine.EFFECT_FAKE_OUT and attacker.isFirstTurn == 0 then
     -- Cmd_jumpifnotfirstturn (src/battle_script_commands.c:6504-6512)
     -- passes iff isFirstTurn != 0; otherwise
@@ -3082,7 +3086,7 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
   -- (bsc.c:1147; reachable because the 0-PP check is bypassed while locked).
   -- rampageLocked was captured before the protect step's cancel (P1).
   -- A protected charge turn 2 spends nothing (NO_PPDEDUCT).
-  if slot and not isEndeavor and not isMagnitude and not self.noPPDeduct then
+  if slot and not isEndeavor and not isMagnitude and not isLowKick and not self.noPPDeduct then
     if isRollout then
       if not rolloutLocked and slot.pp > 0 then slot.pp = slot.pp - 1 end
     elseif not rampageLocked then
