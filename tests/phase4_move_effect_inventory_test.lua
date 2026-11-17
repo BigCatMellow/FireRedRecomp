@@ -205,7 +205,7 @@ local inventory = {
   [193] = {"represented", true, 0, {287}}, -- EFFECT_REFRESH: ROM fixture pending (phase4_status_s4_effect_rom_test)
   [194] = {"blocked_on_state", false, 0, {288}}, -- EFFECT_GRUDGE
   [195] = {"blocked_on_state", false, 0, {289}}, -- EFFECT_SNATCH
-  [196] = {"blocked_on_state", true, 1, {67}}, -- EFFECT_LOW_KICK
+  [196] = {"blocked_on_state", false, 1, {67}}, -- EFFECT_LOW_KICK: injected weights only; numeric provider/native gate pending
   [197] = {"blocked_on_state", true, 1, {290}}, -- EFFECT_SECRET_POWER
   [198] = {"represented", true, 1, {38,344}}, -- EFFECT_DOUBLE_EDGE
   [199] = {"represented", true, 0, {298}}, -- EFFECT_TEETER_DANCE: ROM fixture pending (phase4_confusion_flinch_effect_rom_test)
@@ -227,8 +227,8 @@ local inventory = {
 
 local expectedTotals = {
   moves = 354, defined = 214, used = 198, unused = 16,
-  positive = 216, zero = 138, admitted = 300, rejected = 54,
-  admitted_uncovered_positive = 17,
+  positive = 216, zero = 138, admitted = 299, rejected = 55,
+  admitted_uncovered_positive = 16,
 }
 local expectedClasses = {
   represented = {families = 134, moves = 283, positive = 198, zero = 85},
@@ -238,8 +238,11 @@ local expectedClasses = {
   unused = {families = 16, moves = 0, positive = 0, zero = 0},
 }
 -- Source delta: exactly three positive records216/218/237 moved B -> R.
--- Populated300/54 includes them; explicit absent-input297/57 excludes them.
-local expectedMissing = {admitted=297,rejected=57}
+-- Without Low Kick weights: populated299/55, absent friendship/IV296/58.
+-- Separate injected scope admits exactly singleton67, preserving class B.
+local expectedMissing = {admitted=296,rejected=58}
+local expectedWeighted = {admitted=300,rejected=54}
+local expectedWeightedMissing = {admitted=297,rejected=57}
 local conditionalIds = {[216]=true,[218]=true,[237]=true}
 local function counts()
   return {moves=0, defined=0, used=0, unused=0, positive=0, zero=0,
@@ -305,6 +308,16 @@ for id, expected in pairs(expectedByMove) do
   sourceMissing[key]=sourceMissing[key]+1
 end
 equalCounts(sourceMissing,expectedMissing,"expected_missing_input_totals")
+local sourceWeighted, sourceWeightedMissing = {admitted=0,rejected=0},{admitted=0,rejected=0}
+for id, expected in pairs(expectedByMove) do
+  local admitted=expected.admitted or id==67
+  local key=admitted and "admitted" or "rejected"
+  sourceWeighted[key]=sourceWeighted[key]+1
+  local missingKey=admitted and not conditionalIds[id] and "admitted" or "rejected"
+  sourceWeightedMissing[missingKey]=sourceWeightedMissing[missingKey]+1
+end
+equalCounts(sourceWeighted,expectedWeighted,"expected_weighted_totals")
+equalCounts(sourceWeightedMissing,expectedWeightedMissing,"expected_weighted_missing_totals")
 finish()
 
 local path = os.getenv("POKEPORT_ROM")
@@ -336,6 +349,9 @@ for _, id in ipairs({216,218,237}) do
 end
 local actual, familyCounts = counts(), {}
 local actualMissing={admitted=0,rejected=0}
+local weightedProbe=BattleEngine.new({player={},foe={species=1},moves=moves,
+  typeChart={},rng={},lowKickWeights={[1]=250}})
+local actualWeighted,actualWeightedMissing={admitted=0,rejected=0},{admitted=0,rejected=0}
 actual.defined = sourceTotals.defined -- definitions are source-only; ROM contains records, not this enum
 for id=1,354 do
   local move, expected = moves[id], expectedByMove[id]
@@ -356,6 +372,15 @@ for id=1,354 do
     check(missingOk and missingAdmitted==(expected.admitted and not conditionalIds[id]),"missing_admission_expectation")
     local missingKey=missingOk and missingAdmitted and "admitted" or "rejected"
     actualMissing[missingKey]=actualMissing[missingKey]+1
+    local weighted=weightedProbe:supportsMove(move,id,populated,weightedProbe.foe)
+    local weightedMissing=weightedProbe:supportsMove(move,id,{},weightedProbe.foe)
+    check(weighted==(expected.admitted or id==67),"weighted_admission_expectation")
+    check(weightedMissing==((expected.admitted or id==67) and not conditionalIds[id]),
+      "weighted_missing_admission_expectation")
+    local weightedKey=weighted and "admitted" or "rejected"
+    local weightedMissingKey=weightedMissing and "admitted" or "rejected"
+    actualWeighted[weightedKey]=actualWeighted[weightedKey]+1
+    actualWeightedMissing[weightedMissingKey]=actualWeightedMissing[weightedMissingKey]+1
     local admitKey=ok and admitted and "admitted" or "rejected"
     actual[admitKey]=actual[admitKey]+1
     if positive and ok and admitted and expected.kind~="represented" then
@@ -370,6 +395,10 @@ for effect=0,213 do
 end
 equalCounts(actual, expectedTotals, "rom_totals")
 equalCounts(actualMissing,expectedMissing,"rom_missing_input_totals")
+equalCounts(actualWeighted,expectedWeighted,"rom_weighted_totals")
+equalCounts(actualWeightedMissing,expectedWeightedMissing,"rom_weighted_missing_totals")
+print(("inventory injected-weight aggregate populated=%d/%d absent-friendship-IV=%d/%d")
+  :format(actualWeighted.admitted,actualWeighted.rejected,actualWeightedMissing.admitted,actualWeightedMissing.rejected))
 print(("inventory missing-input aggregate admitted=%d rejected=%d"):format(actualMissing.admitted,actualMissing.rejected))
 -- Only counts are emitted, including on a disagreement. A failing result is
 -- evidence to investigate, never permission to rewrite expectations to match.

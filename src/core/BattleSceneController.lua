@@ -720,7 +720,14 @@ function BattleSceneController:_runTurn(playerAction)
     local move = slot and self.engine.moves[slot.move]
     -- Keep effects beyond the engine's explicit bounded subset visible,
     -- rather than routing an unknown power-zero move into fabricated rules.
-    if move and not self.engine:supportsMove(move, slot.move) then
+    local lowKick = move and (slot.move == 67 or move.effect == 196)
+    local supported
+    if lowKick then
+      supported = self.engine:supportsLowKickAction("player", playerAction, "selection", self.engine.foe)
+    elseif move then
+      supported = self.engine:supportsMove(move, slot.move)
+    end
+    if move and not supported then
       self:_setMessages({ { text = "That move's effect is not available yet." } },
         BattleSceneController.MOVE)
       return

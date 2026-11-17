@@ -1038,6 +1038,8 @@ BattleEngine.EFFECT_WEATHER_BALL = 203
 BattleEngine.EFFECT_RETURN = 121
 BattleEngine.EFFECT_FRUSTRATION = 123
 BattleEngine.EFFECT_HIDDEN_POWER = 135
+BattleEngine.EFFECT_LOW_KICK = 196
+BattleEngine.MOVE_LOW_KICK = 67
 -- Cmd_setweatherballtype (src/battle_script_commands.c:9345-9364): the
 -- dynamic type per weather family (TYPE_WATER 11, ROCK 5, FIRE 10, ICE 15).
 BattleEngine.WEATHER_BALL_TYPES = { rain = 11, sandstorm = 5, sun = 10, hail = 15 }
@@ -1344,12 +1346,51 @@ function BattleEngine.makeBattler(opts)
   return battler
 end
 
+-- Injected weights are hectograms (source PokedexEntry u16). Neither display
+-- form IDs nor national-dex IDs may substitute for ordinary internal species.
+local function ordinaryLowKickSpecies(id)
+  return type(id) == "number" and id % 1 == 0
+    and ((id >= 1 and id <= 251) or (id >= 277 and id <= 411))
+end
+
+local function lowKickWeightValid(weight)
+  return type(weight) == "number" and weight >= 0 and weight <= 65535 and weight % 1 == 0
+end
+
+function BattleEngine.lowKickPower(weight)
+  assert(lowKickWeightValid(weight), "Low Kick weight must be an integer u16")
+  if weight < 100 then return 20 end
+  if weight < 250 then return 40 end
+  if weight < 500 then return 60 end
+  if weight < 1000 then return 80 end
+  if weight < 2000 then return 100 end
+  return 120
+end
+
+local function copyLowKickWeights(weights)
+  local copied = {}
+  if weights ~= nil then
+    assert(type(weights) == "table" and getmetatable(weights) == nil,
+      "lowKickWeights must be a plain table")
+    for species, weight in next, weights do
+      assert(ordinaryLowKickSpecies(species), "lowKickWeights needs ordinary internal species keys")
+      assert(lowKickWeightValid(weight), "lowKickWeights values must be integer u16 hectograms")
+      copied[species] = weight
+    end
+  end
+  -- Only this closure retains the private copy; no caller/metamethod is invoked.
+  return function(species)
+    if ordinaryLowKickSpecies(species) then return copied[species] end
+  end
+end
+
 -- opts:
 --   player, foe -- makeBattler() results
 --   moves       -- the parsed gBattleMoves table (import/BattleMove.lua),
 --                  indexed by real move id
 --   typeChart   -- import/TypeChart.lua parseTable() rows
 --   rng         -- an Rng instance (the real global Random() stream)
+--   lowKickWeights -- optional plain ordinary-species -> u16 hectogram map; copied privately
 --   hasReplacement -- optional `function(side) -> boolean`. checkFaint calls
 --                  this when a battler faints to decide real
 --                  BattleScript_HandleFaintedMon's fork (see the header's
@@ -1363,12 +1404,14 @@ function BattleEngine.new(opts)
   assert(opts.moves, "BattleEngine needs the gBattleMoves table")
   assert(opts.typeChart, "BattleEngine needs the parsed type chart rows")
   assert(opts.rng, "BattleEngine needs an Rng instance")
+  local lowKickWeight = copyLowKickWeights(opts.lowKickWeights)
   -- Protection slice P4: battle start sets isFirstTurn = 2 for both leads
   -- and TryDoEventsBeforeFirstTurn's TurnValuesCleanUp(FALSE) decrements it
   -- before turn 1 (src/battle_main.c:2228, :2909, :3640-3641).
   opts.player.isFirstTurn = 1
   opts.foe.isFirstTurn = 1
   return setmetatable({
+    _lowKickWeight = lowKickWeight,
     player = opts.player,
     foe = opts.foe,
     moves = opts.moves,
@@ -1638,10 +1681,24 @@ function BattleEngine:finalizeFaintSequence(events)
   return self.awaitingForcedSwitch ~= nil
 end
 
-function BattleEngine:supportsMove(move, moveId, attacker)
+function BattleEngine:supportsMove(move, moveId, attacker, defender)
   if not move then return false end
   -- Existing two-argument admission is the player's menu context. Resolution
   -- always passes its actual attacker; the other side's inputs cannot admit it.
+  if moveId == BattleEngine.MOVE_LOW_KICK or move.effect == BattleEngine.EFFECT_LOW_KICK then
+    if attacker == nil then attacker = self.player end
+    if defender == nil then
+      if attacker == self.player then defender = self.foe
+      elseif attacker == self.foe then defender = self.player end
+    end
+    -- Source battle_moves.h:874-885, singleton67; power1 is a script marker.
+    return moveId == 67 and move.effect == 196 and move.power == 1
+      and move.type == 1 and move.accuracy == 100 and move.pp == 20
+      and move.secondaryEffectChance == 0 and move.target == 0
+      and move.priority == 0 and move.flags == 0x33
+      and type(defender) == "table" and self._lowKickWeight ~= nil
+      and self._lowKickWeight(defender.species) ~= nil
+  end
   attacker = attacker or self.player
   if move.effect == BattleEngine.EFFECT_RETURN or move.effect == BattleEngine.EFFECT_FRUSTRATION then
     return attacker ~= nil and attacker.friendship ~= nil
@@ -1720,6 +1777,68 @@ function BattleEngine:supportsMove(move, moveId, attacker)
     or move.effect == BattleEngine.EFFECT_PAIN_SPLIT
 end
 
+-- One effective-record planner for next-turn selection and direct resolution.
+-- It intentionally mirrors the two different lock predicates in runTurn/core.
+local function effectiveActionRecord(engine, side, action, context)
+  assert(context == "selection" or context == "resolution", "Low Kick action context required")
+  local b = engine:battler(side)
+  local chosen = action
+  local charging, recharging, lockedSlot = b.charging, b.recharging, b.lockedSlot
+  local turnLocked
+  if context == "selection" then
+    turnLocked = engine:isLocked(side) -- discard the previous turn snapshot
+    if turnLocked then chosen = {action="move", moveSlot=lockedSlot} end
+    if b.rechargeTimer > 0 and b.rechargeTimer - 1 == 0 and recharging then
+      recharging = false
+      if not charging then lockedSlot = nil end
+    end
+  else
+    turnLocked = engine.lockedThisTurn and engine.lockedThisTurn[side]
+  end
+  if not chosen or chosen.action ~= "move" then return nil, nil, chosen end
+  local locked = charging or recharging or (b.rampageTurns or 0) > 0
+    or (b.rolloutTimer or 0) > 0 or turnLocked
+  local moveSlot = chosen.moveSlot
+  local allZero = true
+  if locked then
+    moveSlot = lockedSlot or moveSlot
+    allZero = false
+  else
+    for i = 1, #b.moves do
+      if b.moves[i].pp > 0 then allZero = false; break end
+    end
+  end
+  local slot, move
+  if allZero then
+    move = engine.moves[BattleEngine.MOVE_STRUGGLE]
+    if not move then
+      error("battle needs a moves[" .. BattleEngine.MOVE_STRUGGLE ..
+        "] (MOVE_STRUGGLE) entry for the auto-Struggle trigger")
+    end
+  else
+    slot = b.moves[moveSlot]
+    if not slot then
+      error(("battler %s has no move in slot %s"):format(side, tostring(moveSlot)))
+    end
+    move = engine.moves[slot.move]
+    if not move then error(("unknown move id %s"):format(tostring(slot.move))) end
+  end
+  return move, slot, chosen, moveSlot, locked
+end
+
+function BattleEngine:supportsLowKickAction(side, action, context, defenderOverride)
+  local move, slot = effectiveActionRecord(self, side, action, context)
+  local id = slot and slot.move or BattleEngine.MOVE_STRUGGLE
+  if not move or (id ~= 67 and move.effect ~= 196) then return true end
+  if self:supportsMove(move, id, self:battler(side), defenderOverride) then return true end
+  return false, "unsupported Low Kick record or missing ordinary defender weight"
+end
+
+local function requireLowKickAction(engine, side, action, context, defender)
+  local ok, reason = engine:supportsLowKickAction(side, action, context, defender)
+  if not ok then error(reason .. " (" .. side .. ")") end
+end
+
 -- DMG_RECOIL_FROM_MISS at the accepted c75f352 source pin: halve, promote
 -- zero, then cap by TARGET max HP. The arithmetic maxHP=1 edge stays zero.
 function BattleEngine.recoilIfMissDamage(damage, targetMaxHP)
@@ -1736,6 +1855,7 @@ end
 -- Hidden Power is excluded: its damage record uses physical Normal even
 -- when its damage calculation uses Fire (F_DYNAMIC_TYPE_1, :1751-1756).
 function BattleEngine:resolveMove(attackerSide, moveSlot, events)
+  requireLowKickAction(self, attackerSide, {action="move", moveSlot=moveSlot}, "resolution")
   self.currentMove = nil
   self.moveDamageDealt = 0
   -- Protection slice P1: this action's MISS_TYPE == B_MSG_PROTECTED (set at
@@ -2181,68 +2301,13 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
   local defenderSide = otherSide(attackerSide)
   local defender = self:battler(defenderSide)
 
-  -- Real AreAllMovesUnusable (src/battle_util.c) checked BEFORE the caller's
-  -- chosen slot is even looked at: CheckMoveLimitations ORs together several
-  -- real reasons a slot can be unusable (0 PP, Disable, Torment, Taunt,
-  -- Imprison, Encore, Choice Band lock), and if every one of the battler's
-  -- move slots ends up unusable, `gProtectStructs[].noValidMoves` is set.
-  -- This engine models none of those other mechanics (no status conditions,
-  -- no Disable/Taunt/Imprison/Encore, no held items) -- confirmed by reading
-  -- CheckMoveLimitations end to end, none of those fields exist anywhere in
-  -- this codebase -- so for this engine the real condition reduces to
-  -- exactly one checkable thing: every move slot the battler has is at 0 PP.
-  local allMovesUnusable = true
-  for i = 1, #attacker.moves do
-    if attacker.moves[i].pp > 0 then
-      allMovesUnusable = false
-      break
-    end
-  end
-  -- A locked battler skips action selection, so noValidMoves is never set
-  -- and gLockedMoves is used (src/battle_main.c:3125-3130, 3983-3992).
-  -- A side locked at this turn's start keeps its locked action even when
-  -- the lock is cancelled before it moves (sleep/freeze applied by a faster
-  -- foe); source chose that move at selection time.
-  local turnLocked = self.lockedThisTurn and self.lockedThisTurn[attackerSide]
-  local rampaging = (attacker.rampageTurns or 0) > 0
-  -- A live Rollout lock (MULTIPLETURNS, variable-power slice V3).
-  local rollingOut = (attacker.rolloutTimer or 0) > 0
-  local lockedTurn = attacker.charging or attacker.recharging or rampaging or rollingOut
-    or turnLocked
-  if lockedTurn then
-    allMovesUnusable = false
-    -- runTurn already passed the locked slot; a lock cancelled earlier this
-    -- turn has cleared lockedSlot, so keep the slot the turn started with.
-    moveSlot = attacker.lockedSlot or moveSlot
-  end
-
-  local slot, move
-  if allMovesUnusable then
-    -- Real battle_main.c (search noValidMoves): `gCurrentMove = gChosenMove
-    -- = MOVE_STRUGGLE; gHitMarker |= HITMARKER_NO_PPDEDUCT`. The real move
-    -- menu doesn't even let the player choose in this state -- it
-    -- substitutes Struggle automatically -- so this is a precondition check
-    -- on the whole battler, and it overrides whatever `moveSlot` the caller
-    -- passed. There is no real move slot for Struggle (no `slot` local);
-    -- ppreduce below must be skipped entirely for it.
-    move = self.moves[BattleEngine.MOVE_STRUGGLE]
-    if not move then
-      error("battle needs a moves[" .. BattleEngine.MOVE_STRUGGLE ..
-        "] (MOVE_STRUGGLE) entry for the auto-Struggle trigger")
-    end
-  else
-    slot = attacker.moves[moveSlot]
-    if not slot then
-      error(("battler %s has no move in slot %d"):format(attackerSide, moveSlot))
-    end
-    move = self.moves[slot.move]
-    if not move then
-      error(("unknown move id %s"):format(tostring(slot.move)))
-    end
-  end
+  requireLowKickAction(self, attackerSide, {action="move", moveSlot=moveSlot}, "resolution")
+  local move, slot, _, effectiveSlot, lockedTurn = effectiveActionRecord(self, attackerSide,
+    {action="move", moveSlot=moveSlot}, "resolution")
+  moveSlot = effectiveSlot
 
   local effectiveMoveId = slot and slot.move or BattleEngine.MOVE_STRUGGLE
-  if not self:supportsMove(move, effectiveMoveId, attacker) then
+  if not self:supportsMove(move, effectiveMoveId, attacker, defender) then
     error(("unsupported move effect %d for non-damaging move %d")
       :format(move.effect or -1, slot and slot.move or BattleEngine.MOVE_STRUGGLE))
   end
@@ -2438,6 +2503,17 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
   end
   self.currentMove = move
   events[#events + 1] = { type = "useMove", side = attackerSide, move = moveId }
+  local isLowKick = move.effect == BattleEngine.EFFECT_LOW_KICK
+  if isLowKick then
+    -- Source bs1.s:2550-2556: attackcanceler -> attackstring -> ppreduce
+    -- -> weightdamagecalculation -> accuracycheck. Keep generic PP unchanged.
+    if slot and not self.noPPDeduct then slot.pp = slot.pp - 1 end
+    local dynamicMove = {}
+    for k, v in pairs(move) do dynamicMove[k] = v end
+    dynamicMove.power = BattleEngine.lowKickPower(self._lowKickWeight(defender.species))
+    move = dynamicMove
+    self.currentMove = move
+  end
   if move.effect == BattleEngine.EFFECT_FAKE_OUT and attacker.isFirstTurn == 0 then
     -- Cmd_jumpifnotfirstturn (src/battle_script_commands.c:6504-6512)
     -- passes iff isFirstTurn != 0; otherwise
@@ -3010,7 +3086,7 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
   -- (bsc.c:1147; reachable because the 0-PP check is bypassed while locked).
   -- rampageLocked was captured before the protect step's cancel (P1).
   -- A protected charge turn 2 spends nothing (NO_PPDEDUCT).
-  if slot and not isEndeavor and not isMagnitude and not self.noPPDeduct then
+  if slot and not isEndeavor and not isMagnitude and not isLowKick and not self.noPPDeduct then
     if isRollout then
       if not rolloutLocked and slot.pp > 0 then slot.pp = slot.pp - 1 end
     elseif not rampageLocked then
@@ -3837,7 +3913,8 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
         or move.effect == BattleEngine.EFFECT_RAMPAGE
         or move.effect == BattleEngine.EFFECT_RAPID_SPIN
         or move.effect == BattleEngine.EFFECT_TRAP
-        or move.effect == BattleEngine.EFFECT_FAKE_OUT then
+        or move.effect == BattleEngine.EFFECT_FAKE_OUT
+        or move.effect == BattleEngine.EFFECT_LOW_KICK then
       -- Smelling Salt's byte is CERTAIN, which skips the roll only when the
       -- move had an effect; a no-effect hit falls to the rolling branch.
       -- Rapid Spin (MOVE_EFFECT_RAPIDSPIN | AFFECTS_USER | CERTAIN, chance
@@ -3984,6 +4061,12 @@ function BattleEngine:resolveMoveCore(attackerSide, moveSlot, events)
       local kind = BattleEngine.TRI_ATTACK_KINDS[(self.rng:next16() % 3) + 1]
       self:applySecondaryStatus(defenderSide, kind, false, events)
     end
+  end
+
+  if move.effect == BattleEngine.EFFECT_LOW_KICK then
+    -- bs1.s:2550: lowkickdamagecalculation -> Hit; zero-chance tail once.
+    -- WG's returning guardTail and noEffect's returning tail already drew.
+    BattleFormulas.secondaryEffectRoll(self.rng, move.secondaryEffectChance)
   end
 
   if move.effect == BattleEngine.EFFECT_RECHARGE and attacker.hp > 0 then
@@ -5020,6 +5103,12 @@ function BattleEngine:runTurn(playerAction, foeAction)
     assert(not (playerAction.action == "switch" and self:switchBlocked(BattleEngine.SIDE_PLAYER)),
       "the player cannot switch: escape is prevented (check switchBlocked first)")
   end
+  requireLowKickAction(self, BattleEngine.SIDE_PLAYER, playerAction, "selection")
+  local foeTarget = self.player
+  if not self:isLocked(BattleEngine.SIDE_PLAYER) and playerAction.action == "switch" then
+    foeTarget = playerAction.battler
+  end
+  requireLowKickAction(self, BattleEngine.SIDE_FOE, foeAction, "selection", foeTarget)
   local events = {}
   -- A forced switch is always resolved (and presented) before the next turn.
   self.forcedSwitchEvents = {}
