@@ -1,7 +1,7 @@
 # Task: Low Kick bounded injected-weight engine slice
 
 - Task ID: `P4-LOW-KICK`
-- Status: `READY_FOR_WORKER — draft-publication preparation only; bounded implementation independently PASS`
+- Status: `READY_FOR_REVIEWER — documentation-only draft candidate; bounded implementation independently PASS`
 - Type: `IMPLEMENTATION — injected ordinary-species engine slice only`
 - Parent: Phase 4 battle engine in [CAPABILITY_CHECKLIST](../roadmaps/CAPABILITY_CHECKLIST.md), effect196/move67. No native/full-family or phase acceptance.
 - Worker: Sol high — selection/direct-resolution contexts, locks/Struggle, damage/RNG and controller preflight need cross-file care. Distinct Sol high Reviewer follows; parent rina integrates.
@@ -320,3 +320,26 @@ missing receipt or contradictory scope; no code correction, remote/ref/PR
 mutation, ROM/search/private log/job/replay/main action. Parent verifies fresh
 remote base/no duplicate/new ref and final head before any separate push.
 Deliver READY_FOR_REVIEWER with exact frozen head and one next action.
+
+
+## Draft preparation Worker receipt — 2026-11-17
+
+The clean candidate is a documentation-only descendant of accepted correction
+`aa18ab1c4b5decd3db2195465b4c3cbfdcfea2c9`; its exact head is supplied by the
+commit containing this receipt. `git diff --name-only aa18ab1 -- src tests
+scripts import main.lua` and the same check for the design, inventory and
+friction paths returned empty. Approved design SHA-256 remains
+`be0df3a0044ba1d2ada00bf1dd90882f3d2c33f15573f46a66844e5bb622e682`.
+The original and correction implementation reviews are exact organizer copies,
+SHA-256 `145d6be17bde215204a0f179d98490680af775316c6f9ff67bb38ccad5b87199`
+and `aba441c200b9ecfc99c21b9aa96feee02e0d263576d2998e0b6f449b9b49f821`.
+
+Recovered unchanged evidence: 416 focused assertions passed, 215 no-ROM test
+files passed, independent 428 Low Kick source assertions and 996 non-Low-Kick
+transitions. Product suites were not repeated for this documentation-only
+change. After staging, repository and whitespace checks passed. The candidate
+delta from `944df72c9742fbf3b192d3908f1627b6004aabf3` is the original nine
+paths listed by `git diff --name-only 944df72` plus these two review receipts.
+Numeric provider, native merge, ROM, AI, whole-family and phase gates remain
+open; class B remains unchanged. Next action: the distinct existing code
+Reviewer independently verifies this exact documentation-only candidate.
