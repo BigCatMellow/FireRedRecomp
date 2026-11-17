@@ -1,7 +1,7 @@
 # Task: Low Kick bounded injected-weight engine slice
 
 - Task ID: `P4-LOW-KICK`
-- Status: `READY_FOR_REVIEWER — F1 PP-order correction frozen; no self-approval`
+- Status: `REVIEWED_PASS — local injected engine slice; native/provider blocked`
 - Type: `IMPLEMENTATION — injected ordinary-species engine slice only`
 - Parent: Phase 4 battle engine in [CAPABILITY_CHECKLIST](../roadmaps/CAPABILITY_CHECKLIST.md), effect196/move67. No native/full-family or phase acceptance.
 - Worker: Sol high — selection/direct-resolution contexts, locks/Struggle, damage/RNG and controller preflight need cross-file care. Distinct Sol high Reviewer follows; parent rina integrates.
@@ -274,3 +274,49 @@ ROM/private job/replay/remote/publication/main action. Prior chooser RNG/main
 switch writes/capture removal remain outside engine-entry rollback promises.
 Next action: parent receipts the exact clean correction head and sends it to
 the same distinct Reviewer for F1-only delta verification.
+
+## Parent local acceptance — 2026-11-17
+
+Corrected codeaa18ab1 independentlyPASS [correction review](../reviews/2026-11-17-low-kick-implementation-correction-review.md) SHAaba441c200b9ecfc99c21b9aa96feee02e0d263576d2998e0b6f449b9b49f821. F1sourcePPorder fixed;416focused/215noROM,428independentLowKicksourceassertions, prior996nonLKtransitionproof preserved. Native/provider/ROM/AI/phase/main gates remain. Candidate staysisolated; parentimportsreceiptsonly, notwholeEngineintoownnative/private stack. No publication bythisreceipt.
+
+
+## Parent draft-publication preparation — 2026-11-17
+
+Outcome: prepare a reviewable DRAFT PR candidate for the independently accepted
+injected engine slice. This is the same P4-LOW-KICK family task, not new product
+implementation. Parent rina owns reconciliation and any later publication.
+Standing AGENTS publication authority permits a bounded draft after exact-head
+verification; this stage alone allows local preparation only. Native merge,
+provider/address/delivery, non-skipped ROM, AI, full-family and phase gates stay open.
+
+Worker: Terra medium for mechanical documentation and source-identity proof;
+independent existing implementation Reviewer verifies the documentation-only
+candidate before publication. Input clean frozen
+`aa18ab1c4b5decd3db2195465b4c3cbfdcfea2c9`, accepted correction review
+`aba441c200b9ecfc99c21b9aa96feee02e0d263576d2998e0b6f449b9b49f821`.
+New worktree `/home/home/FireRedRecomp-low-kick-draft`, branch
+`work/review-ready-low-kick-20261117`. Preserve frozen implementation/design
+and organizer trees. Never copy organizer runtime, native/private/denied recoil
+code. Base publication branch is `work/review-ready-wonder-guard-20261101`
+at `944df72c9742fbf3b192d3908f1627b6004aabf3`; do not target main.
+
+This preparation MAY CHANGE only this task and add byte-exact copies of
+`work/reviews/2026-11-16-low-kick-implementation-review.md` and
+`work/reviews/2026-11-17-low-kick-implementation-correction-review.md` from the
+canonical organizer receipts. Source/testing/design/inventory/friction bytes
+must remain exactly frozen aa18ab1. Append failures only to scratch
+`/tmp/firered-low-kick-draft-FRICTION_LOG.md`; parent promotes them if needed.
+
+Prove full product/tests/scripts/import/main identity to aa18ab1; approved
+design hash be0df3a0 unchanged; exact delta from WG944 is the original nine
+paths plus the two review receipts, no extras. Freeze clean local commit,
+record exact paths/digests and repo/whitespace checks. Recover 416 focused,
+215 no-ROM and independent 428/996 evidence; do not repeat unchanged product
+suites for documentation-only ancestry. Draft body scratch
+`/tmp/firered-low-kick-draft-body-20261117.md` must explain injected optional
+input/refusal, PP/source correction, tests, class B unchanged and numeric
+provider/native/ROM/AI/merge limits. Stop on source drift, unexpected path,
+missing receipt or contradictory scope; no code correction, remote/ref/PR
+mutation, ROM/search/private log/job/replay/main action. Parent verifies fresh
+remote base/no duplicate/new ref and final head before any separate push.
+Deliver READY_FOR_REVIEWER with exact frozen head and one next action.
