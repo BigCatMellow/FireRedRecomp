@@ -1,7 +1,7 @@
 # Task: variable-power slice V2 — Fury Cutter
 
 - Task ID: `P4-VARIABLE-POWER-V2`
-- Status: `DONE — independently reviewed PASS WITH CORRECTIONS (applied)`
+- Status: `BOUNDED EQUIVALENT-EVIDENCE ADOPTION — gate 6b PASS and gate 6c complete locally; public adoption proposed; gates 1–6a remain MISSING` under [operator exception and outcome](phase4-variable-power-v2-equivalent-evidence.md)
 - Lane: full relay (new cross-turn battle state: a per-battler counter)
 - Spec: [variable-power design proposal](../reports/phase4-variable-power-design-proposal.md)
   (§6 "Fury Cutter", "V2: Fury Cutter", verification plan V2), status

@@ -79,6 +79,13 @@
     "next_after_success": "Request allowance consumed; no retry. Operator decides whether to close PR58 as superseded. No LÖVE/runtime observation, battle-parity, Brock AI, phase or capability-checklist claim.",
     "coordination_authority": "Operator approved Claude making V3 relay coordination edits 2026-11-15 while Codex is usage-limited; additive only, P5-06 top-level state untouched."
   },
+  "v2_relay": {
+    "task_id": "P4-VARIABLE-POWER-V2",
+    "status": "BOUNDED EQUIVALENT-EVIDENCE ADOPTION — gate 6b PASS; gate 6c complete locally; public adoption proposed",
+    "task": "work/tasks/phase4-variable-power-v2-equivalent-evidence.md",
+    "evidence": "Operator ratification: https://github.com/BigCatMellow/FireRedRecomp/pull/78#issuecomment-6932377350; independent outcome 21a834e, review SHA-256 750a9a05522841ccc714b7e68039af42208abff18d7a1af005b6ff5490bc4a08; shared-suite run 43782148986/job 133021540905. V2 code 0663e1d; 65fceaa pre-apply; b8cede0 patched/tested/published; current product df53c777 identical.",
+    "boundary": "Entire gates 1–6a remain MISSING; only gates 1–5 and V2-route-specific parts of 6a waived. No full-relay, phase, capability, runtime, future merge or other-family grant. Public adoption requires separate gated main merge; later failing V2 test/fixture reopens V2."
+  },
   "legal_content_boundary": "Never commit ROMs, BIOS dumps, generated caches, ROM-derived reference screenshots, extracted game assets, or other prohibited content.",
   "phase_completion_rule": "Phase 2 remains IN PROGRESS until the Oak/reference screenshot discrepancy gate is evidenced and independently reviewed.",
   "project_goal": "work/coordination/PROJECT_GOAL.md — ACTIVE; explicitly adopted 2026-10-11; no user-specified token budget",

@@ -5,6 +5,14 @@
 - Canonical status owner: [`../roadmaps/CAPABILITY_CHECKLIST.md`](../roadmaps/CAPABILITY_CHECKLIST.md)
 - Current plan: [`../roadmaps/RECALIBRATED_DELIVERY_PLAN.md`](../roadmaps/RECALIBRATED_DELIVERY_PLAN.md)
 
+## Parallel V2 adoption — 2026-11-17
+
+This additive projection records bounded equivalent-evidence adoption locally; public adoption remains proposed until a separately gated main merge. The actual [operator ratification](https://github.com/BigCatMellow/FireRedRecomp/pull/78#issuecomment-6932377350) states:
+
+> I, the operator, ratify the PR #55 merge of V2 Fury Cutter (0663e1d) as an exception to AGENTS.md:116-117, waiving full-relay gates 1-5 (V2 route plan, route configuration including the V2 allowlist, target validation and focused-test arm, V2 probe, pre-merge implementation authority, and the bridge request and bridge-published provenance) and the V2-route-specific parts of gate 6a; I accept the no-ROM and verified-ROM suite steps of run 43782148986 (job 133021540905) as gate-6a substitute evidence. Gates 1-6a stay MISSING, not satisfied. Gates 6b (independent V2 outcome review) and 6c (coordination) remain required.
+
+The independent [outcome review](../reviews/2026-11-17-variable-power-v2-equivalent-evidence-outcome-review.md) passed at `21a834e` (report SHA-256 `750a9a05522841ccc714b7e68039af42208abff18d7a1af005b6ff5490bc4a08`); parent gate 6c is complete locally. Entire gates 1–6a remain MISSING; only 1–5 and V2-route-specific parts of 6a were waived. The V2 code is `0663e1d`; `65fceaa` was the pre-apply checkout, while `b8cede0` was patched, tested and published. Current main product `df53c777` matches that tested product. V2 evidence is from shared suites of run `43782148986` / job `133021540905`, not a V2-selected run. Later failing V2 tests or fixture reopen V2. No native/runtime, full-relay, phase, capability, other-family or future merge grant follows.
+
 ## Parallel relay — 2026-11-15: variable-power V3 closed
 
 This section is additive. The P5-06 relay below is unchanged. Claude makes
