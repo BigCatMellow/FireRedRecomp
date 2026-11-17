@@ -1,5 +1,7 @@
 # Phase 4 variable-power V2 (Fury Cutter, effect 119) — closure-eligibility audit
 
+> **Historical audit:** Its pre-ratification status is superseded by the [operator exception and independent outcome](../tasks/phase4-variable-power-v2-equivalent-evidence.md). Entire gates 1–6a remain MISSING; bounded adoption and gate 6c are complete locally, with public adoption proposed pending a separately gated main merge.
+
 - Task: [`P4-VARIABLE-POWER-V2`](../tasks/phase4-variable-power-v2.md)
 - Status: audit only. No closure, no runner request, no merge.
 - Base: `origin/main` `df53c77`.

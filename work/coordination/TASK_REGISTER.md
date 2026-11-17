@@ -50,6 +50,7 @@ receipts; they do not authorize new actions. Read the current HANDOFF first.
 
 | Task ID | Lifecycle | Assigned next role | Contract / revision | Evidence or blocker | Successor / next action |
 | --- | --- | --- | --- | --- | --- |
+| `P4-VARIABLE-POWER-V2` | `BOUNDED ADOPTION — LOCAL 6c` | `REVIEWER` | [Exception and outcome](../tasks/phase4-variable-power-v2-equivalent-evidence.md); independent PASS `21a834e` | Gates 1–6a remain MISSING; 1–5 and V2-route-specific 6a waived; 6b PASS and 6c complete locally. | Review public coordination projection; public adoption awaits separately gated main merge. |
 | `P4-PAIN-01` | `CLOSED` | `ORCHESTRATOR` | Base `d793981`; [independent correction review](../reviews/2026-09-19-pain-split-fixture-correction-review.md) | PASS for exactly two fixture substitutions, `51` → `18`; no behavior or route changes. | Reconciled into `P4-PAIN-02`. |
 | `P4-PAIN-02` | `CLOSED` | `ORCHESTRATOR` | [Corrected request authorization](../tasks/phase4-pain-split-effect.md) | User chose existing private runner; reviewed corrected digest and original nine-path boundary preserved. Local no-ROM baseline: 148 files PASS. | Dispatch `P4-PAIN-03`. |
 | `P4-PAIN-03` | `CLOSED` | `ORCHESTRATOR` | Request `bf36d94`, implementation `a739ddc88cb44a33d5e6025e619cf1df3fe6a1a8` | Guarded run `35493728001` PASS; both 149-file full suites, focused checks, deterministic replay; accepted by `P4-PAIN-04`. | Reconciled; successor `P4-02`. |

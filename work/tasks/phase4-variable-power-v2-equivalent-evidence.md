@@ -1,7 +1,7 @@
 # Task: V2 independent equivalent-evidence outcome review
 
 - Task ID: `P4-VARIABLE-POWER-V2-EQUIVALENT-EVIDENCE`
-- Status: `READY_FOR_WORKER — public coordination projection only; gate6b PASS and local6c preserved`
+- Status: `READY_FOR_REVIEWER — public coordination projection candidate; gate6b PASS and local6c complete`
 - Type: `REVIEW / operator-ratified bounded adoption; no runner action`
 - Parent: Fury Cutter V2, effect119/move210, already on main; no full-relay or phase closure.
 - Owner/integration: ORCHESTRATOR rina; gate6c remains parent-owned.
@@ -38,8 +38,8 @@ is no merge, code, probe, request, ROM/private log/job or replay authorization.
 | 4 implementation authority | MISSING | Waived; bounded implementation review is precondition, not substitute. |
 | 5 request/publication | MISSING | Waived, no empty/docs-only request permitted. |
 | 6a V2-selected guarded run | MISSING, entire gate | V2-route parts waived; specified V3 shared suites accepted as substitute evidence only. |
-| 6b independent outcome review | PENDING | New distinct Reviewer must PASS under this contract. |
-| 6c coordination | PENDING | Parent only, after6bPASS. |
+| 6b independent outcome review | PASS | Independent outcome `21a834e`; review SHA-256 `750a9a05522841ccc714b7e68039af42208abff18d7a1af005b6ff5490bc4a08`. |
+| 6c coordination | COMPLETE LOCALLY | Parent receipt after 6b PASS; public adoption remains proposed pending separately gated main merge. |
 
 Runtime replay N/A in the original engine-only design. Required source/ROM
 evidence, independent/no-self-review, content rules and capability/phase gates
@@ -132,3 +132,11 @@ Stop for authority contradiction, source drift, unexpected paths/needed scope.
 No ROM/search/private logs/jobs/request/probe/replay/main/publication. No empty
 request or fabricated satisfied gates. Seven AGI and ten criteria PASS for this
 projection only. Parent separately scopes any bounded publication and main gate.
+
+## Projection Worker progress — 2026-11-17
+
+Candidate READY_FOR_REVIEWER for independent review only. Recovered outcome `21a834e` fresh no-ROM focused 80/0 and full 207-file PASS; unchanged product identity preserves that evidence. No suite rerun. Existing public P5/V3 metadata may be stale and was preserved. Gate 6b PASS and parent local 6c completion do not satisfy gates 1–6a or authorize public adoption, a full relay, phase advancement, or a merge.
+
+Projection readiness: the seven AGI tests (Fresh-Agent, No-Guess, Scope,
+Authority, Completion, Failure and Continuation) and ten task acceptance
+criteria PASS for this projection only; independent review remains required.
