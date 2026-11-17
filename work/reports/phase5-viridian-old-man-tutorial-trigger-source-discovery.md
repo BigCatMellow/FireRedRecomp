@@ -118,13 +118,24 @@ None of these steps can run until the outside dependency gives control back
 to the waiting script. The scene-2 write must not be reached by skipping the
 battle.
 
+**Post-battle persistent state is UNKNOWN.** That covers party, bag, flags
+and anything else saved. It depends on the battle-lane result. This report
+does not assume the party is fully restored or that anything is rolled back
+after the battle. A field-side design must not assume either.
+
 ## Outside dependency (not traced, not designed)
 
 The battle-lane work covers `StartOldManTutorialBattle`, the Old Man battle
-controller, the temporary bag backup and restore, the forced capture with no
-party/PC delivery, the RNG, and the return callback. P5-05's "Tutorial-specific
-path" table already records the source anchors. The battle lane owns their
-design. This report makes no claim about any part of it.
+controller, the temporary bag, the forced capture, the shared controller and
+return-path writes, the RNG, and the return callback. P5-05's
+"Tutorial-specific path" table records the source anchors. The battle lane
+owns their design, and this report makes no claim about any of it.
+
+There is an initial battle-lane finding (rina, 2026-11-17, **not yet
+reviewed**). The tutorial entry does not itself back up or replace the party.
+The forced capture and the bag being restored before the throw are confirmed.
+The shared controller and return-path writes, and the RNG, are still
+unresolved. This report records the finding only and builds nothing on it.
 
 ## Current runtime gap (runtime file:line at `df53c77`)
 
@@ -190,6 +201,10 @@ out of scope until the dependency is accepted.
   message is not derived here.
 - **Whether later progression reads scene ≥2 or Teachy TV.** Not traced
   beyond the NPC branch that P5-05 recorded (`scripts.inc:97–104`).
+- **Post-battle state.** The party, the bag and any other saved state after
+  return are unknown. They depend on the battle-lane result; see the
+  unreviewed initial finding above. No full restoration or rollback is
+  assumed.
 - **The outside dependency's whole contract.** Its entry, return, RNG and
   abnormal recovery are unknown here by design.
 
