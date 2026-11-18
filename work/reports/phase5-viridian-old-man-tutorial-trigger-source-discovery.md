@@ -58,16 +58,21 @@ behavior is bits 0–8 of the u32 metatile attribute
 (`src/fieldmap.c:63–72`); primary metatiles are `< 640` (`include/fieldmap.h:8`).
 The decode of rows 0–21 shows the following:
 
-- Only one corridor joins south Viridian (rows 13+) to the north exit (rows 0–5,
-  Route 2 `map.json:16–21`): the x20–22 corridor, rows 9–12. Row 9 is open
-  only at x20–22. Row 8 is open from x19 to x32, but from row 9 the player can
-  step only onto (20,8), (21,8) or (22,8). In scene 1, (21,8) is occupied by
-  the tutorial man.
+- The narrow point is row 12, which is open only at x8 and x19–26. Row 9 is
+  open at x8, x20–22, x29–32 and x39–41. From the x19–26 opening the path
+  north runs through the x20–22 corridor (rows 9–11) to Route 2
+  (`map.json:16–21`). Row 8 is open from x19 to x32, but from (20..22,9) the
+  player can step only onto (20,8), (21,8) or (22,8). In scene 1, (21,8) is
+  occupied by the tutorial man.
 - The west column at x=8 (rows 5–16) has no ledge behaviors (`0x38–0x3B`,
   `include/constants/metatile_behaviors.h:47–50`). It joins row 5 only past
   the Cut tree at (18,5) (object 8, `map.json:136–149`, `EventScript_CutTree`).
   Before Cut it is not a bypass.
-- The gym-front region (row 11, x29–41) connects only to the north.
+- The east/gym-front pocket (x29–41, rows 4–11) is not a bypass either.
+  Tiles (29..41,12) are `0x3B` `MB_JUMP_SOUTH` ledges
+  (`include/constants/metatile_behaviors.h:50`), which can only be jumped
+  going south. The pocket can be left southward but never entered from the
+  south.
 - So every pre-Cut northbound path in scene 1 completes a step on C2 or C3.
   `LOOK_AROUND` turns in place and does not move off (21,8)
   (`map.json:84`; the projection sets type 1).
@@ -160,8 +165,12 @@ Proposed ID: `P5-07-VIRIDIAN-TUTORIAL-TRIGGER-DESIGN`. It mirrors P5-06's design
 (`work/tasks/phase5-viridian-roadblock-design.md`). Its outcome: one C2/C3-specific
 field-side design. The design covers four things:
 
-- admission at a completed ordinary step, with scene 1, (20,8)/(22,8) and
-  elevation 3, following C0's classify contract;
+- admission at a completed ordinary step, with scene 1 and (20,8)/(22,8).
+  Elevation follows C0's classify contract (`ViridianRoadblock.lua:93–95`):
+  compare the decoded C2/C3 event elevation with the effective player
+  elevation, treat event elevation 0 as a wildcard, and refuse when the player
+  elevation is unknown. Never use a literal 3 (P5-05
+  `phase5-viridian-northbound-gate-discovery.md:155`);
 - `lockall`, then the man's in-place turn and wait, then the player's in-place
   turn and wait;
 - the message and close;
@@ -205,6 +214,8 @@ out of scope until the dependency is accepted.
   return are unknown. They depend on the battle-lane result; see the
   unreviewed initial finding above. No full restoration or rollback is
   assumed.
+- **Talking to the man at scene 1** also enters the tutorial
+  (`scripts.inc:102,123–125`). That path is outside the C2/C3 scope.
 - **The outside dependency's whole contract.** Its entry, return, RNG and
   abnormal recovery are unknown here by design.
 
@@ -215,7 +226,8 @@ out of scope until the dependency is accepted.
 - Numbered reads of `scripts.inc:1–30,196–237`, `map.json:16–30,62–91,136–149,202–238`
   and `scrcmd.c:1143–1156,1195–1256`. Grep for `gSelectedObjectEvent = `.
 - The layout collision and behavior decode above (python3 -I). It showed the
-  single x20–22 corridor, the Cut tree at (18,5) and no ledges.
+  row-12 narrow point (x8 and x19–26), the x20–22 corridor, the Cut tree at
+  (18,5), no ledges in the x=8 column, and the `0x3B` ledges at (29..41,12).
 - Runtime: `lua5.1 -e '…ScriptBytecode.decode(string.char(0x27),0x08000000)[1].op'`
   printed `unimplemented`.
   `grep -rniE "old.?man.?tutorial|teachy|TutorialTrigger" --include=*.lua`
